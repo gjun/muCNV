@@ -8,6 +8,14 @@
 
 /* Begin PBXBuildFile section */
 		F138FD7D1CAD744A00CD5539 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD7C1CAD744A00CD5539 /* main.cpp */; };
+		F138FD8B1CAD74EE00CD5539 /* cluster.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD831CAD74EE00CD5539 /* cluster.cpp */; };
+		F138FD8C1CAD74EE00CD5539 /* common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD841CAD74EE00CD5539 /* common.cpp */; };
+		F138FD8D1CAD74EE00CD5539 /* deletions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD851CAD74EE00CD5539 /* deletions.cpp */; };
+		F138FD8E1CAD74EE00CD5539 /* duplications.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD861CAD74EE00CD5539 /* duplications.cpp */; };
+		F138FD8F1CAD74EE00CD5539 /* Error.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD871CAD74EE00CD5539 /* Error.cpp */; };
+		F138FD901CAD74EE00CD5539 /* File.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD891CAD74EE00CD5539 /* File.cpp */; };
+		F138FDC11CAD7F2600CD5539 /* libtabix.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F138FDC01CAD7F2600CD5539 /* libtabix.a */; };
+		F138FDC31CAD7FB900CD5539 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = F138FDC21CAD7FB900CD5539 /* libz.tbd */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,6 +33,18 @@
 /* Begin PBXFileReference section */
 		F138FD791CAD744A00CD5539 /* muCNV */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = muCNV; sourceTree = BUILT_PRODUCTS_DIR; };
 		F138FD7C1CAD744A00CD5539 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		F138FD831CAD74EE00CD5539 /* cluster.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cluster.cpp; sourceTree = "<group>"; };
+		F138FD841CAD74EE00CD5539 /* common.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = common.cpp; sourceTree = "<group>"; };
+		F138FD851CAD74EE00CD5539 /* deletions.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = deletions.cpp; sourceTree = "<group>"; };
+		F138FD861CAD74EE00CD5539 /* duplications.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = duplications.cpp; sourceTree = "<group>"; };
+		F138FD871CAD74EE00CD5539 /* Error.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Error.cpp; sourceTree = "<group>"; };
+		F138FD881CAD74EE00CD5539 /* Error.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Error.h; sourceTree = "<group>"; };
+		F138FD891CAD74EE00CD5539 /* File.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = File.cpp; sourceTree = "<group>"; };
+		F138FD8A1CAD74EE00CD5539 /* muCNV.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = muCNV.h; sourceTree = "<group>"; };
+		F138FD911CAD74F600CD5539 /* pException.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pException.h; sourceTree = "<group>"; };
+		F138FD921CAD74F600CD5539 /* pFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pFile.h; sourceTree = "<group>"; };
+		F138FDC01CAD7F2600CD5539 /* libtabix.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtabix.a; path = tabix/libtabix.a; sourceTree = "<group>"; };
+		F138FDC21CAD7FB900CD5539 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -32,6 +52,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F138FDC31CAD7FB900CD5539 /* libz.tbd in Frameworks */,
+				F138FDC11CAD7F2600CD5539 /* libtabix.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -41,6 +63,8 @@
 		F138FD701CAD744A00CD5539 = {
 			isa = PBXGroup;
 			children = (
+				F138FDC21CAD7FB900CD5539 /* libz.tbd */,
+				F138FDC01CAD7F2600CD5539 /* libtabix.a */,
 				F138FD7B1CAD744A00CD5539 /* muCNV */,
 				F138FD7A1CAD744A00CD5539 /* Products */,
 			);
@@ -57,6 +81,16 @@
 		F138FD7B1CAD744A00CD5539 /* muCNV */ = {
 			isa = PBXGroup;
 			children = (
+				F138FD911CAD74F600CD5539 /* pException.h */,
+				F138FD921CAD74F600CD5539 /* pFile.h */,
+				F138FD831CAD74EE00CD5539 /* cluster.cpp */,
+				F138FD841CAD74EE00CD5539 /* common.cpp */,
+				F138FD851CAD74EE00CD5539 /* deletions.cpp */,
+				F138FD861CAD74EE00CD5539 /* duplications.cpp */,
+				F138FD871CAD74EE00CD5539 /* Error.cpp */,
+				F138FD881CAD74EE00CD5539 /* Error.h */,
+				F138FD891CAD74EE00CD5539 /* File.cpp */,
+				F138FD8A1CAD74EE00CD5539 /* muCNV.h */,
 				F138FD7C1CAD744A00CD5539 /* main.cpp */,
 			);
 			path = muCNV;
@@ -118,7 +152,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F138FD8F1CAD74EE00CD5539 /* Error.cpp in Sources */,
+				F138FD8E1CAD74EE00CD5539 /* duplications.cpp in Sources */,
+				F138FD8B1CAD74EE00CD5539 /* cluster.cpp in Sources */,
+				F138FD8D1CAD74EE00CD5539 /* deletions.cpp in Sources */,
+				F138FD8C1CAD74EE00CD5539 /* common.cpp in Sources */,
 				F138FD7D1CAD744A00CD5539 /* main.cpp in Sources */,
+				F138FD901CAD74EE00CD5539 /* File.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -155,14 +195,21 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
+				GCC_VERSION = "";
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"tclap-1.2.1/include",
+					tabix,
+				);
+				LIBRARY_SEARCH_PATHS = tabix;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = YES;
+				New_Setting = "";
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 			};
@@ -192,14 +239,21 @@
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_VERSION = "";
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"tclap-1.2.1/include",
+					tabix,
+				);
+				LIBRARY_SEARCH_PATHS = tabix;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = NO;
+				New_Setting = "";
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -207,6 +261,10 @@
 		F138FD811CAD744A00CD5539 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/tabix",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -214,6 +272,10 @@
 		F138FD821CAD744A00CD5539 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/tabix",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
