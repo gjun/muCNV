@@ -57,7 +57,7 @@ int main(int argc, char** argv)
 	vector<Interval> dup_intervals;
 	vector<Interval> all_intervals;
 
-	srand(time(NULL));
+	srand((unsigned int)time(NULL));
 
 	// Parsing command-line arguments
 	try 

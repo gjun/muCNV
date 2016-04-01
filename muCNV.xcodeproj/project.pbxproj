@@ -45,6 +45,8 @@
 		F138FD921CAD74F600CD5539 /* pFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pFile.h; sourceTree = "<group>"; };
 		F138FDC01CAD7F2600CD5539 /* libtabix.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtabix.a; path = tabix/libtabix.a; sourceTree = "<group>"; };
 		F138FDC21CAD7FB900CD5539 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
+		F138FDC41CAD844700CD5539 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		F138FDC51CAD844700CD5539 /* README */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -63,6 +65,8 @@
 		F138FD701CAD744A00CD5539 = {
 			isa = PBXGroup;
 			children = (
+				F138FDC41CAD844700CD5539 /* Makefile */,
+				F138FDC51CAD844700CD5539 /* README */,
 				F138FDC21CAD7FB900CD5539 /* libz.tbd */,
 				F138FDC01CAD7F2600CD5539 /* libtabix.a */,
 				F138FD7B1CAD744A00CD5539 /* muCNV */,
@@ -299,6 +303,7 @@
 				F138FD821CAD744A00CD5539 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
