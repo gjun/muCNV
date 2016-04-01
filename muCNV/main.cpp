@@ -105,7 +105,7 @@ int main(int argc, char** argv)
 		}
 		else
 		{
-			CHR =  strtoul(sChr.c_str(), NULL, 10);
+			CHR =  (uint32_t) strtoul(sChr.c_str(), NULL, 10);
 			if (CHR < 1 || CHR>22)
 			{
 				cerr << "Error: cannot parse chromosome " << sChr << endl;
@@ -145,7 +145,7 @@ int main(int argc, char** argv)
 
 	// Read sample index
 	readIndex(sInFile, sampleIDs, sampleDirs, eventFiles, depthFiles);
-	n_sample = sampleIDs.size();
+	n_sample = (unsigned) sampleIDs.size();
 	if (bVerbose) cerr << n_sample << " samples identified\n"<<endl;
 
 	AvgDepth.resize(n_sample, 0);
@@ -188,7 +188,7 @@ int main(int argc, char** argv)
 
 	// merge dup_intervals and del_intervals 
 	all_intervals = del_intervals;
-	unsigned n_sv = all_intervals.size();
+	uint32_t n_sv = (uint32_t) all_intervals.size();
 
 //	n_del = del_intervals.size();
 //	n_dup = dup_intervals.size();
