@@ -38,8 +38,122 @@ class Interval
 		uint64_t len() {return (T.second - T.first + 1);};
 };
 
-bool compareIntervals(const Interval &, const Interval &);
+class SampleList
+{
+public:
+    vector<string> vID;
+    vector<string> vDepthFile;
+    vector<double> AvgDepth;
+    unsigned n_sample;
+    
+    bool readIndex(string);
+    bool readAvgDepth();
+};
 
+bool SampleList::readIndex(string sInFile)
+{
+    ifstream inFile(sInFile.c_str(), ios::in);
+    
+    while(inFile.good())
+    {
+        string ln;
+        getline(inFile,ln);
+        if (!ln.empty())
+        {
+            vector<string> tokens;
+            pFile::tokenizeLine(ln.c_str(), " \t\n", tokens);
+            
+            if (tokens[0].empty())
+            {
+                cerr << "Error: empty sample ID"<< endl;
+                abort();
+            }
+            else if (tokens[1].empty())
+            {
+                cerr << "Error: depth file is empty" << endl;
+            }
+            
+            vID.push_back(tokens[0]);
+            vDepthFile.push_back(tokens[1]);
+            
+            
+            // To Do: do this earlier and get vector of *pFile instead of file names
+            pFile dFile;
+            dFile.load(tokens[1].c_str(), NULL, true); // read the file with header
+            const char *line;
+            
+            line = dFile.getLine();
+            
+            tokens.clear();
+            pFile::tokenizeLine(line,"#= \t\n",tokens);
+            // TMPTMP
+            if (tokens[1].compare("gcCorrectedCvg") == 0)
+            {
+                AvgDepth.push_back(atof(tokens[2].c_str()));
+            }
+            else
+            {
+                //header is in wrong format
+            }
+
+            inFile.close();
+            // NOTE:: This should be in the script
+            /*
+            double getAvgDepth(string smID, string asmDir)
+            {
+                // To do: check this file naming convention
+                string sDepthFile = asmDir + "/CNV/depthOfCoverage_100000-" + smID + ".tsv";
+                
+                ifstream inFile(sDepthFile.c_str(), ios::in);
+                int gcIdx = 4;
+                double sum = 0;
+                double N = 0;
+                
+                if (!inFile.good())
+                {
+                    cerr << "Cannot open  " << sDepthFile<< endl;
+                    abort();
+                }
+                while(inFile.good())
+                {
+                    string ln;
+                    getline(inFile,ln);
+                    if (!ln.empty())
+                    {
+                        vector<string> tokens;
+                        pFile::tokenizeLine(ln.c_str(), " \t\n", tokens);
+                        if (tokens[0].at(0) == '>')
+                        {
+                            for(unsigned j=0; j<tokens.size() ;++j)
+                            {
+                                if (tokens[j].compare("gcCorrectedCvg") == 0)
+                                {
+                                    gcIdx = j;
+                                }
+                            }
+                        }
+                        else if (tokens[0].substr(0,3).compare("chr") == 0)
+                        {
+                            sum += atof(tokens[gcIdx].c_str());
+                            N++;
+                        }
+                    }
+                }
+                inFile.close();
+                
+                return(sum/(double)N);
+            }
+*/
+            
+            
+        }
+    }
+    inFile.close();
+    return true;
+}
+
+
+bool compareIntervals(const Interval &, const Interval &);
 
 template <class T> void vprint(vector<T>);
 

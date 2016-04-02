@@ -30,7 +30,6 @@ bool bUseGL = false;
 double P_THRESHOLD = 0.9;
 double BE_THRESHOLD = 0.01;
 double RO_THRESHOLD = 0.8;
-uint32_t CHR = 0;
 
 int main(int argc, char** argv) 
 {
@@ -63,11 +62,9 @@ int main(int argc, char** argv)
 	try 
 	{
 		TCLAP::CmdLine cmd("Command description message", ' ', "0.01");
-		TCLAP::ValueArg<string> argIn("i","index","Input index file containing list of sample IDs and ASM roots",true,"","string");
-		TCLAP::ValueArg<string> argOut("o","out","Prefix for output files",false,"CNV","string");
-		TCLAP::ValueArg<string> argChr("c","chr","Chromosome", false,"","string");
-		TCLAP::ValueArg<string> argInterval("n","interval","(Optional) File containing list of additional candidate intervals",false,"","string");
-		TCLAP::ValueArg<string> argFam("f","family","(Optional) ped file containing sex information",false,"","string");
+		TCLAP::ValueArg<string> argIn("i","index","Input index file",true,"","string");
+		TCLAP::ValueArg<string> argOut("o","out","Prefix for output filename",false,"CNV","string");
+		TCLAP::ValueArg<string> argInterval("n","interval","File containing list of candidate intervals",false,"","string");
 		TCLAP::ValueArg<double> argPos("p","posterior","(Optional) Posterior probability threshold",false,0.9,"double");
 		TCLAP::ValueArg<double> argBE("b","bayes","(Optional) Bayes error threshold",false,0.01,"double");
 
@@ -78,46 +75,31 @@ int main(int argc, char** argv)
 		cmd.add(argIn);
 		cmd.add(argOut);
 		cmd.add(argPos);
-		cmd.add(argChr);
-		cmd.add(argFam);
+
 		cmd.add(argInterval);
 		cmd.add(argBE);
 		cmd.add(argRO);
 		cmd.parse(argc, argv);
 
+        // Index file:
+        // SampleID, DepthFile(bgzipped, tabixed)
+        
+        // Candidate Intervals:
+        // Interval, Type (DEL, DUP, CNV), Source
+        
+        // Depth Files
+        
+        // Read Fam File, add sex info to std::map
+        
 		sInFile = argIn.getValue();
 		sIntervalFile = argInterval.getValue();
 		sOutPrefix = argOut.getValue();
-		sFamFile = argFam.getValue();
-		sChr = argChr.getValue();
-
-		if (sChr == "X" || sChr == "Y")
-		{
-			CHR = 23;
-		}
-		else if (sChr == "Y" || sChr == "y")
-		{
-			CHR = 24;
-		}
-		else if (sChr == "M" || sChr == "m")
-		{
-			CHR = 25;
-		}
-		else
-		{
-			CHR =  (uint32_t) strtoul(sChr.c_str(), NULL, 10);
-			if (CHR < 1 || CHR>22)
-			{
-				cerr << "Error: cannot parse chromosome " << sChr << endl;
-				abort();
-			}
-		}
 
 		P_THRESHOLD = argPos.getValue();
 		BE_THRESHOLD = argBE.getValue();
 		RO_THRESHOLD = argRO.getValue();
-		//		bUseGL = switchGL.getValue();
-		bVerbose = switchVerbose.getValue();
+
+        bVerbose = switchVerbose.getValue();
 
 	}
 	catch (TCLAP::ArgException &e) 
@@ -126,9 +108,7 @@ int main(int argc, char** argv)
 		abort();
 	}
 
-
-	// Read Fam File, add sex info to std::map 
-
+    
 
 	unsigned n_sample = 0;
 	unsigned n_del = 0;
@@ -139,15 +119,18 @@ int main(int argc, char** argv)
 	vector<Interval> del_events;
 	vector<Interval> dup_events;
 
-//	readFam(sFamFile, hIdSex);
-
 	vector<string> eventFiles;
 
-	// Read sample index
-	readIndex(sInFile, sampleIDs, sampleDirs, eventFiles, depthFiles);
-	n_sample = (unsigned) sampleIDs.size();
-	if (bVerbose) cerr << n_sample << " samples identified\n"<<endl;
-
+    // Read sample index
+    SampleList samples;
+    samples.readIndex(sInFile);
+    
+//	readIndex(sInFile, sampleIDs, sampleDirs, eventFiles, depthFiles);
+    
+//	n_sample = (unsigned) sampleIDs.size();
+    
+    if (bVerbose) cerr << samples.n_sample << " samples identified\n"<<endl;
+  
 	AvgDepth.resize(n_sample, 0);
 
 	for(unsigned i=0; i<n_sample;++i)
