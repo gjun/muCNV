@@ -3,32 +3,31 @@
 #
 #   Author: Goo Jun (goo.jun@uth.tmc.edu)
 
-TARGET=  muCNV
-SRCS= Main.cpp Error.cpp File.cpp deletions.cpp  cluster.cpp common.cpp duplications.cpp
-OBJS= Main.o Error.o File.o deletions.o cluster.o common.o duplications.o
+TARGET=  bin/muCNV
+SRCS := $(wildcard muCNV/*.cpp)
+OBJS := $(addprefix obj/,$(notdir $(SRCS:.cpp=.o)))
+# OBJS= Main.o Error.o File.o deletions.o cluster.o common.o duplications.o
 CFLAGS= -g -Wall -O2 -fPIC
 DFLAGS= -D_FILE_OFFSET_BITS=64
 CC= gcc
 CXX= g++ 
 INCLUDES=-I./tabix -I./tclap-1.2.1/include
-LIBRARY= tabix/libtabix.a
 
-.SUFFIXES:.cpp .o
+# .SUFFIXES:.cpp .o
 
-.cpp.o:
+#.cpp.o:
+#	$(CXX) -c $(CFLAGS) $(DFLAGS) $(INCLUDES) $< -o $@
+
+obj/%.o: muCNV/%.cpp
 	$(CXX) -c $(CFLAGS) $(DFLAGS) $(INCLUDES) $< -o $@
 
 all: $(TARGET) 
 
-$(TARGET) : $(LIBRARY) $(OBJS)
-	$(CXX) -o $@ $(OBJS) -L./tabix -ltabix -lm -lz -lssl
-
-
-$(LIBRARY) : 
-	make -C tabix lib
+$(TARGET) : $(OBJS)
+	$(CXX) -o $@ $(OBJS) -L./lib -ltabix -lm -lz
 
 clean :
-	-rm -f *.o $(TARGET) *~
+	-rm -f $(OBJS) $(TARGET) *~
 
 cleandepend:
 	makedepend -- $(DFLAGS) --
