@@ -10,7 +10,7 @@
 #include <float.h>
 #include <math.h>
 #include <vector>
-#include "pFile.h"
+// #include "pFile.h"
 
 const double PI=3.1415926535897932384626433832795028841968;
 const double sqPI=1.7724538509055160272981674833411451827974;
@@ -26,6 +26,35 @@ class Gaussian
 		double Alpha;
 };
 
+static void tokenizeLine(const char* s, const char* delims, std::vector<std::string>& tokens)
+{
+	const char* p = s;
+	const char* c = p;
+	int ndelims = strlen(delims);
+	int i;
+	tokens.clear();
+	
+	//fprintf(stderr,"s = '%s', strlen(s) = %d, delims = '%s'\n",s,(int)strlen(s), delims);
+	while( *p != '\0' )
+	{
+		for(i=0; i < ndelims; ++i)
+		{
+			if ( *p == delims[i] )
+				break;
+		}
+		if ( i != ndelims ) { // delimiter found
+			if ( c < p )  { // unless delimiter is consencutive
+							//std::string s1(c,p-c);
+				tokens.push_back(std::string(c,p-c));
+			}
+			c = p+1;
+		}
+		++p;
+	}
+	if ( c < p ) {
+		tokens.push_back(std::string(c,p-c));
+	}
+}
 
 class Interval
 {

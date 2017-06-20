@@ -15,7 +15,8 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "muCNV.h"
-extern uint32_t CHR;
+//extern uint32_t CHR;
+uint32_t CHR=1; // This is temporary, need to fix, 06/20/17
 
 void readIndex(string sInFile, vector<string> &sampleIDs, vector<string> &sampleDirs, vector<string> &eventFiles, vector<string> &depthFiles)
 {
@@ -28,7 +29,7 @@ void readIndex(string sInFile, vector<string> &sampleIDs, vector<string> &sample
 		if (!ln.empty())
 		{
 			vector<string> tokens;
-			pFile::tokenizeLine(ln.c_str(), " \t\n", tokens);
+			tokenizeLine(ln.c_str(), " \t\n", tokens);
 
 			if (tokens[0].empty())
 			{
@@ -67,7 +68,7 @@ void readFam(string sFamFile, map<string, unsigned> &hIdSex)
 		if (!ln.empty())
 		{
 			vector<string> tokens;
-			pFile::tokenizeLine(ln.c_str(), " \t\n", tokens);
+			tokenizeLine(ln.c_str(), " \t\n", tokens);
 
 			if (tokens[1].empty())
 			{
@@ -133,7 +134,7 @@ void readDepth(vector<string> &depthFiles, vector<interval_t> &intervals, vector
 	cerr << endl;
 }
 */
-
+/*
 void readDepth(vector<string> &depthFiles, Interval &interval, vector< vector<double> > &D, vector<double> &AvgD, vector<double> &AvgDepth)
 {
 	for(unsigned i=0; i<depthFiles.size(); ++i)
@@ -181,8 +182,8 @@ void readDepth(vector<string> &depthFiles, Interval &interval, vector< vector<do
 		AvgD[i] = sum/N;
 	}
 	cerr << endl;
-}
-
+} */
+/*
 void readDepth(vector<string> &depthFiles, vector<Interval> &intervals, vector< vector<double> > &X, vector<double> &AvgDepth)
 {
 	for(unsigned i=0; i<depthFiles.size(); ++i)
@@ -225,6 +226,7 @@ void readDepth(vector<string> &depthFiles, vector<Interval> &intervals, vector< 
 	cerr << endl;
 }
 
+ */
 void readDepthOrig(vector<string> &smIDs, vector<string> &smDirs, vector<interval_t> &intervals, vector< vector<double> > &X, vector<double> &AvgDepth)
 {
 	char buf[256];
@@ -261,7 +263,7 @@ void readDepthOrig(vector<string> &smIDs, vector<string> &smDirs, vector<interva
 					if (strlen(buf)>1 && buf[0] != '#' && buf[0] != '>')
 					{
 						vector<string> tokens;
-						pFile::tokenizeLine(buf, " \t\n", tokens);
+						tokenizeLine(buf, " \t\n", tokens);
 						pos  = strtoul(tokens[0].c_str(), NULL, 10);
 						if (pos>pos_start)
 						{
@@ -307,7 +309,7 @@ double getAvgDepth(string smID, string asmDir)
 		if (!ln.empty())
 		{
 			vector<string> tokens;
-			pFile::tokenizeLine(ln.c_str(), " \t\n", tokens);
+			tokenizeLine(ln.c_str(), " \t\n", tokens);
 			if (tokens[0].at(0) == '>')
 			{
 				for(unsigned j=0; j<tokens.size() ;++j)
@@ -427,7 +429,7 @@ void readInterval(string fName, int fType, vector<Interval> &del_events, vector<
 		{
 			vector<string> tokens;
 			bool bDel=true;
-			pFile::tokenizeLine(ln.c_str(), " \t\n", tokens);
+			tokenizeLine(ln.c_str(), " \t\n", tokens);
 
 			if (fType!=3 && tokens[0].at(0) == '>')
 			{

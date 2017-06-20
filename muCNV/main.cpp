@@ -17,7 +17,7 @@
 
 #include <algorithm>
 
-#include "pFile.h"
+// #include "pFile.h"
 #include "muCNV.h"
 
 // TCLAP headers
@@ -62,9 +62,10 @@ int main(int argc, char** argv)
 	try 
 	{
 		TCLAP::CmdLine cmd("Command description message", ' ', "0.01");
-		TCLAP::ValueArg<string> argIn("i","index","Input index file",true,"","string");
-		TCLAP::ValueArg<string> argOut("o","out","Prefix for output filename",false,"CNV","string");
-		TCLAP::ValueArg<string> argInterval("n","interval","File containing list of candidate intervals",false,"","string");
+		TCLAP::ValueArg<string> argIn("i","index","Input index file (sample ID, candidate VCF, BAM/CRAM)",true,"","string");
+		TCLAP::ValueArg<string> argOut("o","out","Prefix for output filename",false,"muCNV","string");
+		
+		//		TCLAP::ValueArg<string> argInterval("n","interval","File containing list of candidate intervals",false,"","string");
 		TCLAP::ValueArg<double> argPos("p","posterior","(Optional) Posterior probability threshold",false,0.9,"double");
 		TCLAP::ValueArg<double> argBE("b","bayes","(Optional) Bayes error threshold",false,0.01,"double");
 
@@ -76,23 +77,19 @@ int main(int argc, char** argv)
 		cmd.add(argOut);
 		cmd.add(argPos);
 
-		cmd.add(argInterval);
+		//		cmd.add(argInterval);
 		cmd.add(argBE);
 		cmd.add(argRO);
 		cmd.parse(argc, argv);
 
         // Index file:
+		// three columns (tab separated)
+		// sample ID, VCF with canddiate intervals, sequence file (BAM/CRAM)
         // SampleID, DepthFile(bgzipped, tabixed)
-        
-        // Candidate Intervals:
-        // Interval, Type (DEL, DUP, CNV), Source
-        
-        // Depth Files
-        
-        // Read Fam File, add sex info to std::map
+		
         
 		sInFile = argIn.getValue();
-		sIntervalFile = argInterval.getValue();
+		//sIntervalFile = argInterval.getValue();
 		sOutPrefix = argOut.getValue();
 
 		P_THRESHOLD = argPos.getValue();
@@ -108,7 +105,7 @@ int main(int argc, char** argv)
 		abort();
 	}
 
-    
+/*
 
 	unsigned n_sample = 0;
 	unsigned n_del = 0;
@@ -180,7 +177,8 @@ int main(int argc, char** argv)
 	vector< vector<double> > X(n_del, vector<double>(n_sample,0));   
 	vector< vector<double> > Y(n_dup, vector<double>(n_sample,0));   
 
-// Editing: read full length from one interval at a time, and do breakpoint refinement 
+	// Editing: read full length from one interval at a time, and do breakpoint refinement // Breakpoint refinement will be implemented in later version.
+	//
 //
 //   Read  2 x interval (0.5 before, 0.5 after) from all samples
 //   Do clustering on the original or smallest (? confident ) interval
@@ -256,6 +254,6 @@ int main(int argc, char** argv)
 	call_duplications(Y, AvgDepth, sampleIDs, dup_intervals, vcfFile);
 
 	fclose(vcfFile);
-
+*/
 	return 0;
 }

@@ -21,8 +21,8 @@ extern double BE_THRESHOLD;
 
 void call_duplications(vector<vector<double> > &X, vector<double> &AvgDepth, vector<string> &sampleIDs, vector<Interval> &intervals, FILE* vcfFile)
 {
-	unsigned n_interval = intervals.size();
-	unsigned n_sample = sampleIDs.size();
+	size_t n_interval = intervals.size();
+	size_t n_sample = sampleIDs.size();
 
 	vector<unsigned short> GT(n_sample,0);
 	vector<unsigned> GQ(n_sample, 0);

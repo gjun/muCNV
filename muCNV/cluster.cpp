@@ -49,8 +49,8 @@ string merge_sources(const char* s1, const char *s2)
 	set<string> sources;
 	string ret;
 
-	pFile::tokenizeLine(s1, ",", tokens1);
-	pFile::tokenizeLine(s2, ",", tokens2);
+	tokenizeLine(s1, ",", tokens1);
+	tokenizeLine(s2, ",", tokens2);
 
 	for(unsigned i=0;i<tokens1.size();++i)
 	{
