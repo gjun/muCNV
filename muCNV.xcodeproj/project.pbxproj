@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F129E1101EF901CA007793FB /* liblzma.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = F129E10F1EF901CA007793FB /* liblzma.tbd */; };
+		F129E1121EF901D2007793FB /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = F129E1111EF901D2007793FB /* libcurl.tbd */; };
+		F129E1131EF901E1007793FB /* libhts.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F129E10D1EF90129007793FB /* libhts.a */; };
 		F138FD7D1CAD744A00CD5539 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD7C1CAD744A00CD5539 /* main.cpp */; };
 		F138FD8B1CAD74EE00CD5539 /* cluster.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD831CAD74EE00CD5539 /* cluster.cpp */; };
 		F138FD8C1CAD74EE00CD5539 /* common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD841CAD74EE00CD5539 /* common.cpp */; };
@@ -31,6 +34,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		F129E10D1EF90129007793FB /* libhts.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libhts.a; path = lib/libhts.a; sourceTree = "<group>"; };
+		F129E10F1EF901CA007793FB /* liblzma.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = liblzma.tbd; path = usr/lib/liblzma.tbd; sourceTree = SDKROOT; };
+		F129E1111EF901D2007793FB /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
 		F138FD791CAD744A00CD5539 /* muCNV */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = muCNV; sourceTree = BUILT_PRODUCTS_DIR; };
 		F138FD7C1CAD744A00CD5539 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		F138FD831CAD74EE00CD5539 /* cluster.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cluster.cpp; sourceTree = "<group>"; };
@@ -78,6 +84,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F129E1131EF901E1007793FB /* libhts.a in Frameworks */,
+				F129E1121EF901D2007793FB /* libcurl.tbd in Frameworks */,
+				F129E1101EF901CA007793FB /* liblzma.tbd in Frameworks */,
 				F138FDC31CAD7FB900CD5539 /* libz.tbd in Frameworks */,
 				F138FDC11CAD7F2600CD5539 /* libtabix.a in Frameworks */,
 			);
@@ -86,6 +95,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		F129E10C1EF90129007793FB /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				F129E1111EF901D2007793FB /* libcurl.tbd */,
+				F129E10F1EF901CA007793FB /* liblzma.tbd */,
+				F129E10D1EF90129007793FB /* libhts.a */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		F138FD701CAD744A00CD5539 = {
 			isa = PBXGroup;
 			children = (
@@ -96,6 +115,7 @@
 				F138FDC21CAD7FB900CD5539 /* libz.tbd */,
 				F138FDC01CAD7F2600CD5539 /* libtabix.a */,
 				F138FD7A1CAD744A00CD5539 /* Products */,
+				F129E10C1EF90129007793FB /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -332,7 +352,9 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
+					/usr/local/lib,
 					"$(PROJECT_DIR)/tabix",
+					"$(PROJECT_DIR)/lib",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -348,7 +370,9 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
+					/usr/local/lib,
 					"$(PROJECT_DIR)/tabix",
+					"$(PROJECT_DIR)/lib",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};

@@ -24,6 +24,8 @@
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
 
+#include "sam.h"
+
 using namespace std;
 
 bool bUseGL = false;
@@ -62,7 +64,7 @@ int main(int argc, char** argv)
 	try 
 	{
 		TCLAP::CmdLine cmd("Command description message", ' ', "0.01");
-		TCLAP::ValueArg<string> argIn("i","index","Input index file (sample ID, candidate VCF, BAM/CRAM)",true,"","string");
+		TCLAP::ValueArg<string> argIn("i","index","Input index file (sample ID, candidate VCF, BAM/CRAM)",false,"","string");
 		TCLAP::ValueArg<string> argOut("o","out","Prefix for output filename",false,"muCNV","string");
 		
 		//		TCLAP::ValueArg<string> argInterval("n","interval","File containing list of candidate intervals",false,"","string");
@@ -104,6 +106,24 @@ int main(int argc, char** argv)
 		cerr << "Error: " << e.error() << " for arg " << e.argId() << endl;
 		abort();
 	}
+	string fname = "/Users/gjun/data/cram/NA12878.fragment.cram";
+	
+	htsFile *myFile = hts_open(fname.c_str(), "r");
+	hts_idx_t *idx = sam_index_load(myFile, fname.c_str());
+	bam_hdr_t *myHeader = sam_hdr_read(myFile);
+	hts_itr_t *iter = NULL;
+	
+	iter = sam_itr_queryi(idx, 20, 6000000, 6000100);
+	
+	bam1_t *aln = bam_init1();
+	int count=0;
+	while(sam_itr_next(myFile, iter, aln))
+	{
+		//cout << myHeader->target_name[aln->core.tid];
+		cout << aln->core.pos << endl;
+		count++;
+	}
+	cout << "Number of reads : " << count << endl;
 
 /*
 
