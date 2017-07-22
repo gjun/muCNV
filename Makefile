@@ -24,7 +24,7 @@ obj/%.o: muCNV/%.cpp
 all: $(TARGET) 
 
 $(TARGET) : $(OBJS)
-	$(CXX) -o $@ $(OBJS) -L./lib -ltabix -lm -lz
+	$(CXX) -o $@ $(OBJS) -L./lib -lm -lz
 
 clean :
 	-rm -f $(OBJS) $(TARGET) *~
