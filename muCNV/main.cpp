@@ -33,7 +33,32 @@ double P_THRESHOLD = 0.9;
 double BE_THRESHOLD = 0.01;
 double RO_THRESHOLD = 0.8;
 
-int main(int argc, char** argv) 
+typedef struct {     // auxiliary data structure
+	samFile *fp;     // the file handle
+	bam_hdr_t *hdr;  // the file header
+	hts_itr_t *iter; // NULL if a region not specified
+	int min_mapQ, min_len; // mapQ filter; length filter
+} aux_t;
+
+
+// This function reads a BAM alignment from one BAM file.
+static int read_bam(void *data, bam1_t *b) // read level filters better go here to avoid pileup
+{
+	aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
+	int ret;
+	while (1)
+	{
+		ret = aux->iter? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->hdr, b);
+		if ( ret<0 ) break;
+		if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
+		if ( (int)b->core.qual < aux->min_mapQ ) continue;
+		if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
+		break;
+	}
+	return ret;
+}
+
+int main(int argc, char** argv)
 {
 	cout << "muCNV 0.5 -- Multi-sample genotyping of CNVs from depth data" << endl;
 	cout << "(c) 2017 Goo Jun" << endl << endl;
@@ -109,34 +134,87 @@ int main(int argc, char** argv)
 	string fname = "/Users/gjun/data/cram/NA12878.fragment.cram";
 
 	
-	htsFile *myFile = hts_open(fname.c_str(), "r");
-	hts_idx_t *idx = sam_index_load(myFile, fname.c_str());
+	aux_t **data;
+	data = (aux_t**)calloc(1, sizeof(aux_t*));
+	data[0] = (aux_t*)calloc(1, sizeof(aux_t));
+	data[0]->fp = hts_open(fname.c_str(), "r");
+
+	
+	int count=0;
+	int rf = SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_SEQ | SAM_QUAL;
+	
+	if (hts_set_opt(data[0]->fp, CRAM_OPT_REQUIRED_FIELDS, rf))
+	{
+		cerr << "Failed to set CRAM_OPT_REQUIRED_FIELDS value" << endl;
+		exit(1);
+	}
+	if (hts_set_opt(data[0]->fp, CRAM_OPT_DECODE_MD, 0))
+	{
+		fprintf(stderr, "Failed to set CRAM_OPT_DECODE_MD value\n");
+		return
+		1;
+	}
+	data[0]->min_mapQ = 20;
+	data[0]->min_len = 0;
+	data[0]->hdr = sam_hdr_read(data[0]->fp);
+	if (data[0]->hdr == NULL)
+	{
+		cerr << "Cannot open CRAM/BAM header" << endl;
+		exit(1);
+	}
+	
+	
+	hts_idx_t *idx = sam_index_load(data[0]->fp, fname.c_str());
 	if (idx == NULL)
 	{
 		cerr << "Cannot open CRAM/BAM index" << endl;
-		exit(0);
+		exit(1);
 	}
 	
-	bam_hdr_t *myHeader = sam_hdr_read(myFile);
-	if (myHeader == NULL)
+	hts_itr_t *iter = sam_itr_querys(idx, data[0]->hdr, "20:6000000-6001000");
+	hts_idx_destroy(idx);
+	if (iter == NULL)
 	{
-		cerr << "Cannot open CRAM/BAM header" << endl;
-		exit(0);
+		cerr << "Can't parse region" << endl;
+		exit(1);
 	}
-	hts_itr_t *iter = NULL;
-	
-	iter = sam_itr_querys(idx, myHeader, "20:6000000-6001000");
-	
+
+	bam_mplp_t mplp = bam_mplp_init(1, read_bam, (void**)data);
 	bam1_t *aln = bam_init1();
+
+	int *n_plp = (int*)calloc(1, sizeof(int));
+	const bam_pileup1_t **plp = (const bam_pileup1_t**)calloc(1, sizeof(bam_pileup1_t*));
+	int tid, pos;
+	int last_pos = -1;
+	bam_hdr_t *h = data[0]->hdr;
 	
-	int count=0;
-	while(sam_itr_next(myFile, iter, aln)>=0)
+	while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0)
+	{
+		if (pos<6000000 || pos >=6000100) continue;
+		cout << h->target_name[tid] << "\t" << pos +1;
+		int j,m = 0;
+		for(j=0;j<n_plp[0]; ++j)
+		{
+			const bam_pileup1_t *p = plp[0] + j;
+			if (p->is_del || p->is_refskip) ++m;
+			else if (bam_get_qual(p->b)[p->qpos] < 20) ++m;
+		}
+		cout << "\t" << n_plp[0] - m << endl;
+		
+	}
+	
+	free(n_plp);
+	free(plp);
+	bam_mplp_destroy(mplp);
+	
+	//while(sam_itr_next(myFile, iter, aln)>=0)
 	{
 		//	cout << myHeader->target_name[aln->core.tid];
-		cout << aln->core.pos << endl;
-		count++;
+		//	cout << aln->core.pos << endl;
+		//count++;
 	}
-	cout << "Number of reads : " << count << endl;
+	
+	//	cout << "Number of reads : " << count << endl;
 
 /*
 
