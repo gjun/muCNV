@@ -35,8 +35,8 @@ double RO_THRESHOLD = 0.8;
 
 int main(int argc, char** argv) 
 {
-	cout << "muCNV 0.4 -- Multi-sample genotyping of CNVs from depth data" << endl;
-	cout << "(c) 2015 Goo Jun" << endl << endl;
+	cout << "muCNV 0.5 -- Multi-sample genotyping of CNVs from depth data" << endl;
+	cout << "(c) 2017 Goo Jun" << endl << endl;
 	cerr.setf(ios::showpoint);
 
 	bool bVerbose;
@@ -107,19 +107,32 @@ int main(int argc, char** argv)
 		abort();
 	}
 	string fname = "/Users/gjun/data/cram/NA12878.fragment.cram";
+
 	
 	htsFile *myFile = hts_open(fname.c_str(), "r");
 	hts_idx_t *idx = sam_index_load(myFile, fname.c_str());
+	if (idx == NULL)
+	{
+		cerr << "Cannot open CRAM/BAM index" << endl;
+		exit(0);
+	}
+	
 	bam_hdr_t *myHeader = sam_hdr_read(myFile);
+	if (myHeader == NULL)
+	{
+		cerr << "Cannot open CRAM/BAM header" << endl;
+		exit(0);
+	}
 	hts_itr_t *iter = NULL;
 	
-	iter = sam_itr_queryi(idx, 20, 6000000, 6000100);
+	iter = sam_itr_querys(idx, myHeader, "20:6000000-6001000");
 	
 	bam1_t *aln = bam_init1();
+	
 	int count=0;
-	while(sam_itr_next(myFile, iter, aln))
+	while(sam_itr_next(myFile, iter, aln)>=0)
 	{
-		//cout << myHeader->target_name[aln->core.tid];
+		//	cout << myHeader->target_name[aln->core.tid];
 		cout << aln->core.pos << endl;
 		count++;
 	}

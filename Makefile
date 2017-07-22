@@ -9,9 +9,10 @@ OBJS := $(addprefix obj/,$(notdir $(SRCS:.cpp=.o)))
 # OBJS= Main.o Error.o File.o deletions.o cluster.o common.o duplications.o
 CFLAGS= -g -Wall -O2 -fPIC
 DFLAGS= -D_FILE_OFFSET_BITS=64
+HTSLIBDIR= ../htslib
 CC= gcc
 CXX= g++ 
-INCLUDES=-I./tabix -I./tclap-1.2.1/include
+INCLUDES= -I./tclap-1.2.1/include -I$(HTSLIBDIR)
 
 # .SUFFIXES:.cpp .o
 
@@ -24,7 +25,7 @@ obj/%.o: muCNV/%.cpp
 all: $(TARGET) 
 
 $(TARGET) : $(OBJS)
-	$(CXX) -o $@ $(OBJS) -L./lib -ltabix -lm -lz
+	$(CXX) -o $@ $(OBJS) -lhts -lm -lz
 
 clean :
 	-rm -f $(OBJS) $(TARGET) *~
