@@ -16,6 +16,7 @@
  */
 
 #include "muCNV.h"
+#include <algorithm>
 
 extern double RO_THRESHOLD;
 
@@ -48,6 +49,7 @@ void cluster_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidate
 
 	// 1. sort intervals
 	std::sort(candidates.begin(), candidates.end());
+	candidates.erase( std::unique( candidates.begin(), candidates.end() ), candidates.end() );
 	
 	// find a block of sv intervals with overlap
 	while(curr<candidates.size())
@@ -63,6 +65,7 @@ void cluster_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidate
 				block_end = candidates[last_idx].end;
 			}
 		}
+
 		int n = last_idx - curr;
 		double D[n][n];
 		double max_RO = 0;

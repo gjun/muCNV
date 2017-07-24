@@ -12,7 +12,7 @@
 #include <vector>
 // #include "pFile.h"
 
-#include "sam.h"
+#include "htslib/sam.h"
 
 const double PI=3.1415926535897932384626433832795028841968;
 const double sqPI=1.7724538509055160272981674833411451827974;
@@ -61,7 +61,7 @@ static void split(const char* s, const char* delims, std::vector<std::string>& t
 
 class sv
 {
-public:
+	public:
 	string svtype;
 	string source;
 	int chr;
@@ -71,8 +71,7 @@ public:
 	pair<int,int> ci_end;
 	uint64_t len() {return (end - pos + 1);};
 	bool operator < (const sv&) const;
-
-		sv();
+	bool operator == (const sv&) const;
 };
 
 
@@ -122,7 +121,7 @@ public:
 	int n;
 
 	void read_depth(sv&, vector<double>&);
-
+	void get_avg_depth(vector<double>&);
 	void initialize(vector<string>&);
 };
 
@@ -133,8 +132,7 @@ public:
 	double min_bic;
 	double p_overlap;
 	bool bUseGL;
-	vector<int> geno;
-	void call_genotype(sv &, vector<double>&);
+	void call_genotype(sv &, vector<double>&, vector<int>&);
 	
 	int classify_del(vector<double>&, vector<int>&, vector< vector<int> >&, vector<int>&, int&,vector<Gaussian>&, bool);
 	int classify_cnv(vector<double>&, vector<int>&, vector<int>&, int&, vector<Gaussian>&);
@@ -142,8 +140,8 @@ public:
 	void EM(vector<double>&, vector<Gaussian>&, bool);
 	void EM(vector<double>&, vector<Gaussian>&);
 
-	void call_del(vector<double>&);
-	void call_cnv(vector<double>&);
+	void call_del(vector<double>&, vector<int>&);
+	void call_cnv(vector<double>&, vector<int>&);
 	
 	void conEM(vector<double>&, vector<double>&, vector<double>&, vector<double>&);
 	

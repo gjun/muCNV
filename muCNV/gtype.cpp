@@ -37,30 +37,27 @@ gtype::gtype()
 }
 
 
-void gtype::call_genotype(sv &s, vector<double> &X)
+void gtype::call_genotype(sv &s, vector<double> &X, vector<int> &geno)
 {
 	if (s.svtype == "DEL")
 	{
-		call_del(X);
+		cerr << "calling deletion" << endl;
+		call_del(X, geno);
 	}
 	else
 	{
-		call_cnv(X);
+		cerr << "calling cnv" << endl;
+//		call_cnv(X, geno);
 	}
 	
 }
 
-void gtype::call_del(vector<double> &X)
+void gtype::call_del(vector<double> &X, vector<int> &geno)
 {
 	int n = X.size();
 	
 	vector< vector<int> > GL(n, vector<int>(3,255));
 	vector<int> GQ(n, 0);
-	
-	for(int i=0;i<n;i++)
-	{
-		geno.push_back(-1);
-	}
 	
 	vector<Gaussian> C1(1); // 1-component model
 	vector<Gaussian> C2(2); // 2-component model
@@ -466,17 +463,12 @@ void gtype::conEM(vector<double>& x, vector<double>& M, vector<double>& S, vecto
 }
 
 
-void gtype::call_cnv(vector<double> &X)
+void gtype::call_cnv(vector<double> &X, vector<int> &geno)
 {
 	size_t n = X.size();
 	
 	vector< vector<int> > GL(n, vector<int>(3,255));
 	vector<int> GQ(n, 0);
-	
-	for(int i=0;i<n;i++)
-	{
-		geno.push_back(-1);
-	}
 	
 	// For each candidate region, run EM
 	// Run EM with 2 and 3 components, compare likelihoods with the 1-gaussian model, apply BIC

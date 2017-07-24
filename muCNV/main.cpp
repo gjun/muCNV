@@ -112,38 +112,57 @@ int main(int argc, char** argv)
 	
 	read_index(index_file, sample_ids, vcf_files, bam_names, avg_depths);
 	int n = sample_ids.size();
+
+	cerr<< "index loaded" << endl;
 	
 	// 1. Read intervals from individual VCFs
 	vector<sv> candidates;
 	read_intervals_from_vcf(sample_ids, vcf_files, candidates);
 	
+	cerr<< "intervals read" << endl;
 	
 	// 2. Merge intervals with RO > minRO  (store all original informattion - merged intervals will be vector of intervals)
 	vector< vector<sv> > merged_candidates;
 	cluster_svs(candidates, merged_candidates);
 	
+	cerr<< "intervals clustered " << endl;
 	bfiles bf;
 	// Open BAM file handles (create a class for bamfiles, method to read specific interval)
 	bf.initialize(bam_names);
+	//	bf.get_avg_depth(avg_depths); // maybe make this into a separate program
 	
 	// 3. For each interval, read depth  (+ read pair distance ?) from individual BAM/CRAM file
+
+	string vcf_filename = out_prefix + ".vcf";
+	VCF = fopen(vcf_filename.c_str(), "w");
+	write_vcf_header(VCF, sample_ids);
 
 	for(int i=0; i<merged_candidates.size(); ++i)
 	{
 		// 4. Genotype for each variant
 		vector<sv> &svlist = merged_candidates[i];
+		cerr << "this merged list contains " << svlist.size() << " items" << endl;
 		
 		for(int j=0; j<svlist.size(); ++j)
 		{
 			gtype g;
 			vector<double> X(n, 0);
+			vector<int> G(n, 0);
+			cerr << "n : " << n << ", X size: " << X.size() << endl;
+
+			cerr << svlist[j].chr << "\t" << svlist[j].pos << "\t" << svlist[j].end << endl;
+
 			bf.read_depth(svlist[j], X);
-			g.call_genotype(svlist[j], X);
-			
-			cout << svlist[j].chr << "\t" << svlist[j].pos << "\t" << svlist[j].end;
-			for(int k=0; k<X.size(); ++k)
+			// normalize
+			for(int k=0; k<n; ++k)
 			{
-				cout << "\t" << g.geno[k];
+				X[k] = X[k] / avg_depths[k];
+			}
+			g.call_genotype(svlist[j], X, G);
+			
+			for(int k=0; k<n; ++k)
+			{
+				cout << "\t" << G[k];
 			}
 			cout << endl;
 
@@ -155,166 +174,5 @@ int main(int argc, char** argv)
 	// 5. Output
 	
 
-	// string fname = "/Users/gjun/data/cram/NA12878.fragment.cram";
-	
-	//while(sam_itr_next(myFile, iter, aln)>=0)
-	{
-		//	cout << myHeader->target_name[aln->core.tid];
-		//	cout << aln->core.pos << endl;
-		//count++;
-	}
-	
-	//	cout << "Number of reads : " << count << endl;
-
-/*
-
-	unsigned n_sample = 0;
-	unsigned n_del = 0;
-	unsigned n_dup = 0;
-
-	vector<string> depthFiles;
-
-	vector<sv> del_events;
-	vector<sv> dup_events;
-
-	vector<string> eventFiles;
-
-    // Read sample index
-    SampleList samples;
-    samples.readIndex(sInFile);
-    
-
-    
-//	n_sample = (unsigned) sampleIDs.size();
-    
-    if (bVerbose) cerr << samples.n_sample << " samples identified\n"<<endl;
-  
-	AvgDepth.resize(n_sample, 0);
-
-	for(unsigned i=0; i<n_sample;++i)
-	{
-		// Read average depth per sample
-		AvgDepth[i] = getAvgDepth(sampleIDs[i], sampleDirs[i]);
-		if (bVerbose) cerr << "\rSample " << i+1 << " / "<< n_sample << ": " << sampleIDs[i] << ", average Depth " << AvgDepth[i];
-
-		// Read CNV files
-		string sSegmentFile = getCNVsegmentFileName(sampleIDs[i], sampleDirs[i]);
-		readsv(sSegmentFile, 1, del_events, dup_events);
-
-		// Read event files
-		readsv(eventFiles[i], 2, del_events, dup_events);
-	}
-
-	if (bVerbose) 
-	{
-		cerr << endl << del_events.size() << " deletion and ";
-		cerr << dup_events.size() << " duplication candidate intervals identified" <<  endl;
-	}
-
-	if (ssvFile != "")
-	{
-		readsv(ssvFile, 3, del_events, dup_events);
-	}
-
-	// Sort intervals, remove duplicates, and cluster overlapping intervals
-	sort(del_events.begin(), del_events.end(), comparesvs);
-
-	// To do: remove duplicates before clustering -- will make things faster, but results should be the same
-	//		remove_duplicates(del_events);
-	clustersvs(del_events, del_intervals);
-
-	sort(dup_events.begin(), dup_events.end(), comparesvs);
-	//		remove_duplicates(dup_events);
-	clustersvs(dup_events, dup_intervals);
-
-	// merge dup_intervals and del_intervals 
-	all_intervals = del_intervals;
-	uint32_t n_sv = (uint32_t) all_intervals.size();
-
-//	n_del = del_intervals.size();
-//	n_dup = dup_intervals.size();
-
-	// Store average depth per interval per sample
-	vector< vector<double> > X(n_del, vector<double>(n_sample,0));   
-	vector< vector<double> > Y(n_dup, vector<double>(n_sample,0));   
-
-	// Editing: read full length from one interval at a time, and do breakpoint refinement // Breakpoint refinement will be implemented in later version.
-	//
-//
-//   Read  2 x interval (0.5 before, 0.5 after) from all samples
-//   Do clustering on the original or smallest (? confident ) interval
-//   If passed BIC and initial Bayes error criteria, Refine breakpoint
-//   Normalize each read depth by average depth across samples ( how to adjust for allele count ? )
-//   Re-do clustering, evaluate Bayes error
-
-//	readDepth(depthFiles, del_intervals, X, AvgDepth);
-//	readDepth(depthFiles, dup_intervals, Y, AvgDepth);
-
-	uint64_t max_svlen = 0;
-	for(unsigned i=0;i<n_sv;++i)
-	{
-		uint64_t L = all_intervals[i].len();
-		// Temporary, for quick run
-		if (L>1e6)
-		{
-			all_intervals.erase(all_intervals.begin()+i);
-		}
-		else if (max_svlen < L )
-		{
-			max_svlen = L;
-		}
-	}
-
-	// Reserve memory space to read all intervals -- up to 2 * max_svlen for each sample
-	vector< vector<double> > D(n_sample, vector<double> (1,0));
-	vector<double>  AvgD(n_sample, 0);
-
-	if (bVerbose)
-	{
-		cerr << n_sv << "intervals with max SVLEN " << max_svlen << endl;
-	}
-
-	for(unsigned i=0;i<n_sample;++i)
-	{
-		D[i].resize(max_svlen + 2000);
-	}
-
-	string sVcfFile = sOutPrefix + ".vcf" ;
-
-	FILE *vcfFile;
-	vcfFile = fopen(sVcfFile.c_str(), "wt");
-
-	write_vcfheader(vcfFile, sampleIDs);
-
-	// To Do : make a class for VCF writer, and add methods to write header and SV entries
-
-	for(unsigned i=0;i<n_sv;++i)
-	{
-		// Read depth for i-th interval
-	//TMPTMP	readDepth(depthFiles, all_intervals[i],  D, AvgD, AvgDepth);
-
-		// Do clustering 
-		if (all_intervals[i].sv_type == "DEL")
-		{
-//TMPTMP			call_deletion(all_intervals[i], AvgD, AvgDepth, vcfFile);
-		}
-		else
-		{
-//			call_duplication(all_intervals[i], vcfFile);
-//		Test 
-		}
-
-		// Refine breakpoints
-		
-		// Re-do clustering
-
-		// Write to VCF
-	}
-
-	call_deletions(X, AvgDepth, sampleIDs,  del_intervals, vcfFile);
-	call_duplications(Y, AvgDepth, sampleIDs, dup_intervals, vcfFile);
-
-	fclose(vcfFile);
-*/
 	return 0;
 }

@@ -8,19 +8,6 @@
 
 #include "muCNV.h"
 
-sv::sv()
-{
-	svtype = "NA";
-	source = "NA";
-	chr = -1;
-	pos = -1;
-	end = -1;
-	ci_pos.first = 0;
-	ci_pos.second = 0;
-	ci_end.first = 0;
-	ci_end.second = 0;
-}
-
 bool sv::operator < (const sv& s) const
 {
 	if (chr==s.chr)
@@ -38,4 +25,9 @@ bool sv::operator < (const sv& s) const
 	{
 		return(chr<s.chr);
 	}
+}
+
+bool sv::operator == (const sv& s) const
+{
+	return (chr == s.chr && pos == s.pos && end==s.end && svtype == s.svtype);
 }
