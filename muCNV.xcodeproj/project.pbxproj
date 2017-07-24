@@ -13,12 +13,12 @@
 		F138FD7D1CAD744A00CD5539 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD7C1CAD744A00CD5539 /* main.cpp */; };
 		F138FD8B1CAD74EE00CD5539 /* cluster.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD831CAD74EE00CD5539 /* cluster.cpp */; };
 		F138FD8C1CAD74EE00CD5539 /* common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD841CAD74EE00CD5539 /* common.cpp */; };
-		F138FD8D1CAD74EE00CD5539 /* deletions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD851CAD74EE00CD5539 /* deletions.cpp */; };
 		F138FD8E1CAD74EE00CD5539 /* duplications.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD861CAD74EE00CD5539 /* duplications.cpp */; };
 		F138FD8F1CAD74EE00CD5539 /* Error.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD871CAD74EE00CD5539 /* Error.cpp */; };
 		F138FD901CAD74EE00CD5539 /* File.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD891CAD74EE00CD5539 /* File.cpp */; };
 		F138FDC11CAD7F2600CD5539 /* libtabix.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F138FDC01CAD7F2600CD5539 /* libtabix.a */; };
 		F138FDC31CAD7FB900CD5539 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = F138FDC21CAD7FB900CD5539 /* libz.tbd */; };
+		F194ED351F25A41400489E0C /* gtype.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED341F25A41400489E0C /* gtype.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -41,7 +41,6 @@
 		F138FD7C1CAD744A00CD5539 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		F138FD831CAD74EE00CD5539 /* cluster.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cluster.cpp; sourceTree = "<group>"; };
 		F138FD841CAD74EE00CD5539 /* common.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = common.cpp; sourceTree = "<group>"; };
-		F138FD851CAD74EE00CD5539 /* deletions.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = deletions.cpp; sourceTree = "<group>"; };
 		F138FD861CAD74EE00CD5539 /* duplications.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = duplications.cpp; sourceTree = "<group>"; };
 		F138FD871CAD74EE00CD5539 /* Error.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Error.cpp; sourceTree = "<group>"; };
 		F138FD881CAD74EE00CD5539 /* Error.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Error.h; sourceTree = "<group>"; };
@@ -77,6 +76,7 @@
 		F154FC231ED2CDF7004E1629 /* vcf_sweep.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vcf_sweep.h; path = htslib/vcf_sweep.h; sourceTree = "<group>"; };
 		F154FC241ED2CDF7004E1629 /* vcf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vcf.h; path = htslib/vcf.h; sourceTree = "<group>"; };
 		F154FC251ED2CDF7004E1629 /* vcfutils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vcfutils.h; path = htslib/vcfutils.h; sourceTree = "<group>"; };
+		F194ED341F25A41400489E0C /* gtype.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = gtype.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -133,13 +133,13 @@
 				F138FD911CAD74F600CD5539 /* pException.h */,
 				F138FD831CAD74EE00CD5539 /* cluster.cpp */,
 				F138FD841CAD74EE00CD5539 /* common.cpp */,
-				F138FD851CAD74EE00CD5539 /* deletions.cpp */,
 				F138FD861CAD74EE00CD5539 /* duplications.cpp */,
 				F138FD871CAD74EE00CD5539 /* Error.cpp */,
 				F138FD881CAD74EE00CD5539 /* Error.h */,
 				F138FD891CAD74EE00CD5539 /* File.cpp */,
 				F138FD8A1CAD74EE00CD5539 /* muCNV.h */,
 				F138FD7C1CAD744A00CD5539 /* main.cpp */,
+				F194ED341F25A41400489E0C /* gtype.cpp */,
 			);
 			path = muCNV;
 			sourceTree = "<group>";
@@ -235,7 +235,7 @@
 				F138FD8F1CAD74EE00CD5539 /* Error.cpp in Sources */,
 				F138FD8E1CAD74EE00CD5539 /* duplications.cpp in Sources */,
 				F138FD8B1CAD74EE00CD5539 /* cluster.cpp in Sources */,
-				F138FD8D1CAD74EE00CD5539 /* deletions.cpp in Sources */,
+				F194ED351F25A41400489E0C /* gtype.cpp in Sources */,
 				F138FD8C1CAD74EE00CD5539 /* common.cpp in Sources */,
 				F138FD7D1CAD744A00CD5539 /* main.cpp in Sources */,
 				F138FD901CAD74EE00CD5539 /* File.cpp in Sources */,

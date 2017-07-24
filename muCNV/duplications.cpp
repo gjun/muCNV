@@ -19,7 +19,7 @@
 extern double P_THRESHOLD;
 extern double BE_THRESHOLD;
 
-void call_duplications(vector<vector<double> > &X, vector<double> &AvgDepth, vector<string> &sampleIDs, vector<Interval> &intervals, FILE* vcfFile)
+void call_duplications(vector<vector<double> > &X, vector<double> &AvgDepth, vector<string> &sampleIDs, vector<sv> &intervals, FILE* vcfFile)
 {
 	size_t n_interval = intervals.size();
 	size_t n_sample = sampleIDs.size();

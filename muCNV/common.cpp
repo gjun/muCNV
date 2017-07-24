@@ -18,27 +18,6 @@
 
 typedef pair<uint64_t, uint64_t> interval_t;
 
-bool compareIntervals(const Interval &a, const Interval &b)
-{
-	if (a.T.first < b.T.first)
-	{
-		return true;
-	}
-	else if (a.T.first == b.T.first)
-	{
-		if (a.T.second < b.T.second)
-		{
-			return true;
-
-		}
-		else if (a.T.second == b.T.second)
-		{
-			return (a.sv_type < b.sv_type);
-		}
-
-	}
-	return false;
-};
 
 template <class T>
 	void vprint(vector<T> x)

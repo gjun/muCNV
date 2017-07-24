@@ -24,7 +24,6 @@
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
 
-#include "sam.h"
 
 using namespace std;
 
@@ -33,55 +32,31 @@ double P_THRESHOLD = 0.9;
 double BE_THRESHOLD = 0.01;
 double RO_THRESHOLD = 0.8;
 
-typedef struct {     // auxiliary data structure
-	samFile *fp;     // the file handle
-	bam_hdr_t *hdr;  // the file header
-	hts_itr_t *iter; // NULL if a region not specified
-	int min_mapQ, min_len; // mapQ filter; length filter
-} aux_t;
-
-
-// This function reads a BAM alignment from one BAM file.
-static int read_bam(void *data, bam1_t *b) // read level filters better go here to avoid pileup
-{
-	aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
-	int ret;
-	while (1)
-	{
-		ret = aux->iter? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->hdr, b);
-		if ( ret<0 ) break;
-		if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
-		if ( (int)b->core.qual < aux->min_mapQ ) continue;
-		if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
-		break;
-	}
-	return ret;
-}
 
 int main(int argc, char** argv)
 {
-	cout << "muCNV 0.5 -- Multi-sample genotyping of CNVs from depth data" << endl;
+	cout << "muCNV 0.5 -- Multi-sample CNV genotyper" << endl;
 	cout << "(c) 2017 Goo Jun" << endl << endl;
 	cerr.setf(ios::showpoint);
 
 	bool bVerbose;
-	string sInFile;
-	string sEventFile;
-	string sFamFile;
-	string sIntervalFile;
-	string sOutPrefix;
+	string index_file;
+
+	string out_prefix;
 	string sChr;
 
-	vector<string> sampleIDs;
-	vector<string> sampleDirs;
+	vector<string> sample_ids;
+	vector<string> vcf_files;
+	vector<string> bam_names;
+	vector<double> avg_depths;
 	map<string, unsigned> hIdSex;
 
 	vector<double> AvgDepth;
 	//	vector<interval_t> del_intervals;
 	//	vector<interval_t> dup_intervals;
-	vector<Interval> del_intervals;
-	vector<Interval> dup_intervals;
-	vector<Interval> all_intervals;
+	//	vector<sv> del_intervals;
+	// vector<sv> dup_intervals;
+	// vector<sv> all_intervals;
 
 	srand((unsigned int)time(NULL));
 
@@ -89,10 +64,10 @@ int main(int argc, char** argv)
 	try 
 	{
 		TCLAP::CmdLine cmd("Command description message", ' ', "0.01");
-		TCLAP::ValueArg<string> argIn("i","index","Input index file (sample ID, candidate VCF, BAM/CRAM)",false,"","string");
+		TCLAP::ValueArg<string> argIn("i","index","Input index file (sample ID, candidate VCF, BAM/CRAM)",true,"","string");
 		TCLAP::ValueArg<string> argOut("o","out","Prefix for output filename",false,"muCNV","string");
 		
-		//		TCLAP::ValueArg<string> argInterval("n","interval","File containing list of candidate intervals",false,"","string");
+		//		TCLAP::ValueArg<string> argsv("n","interval","File containing list of candidate intervals",false,"","string");
 		TCLAP::ValueArg<double> argPos("p","posterior","(Optional) Posterior probability threshold",false,0.9,"double");
 		TCLAP::ValueArg<double> argBE("b","bayes","(Optional) Bayes error threshold",false,0.01,"double");
 
@@ -104,7 +79,7 @@ int main(int argc, char** argv)
 		cmd.add(argOut);
 		cmd.add(argPos);
 
-		//		cmd.add(argInterval);
+		//		cmd.add(argsv);
 		cmd.add(argBE);
 		cmd.add(argRO);
 		cmd.parse(argc, argv);
@@ -115,9 +90,9 @@ int main(int argc, char** argv)
         // SampleID, DepthFile(bgzipped, tabixed)
 		
         
-		sInFile = argIn.getValue();
-		//sIntervalFile = argInterval.getValue();
-		sOutPrefix = argOut.getValue();
+		index_file = argIn.getValue();
+		//ssvFile = argsv.getValue();
+		out_prefix = argOut.getValue();
 
 		P_THRESHOLD = argPos.getValue();
 		BE_THRESHOLD = argBE.getValue();
@@ -126,86 +101,61 @@ int main(int argc, char** argv)
         bVerbose = switchVerbose.getValue();
 
 	}
-	catch (TCLAP::ArgException &e) 
+	catch (TCLAP::ArgException &e)
 	{
 		cerr << "Error: " << e.error() << " for arg " << e.argId() << endl;
 		abort();
 	}
-	string fname = "/Users/gjun/data/cram/NA12878.fragment.cram";
+	
+	// 0. Read (vcf, bam/cram) file list
+	// 0.0 Calculate average sequencing depth for each BAM -- make this a pre-processing step, write a Python script, to save redundant calculations -- or just do it here?
+	
+	read_index(index_file, sample_ids, vcf_files, bam_names, avg_depths);
+	int n = sample_ids.size();
+	
+	// 1. Read intervals from individual VCFs
+	vector<sv> candidates;
+	read_intervals_from_vcf(sample_ids, vcf_files, candidates);
+	
+	
+	// 2. Merge intervals with RO > minRO  (store all original informattion - merged intervals will be vector of intervals)
+	vector< vector<sv> > merged_candidates;
+	cluster_svs(candidates, merged_candidates);
+	
+	bfiles bf;
+	// Open BAM file handles (create a class for bamfiles, method to read specific interval)
+	bf.initialize(bam_names);
+	
+	// 3. For each interval, read depth  (+ read pair distance ?) from individual BAM/CRAM file
 
-	
-	aux_t **data;
-	data = (aux_t**)calloc(1, sizeof(aux_t*));
-	data[0] = (aux_t*)calloc(1, sizeof(aux_t));
-	data[0]->fp = hts_open(fname.c_str(), "r");
-
-	
-	int count=0;
-	int rf = SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_SEQ | SAM_QUAL;
-	
-	if (hts_set_opt(data[0]->fp, CRAM_OPT_REQUIRED_FIELDS, rf))
+	for(int i=0; i<merged_candidates.size(); ++i)
 	{
-		cerr << "Failed to set CRAM_OPT_REQUIRED_FIELDS value" << endl;
-		exit(1);
-	}
-	if (hts_set_opt(data[0]->fp, CRAM_OPT_DECODE_MD, 0))
-	{
-		fprintf(stderr, "Failed to set CRAM_OPT_DECODE_MD value\n");
-		return
-		1;
-	}
-	data[0]->min_mapQ = 20;
-	data[0]->min_len = 0;
-	data[0]->hdr = sam_hdr_read(data[0]->fp);
-	if (data[0]->hdr == NULL)
-	{
-		cerr << "Cannot open CRAM/BAM header" << endl;
-		exit(1);
-	}
-	
-	
-	hts_idx_t *idx = sam_index_load(data[0]->fp, fname.c_str());
-	if (idx == NULL)
-	{
-		cerr << "Cannot open CRAM/BAM index" << endl;
-		exit(1);
-	}
-	
-	hts_itr_t *iter = sam_itr_querys(idx, data[0]->hdr, "20:6000000-6001000");
-	hts_idx_destroy(idx);
-	if (iter == NULL)
-	{
-		cerr << "Can't parse region" << endl;
-		exit(1);
-	}
-
-	bam_mplp_t mplp = bam_mplp_init(1, read_bam, (void**)data);
-	bam1_t *aln = bam_init1();
-
-	int *n_plp = (int*)calloc(1, sizeof(int));
-	const bam_pileup1_t **plp = (const bam_pileup1_t**)calloc(1, sizeof(bam_pileup1_t*));
-	int tid, pos;
-	int last_pos = -1;
-	bam_hdr_t *h = data[0]->hdr;
-	
-	while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0)
-	{
-		if (pos<6000000 || pos >=6000100) continue;
-		cout << h->target_name[tid] << "\t" << pos +1;
-		int j,m = 0;
-		for(j=0;j<n_plp[0]; ++j)
-		{
-			const bam_pileup1_t *p = plp[0] + j;
-			if (p->is_del || p->is_refskip) ++m;
-			else if (bam_get_qual(p->b)[p->qpos] < 20) ++m;
-		}
-		cout << "\t" << n_plp[0] - m << endl;
+		// 4. Genotype for each variant
+		vector<sv> &svlist = merged_candidates[i];
 		
+		for(int j=0; j<svlist.size(); ++j)
+		{
+			gtype g;
+			vector<double> X(n, 0);
+			bf.read_depth(svlist[j], X);
+			g.call_genotype(svlist[j], X);
+			
+			cout << svlist[j].chr << "\t" << svlist[j].pos << "\t" << svlist[j].end;
+			for(int k=0; k<X.size(); ++k)
+			{
+				cout << "\t" << g.geno[k];
+			}
+			cout << endl;
+
+		}
+		
+
 	}
 	
-	free(n_plp);
-	free(plp);
-	bam_mplp_destroy(mplp);
+	// 5. Output
+	
+
+	// string fname = "/Users/gjun/data/cram/NA12878.fragment.cram";
 	
 	//while(sam_itr_next(myFile, iter, aln)>=0)
 	{
@@ -224,8 +174,8 @@ int main(int argc, char** argv)
 
 	vector<string> depthFiles;
 
-	vector<Interval> del_events;
-	vector<Interval> dup_events;
+	vector<sv> del_events;
+	vector<sv> dup_events;
 
 	vector<string> eventFiles;
 
@@ -233,7 +183,7 @@ int main(int argc, char** argv)
     SampleList samples;
     samples.readIndex(sInFile);
     
-//	readIndex(sInFile, sampleIDs, sampleDirs, eventFiles, depthFiles);
+
     
 //	n_sample = (unsigned) sampleIDs.size();
     
@@ -249,10 +199,10 @@ int main(int argc, char** argv)
 
 		// Read CNV files
 		string sSegmentFile = getCNVsegmentFileName(sampleIDs[i], sampleDirs[i]);
-		readInterval(sSegmentFile, 1, del_events, dup_events);
+		readsv(sSegmentFile, 1, del_events, dup_events);
 
 		// Read event files
-		readInterval(eventFiles[i], 2, del_events, dup_events);
+		readsv(eventFiles[i], 2, del_events, dup_events);
 	}
 
 	if (bVerbose) 
@@ -261,21 +211,21 @@ int main(int argc, char** argv)
 		cerr << dup_events.size() << " duplication candidate intervals identified" <<  endl;
 	}
 
-	if (sIntervalFile != "")
+	if (ssvFile != "")
 	{
-		readInterval(sIntervalFile, 3, del_events, dup_events);
+		readsv(ssvFile, 3, del_events, dup_events);
 	}
 
 	// Sort intervals, remove duplicates, and cluster overlapping intervals
-	sort(del_events.begin(), del_events.end(), compareIntervals);
+	sort(del_events.begin(), del_events.end(), comparesvs);
 
 	// To do: remove duplicates before clustering -- will make things faster, but results should be the same
 	//		remove_duplicates(del_events);
-	clusterIntervals(del_events, del_intervals);
+	clustersvs(del_events, del_intervals);
 
-	sort(dup_events.begin(), dup_events.end(), compareIntervals);
+	sort(dup_events.begin(), dup_events.end(), comparesvs);
 	//		remove_duplicates(dup_events);
-	clusterIntervals(dup_events, dup_intervals);
+	clustersvs(dup_events, dup_intervals);
 
 	// merge dup_intervals and del_intervals 
 	all_intervals = del_intervals;

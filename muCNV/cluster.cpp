@@ -20,37 +20,138 @@
 
 extern double RO_THRESHOLD;
 
-double RO(interval_t x, interval_t y)
+double RO(sv x, sv y)
 {
 	double l = 0;
 	double L = 0;
 
-	if (y.first > x.second)
+	if (y.pos > x.end)
 	{
 		return 0;
 	}
-	else if (x.first > y.second)
+	else if (x.pos > y.end)
 	{
 		return 0;
 	}
 
-	bool bStart = (x.first < y.first);
-	bool bEnd = (x.second < y.second);
+	bool bStart = (x.pos < y.pos);
+	bool bEnd = (x.end < y.end);
 
-	l = (bEnd ? x.second : y.second) -  (bStart ? y.first : x.first);
-	L = (bEnd ? y.second : x.second) - (bStart ? x.first : y.first);
+	l = (bEnd ? x.end : y.end) -  (bStart ? y.pos : x.pos);
+	L = (bEnd ? y.end : x.end) - (bStart ? x.pos : y.pos);
 	return (l/L);
 }
 
-string merge_sources(const char* s1, const char *s2) 
+void cluster_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidates)
+{
+
+	int curr = 0;
+
+	// 1. sort intervals
+	std::sort(candidates.begin(), candidates.end());
+	
+	// find a block of sv intervals with overlap
+	while(curr<candidates.size())
+	{
+		int block_end = candidates[curr].end;
+		
+		int last_idx = curr;
+		
+		while(++last_idx < candidates.size() && candidates[last_idx].pos < block_end)
+		{
+			if (block_end<candidates[last_idx].end)
+			{
+				block_end = candidates[last_idx].end;
+			}
+		}
+		int n = last_idx - curr;
+		double D[n][n];
+		double max_RO = 0;
+		int clusters[n];
+		int max_i = 0;
+		int max_j = 0;
+		
+		for(int i=0;i<n;++i)
+		{
+			clusters[i] = i;
+		}
+		
+		for(int i=0;i<n;++i)
+		{
+			for(int j=i+1;j<n;++j)
+			{
+				D[i][j] = D[j][i] = RO(candidates[curr+i], candidates[curr+j]);
+				if (D[i][j] > max_RO)
+				{
+					max_RO = D[i][j];
+					max_i = i;
+					max_j = j;
+				}
+			}
+			D[i][i] = 0;
+		}
+
+		while(max_RO>RO_THRESHOLD)
+		{
+			// Merge clusters
+			clusters[max_j] = clusters[max_i];
+			// Update distances
+			for(int i=0;i<n;++i)
+			{
+				if (i != max_i)
+				{
+					D[max_i][i] = D[i][max_i] = (D[max_i][i] > D[max_j][i]) ? D[max_i][i] : D[max_j][i];
+				}
+			}
+			
+			for(int i=0;i<n;++i)
+			{
+				D[max_j][i] = D[i][max_j] = 0;
+			}
+			
+			max_RO = 0;
+			for(int i=0;i<n;++i)
+			{
+				for(int j=i+1;j<n;++j)
+				{
+					if (D[i][j] > max_RO)
+					{
+						max_RO = D[i][j];
+						max_i = i;
+						max_j = j;
+					}
+				}
+			}
+		}
+		
+		for(int i=0;i<n;++i)
+		{
+			vector<sv> t;
+			for(int j=0; j<n; ++j)
+			{
+				if (clusters[j] == i)
+				{
+					t.push_back(candidates[j+curr]);
+				}
+			}
+			if (t.size()>0)
+			{
+				merged_candidates.push_back(t); // Maybe not the best way with unnecessary copies
+			}
+		}
+		curr=last_idx;
+	}
+}
+
+string merge_sources(const char* s1, const char *s2)
 {
 	vector<string> tokens1;
 	vector<string> tokens2;
 	set<string> sources;
 	string ret;
 
-	tokenizeLine(s1, ",", tokens1);
-	tokenizeLine(s2, ",", tokens2);
+	split(s1, ",", tokens1);
+	split(s2, ",", tokens2);
 
 	for(unsigned i=0;i<tokens1.size();++i)
 	{
@@ -72,28 +173,28 @@ string merge_sources(const char* s1, const char *s2)
 	return ret;
 }
 
-void clusterIntervals(vector<Interval> &events, vector<Interval> &intervals) 
+void clustersvs(vector<sv> &events, vector<sv> &intervals) 
 {
 	// Dummy last interval
-	Interval last_event;
+	sv last_event;
 
-	last_event.T.first = events.back().T.second + 10000;
-	last_event.T.second =  last_event.T.first + 20000;
+	last_event.pos = events.back().end + 10000;
+	last_event.end =  last_event.pos + 20000;
 
 	// This should be popped back 
 	events.push_back(last_event);
 
-	Interval curr(events.front());
+	sv curr(events.front());
 
 	unsigned k0= 0;
 
 	for(unsigned k=1; k<events.size(); ++k)
 	{
-		if (events[k].T.first > curr.T.second)
+		if (events[k].pos > curr.end)
 		{
 //			cerr << "Cluster detected : " << k-k0 << " events in " << curr.first << " to " << curr.second << endl;
 
-			vector<Interval> cluster(events.begin()+k0, events.begin()+k);
+			vector<sv> cluster(events.begin()+k0, events.begin()+k);
 
 			double max_RO = 1;
 			unsigned k1=0, k2=0;
@@ -111,7 +212,7 @@ void clusterIntervals(vector<Interval> &events, vector<Interval> &intervals)
 				{
 					for(unsigned n=m+1; n<cluster.size(); ++n)
 					{
-						double r = RO(cluster[m].T, cluster[n].T);
+						double r = RO(cluster[m], cluster[n]);
 						if (r > max_RO)
 						{
 							max_RO = r;
@@ -134,11 +235,11 @@ void clusterIntervals(vector<Interval> &events, vector<Interval> &intervals)
 				while(max_RO>RO_THRESHOLD && cluster.size()>1)
 				{
 					// Merge intervals, always the latter one is deleted, since intervals are sorted
-					cluster[k1].T.second = max(cluster[k1].T.second, cluster[k2].T.second);
+					cluster[k1].end = max(cluster[k1].end, cluster[k2].end);
 
 					// merge source, cipos, ciend
-					int32_t posdiff = (int32_t)(cluster[k1].T.first - cluster[k2].T.first);
-					int32_t enddiff = (int32_t)(cluster[k1].T.second - cluster[k2].T.second);
+					int32_t posdiff = (int32_t)(cluster[k1].pos - cluster[k2].pos);
+					int32_t enddiff = (int32_t)(cluster[k1].end - cluster[k2].end);
 					/*
 					1) enddiff <0 
 					|------------------|
@@ -193,7 +294,7 @@ void clusterIntervals(vector<Interval> &events, vector<Interval> &intervals)
 							row_max[m] = 0;
 							for(unsigned n=m+1;n<cluster.size();++n)
 							{
-								double r2 = RO(cluster[m].T, cluster[n].T);
+								double r2 = RO(cluster[m], cluster[n]);
 								if (r2>row_max[m])
 								{
 									row_idx[m] = n; 
@@ -219,7 +320,7 @@ void clusterIntervals(vector<Interval> &events, vector<Interval> &intervals)
 							col_max[m] = 0;
 							for(unsigned n=0;n<m;++n)
 							{
-								double r2 = RO(cluster[m].T, cluster[n].T);
+								double r2 = RO(cluster[m], cluster[n]);
 
 								if (r2>col_max[m])
 								{
@@ -237,7 +338,7 @@ void clusterIntervals(vector<Interval> &events, vector<Interval> &intervals)
 					{
 						if (m!=prev_k1)
 						{
-							double r = RO(cluster[m].T, cluster[prev_k1].T);
+							double r = RO(cluster[m], cluster[prev_k1]);
 
 							if (m<prev_k1)
 							{
@@ -347,7 +448,7 @@ void clusterIntervals(vector<Interval> &events, vector<Interval> &intervals)
 							{
 								if (row_ties[m]<col_ties[n])
 								{
-									double r = RO(cluster[row_ties[m]].T, cluster[col_ties[n]].T);
+									double r = RO(cluster[row_ties[m]], cluster[col_ties[n]]);
 									if (r>max_RO)
 									{
 										max_RO = r;
@@ -364,26 +465,26 @@ void clusterIntervals(vector<Interval> &events, vector<Interval> &intervals)
 
 			intervals.insert(intervals.end(), cluster.begin(), cluster.end());
 			k0 = k;
-			curr.T.first = events[k].T.first;
-			curr.T.second = events[k].T.second;
+			curr.pos = events[k].pos;
+			curr.end = events[k].end;
 		}
-		else if (curr.T.second < events[k].T.second)
+		else if (curr.end < events[k].end)
 		{
-			curr.T.second = events[k].T.second;
+			curr.end = events[k].end;
 		}
 	}
 
 }
 
 /*
-void clusterIntervals(vector<interval_t> &events, vector<interval_t> &intervals) 
+void clustersvs(vector<interval_t> &events, vector<interval_t> &intervals) 
 {
 
 	// Dummy last interval
 	interval_t last_event;
 
-	last_event.first = events.back().second + 10000;
-	last_event.second =  last_event.first + 20000;
+	last_evenpos = events.back().second + 10000;
+	last_evenend =  last_evenpos + 20000;
 
 	events.push_back(last_event);
 

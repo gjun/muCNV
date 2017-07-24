@@ -15,9 +15,234 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "muCNV.h"
+#include <stdlib.h>
 //extern uint32_t CHR;
 uint32_t CHR=1; // This is temporary, need to fix, 06/20/17
 
+void read_index(string index_file, vector<string> &sample_ids, vector<string> &vcf_files, vector<string> &bam_files, vector<double> &avg_depths)
+{
+	ifstream inFile(index_file.c_str(), ios::in);
+	
+	while(inFile.good())
+	{
+		string ln;
+		getline(inFile,ln);
+		if (!ln.empty())
+		{
+			vector<string> tokens;
+			split(ln.c_str(), " \t\n", tokens);
+			
+			if (tokens[0].empty())
+			{
+				cerr << "Error loading index: empty sample ID"<< endl;
+				exit(1);
+			}
+			else if (tokens[1].empty())
+			{
+				cerr << "Error loading index: cannot find vcf files" << endl;
+			}
+			else if (tokens[2].empty())
+			{
+				cerr << "Error loading index: cannot find BAM/CRAM files" << endl;
+			}
+			else if (tokens[3].empty())
+			{
+				cerr << "Error loading index: cannot find average depth info" << endl;
+			}
+			sample_ids.push_back(tokens[0]);
+			vcf_files.push_back(tokens[1]);
+			bam_files.push_back(tokens[2]);
+			avg_depths.push_back(atof(tokens[3].c_str()));
+
+		}
+	}
+	inFile.close();
+	
+}
+
+void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_files, vector<sv> &candidates)
+{
+	for(int i=0;i<sample_ids.size();++i)
+	{
+		ifstream vfile(vcf_files[i].c_str(), ios::in);
+		while(vfile.good())
+		{
+			string ln;
+			getline(vfile, ln);
+			if (!ln.empty())
+			{
+				if (ln[0] != '#')
+				{
+					int chr;
+					vector<string> tokens;
+					split(ln.c_str(), " \t\n", tokens);
+					// Let's add error handling later
+					if (tokens[0].substr(0,3) == "chr" || tokens[0].substr(0,3) == "Chr" )
+					{
+						tokens[0] = tokens[0].substr(3,2);
+					}
+					if (tokens[0] == "X")
+					{
+						chr = 23;
+					}
+					else if (tokens[0] == "Y")
+					{
+						chr = 24;
+					}
+					else if (tokens[0] == "M" || tokens[0] == "MT")
+					{
+						chr = 25;
+					}
+					else
+					{
+						try
+						{
+							chr = atoi(tokens[0].c_str());
+						}
+						catch(int e)
+						{
+							chr = 0;
+					
+						}
+					}
+					if (chr >=1 && chr <=22) // X and Y will be added later, MT will be ignored
+					{
+						sv new_interval;
+						new_interval.chr = chr;
+						new_interval.pos = atoi(tokens[1].c_str());
+
+						string info = tokens[7];
+						
+						vector<string> infotokens;
+						split(info.c_str(), ";", infotokens);
+						for(int j=0;i<infotokens.size();++j)
+						{
+							vector<string> infofields;
+							split(infotokens[j].c_str(), "=", infofields);
+							if (infofields[0] == "END")
+							{
+								new_interval.end = atoi(infofields[1].c_str());
+							}
+							else if (infofields[0] == "CIPOS")
+							{
+								vector<string> ci;
+								split(infofields[1].c_str(), ",", ci);
+								new_interval.ci_pos.first = atoi(ci[0].c_str());
+								new_interval.ci_pos.second = atoi(ci[1].c_str());
+
+							}
+							else if (infofields[0] == "CIEND")
+							{
+								vector<string> ci;
+								split(infofields[1].c_str(), ",", ci);
+								new_interval.ci_end.first = atoi(ci[0].c_str());
+								new_interval.ci_end.second = atoi(ci[1].c_str());
+							}
+							else if (infofields[0] == "SVTYPE")
+							{
+								new_interval.svtype = infofields[1];
+							}
+							
+							if (new_interval.pos > 0 && new_interval.end > 0)
+							{
+								candidates.push_back(new_interval);
+							}
+						}
+					} // if chr >= 1 && chr <= 22
+				}
+			}
+		}
+	}
+} //read_intervals_from_vcf
+
+void bfiles::initialize(vector<string> &bnames)
+{
+	n = (int)bnames.size();
+	
+	data = (aux_t**)calloc(n, sizeof(aux_t*));
+	
+	for(int i=0;i<n;++i)
+	{
+		data[i] = (aux_t*)calloc(1, sizeof(aux_t));
+		data[i]->fp = hts_open(bnames[i].c_str(), "r");
+
+		int rf = SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_SEQ | SAM_QUAL;
+		
+		if (hts_set_opt(data[i]->fp, CRAM_OPT_REQUIRED_FIELDS, rf))
+		{
+			cerr << "Failed to set CRAM_OPT_REQUIRED_FIELDS value" << endl;
+			exit(1);
+		}
+		if (hts_set_opt(data[i]->fp, CRAM_OPT_DECODE_MD, 0))
+		{
+			fprintf(stderr, "Failed to set CRAM_OPT_DECODE_MD value\n");
+			exit(1);
+		}
+		data[i]->min_mapQ = 20;
+		data[i]->min_len = 0;
+		data[i]->hdr = sam_hdr_read(data[i]->fp);
+		if (data[0]->hdr == NULL)
+		{
+			cerr << "Cannot open CRAM/BAM header" << endl;
+			exit(1);
+		}
+		
+		hts_idx_t* tmp_idx = sam_index_load(data[i]->fp, bnames[i].c_str());
+		if (tmp_idx == NULL)
+		{
+			cerr << "Cannot open CRAM/BAM index" << endl;
+			exit(1);
+		}
+		idx.push_back(tmp_idx);
+
+	}
+}
+
+void bfiles::read_depth(sv &interval, vector<double> &X)
+{
+	char reg[100];
+	sprintf(reg, "%d:%d-%d",interval.chr, interval.pos, interval.end);
+	
+	bam_mplp_t mplp = bam_mplp_init(n, read_bam, (void**)data);
+	int *n_plp = (int*)calloc(n, sizeof(int));
+	const bam_pileup1_t **plp = (const bam_pileup1_t**)calloc(n, sizeof(bam_pileup1_t*));
+	
+	for(int i=0;i<n;++i)
+	{
+		hts_itr_t *iter = sam_itr_querys(idx[i], data[i]->hdr, reg);
+		double sum = 0;
+		int cnt = 0;
+		if (iter == NULL)
+		{
+			cerr << "Can't parse region" << endl;
+			exit(1);
+		}
+		
+		int tid, pos;
+		bam_hdr_t *h = data[i]->hdr;
+		
+		while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0)
+		{
+			if (pos<interval.pos || pos >=interval.end) continue;
+			cout << h->target_name[tid] << "\t" << pos +1;
+			int j, m = 0;
+			for(j=0; j<n_plp[i]; ++j)
+			{
+				const bam_pileup1_t *p = plp[i] + j;
+				if (p->is_del || p->is_refskip) ++m;
+				else if (bam_get_qual(p->b)[p->qpos] < 20) ++m;
+			}
+			sum += n_plp[i] - m;
+			cnt++;
+		}
+		X[i] = sum/cnt;
+	}
+	free(n_plp);
+	free(plp);
+	bam_mplp_destroy(mplp);
+}
+
+/*
 void readIndex(string sInFile, vector<string> &sampleIDs, vector<string> &sampleDirs, vector<string> &eventFiles, vector<string> &depthFiles)
 {
 	ifstream inFile(sInFile.c_str(), ios::in);
@@ -56,7 +281,7 @@ void readIndex(string sInFile, vector<string> &sampleIDs, vector<string> &sample
 	}
 	inFile.close();
 }
-
+*/
 void readFam(string sFamFile, map<string, unsigned> &hIdSex)
 {
 	ifstream inFile(sFamFile.c_str(), ios::in);
@@ -68,7 +293,7 @@ void readFam(string sFamFile, map<string, unsigned> &hIdSex)
 		if (!ln.empty())
 		{
 			vector<string> tokens;
-			tokenizeLine(ln.c_str(), " \t\n", tokens);
+			split(ln.c_str(), " \t\n", tokens);
 
 			if (tokens[1].empty())
 			{
@@ -148,9 +373,9 @@ void readDepth(vector<string> &depthFiles, Interval &interval, vector< vector<do
 		char buf[100];
 		unsigned offset = 1000;
 		const char *line;
-		uint64_t chr = interval.T.first/(uint64_t)1e10;
-		uint64_t startpos = (interval.T.first)%(uint64_t)1e10;
-		uint64_t endpos = (interval.T.second)%(uint64_t)1e10;
+		uint64_t chr = interval.pos/(uint64_t)1e10;
+		uint64_t startpos = (interval.pos)%(uint64_t)1e10;
+		uint64_t endpos = (interval.end)%(uint64_t)1e10;
 
 		sprintf(buf, "%llu:%llu-%llu", chr, startpos-offset, endpos+offset);
 		dFile.updateRegion(buf);
@@ -197,9 +422,9 @@ void readDepth(vector<string> &depthFiles, vector<Interval> &intervals, vector< 
 		{
 			char buf[100];
 			const char *line;
-			uint64_t chr = intervals[j].T.first/(uint64_t)1e10;
-			uint64_t startpos = (intervals[j].T.first)%(uint64_t)1e10;
-			uint64_t endpos = (intervals[j].T.second)%(uint64_t)1e10;
+			uint64_t chr = intervals[j].pos/(uint64_t)1e10;
+			uint64_t startpos = (intervals[j].pos)%(uint64_t)1e10;
+			uint64_t endpos = (intervals[j].end)%(uint64_t)1e10;
 			if (j%100 == 0)
 			{
 				cerr << "\rReading depth ...  " << i+1 << "/" << depthFiles.size() << "... interval" << j+1 << "/" << intervals.size();
@@ -263,7 +488,7 @@ void readDepthOrig(vector<string> &smIDs, vector<string> &smDirs, vector<interva
 					if (strlen(buf)>1 && buf[0] != '#' && buf[0] != '>')
 					{
 						vector<string> tokens;
-						tokenizeLine(buf, " \t\n", tokens);
+						split(buf, " \t\n", tokens);
 						pos  = strtoul(tokens[0].c_str(), NULL, 10);
 						if (pos>pos_start)
 						{
@@ -309,7 +534,7 @@ double getAvgDepth(string smID, string asmDir)
 		if (!ln.empty())
 		{
 			vector<string> tokens;
-			tokenizeLine(ln.c_str(), " \t\n", tokens);
+			split(ln.c_str(), " \t\n", tokens);
 			if (tokens[0].at(0) == '>')
 			{
 				for(unsigned j=0; j<tokens.size() ;++j)
@@ -352,7 +577,7 @@ string getCNVsegmentFileName(string sampleID, string sampleDir)
 
 }
 
-void readInterval(string fName, int fType, vector<Interval> &del_events, vector<Interval> &dup_events)
+void readInterval(string fName, int fType, vector<sv> &del_events, vector<sv> &dup_events)
 {
 	unsigned eventIdx = 0;
 	unsigned chrIdx = 0;
@@ -429,7 +654,7 @@ void readInterval(string fName, int fType, vector<Interval> &del_events, vector<
 		{
 			vector<string> tokens;
 			bool bDel=true;
-			tokenizeLine(ln.c_str(), " \t\n", tokens);
+			split(ln.c_str(), " \t\n", tokens);
 
 			if (fType!=3 && tokens[0].at(0) == '>')
 			{
@@ -462,9 +687,9 @@ void readInterval(string fName, int fType, vector<Interval> &del_events, vector<
 
 			if ( (CHR==0 && c>0) || (CHR>0 && c==CHR))
 			{
-				Interval interval;
-				interval.T.first = strtoul(tokens[beginIdx].c_str(), NULL, 10) + c*1e10;
-				interval.T.second = strtoul(tokens[endIdx].c_str(), NULL, 10) + c*1e10;
+				sv interval;
+				interval.pos = strtoul(tokens[beginIdx].c_str(), NULL, 10) + c*1e10;
+				interval.end = strtoul(tokens[endIdx].c_str(), NULL, 10) + c*1e10;
 
 				if (fType < 3)
 				{
@@ -496,12 +721,12 @@ void readInterval(string fName, int fType, vector<Interval> &del_events, vector<
 
 				if (bDel)
 				{
-					interval.sv_type = "DEL";
+					interval.svtype = "DEL";
 					del_events.push_back(interval);
 				}
 				else
 				{
-					interval.sv_type = "DUP";
+					interval.svtype = "DUP";
 					dup_events.push_back(interval);
 				}
 			}
@@ -627,12 +852,12 @@ void readInterval(string fName, int fType, vector<interval_t> &del_events, vecto
 }
 */
 
-void write_vcf_dup(FILE *fp, unsigned ID, vector<unsigned short>& gt, vector<unsigned>& GQ, Interval& interval, unsigned ac, unsigned ns, vector<double>& X, vector<double>& AvgDepth, vector<Gaussian>& C, bool bFilter)
+void write_vcf_dup(FILE *fp, unsigned ID, vector<unsigned short>& gt, vector<unsigned>& GQ, sv& interval, unsigned ac, unsigned ns, vector<double>& X, vector<double>& AvgDepth, vector<Gaussian>& C, bool bFilter)
 {
 	unsigned n_comp=C.size();
-	int chr = (int)(interval.T.first/1e10);
-	uint64_t pos = interval.T.first%(uint64_t)1e10;
-	uint64_t svend = interval.T.second%(uint64_t)1e10;
+	int chr = (int)(interval.pos/1e10);
+	uint64_t pos = interval.pos%(uint64_t)1e10;
+	uint64_t svend = interval.end%(uint64_t)1e10;
 
 	fprintf(fp,"%d\t", chr);
 	fprintf(fp,"%llu\t", pos);
@@ -758,13 +983,13 @@ void write_vcf_dup(FILE *fp, unsigned ID, vector<unsigned short>& gt, vector<uns
 }
 */
 
-void write_vcf(FILE *fp, unsigned ID, vector<unsigned short>& gt, vector< vector<unsigned> >& GL, vector<unsigned>& GQ, Interval &interval, unsigned ac, unsigned ns, vector<double>& X, vector<double>& AvgDepth, vector<Gaussian>& C, double BE, bool bFilter)
+void write_vcf(FILE *fp, unsigned ID, vector<unsigned short>& gt, vector< vector<unsigned> >& GL, vector<unsigned>& GQ, sv &interval, unsigned ac, unsigned ns, vector<double>& X, vector<double>& AvgDepth, vector<Gaussian>& C, double BE, bool bFilter)
 {
 	// For Deletions
 	unsigned n_comp=C.size();
-	int chr = (int)(interval.T.first/1e10);
-	uint64_t pos = interval.T.first%(uint64_t)1e10;
-	uint64_t svend = interval.T.second%(uint64_t)1e10;
+	int chr = (int)(interval.pos/1e10);
+	uint64_t pos = interval.pos%(uint64_t)1e10;
+	uint64_t svend = interval.end%(uint64_t)1e10;
 
 	fprintf(fp,"%d\t", chr);
 	fprintf(fp,"%llu\t", pos);
@@ -932,7 +1157,7 @@ void Data::read(unsigned n_interval, unsigned n_sample, vector<interval_t> &inte
 }
 */
 
-void Data::read(unsigned n_interval, unsigned n_sample, vector<Interval> &intervals,  vector< vector<double> > &X)
+void Data::read(unsigned n_interval, unsigned n_sample, vector<sv> &intervals,  vector< vector<double> > &X)
 {
 	intervals.resize(n_interval);
 
@@ -943,9 +1168,9 @@ void Data::read(unsigned n_interval, unsigned n_sample, vector<Interval> &interv
 	}
 	for(unsigned i=0; i<n_interval; ++i)
 	{
-		dFile >> intervals[i].T.first;
-		dFile >> intervals[i].T.second;
-		dFile >> intervals[i].sv_type;
+		dFile >> intervals[i].pos;
+		dFile >> intervals[i].end;
+		dFile >> intervals[i].svtype;
 		dFile >> intervals[i].source;
 		dFile >> intervals[i].ci_pos.first;
 		dFile >> intervals[i].ci_pos.second;
@@ -1013,7 +1238,7 @@ void Data::write(string sDataFile, vector<string> &sampleIDs, vector<interval_t>
 }
 */
 
-void Data::write(string sDataFile, vector<string> &sampleIDs, vector<Interval> &del_intervals, vector<Interval> &dup_intervals,  vector< vector<double> > &X, vector< vector<double> > &Y, vector<double> &AvgDepth)
+void Data::write(string sDataFile, vector<string> &sampleIDs, vector<sv> &del_intervals, vector<sv> &dup_intervals,  vector< vector<double> > &X, vector< vector<double> > &Y, vector<double> &AvgDepth)
 {
 	unsigned n_del = del_intervals.size();
 	unsigned n_dup = dup_intervals.size();
@@ -1042,8 +1267,8 @@ void Data::write(string sDataFile, vector<string> &sampleIDs, vector<Interval> &
 	dumpFile << endl;
 	for(unsigned i=0; i<n_del; ++i)
 	{
-		dumpFile << del_intervals[i].T.first  << "\t" << del_intervals[i].T.second << "\t";
-		dumpFile << del_intervals[i].sv_type << "\t" << del_intervals[i].source << "\t" ;
+		dumpFile << del_intervals[i].pos  << "\t" << del_intervals[i].end << "\t";
+		dumpFile << del_intervals[i].svtype << "\t" << del_intervals[i].source << "\t" ;
 		dumpFile << del_intervals[i].ci_pos.first  << "\t" << del_intervals[i].ci_pos.second << "\t";
 		dumpFile << del_intervals[i].ci_end.first  << "\t" << del_intervals[i].ci_end.second;
 
@@ -1055,8 +1280,8 @@ void Data::write(string sDataFile, vector<string> &sampleIDs, vector<Interval> &
 	}
 	for(unsigned i=0; i<n_dup; ++i)
 	{
-		dumpFile << dup_intervals[i].T.first  << "\t" << dup_intervals[i].T.second << "\t";
-		dumpFile << dup_intervals[i].sv_type  << "\t" << dup_intervals[i].source << "\t";
+		dumpFile << dup_intervals[i].pos  << "\t" << dup_intervals[i].end << "\t";
+		dumpFile << dup_intervals[i].svtype  << "\t" << dup_intervals[i].source << "\t";
 		dumpFile << dup_intervals[i].ci_pos.first  << "\t" << dup_intervals[i].ci_pos.second << "\t";
 		dumpFile << dup_intervals[i].ci_end.first  << "\t" << dup_intervals[i].ci_end.second ;
 
