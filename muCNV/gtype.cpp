@@ -37,24 +37,24 @@ gtype::gtype()
 }
 
 
-void gtype::call_genotype(sv &s, vector<double> &X, vector<int> &geno)
+void gtype::call_genotype(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vector<double> &AvgDepth)
 {
 	if (s.svtype == "DEL")
 	{
 		cerr << "calling deletion" << endl;
-		call_del(X, geno);
+		call_del(s, X, geno, v, AvgDepth);
 	}
 	else
 	{
 		cerr << "calling cnv" << endl;
-//		call_cnv(X, geno);
+		call_cnv(s, X, geno, v, AvgDepth);
 	}
 	
 }
 
-void gtype::call_del(vector<double> &X, vector<int> &geno)
+void gtype::call_del(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vector<double> &AvgDepth)
 {
-	int n = X.size();
+	int n = (int)X.size();
 	
 	vector< vector<int> > GL(n, vector<int>(3,255));
 	vector<int> GQ(n, 0);
@@ -123,8 +123,7 @@ void gtype::call_del(vector<double> &X, vector<int> &geno)
 			//		cerr << "AC: " << AC << endl;
 			if (AC>0)
 			{
-
-				// ??
+				v.write_del(s, geno, GQ, AC, NS, X, AvgDepth, C2, BE, true);
 			}
 		}
 		else if (ordered(C2))
@@ -135,8 +134,7 @@ void gtype::call_del(vector<double> &X, vector<int> &geno)
 			//		cerr << "AC: " << AC << endl;
 			if (AC>0)
 			{
-				// ++write_cnt;
-				// write_vcf(vcfFile, write_cnt, GT, GL, GQ, intervals[k], AC, NS, X[k], AvgDepth, C2, BE, false);
+				v.write_del(s, geno, GQ, AC, NS, X, AvgDepth, C2, BE, false);
 			}
 			
 		}
@@ -157,9 +155,7 @@ void gtype::call_del(vector<double> &X, vector<int> &geno)
 			
 			if (AC>0)
 			{
-				
-				//				++write_cnt;
-				//	write_vcf(vcfFile, write_cnt, GT, GL, GQ, intervals[k], AC, NS, X[k], AvgDepth, C3, BE, true);
+				v.write_del(s, geno, GQ, AC, NS, X, AvgDepth, C3, BE, true);
 			}
 		}
 		else if (ordered(C3))
@@ -169,8 +165,7 @@ void gtype::call_del(vector<double> &X, vector<int> &geno)
 			
 			if (AC>0)
 			{
-				//++write_cnt;
-				//write_vcf(vcfFile, write_cnt, GT, GL, GQ, intervals[k], AC, NS, X[k], AvgDepth, C3, BE, false);
+				v.write_del(s, geno, GQ, AC, NS, X, AvgDepth, C3, BE, false);
 			}
 		}
 		
@@ -265,8 +260,8 @@ void gtype::EM(vector<double>& x, vector<Gaussian>& C, bool bFlip)
 
 int gtype::classify_del(vector<double>& x, vector<int>& GT, vector< vector<int> >& GL, vector<int>& GQ, int& ns, vector<Gaussian>& C, bool bFlip)
 {
-	unsigned n_sample = x.size();
-	unsigned n_comp = C.size();
+	unsigned n_sample = (unsigned) x.size();
+	unsigned n_comp = (unsigned) C.size();
 	unsigned ac = 0;
 	ns = 0;
 	
@@ -463,7 +458,7 @@ void gtype::conEM(vector<double>& x, vector<double>& M, vector<double>& S, vecto
 }
 
 
-void gtype::call_cnv(vector<double> &X, vector<int> &geno)
+void gtype::call_cnv(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vector<double> &AvgDepth)
 {
 	size_t n = X.size();
 	
@@ -534,7 +529,7 @@ void gtype::call_cnv(vector<double> &X, vector<int> &geno)
 		if (AC>0)
 		{
 			// ++write_cnt;
-			// write_vcf_dup(vcfFile, write_cnt, GT, GQ, intervals[k], AC, NS, X[k], AvgDepth, Comps, true);
+			v.write_cnv(s, geno, GQ, AC, NS, X, AvgDepth, Comps, BE, true);
 		}
 	}
 	else
@@ -544,7 +539,7 @@ void gtype::call_cnv(vector<double> &X, vector<int> &geno)
 		if (AC>0)
 		{
 			// ++write_cnt;
-			// write_vcf_dup(vcfFile, write_cnt, GT, GQ, intervals[k], AC, NS, X[k], AvgDepth, Comps, false);
+			v.write_cnv(s, geno, GQ, AC, NS, X, AvgDepth, Comps, BE, false);
 		}
 		
 	}
@@ -554,8 +549,8 @@ void gtype::call_cnv(vector<double> &X, vector<int> &geno)
 
 void gtype::EM(vector<double>& x, vector<Gaussian>& Comps)
 {
-	unsigned n_sample = x.size();
-	unsigned n_comp = Comps.size();
+	unsigned n_sample = (unsigned) x.size();
+	unsigned n_comp = (unsigned) Comps.size();
 	unsigned n_iter = 30;
 	
 	for(unsigned i=0; i<n_iter; ++i)
@@ -599,8 +594,8 @@ void gtype::EM(vector<double>& x, vector<Gaussian>& Comps)
 
 int gtype::classify_cnv(vector<double>& x, vector<int>& GT, vector<int>& GQ, int& ns, vector<Gaussian>& Comps)
 {
-	unsigned n_sample = x.size();
-	unsigned n_comp = Comps.size();
+	unsigned n_sample = (unsigned) x.size();
+	unsigned n_comp = (unsigned) Comps.size();
 	unsigned ac = 0;
 	ns = 0;
 	

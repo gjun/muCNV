@@ -134,8 +134,10 @@ int main(int argc, char** argv)
 	// 3. For each interval, read depth  (+ read pair distance ?) from individual BAM/CRAM file
 
 	string vcf_filename = out_prefix + ".vcf";
-	VCF = fopen(vcf_filename.c_str(), "w");
-	write_vcf_header(VCF, sample_ids);
+	outvcf vfile;
+	vfile.open(vcf_filename);
+	
+	vfile.write_header(sample_ids);
 
 	for(int i=0; i<merged_candidates.size(); ++i)
 	{
@@ -158,21 +160,15 @@ int main(int argc, char** argv)
 			{
 				X[k] = X[k] / avg_depths[k];
 			}
-			g.call_genotype(svlist[j], X, G);
+			g.call_genotype(svlist[j], X, G, vfile, avg_depths);
 			
-			for(int k=0; k<n; ++k)
-			{
-				cout << "\t" << G[k];
-			}
-			cout << endl;
 
 		}
 		
 
 	}
 	
-	// 5. Output
-	
+	vfile.close();
 
 	return 0;
 }

@@ -9,10 +9,9 @@ OBJS := $(addprefix obj/,$(notdir $(SRCS:.cpp=.o)))
 # OBJS= Main.o Error.o File.o deletions.o cluster.o common.o duplications.o
 CFLAGS= -g -Wall -O2 -fPIC
 DFLAGS= -D_FILE_OFFSET_BITS=64
-HTSLIBDIR= ../htslib
 CC= gcc
 CXX= g++ 
-INCLUDES= -I./tclap-1.2.1/include -I$(HTSLIBDIR)
+INCLUDES= -I./tclap-1.2.1/include -I./htslib
 
 # .SUFFIXES:.cpp .o
 
