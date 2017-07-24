@@ -13,7 +13,6 @@
 		F138FD7D1CAD744A00CD5539 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD7C1CAD744A00CD5539 /* main.cpp */; };
 		F138FD8B1CAD74EE00CD5539 /* cluster.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD831CAD74EE00CD5539 /* cluster.cpp */; };
 		F138FD8C1CAD74EE00CD5539 /* common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD841CAD74EE00CD5539 /* common.cpp */; };
-		F138FD8E1CAD74EE00CD5539 /* duplications.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD861CAD74EE00CD5539 /* duplications.cpp */; };
 		F138FD8F1CAD74EE00CD5539 /* Error.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD871CAD74EE00CD5539 /* Error.cpp */; };
 		F138FD901CAD74EE00CD5539 /* File.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD891CAD74EE00CD5539 /* File.cpp */; };
 		F138FDC11CAD7F2600CD5539 /* libtabix.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F138FDC01CAD7F2600CD5539 /* libtabix.a */; };
@@ -41,7 +40,6 @@
 		F138FD7C1CAD744A00CD5539 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		F138FD831CAD74EE00CD5539 /* cluster.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cluster.cpp; sourceTree = "<group>"; };
 		F138FD841CAD74EE00CD5539 /* common.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = common.cpp; sourceTree = "<group>"; };
-		F138FD861CAD74EE00CD5539 /* duplications.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = duplications.cpp; sourceTree = "<group>"; };
 		F138FD871CAD74EE00CD5539 /* Error.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Error.cpp; sourceTree = "<group>"; };
 		F138FD881CAD74EE00CD5539 /* Error.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Error.h; sourceTree = "<group>"; };
 		F138FD891CAD74EE00CD5539 /* File.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = File.cpp; sourceTree = "<group>"; };
@@ -133,7 +131,6 @@
 				F138FD911CAD74F600CD5539 /* pException.h */,
 				F138FD831CAD74EE00CD5539 /* cluster.cpp */,
 				F138FD841CAD74EE00CD5539 /* common.cpp */,
-				F138FD861CAD74EE00CD5539 /* duplications.cpp */,
 				F138FD871CAD74EE00CD5539 /* Error.cpp */,
 				F138FD881CAD74EE00CD5539 /* Error.h */,
 				F138FD891CAD74EE00CD5539 /* File.cpp */,
@@ -233,7 +230,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				F138FD8F1CAD74EE00CD5539 /* Error.cpp in Sources */,
-				F138FD8E1CAD74EE00CD5539 /* duplications.cpp in Sources */,
 				F138FD8B1CAD74EE00CD5539 /* cluster.cpp in Sources */,
 				F194ED351F25A41400489E0C /* gtype.cpp in Sources */,
 				F138FD8C1CAD74EE00CD5539 /* common.cpp in Sources */,

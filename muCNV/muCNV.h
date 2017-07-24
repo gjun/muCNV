@@ -165,10 +165,18 @@ public:
 	bool bUseGL;
 	vector<int> geno;
 	void call_genotype(sv &, vector<double>&);
+	
 	int classify_del(vector<double>&, vector<int>&, vector< vector<int> >&, vector<int>&, int&,vector<Gaussian>&, bool);
+	int classify_cnv(vector<double>&, vector<int>&, vector<int>&, int&, vector<Gaussian>&);
+
 	void EM(vector<double>&, vector<Gaussian>&, bool);
+	void EM(vector<double>&, vector<Gaussian>&);
+
 	void call_del(vector<double>&);
 	void call_cnv(vector<double>&);
+	
+	void conEM(vector<double>&, vector<double>&, vector<double>&, vector<double>&);
+	
 	gtype();
 };
 
@@ -199,14 +207,9 @@ void cluster_svs(vector<sv>&, vector< vector<sv> > &);
 //void call_deletions(vector<vector<double> > &, vector<double> &, vector<string> &, vector<interval_t>&, FILE*);
 //void call_duplications(vector<vector<double> > &, vector<double> &, vector<string> &, vector<interval_t>&, FILE*);
 
-void call_deletions(vector<vector<double> > &, vector<double> &, vector<string> &, vector<sv>&, FILE*);
-void call_duplications(vector<vector<double> > &, vector<double> &, vector<string> &, vector<sv>&, FILE);
 
-void EM(vector<double>&, vector<Gaussian>&);
-void conEM(vector<double>&, vector<double>&, vector<double>&, vector<double>&);
 double BayesError(vector<Gaussian>&);
 
-unsigned classify(vector<double>&, vector<unsigned short>&, vector<unsigned>&, unsigned&,vector<Gaussian>&);
 double BIC(vector<double>&, vector<Gaussian>&);
 bool ordered(vector<Gaussian>&);
 
