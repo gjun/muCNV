@@ -18,6 +18,7 @@
 		F138FDC11CAD7F2600CD5539 /* libtabix.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F138FDC01CAD7F2600CD5539 /* libtabix.a */; };
 		F138FDC31CAD7FB900CD5539 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = F138FDC21CAD7FB900CD5539 /* libz.tbd */; };
 		F194ED351F25A41400489E0C /* gtype.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED341F25A41400489E0C /* gtype.cpp */; };
+		F194ED371F25B3C900489E0C /* sv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED361F25B3C900489E0C /* sv.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -75,6 +76,7 @@
 		F154FC241ED2CDF7004E1629 /* vcf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vcf.h; path = htslib/vcf.h; sourceTree = "<group>"; };
 		F154FC251ED2CDF7004E1629 /* vcfutils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vcfutils.h; path = htslib/vcfutils.h; sourceTree = "<group>"; };
 		F194ED341F25A41400489E0C /* gtype.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = gtype.cpp; sourceTree = "<group>"; };
+		F194ED361F25B3C900489E0C /* sv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sv.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -137,6 +139,7 @@
 				F138FD8A1CAD74EE00CD5539 /* muCNV.h */,
 				F138FD7C1CAD744A00CD5539 /* main.cpp */,
 				F194ED341F25A41400489E0C /* gtype.cpp */,
+				F194ED361F25B3C900489E0C /* sv.cpp */,
 			);
 			path = muCNV;
 			sourceTree = "<group>";
@@ -231,6 +234,7 @@
 			files = (
 				F138FD8F1CAD74EE00CD5539 /* Error.cpp in Sources */,
 				F138FD8B1CAD74EE00CD5539 /* cluster.cpp in Sources */,
+				F194ED371F25B3C900489E0C /* sv.cpp in Sources */,
 				F194ED351F25A41400489E0C /* gtype.cpp in Sources */,
 				F138FD8C1CAD74EE00CD5539 /* common.cpp in Sources */,
 				F138FD7D1CAD744A00CD5539 /* main.cpp in Sources */,

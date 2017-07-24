@@ -29,6 +29,14 @@ bool ordered(vector<Gaussian> &C)
 	return true;
 }
 
+gtype::gtype()
+{
+	min_bic = 0;
+	bUseGL = false;
+	p_overlap = 0;
+}
+
+
 void gtype::call_genotype(sv &s, vector<double> &X)
 {
 	if (s.svtype == "DEL")

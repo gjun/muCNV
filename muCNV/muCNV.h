@@ -75,37 +75,7 @@ public:
 		sv();
 };
 
-sv::sv()
-{
-	svtype = "NA";
-	source = "NA";
-	chr = -1;
-	pos = -1;
-	end = -1;
-	ci_pos.first = 0;
-	ci_pos.second = 0;
-	ci_end.first = 0;
-	ci_end.second = 0;
-}
 
-bool sv::operator < (const sv& s) const
-{
-	if (chr==s.chr)
-	{
-		if (pos==s.pos)
-		{
-			return(end<s.end);
-		}
-		else
-		{
-			return(pos<s.pos);
-		}
-	}
-	else
-	{
-		return(chr<s.chr);
-	}
-}
 
 class SampleList
 {
@@ -180,12 +150,6 @@ public:
 	gtype();
 };
 
-gtype::gtype()
-{
-	min_bic = 0;
-	bUseGL = false;
-	p_overlap = 0;
-}
 
 template <class T> void vprint(vector<T>);
 
@@ -202,7 +166,6 @@ void read_intervals_from_vcf(vector<string> &, vector<string> &, vector<sv> &);
 
 double RO(interval_t, interval_t);
 //void clustersvs(vector<interval_t>&, vector<interval_t>&);
-void clustersvs(vector<sv>&, vector<sv>&);
 void cluster_svs(vector<sv>&, vector< vector<sv> > &);
 //void call_deletions(vector<vector<double> > &, vector<double> &, vector<string> &, vector<interval_t>&, FILE*);
 //void call_duplications(vector<vector<double> > &, vector<double> &, vector<string> &, vector<interval_t>&, FILE*);
