@@ -43,11 +43,24 @@ void gtype::call_genotype(sv &s, vector<double> &X, vector<int> &geno, outvcf& v
 	{
 		cerr << "calling deletion" << endl;
 		call_del(s, X, geno, v, AvgDepth);
+		cout << "m" << s.pos;
+		for(int i=0;i<(int)X.size(); ++i)
+		{
+			cout << "\t" << X[i];
+		}
+		cout << endl;
 	}
-	else
+	else if (s.svtype =="DUP" || s.svtype =="CNV")
 	{
 		cerr << "calling cnv" << endl;
 		call_cnv(s, X, geno, v, AvgDepth);
+
+		cout << "m" << s.pos;
+		for(int i=0;i<(int)X.size(); ++i)
+		{
+			cout << "\t" << X[i];
+		}
+		cout << endl;
 	}
 	
 }
@@ -58,6 +71,7 @@ void gtype::call_del(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vec
 	
 	vector< vector<int> > GL(n, vector<int>(3,255));
 	vector<int> GQ(n, 0);
+	vector<double> bic(3,0);
 	
 	vector<Gaussian> C1(1); // 1-component model
 	vector<Gaussian> C2(2); // 2-component model
@@ -66,14 +80,13 @@ void gtype::call_del(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vec
 	// For each candidate region, run EM
 	// Run EM with 2 and 3 components, compare likelihoods with the 1-gaussian model, apply BIC
 	bool bFlip = false;
-	double BIC1, BIC2, BIC3;
 	
 	// Single-component model
 	C1[0].Mean = mean(X);
 	C1[0].Stdev = stdev(X, C1[0].Mean);
 	C1[0].Alpha = 1;
 	
-	BIC1 = BIC(X, C1);
+	bic[0] = BIC(X, C1);
 	
 	// Two-component model
 	C2[0].Mean = 1;
@@ -89,7 +102,7 @@ void gtype::call_del(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vec
 	C3[0].Alpha = C3[1].Alpha = C3[2].Alpha = 1.0/3.0;
 	
 	EM(X, C3, bFlip);
-	BIC3 = BIC(X, C3);
+	bic[2] = BIC(X, C3);
 	
 	// check which one is major
 	if (C3[2].Mean < C3[0].Mean && C3[2].Alpha > C3[0].Alpha)
@@ -106,14 +119,14 @@ void gtype::call_del(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vec
 		// Two-component EM and BIC
 		EM(X, C2, bFlip);
 	}
-	BIC2 = BIC(X, C2);
+	bic[1] = BIC(X, C2);
 	
 	// Determine whether this is a polymorphic interval or not, make calls
-	if (BIC1>BIC2 && BIC3>BIC2)
+	if (bic[0]>bic[1] && bic[2]>bic[1])
 	{
 		// 2 cluster
 		double BE = BayesError(C2);
-		min_bic = BIC2;
+		min_bic = bic[1];
 		p_overlap = BE;
 		if (ordered(C2) && BE< BE_THRESHOLD)
 		{
@@ -121,7 +134,7 @@ void gtype::call_del(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vec
 			int AC = classify_del(X, geno, GL, GQ, NS, C2, bFlip);
 			
 			//		cerr << "AC: " << AC << endl;
-			if (AC>0)
+//			if (AC>0)
 			{
 				v.write_del(s, geno, GQ, AC, NS, X, AvgDepth, C2, BE, true);
 			}
@@ -132,7 +145,7 @@ void gtype::call_del(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vec
 			int AC = classify_del(X, geno, GL, GQ, NS, C2, bFlip);
 			
 			//		cerr << "AC: " << AC << endl;
-			if (AC>0)
+//			if (AC>0)
 			{
 				v.write_del(s, geno, GQ, AC, NS, X, AvgDepth, C2, BE, false);
 			}
@@ -142,18 +155,18 @@ void gtype::call_del(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vec
 		// Two-component is selected
 		//	printCluster(C2);
 	}
-	else if (BIC3<BIC1 && BIC3<BIC2)
+	else if (bic[2]<bic[0] && bic[2]<bic[1])
 	{
 		// 3 cluster
 		double BE = BayesError(C3);
-		min_bic = BIC3;
+		min_bic = bic[2];
 		p_overlap = BE;
 		if (ordered(C3) && BE< BE_THRESHOLD)
 		{
 			int NS=0;
 			int AC = classify_del(X, geno, GL, GQ, NS, C3, bFlip);
 			
-			if (AC>0)
+//			if (AC>0)
 			{
 				v.write_del(s, geno, GQ, AC, NS, X, AvgDepth, C3, BE, true);
 			}
@@ -163,7 +176,7 @@ void gtype::call_del(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vec
 			int NS=0;
 			int AC = classify_del(X, geno, GL, GQ, NS, C3, bFlip);
 			
-			if (AC>0)
+//			if (AC>0)
 			{
 				v.write_del(s, geno, GQ, AC, NS, X, AvgDepth, C3, BE, false);
 			}
@@ -470,6 +483,7 @@ void gtype::call_cnv(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vec
 	vector<Gaussian> Comps(1);
 	
 	double min_BIC = DBL_MAX;
+	vector<double> bic(10,0);
 	
 	double M = mean(X);
 	double S = stdev(X, M);
@@ -478,7 +492,7 @@ void gtype::call_cnv(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vec
 	Comps[0].Stdev = S;
 	Comps[0].Alpha = 1;
 	
-	min_BIC = BIC(X, Comps);
+	min_BIC = bic[0] = BIC(X, Comps);
 	//		cerr << "1 comp, bic " << min_BIC << endl;
 	unsigned n_comp = 1;
 	
@@ -499,11 +513,11 @@ void gtype::call_cnv(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vec
 		// Run EM with i components
 		EM(X, Comps);
 		
-		double bic = BIC(X, Comps);
+		bic[i-1] = BIC(X, Comps);
 		
-		if (bic<min_BIC)
+		if (bic[i-1]<min_BIC)
 		{
-			min_BIC = bic;
+			min_BIC = bic[i-1];
 			n_comp = i;
 		}
 	}
@@ -526,17 +540,17 @@ void gtype::call_cnv(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vec
 	{
 		int NS=0;
 		int AC = classify_cnv(X, geno, GQ, NS, Comps);
-		if (AC>0)
+//		if (AC>0)
 		{
 			// ++write_cnt;
-			v.write_cnv(s, geno, GQ, AC, NS, X, AvgDepth, Comps, BE, true);
+			v.write_cnv(s, geno, GQ, AC, NS, X, AvgDepth, Comps, BE,  true);
 		}
 	}
 	else
 	{
 		int NS=0;
 		int AC = classify_cnv(X, geno, GQ, NS, Comps);
-		if (AC>0)
+//		if (AC>0)
 		{
 			// ++write_cnt;
 			v.write_cnv(s, geno, GQ, AC, NS, X, AvgDepth, Comps, BE, false);

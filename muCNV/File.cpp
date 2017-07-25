@@ -64,7 +64,7 @@ void read_index(string index_file, vector<string> &sample_ids, vector<string> &v
 
 void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_files, vector<sv> &candidates)
 {
-	for(int i=0;i<sample_ids.size();++i)
+	for(int i=0;i<(int)sample_ids.size();++i)
 	{
 	//	cerr << "sample ID " << sample_ids[i] << endl;
 //		cerr << "opening " << vcf_files[i] << endl;
@@ -133,7 +133,7 @@ void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_fil
 
 						vector<string> infotokens;
 						split(info.c_str(), ";", infotokens);
-						for(int j=0;j<infotokens.size();++j)
+						for(int j=0;j<(int)infotokens.size();++j)
 						{
 							vector<string> infofields;
 							//cerr << infotokens[j] << endl;
@@ -210,7 +210,7 @@ void bfiles::initialize(vector<string> &bnames)
 		data[i]->min_mapQ = 20;
 		data[i]->min_len = 0;
 		data[i]->hdr = sam_hdr_read(data[i]->fp);
-		if (data[0]->hdr == NULL)
+		if (data[i]->hdr == NULL)
 		{
 			cerr << "Cannot open CRAM/BAM header" << endl;
 			exit(1);
@@ -259,7 +259,7 @@ void bfiles::get_avg_depth(vector<double> &X)
 			int *n_plp = (int*)calloc(n, sizeof(int));
 			const bam_pileup1_t **plp = (const bam_pileup1_t**)calloc(n, sizeof(bam_pileup1_t*));
 			
-
+// THIS IS WRONG CODE, FIX LATER, REFER read_depth() 
 			for(int i=0;i<n;++i)
 			{
 //				cerr << "reading " << i << "-th BAM file: " << endl;
@@ -318,18 +318,20 @@ void bfiles::read_depth(sv &interval, vector<double> &X)
 	const bam_pileup1_t **plp = (const bam_pileup1_t**)calloc(n, sizeof(bam_pileup1_t*));
 	
 
-	for(int i=0;i<n;++i)
-	{
 //		cerr << "reading " << i << "-th BAM file: " << endl;
-		double sum = 0;
-		int cnt = 0;
 	
-		int tid, pos;
+	int tid, pos;
+
+	vector<double> sum (n,0);
+	vector<int> cnt(n,0);
 		
-		while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0)
-		{
+	while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0)
+	{
 //			cerr << "tid " << tid << " pos " << pos << endl;
-			if (pos<interval.pos || pos >=interval.end) continue;
+		if (pos<interval.pos || pos >=interval.end) continue;
+
+		for(int i=0;i<n;++i)
+		{
 			int j, m = 0;
 			for(j=0; j<n_plp[i]; ++j)
 			{
@@ -337,10 +339,14 @@ void bfiles::read_depth(sv &interval, vector<double> &X)
 				if (p->is_del || p->is_refskip) ++m;
 				else if (bam_get_qual(p->b)[p->qpos] < 20) ++m;
 			}
-			sum += n_plp[i] - m;
-			cnt++;
+			sum[i] += (n_plp[i] - m);
+			cnt[i] ++;
 		}
-		X[i] = sum/cnt;
+	}
+
+	for(int i=0;i<n;++i)
+	{
+		X[i] = (cnt[i]>0) ? sum[i]/(double)cnt[i] : 0;
 	}
 	free(n_plp);
 	free(plp);

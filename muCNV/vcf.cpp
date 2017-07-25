@@ -50,6 +50,7 @@ void outvcf::write_header(vector<string> &sampleIDs)
 		fprintf(fp,"\t%s",sampleIDs[j].c_str());
 	}
 	fprintf(fp,"\n");
+	fflush(fp);
 	
 }
 
@@ -79,19 +80,19 @@ void outvcf::write_del(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 	fprintf(fp,";CLUS=%d", n_comp);
 	
 	fprintf(fp,";MEAN=%1.4f",C[0].Mean);
-	for(unsigned i=1;i<n_comp;++i)
+	for(int i=1;i<n_comp;++i)
 	{
 		fprintf(fp,",%1.4f",C[i].Mean);
 	}
 	
 	fprintf(fp,";STDEV=%1.4f",C[0].Stdev);
-	for(unsigned i=1;i<n_comp;++i)
+	for(int i=1;i<n_comp;++i)
 	{
 		fprintf(fp,",%1.4f",C[i].Stdev);
 	}
 	
 	fprintf(fp,";PR=%1.4f",C[0].Alpha);
-	for(unsigned i=1;i<n_comp;++i)
+	for(int i=1;i<n_comp;++i)
 	{
 		fprintf(fp,",%1.4f",C[i].Alpha);
 	}
@@ -118,6 +119,7 @@ void outvcf::write_del(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 		fprintf(fp, "%u", GQ[j]);
 	}
 	fprintf(fp, "\n");
+	fflush(fp);
 }
 
 
@@ -145,25 +147,25 @@ void outvcf::write_cnv(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 	fprintf(fp,";CLUS=%d", n_comp);
 	
 	fprintf(fp,";MEAN=%1.4f",C[0].Mean);
-	for(unsigned i=1;i<n_comp;++i)
+	for(int i=1;i<n_comp;++i)
 	{
 		fprintf(fp,",%1.4f",C[i].Mean);
 	}
 	
 	fprintf(fp,";STDEV=%1.4f",C[0].Stdev);
-	for(unsigned i=1;i<n_comp;++i)
+	for(int i=1;i<n_comp;++i)
 	{
 		fprintf(fp,",%1.4f",C[i].Stdev);
 	}
 	
 	fprintf(fp,";PR=%1.4f",C[0].Alpha);
-	for(unsigned i=1;i<n_comp;++i)
+	for(int i=1;i<n_comp;++i)
 	{
 		fprintf(fp,",%1.4f",C[i].Alpha);
 	}
 	
 	fprintf(fp,"\tGT:CN:DP:GQ" );
-	for(unsigned j=0; j<gt.size(); ++j)
+	for(int j=0; j<(int)gt.size(); ++j)
 	{
 		switch(gt[j])
 		{
@@ -199,6 +201,7 @@ void outvcf::write_cnv(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 		fprintf(fp, "%u", GQ[j]);
 	}
 	fprintf(fp, "\n");
+	fflush(fp);
 }
 
 

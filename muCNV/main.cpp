@@ -35,11 +35,11 @@ double RO_THRESHOLD = 0.8;
 
 int main(int argc, char** argv)
 {
-	cout << "muCNV 0.5 -- Multi-sample CNV genotyper" << endl;
-	cout << "(c) 2017 Goo Jun" << endl << endl;
+	cerr << "muCNV 0.5 -- Multi-sample CNV genotyper" << endl;
+	cerr << "(c) 2017 Goo Jun" << endl << endl;
 	cerr.setf(ios::showpoint);
 
-	bool bVerbose;
+//	bool bVerbose;
 	string index_file;
 
 	string out_prefix;
@@ -98,7 +98,7 @@ int main(int argc, char** argv)
 		BE_THRESHOLD = argBE.getValue();
 		RO_THRESHOLD = argRO.getValue();
 
-        bVerbose = switchVerbose.getValue();
+      //  bVerbose = switchVerbose.getValue();
 
 	}
 	catch (TCLAP::ArgException &e)
@@ -119,13 +119,13 @@ int main(int argc, char** argv)
 	vector<sv> candidates;
 	read_intervals_from_vcf(sample_ids, vcf_files, candidates);
 	
-	cerr<< "intervals read" << endl;
+	cerr<< candidates.size() << " intervals read" << endl;
 	
 	// 2. Merge intervals with RO > minRO  (store all original informattion - merged intervals will be vector of intervals)
 	vector< vector<sv> > merged_candidates;
 	cluster_svs(candidates, merged_candidates);
-	
-	cerr<< "intervals clustered " << endl;
+
+	cerr<< merged_candidates.size() << " intervals clustered " << endl;
 	bfiles bf;
 	// Open BAM file handles (create a class for bamfiles, method to read specific interval)
 	bf.initialize(bam_names);
@@ -138,19 +138,21 @@ int main(int argc, char** argv)
 	vfile.open(vcf_filename);
 	
 	vfile.write_header(sample_ids);
+	int cnt = 0;
 
-	for(int i=0; i<merged_candidates.size(); ++i)
+	for(int i=0; i<(int)merged_candidates.size(); ++i)
 	{
 		// 4. Genotype for each variant
 		vector<sv> &svlist = merged_candidates[i];
-		cerr << "this merged list contains " << svlist.size() << " items" << endl;
+//		cerr << "this merged list contains " << svlist.size() << " items" << endl;
+// TODO : pick one interval (median) from merged candidates
 		
-		for(int j=0; j<svlist.size(); ++j)
+		for(int j=0; j<(int)svlist.size(); ++j)
 		{
+			cnt++;
 			gtype g;
 			vector<double> X(n, 0);
 			vector<int> G(n, 0);
-			cerr << "n : " << n << ", X size: " << X.size() << endl;
 
 			cerr << svlist[j].chr << "\t" << svlist[j].pos << "\t" << svlist[j].end << endl;
 
@@ -161,11 +163,7 @@ int main(int argc, char** argv)
 				X[k] = X[k] / avg_depths[k];
 			}
 			g.call_genotype(svlist[j], X, G, vfile, avg_depths);
-			
-
 		}
-		
-
 	}
 	
 	vfile.close();
