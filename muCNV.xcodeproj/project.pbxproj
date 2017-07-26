@@ -20,6 +20,7 @@
 		F194ED351F25A41400489E0C /* gtype.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED341F25A41400489E0C /* gtype.cpp */; };
 		F194ED371F25B3C900489E0C /* sv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED361F25B3C900489E0C /* sv.cpp */; };
 		F194ED391F2623BB00489E0C /* vcf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED381F2623BB00489E0C /* vcf.cpp */; };
+		F194ED3B1F2708CC00489E0C /* Gaussian.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED3A1F2708CC00489E0C /* Gaussian.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -79,6 +80,7 @@
 		F194ED341F25A41400489E0C /* gtype.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = gtype.cpp; sourceTree = "<group>"; };
 		F194ED361F25B3C900489E0C /* sv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sv.cpp; sourceTree = "<group>"; };
 		F194ED381F2623BB00489E0C /* vcf.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = vcf.cpp; sourceTree = "<group>"; };
+		F194ED3A1F2708CC00489E0C /* Gaussian.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Gaussian.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -143,6 +145,7 @@
 				F194ED341F25A41400489E0C /* gtype.cpp */,
 				F194ED361F25B3C900489E0C /* sv.cpp */,
 				F194ED381F2623BB00489E0C /* vcf.cpp */,
+				F194ED3A1F2708CC00489E0C /* Gaussian.cpp */,
 			);
 			path = muCNV;
 			sourceTree = "<group>";
@@ -235,6 +238,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F194ED3B1F2708CC00489E0C /* Gaussian.cpp in Sources */,
 				F138FD8F1CAD74EE00CD5539 /* Error.cpp in Sources */,
 				F138FD8B1CAD74EE00CD5539 /* cluster.cpp in Sources */,
 				F194ED371F25B3C900489E0C /* sv.cpp in Sources */,

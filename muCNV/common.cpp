@@ -16,8 +16,35 @@
  */
 #include "muCNV.h"
 
-typedef pair<uint64_t, uint64_t> interval_t;
-
+static void split(const char* s, const char* delims, std::vector<std::string>& tokens)
+{
+	const char* p = s;
+	const char* c = p;
+	int ndelims = (int)strlen(delims);
+	int i;
+	tokens.clear();
+	
+	//fprintf(stderr,"s = '%s', strlen(s) = %d, delims = '%s'\n",s,(int)strlen(s), delims);
+	while( *p != '\0' )
+	{
+		for(i=0; i < ndelims; ++i)
+		{
+			if ( *p == delims[i] )
+				break;
+		}
+		if ( i != ndelims ) { // delimiter found
+			if ( c < p )  { // unless delimiter is consencutive
+							//std::string s1(c,p-c);
+				tokens.push_back(std::string(c,p-c));
+			}
+			c = p+1;
+		}
+		++p;
+	}
+	if ( c < p ) {
+		tokens.push_back(std::string(c,p-c));
+	}
+}
 
 template <class T>
 	void vprint(vector<T> x)
@@ -58,34 +85,11 @@ double MIN(vector<double>& x)
 }
 
 
-
-double normpdf(double x, double m, double s)
+double det(double* M)
 {
-	double z = (x-m)/s;
-	double val =  (sqPI * exp(-0.5*z*z) /s);
-	if (isnan(val))
-	{
-		return 0;
-	}
-	else
-	{
-		return val;
-	}
+	return (M[0]*M[3]-M[1]*M[2]);
 }
 
-double normpdf(double x, Gaussian& C)
-{
-	double z = (x-C.Mean)/C.Stdev;
-	double val =  (sqPI * exp(-0.5*z*z) /C.Stdev);
-	if (isnan(val))
-	{
-		return 0;
-	}
-	else
-	{
-		return val;
-	}
-}
 
 double mean(vector<double>& x)
 {
@@ -106,66 +110,3 @@ double stdev(vector<double>& x, double M)
 	}
 	return sqrt(sumsq / x.size() - M*M);
 }
-
-double BayesError(vector<Gaussian>& Comps)
-{
-	// Returns maximum Bhattacharyya coefficient (== exp(-D) ) between components
-	unsigned n_comp = Comps.size();
-	double min_d = DBL_MAX;
-
-	if (n_comp <2 )
-	{
-		return DBL_MAX;
-	}
-
-	// Get minimum distance between all pairs
-	for(unsigned i=0; i<n_comp-1; ++i)
-	{
-		for(unsigned j=i+1; j<n_comp; ++j)
-		{
-			double s = (Comps[i].Stdev + Comps[j].Stdev)/2.0;
-			double d = (Comps[i].Mean-Comps[j].Mean)*(Comps[i].Mean-Comps[j].Mean)/(8.0*s*s) + 0.5*log( s / sqrt(Comps[i].Stdev*Comps[j].Stdev));
-			if (d<min_d)
-			{
-				min_d = d;
-			}
-		}
-	}
-	return exp(-1.0*min_d);
-}
-
-double BIC(vector<double>& x, vector<Gaussian> &C)
-{
-	unsigned n_sample = x.size();
-	unsigned n_comp = C.size();
-	double llk = 0;
-	double ret = 0;
-
-	for(unsigned j=0; j<n_sample; ++j)
-	{
-		double l = 0;
-		for(unsigned m=0; m<n_comp; ++m)
-		{
-			l += C[m].Alpha * normpdf(x[j], C[m].Mean, C[m].Stdev);
-		}
-		if (l>0)
-		{
-			llk += log(l);
-		}
-	}
-
-	ret = -2.0 * llk +  2*n_comp*log(n_sample);
-
-	return ret;
-}
-
-void printCluster(vector<Gaussian> &C)
-{
-	cerr << C.size() << " comps: ";
-	for(unsigned i=0;i<C.size();++i)
-	{
-		cerr << "(" << C[i].Mean << ", " << C[i].Stdev << ") " ;
-	}
-	cerr << endl;
-}
-

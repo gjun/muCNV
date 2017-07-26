@@ -207,7 +207,7 @@ void bfiles::initialize(vector<string> &bnames)
 			fprintf(stderr, "Failed to set CRAM_OPT_DECODE_MD value\n");
 			exit(1);
 		}
-		data[i]->min_mapQ = 20;
+		data[i]->min_mapQ = 1; //filter out only MQ0
 		data[i]->min_len = 0;
 		data[i]->hdr = sam_hdr_read(data[i]->fp);
 		if (data[i]->hdr == NULL)
@@ -294,6 +294,26 @@ void bfiles::get_avg_depth(vector<double> &X)
 }
 
 
+void bfiles::get_readpair(sv &interval, vector<double> &Y)
+{
+	int readlen = 100;
+	int insertsize = 300; // ??
+	// Before interval
+	int start1 = interval.pos - readlen - insertsize;
+	if (start1<0) start1=0;
+	int end1 = interval.pos + floor(0.5*readlen);
+	
+	// read distance to pairs that's downstream
+	
+	// After interval
+	int start2 = interval.end - floor(0.5*readlen);
+	if (start2<interval.pos) start2=interval.pos; // this is not likely, as we can rarely detect svs <50bp length
+	int end2 = interval.end + readlen + insertsize;
+	
+	// read distance to pairs that's upstream
+
+}
+
 void bfiles::read_depth(sv &interval, vector<double> &X)
 {
 	char reg[100];
@@ -337,7 +357,7 @@ void bfiles::read_depth(sv &interval, vector<double> &X)
 			{
 				const bam_pileup1_t *p = plp[i] + j;
 				if (p->is_del || p->is_refskip) ++m;
-				else if (bam_get_qual(p->b)[p->qpos] < 20) ++m;
+				else if (bam_get_qual(p->b)[p->qpos] < 1) ++m; // Filter out BQ0 only ?
 			}
 			sum[i] += (n_plp[i] - m);
 			cnt[i] ++;

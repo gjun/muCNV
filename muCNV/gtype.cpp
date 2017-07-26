@@ -37,12 +37,12 @@ gtype::gtype()
 }
 
 
-void gtype::call_genotype(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vector<double> &AvgDepth)
+void gtype::call_genotype(sv &s, vector<double> &X, vector<double> &Y, vector<int> &geno, outvcf& v, vector<double> &AvgDepth)
 {
 	if (s.svtype == "DEL")
 	{
 		cerr << "calling deletion" << endl;
-		call_del(s, X, geno, v, AvgDepth);
+		call_del(s, X, Y, geno, v, AvgDepth);
 		cout << "m" << s.pos;
 		for(int i=0;i<(int)X.size(); ++i)
 		{
@@ -53,7 +53,7 @@ void gtype::call_genotype(sv &s, vector<double> &X, vector<int> &geno, outvcf& v
 	else if (s.svtype =="DUP" || s.svtype =="CNV")
 	{
 		cerr << "calling cnv" << endl;
-		call_cnv(s, X, geno, v, AvgDepth);
+		call_cnv(s, X, Y, geno, v, AvgDepth);
 
 		cout << "m" << s.pos;
 		for(int i=0;i<(int)X.size(); ++i)
@@ -65,7 +65,7 @@ void gtype::call_genotype(sv &s, vector<double> &X, vector<int> &geno, outvcf& v
 	
 }
 
-void gtype::call_del(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vector<double> &AvgDepth)
+void gtype::call_del(sv &s, vector<double> &X, vector<double> &Y, vector<int> &geno, outvcf& v, vector<double> &AvgDepth)
 {
 	int n = (int)X.size();
 	
@@ -186,88 +186,93 @@ void gtype::call_del(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vec
 	}
 }
 
-void gtype::EM(vector<double>& x, vector<Gaussian>& C, bool bFlip)
+void gtype::call_cnv(sv &s, vector<double> &X, vector<double> &Y, vector<int> &geno, outvcf& v, vector<double> &AvgDepth)
 {
-	unsigned n_sample = x.size();
-	unsigned n_comp = C.size();
+	size_t n = X.size();
 	
-	unsigned n_iter = 30;
-	// pseudo-counts
-	unsigned p_count= 2;
-	// pseudo-means
-	double p_val[3] = {1.0, 0.5, 0};
+	vector< vector<int> > GL(n, vector<int>(3,255));
+	vector<int> GQ(n, 0);
 	
-	if (bFlip && n_comp==2)
+	// For each candidate region, run EM
+	// Run EM with 2 and 3 components, compare likelihoods with the 1-gaussian model, apply BIC
+	vector<Gaussian> Comps(1);
+	
+	double min_BIC = DBL_MAX;
+	vector<double> bic(10,0);
+	
+	double M = mean(X);
+	double S = stdev(X, M);
+	
+	Comps[0].Mean = M;
+	Comps[0].Stdev = S;
+	Comps[0].Alpha = 1;
+	
+	min_BIC = bic[0] = BIC(X, Comps);
+	//		cerr << "1 comp, bic " << min_BIC << endl;
+	unsigned n_comp = 1;
+	
+	// Check up to 30 -- should be enough? -- let's go for 10 now
+	// It seems like too many components make probs too small hence failing
+	
+	for(unsigned i=2; i<4; ++i)
 	{
-		// if fitting for (0, 1) copies, set pseudo-means accordingly
-		p_val[0] = 0.5;
-		p_val[1] = 0;
+		Gaussian* pG = new Gaussian;
+		Comps.push_back(*pG);
+		
+		for(unsigned j=0; j<i; ++j)
+		{
+			Comps[j].Mean = 1.0 + (double)j*0.5;
+			Comps[j].Stdev = 0.1;
+			Comps[j].Alpha = 1;
+		}
+		// Run EM with i components
+		EM(X, Comps);
+		
+		bic[i-1] = BIC(X, Comps);
+		
+		if (bic[i-1]<min_BIC)
+		{
+			min_BIC = bic[i-1];
+			n_comp = i;
+		}
 	}
 	
-	for(unsigned i=0; i<n_iter; ++i)
+	Comps.resize(n_comp);
+	
+	// Determine whether this is a polymorphic interval or not, make calls
+	
+	//		cerr << "n_comp: " << n_comp  << endl;
+	
+	for(unsigned j=0;j<n_comp;++j)
 	{
-		vector<double> sum (n_comp,0);
-		vector<double> sum_pr (n_comp,0);
-		vector<double> sum_err (n_comp,0);
-		
-		// E step
-		for(unsigned j=0; j<n_sample; ++j)
+		Comps[j].Mean = 1.0 + (double)j*0.5;
+		Comps[j].Stdev = 0.1;
+		Comps[j].Alpha = 1;
+	}
+	EM(X, Comps);
+	double BE = BayesError(Comps);
+	if (BE<BE_THRESHOLD)
+	{
+		int NS=0;
+		int AC = classify_cnv(X, geno, GQ, NS, Comps);
+		//		if (AC>0)
 		{
-			double sum_p = 0;
-			vector<double> pr(n_comp, 0);
-			for(unsigned m=0;m<n_comp;++m)
-			{
-				pr[m] = C[m].Alpha * normpdf(x[j], C[m]);
-				if (m==2)
-				{
-					// half-normal scaler
-					pr[m] *= 2.0;
-				}
-				else if (bFlip && n_comp==2 &&  m==1)
-				{
-					pr[m] *=2.0;
-				}
-				sum_p += pr[m];
-			}
-			
-			if (sum_p > 1e-100) // if the value is an outlier, exclude it from calculations
-			{
-				for(unsigned m=0;m<n_comp;++m)
-				{
-					pr[m] /= sum_p;
-					sum[m] += pr[m] * x[j];
-					sum_err[m] += pr[m] * (x[j] - C[m].Mean)*(x[j]-C[m].Mean);
-					sum_pr[m] += pr[m];
-				}
-			}
-		}
-		
-		// Add pseudo-count values
-		for(unsigned m=0;m<n_comp; ++m)
-		{
-			sum[m] += p_val[m] * p_count;
-			sum_err[m] += (p_val[m] - C[m].Mean)*(p_val[m] - C[m].Mean) * p_count;
-			sum_pr[m] += p_count;
-		}
-		
-		// M step
-		for(unsigned m=0;m<n_comp;++m)
-		{
-			C[m].Mean = sum[m]/sum_pr[m];
-			C[m].Stdev = sqrt(sum_err[m] / (sum_pr[m] ));
-			C[m].Alpha = sum_pr[m] / (n_sample + p_count*n_comp);
-			if (m==2)
-			{
-				// half-normal with mean 0 and sigma
-				C[m].Mean = 0;
-			}
-			else if (bFlip && n_comp==2 && m==1)
-			{
-				C[m].Mean = 0;
-			}
-			
+			// ++write_cnt;
+			v.write_cnv(s, geno, GQ, AC, NS, X, AvgDepth, Comps, BE,  true);
 		}
 	}
+	else
+	{
+		int NS=0;
+		int AC = classify_cnv(X, geno, GQ, NS, Comps);
+		//		if (AC>0)
+		{
+			// ++write_cnt;
+			v.write_cnv(s, geno, GQ, AC, NS, X, AvgDepth, Comps, BE, false);
+		}
+		
+	}
+	
 }
 
 
@@ -406,206 +411,6 @@ int gtype::classify_del(vector<double>& x, vector<int>& GT, vector< vector<int> 
 }
 
 
-void gtype::conEM(vector<double>& x, vector<double>& M, vector<double>& S, vector<double>& A)
-{
-	unsigned n_sample = x.size();
-	unsigned n_comp = M.size();
-	
-	unsigned n_iter = 30;
-	
-	for(unsigned i=0; i<n_iter; ++i)
-	{
-		vector<double> sum (n_comp,0);
-		vector<double> sum_pr (n_comp,0);
-		vector<double> sum_err (n_comp,0);
-		
-		// E step
-		for(unsigned j=0; j<n_sample; ++j)
-		{
-			double sum_p = 0;
-			vector<double> pr(n_comp, 0);
-			for(unsigned m=0;m<n_comp;++m)
-			{
-				pr[m] = A[m] * normpdf(x[j], M[m], S[m]);
-				if (m==2)
-				{
-					// half-normal scaler
-					pr[m] *= 2.0;
-				}
-				sum_p += pr[m];
-			}
-			
-			if (sum_p > 1e-100) // if the value is an outlier, exclude it from calculations
-			{
-				for(unsigned m=0;m<n_comp;++m)
-				{
-					pr[m] /= sum_p;
-					sum[m] += pr[m] * x[j];
-					sum_err[m] += pr[m] * (x[j] - M[m])*(x[j]-M[m]);
-					sum_pr[m] += pr[m];
-				}
-			}
-		}
-		
-		// M step
-		
-		M[0] = (sum[0] + sum[1]*2.0) / (sum_pr[0] + sum_pr[1]);
-		S[0] = sqrt(sum_err[0] / sum_pr[0]);
-		A[0] = sum_pr[0] / (n_sample);
-		
-		
-		M[1] = M[0]/2.0;
-		S[1] = sqrt(sum_err[1] / sum_pr[1]);
-		A[1] = sum_pr[1] / (n_sample);
-		
-		if (n_comp>2)
-		{
-			// half-normal with mean 0 and sigma
-			M[2] = 0;
-			S[2] = sqrt(sum_err[2] / sum_pr[2]);
-			A[2] = sum_pr[2] / (n_sample);
-		}
-		
-		
-	}
-}
-
-
-void gtype::call_cnv(sv &s, vector<double> &X, vector<int> &geno, outvcf& v, vector<double> &AvgDepth)
-{
-	size_t n = X.size();
-	
-	vector< vector<int> > GL(n, vector<int>(3,255));
-	vector<int> GQ(n, 0);
-	
-	// For each candidate region, run EM
-	// Run EM with 2 and 3 components, compare likelihoods with the 1-gaussian model, apply BIC
-	vector<Gaussian> Comps(1);
-	
-	double min_BIC = DBL_MAX;
-	vector<double> bic(10,0);
-	
-	double M = mean(X);
-	double S = stdev(X, M);
-	
-	Comps[0].Mean = M;
-	Comps[0].Stdev = S;
-	Comps[0].Alpha = 1;
-	
-	min_BIC = bic[0] = BIC(X, Comps);
-	//		cerr << "1 comp, bic " << min_BIC << endl;
-	unsigned n_comp = 1;
-	
-	// Check up to 30 -- should be enough? -- let's go for 10 now
-	// It seems like too many components make probs too small hence failing
-	
-	for(unsigned i=2; i<4; ++i)
-	{
-		Gaussian* pG = new Gaussian;
-		Comps.push_back(*pG);
-		
-		for(unsigned j=0; j<i; ++j)
-		{
-			Comps[j].Mean = 1.0 + (double)j*0.5;
-			Comps[j].Stdev = 0.1;
-			Comps[j].Alpha = 1;
-		}
-		// Run EM with i components
-		EM(X, Comps);
-		
-		bic[i-1] = BIC(X, Comps);
-		
-		if (bic[i-1]<min_BIC)
-		{
-			min_BIC = bic[i-1];
-			n_comp = i;
-		}
-	}
-	
-	Comps.resize(n_comp);
-	
-	// Determine whether this is a polymorphic interval or not, make calls
-	
-	//		cerr << "n_comp: " << n_comp  << endl;
-	
-	for(unsigned j=0;j<n_comp;++j)
-	{
-		Comps[j].Mean = 1.0 + (double)j*0.5;
-		Comps[j].Stdev = 0.1;
-		Comps[j].Alpha = 1;
-	}
-	EM(X, Comps);
-	double BE = BayesError(Comps);
-	if (BE<BE_THRESHOLD)
-	{
-		int NS=0;
-		int AC = classify_cnv(X, geno, GQ, NS, Comps);
-//		if (AC>0)
-		{
-			// ++write_cnt;
-			v.write_cnv(s, geno, GQ, AC, NS, X, AvgDepth, Comps, BE,  true);
-		}
-	}
-	else
-	{
-		int NS=0;
-		int AC = classify_cnv(X, geno, GQ, NS, Comps);
-//		if (AC>0)
-		{
-			// ++write_cnt;
-			v.write_cnv(s, geno, GQ, AC, NS, X, AvgDepth, Comps, BE, false);
-		}
-		
-	}
-
-}
-
-
-void gtype::EM(vector<double>& x, vector<Gaussian>& Comps)
-{
-	unsigned n_sample = (unsigned) x.size();
-	unsigned n_comp = (unsigned) Comps.size();
-	unsigned n_iter = 30;
-	
-	for(unsigned i=0; i<n_iter; ++i)
-	{
-		vector<double> sum (n_comp,0);
-		vector<double> sum_pr (n_comp,0);
-		vector<double> sum_err (n_comp,0);
-		
-		// E step
-		for(unsigned j=0; j<n_sample; ++j)
-		{
-			double sum_p = 0;
-			vector<double> pr(n_comp, 0);
-			for(unsigned m=0;m<n_comp;++m)
-			{
-				pr[m] = Comps[m].Alpha * normpdf(x[j], Comps[m]);
-				sum_p += pr[m];
-			}
-			
-			if (sum_p > 1e-100) // if the value is an outlier, exclude it from calculations
-			{
-				for(unsigned m=0;m<n_comp;++m)
-				{
-					pr[m] /= sum_p;
-					sum[m] += pr[m] * x[j];
-					sum_err[m] += pr[m] * (x[j] - Comps[m].Mean)*(x[j]-Comps[m].Mean);
-					sum_pr[m] += pr[m];
-				}
-			}
-		}
-		
-		// M step
-		for(unsigned m=0;m<n_comp;++m)
-		{
-			Comps[m].Mean = sum[m]/sum_pr[m];
-			Comps[m].Stdev = sqrt(sum_err[m] / (sum_pr[m] ));
-			Comps[m].Alpha = sum_pr[m] / n_sample;
-		}
-	}
-}
-
 int gtype::classify_cnv(vector<double>& x, vector<int>& GT, vector<int>& GQ, int& ns, vector<Gaussian>& Comps)
 {
 	unsigned n_sample = (unsigned) x.size();
@@ -706,4 +511,137 @@ int gtype::classify_cnv(vector<double>& x, vector<int>& GT, vector<int>& GQ, int
 		}
 	}
 	return ac;
+}
+
+
+
+// EM for deletions
+void gtype::EM(vector<double>& x, vector<Gaussian>& C, bool bFlip)
+{
+	unsigned n_sample = x.size();
+	unsigned n_comp = C.size();
+	
+	unsigned n_iter = 30;
+	// pseudo-counts
+	unsigned p_count= 2;
+	// pseudo-means
+	double p_val[3] = {1.0, 0.5, 0};
+	
+	if (bFlip && n_comp==2)
+	{
+		// if fitting for (0, 1) copies, set pseudo-means accordingly
+		p_val[0] = 0.5;
+		p_val[1] = 0;
+	}
+	
+	for(unsigned i=0; i<n_iter; ++i)
+	{
+		vector<double> sum (n_comp,0);
+		vector<double> sum_pr (n_comp,0);
+		vector<double> sum_err (n_comp,0);
+		
+		// E step
+		for(unsigned j=0; j<n_sample; ++j)
+		{
+			double sum_p = 0;
+			vector<double> pr(n_comp, 0);
+			for(unsigned m=0;m<n_comp;++m)
+			{
+				pr[m] = C[m].Alpha * normpdf(x[j], C[m]);
+				if (m==2)
+				{
+					// half-normal scaler
+					pr[m] *= 2.0;
+				}
+				else if (bFlip && n_comp==2 &&  m==1)
+				{
+					pr[m] *=2.0;
+				}
+				sum_p += pr[m];
+			}
+			
+			if (sum_p > 1e-100) // if the value is an outlier, exclude it from calculations
+			{
+				for(unsigned m=0;m<n_comp;++m)
+				{
+					pr[m] /= sum_p;
+					sum[m] += pr[m] * x[j];
+					sum_err[m] += pr[m] * (x[j] - C[m].Mean)*(x[j]-C[m].Mean);
+					sum_pr[m] += pr[m];
+				}
+			}
+		}
+		
+		// Add pseudo-count values
+		for(unsigned m=0;m<n_comp; ++m)
+		{
+			sum[m] += p_val[m] * p_count;
+			sum_err[m] += (p_val[m] - C[m].Mean)*(p_val[m] - C[m].Mean) * p_count;
+			sum_pr[m] += p_count;
+		}
+		
+		// M step
+		for(unsigned m=0;m<n_comp;++m)
+		{
+			C[m].Mean = sum[m]/sum_pr[m];
+			C[m].Stdev = sqrt(sum_err[m] / (sum_pr[m] ));
+			C[m].Alpha = sum_pr[m] / (n_sample + p_count*n_comp);
+			if (m==2)
+			{
+				// half-normal with mean 0 and sigma
+				C[m].Mean = 0;
+			}
+			else if (bFlip && n_comp==2 && m==1)
+			{
+				C[m].Mean = 0;
+			}
+			
+		}
+	}
+}
+
+// EM for general CNVs
+void gtype::EM(vector<double>& x, vector<Gaussian>& Comps)
+{
+	unsigned n_sample = (unsigned) x.size();
+	unsigned n_comp = (unsigned) Comps.size();
+	unsigned n_iter = 30;
+	
+	for(unsigned i=0; i<n_iter; ++i)
+	{
+		vector<double> sum (n_comp,0);
+		vector<double> sum_pr (n_comp,0);
+		vector<double> sum_err (n_comp,0);
+		
+		// E step
+		for(unsigned j=0; j<n_sample; ++j)
+		{
+			double sum_p = 0;
+			vector<double> pr(n_comp, 0);
+			for(unsigned m=0;m<n_comp;++m)
+			{
+				pr[m] = Comps[m].Alpha * normpdf(x[j], Comps[m]);
+				sum_p += pr[m];
+			}
+			
+			if (sum_p > 1e-100) // if the value is an outlier, exclude it from calculations
+			{
+				for(unsigned m=0;m<n_comp;++m)
+				{
+					pr[m] /= sum_p;
+					sum[m] += pr[m] * x[j];
+					sum_err[m] += pr[m] * (x[j] - Comps[m].Mean)*(x[j]-Comps[m].Mean);
+					sum_pr[m] += pr[m];
+				}
+			}
+		}
+		
+		// M step
+		for(unsigned m=0;m<n_comp;++m)
+		{
+			Comps[m].Mean = sum[m]/sum_pr[m];
+			Comps[m].Stdev = sqrt(sum_err[m] / (sum_pr[m] ));
+			Comps[m].Alpha = sum_pr[m] / n_sample;
+		}
+	}
 }

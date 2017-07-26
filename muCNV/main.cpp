@@ -111,7 +111,7 @@ int main(int argc, char** argv)
 	// 0.0 Calculate average sequencing depth for each BAM -- make this a pre-processing step, write a Python script, to save redundant calculations -- or just do it here?
 	
 	read_index(index_file, sample_ids, vcf_files, bam_names, avg_depths);
-	int n = sample_ids.size();
+	int n = (int)sample_ids.size();
 
 	cerr<< "index loaded" << endl;
 	
@@ -152,6 +152,7 @@ int main(int argc, char** argv)
 			cnt++;
 			gtype g;
 			vector<double> X(n, 0);
+			vector<double> Y(n, 0);
 			vector<int> G(n, 0);
 
 			cerr << svlist[j].chr << "\t" << svlist[j].pos << "\t" << svlist[j].end << endl;
@@ -162,7 +163,7 @@ int main(int argc, char** argv)
 			{
 				X[k] = X[k] / avg_depths[k];
 			}
-			g.call_genotype(svlist[j], X, G, vfile, avg_depths);
+			g.call_genotype(svlist[j], X, Y, G, vfile, avg_depths);
 		}
 	}
 	

@@ -16,48 +16,13 @@
 
 const double PI=3.1415926535897932384626433832795028841968;
 const double sqPI=1.7724538509055160272981674833411451827974;
+const double log2pi = 0.7981798684;
 
 using namespace std;
 
 typedef pair<uint64_t, uint64_t> interval_t;
 
-class Gaussian
-{
-	public:
-		double Mean;
-		double Stdev;
-		double Alpha;
-};
-
-static void split(const char* s, const char* delims, std::vector<std::string>& tokens)
-{
-	const char* p = s;
-	const char* c = p;
-	int ndelims = (int)strlen(delims);
-	int i;
-	tokens.clear();
-	
-	//fprintf(stderr,"s = '%s', strlen(s) = %d, delims = '%s'\n",s,(int)strlen(s), delims);
-	while( *p != '\0' )
-	{
-		for(i=0; i < ndelims; ++i)
-		{
-			if ( *p == delims[i] )
-				break;
-		}
-		if ( i != ndelims ) { // delimiter found
-			if ( c < p )  { // unless delimiter is consencutive
-							//std::string s1(c,p-c);
-				tokens.push_back(std::string(c,p-c));
-			}
-			c = p+1;
-		}
-		++p;
-	}
-	if ( c < p ) {
-		tokens.push_back(std::string(c,p-c));
-	}
-}
+static void split(const char*, const char*, std::vector<std::string>&);
 
 class sv
 {
@@ -113,6 +78,34 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 }
 
 
+class Gaussian
+{
+public:
+	double Mean;
+	double Stdev;
+	double Alpha;
+	double pdf(const double &);
+	
+	Gaussian();
+};
+
+class Gaussian2
+{
+public:
+	// Parameters for two-dimensional Gaussian
+	double Mean[2]; // mean
+	double Cov[4]; // covariance
+	double Prc[4]; // precision (inverse of covariance)
+	double Det; // determinant
+	double Alpha;
+	double pdf(const double&, const double&);
+	double logpdf(const double&, const double&);
+	void update(); // update precision matrix
+	
+	Gaussian2();
+};
+
+
 class bfiles
 {
 public:
@@ -122,6 +115,7 @@ public:
 
 	void read_depth(sv&, vector<double>&);
 	void get_avg_depth(vector<double>&);
+	void get_readpair(sv&, vector<double>&);
 	void initialize(vector<string>&);
 };
 
@@ -144,7 +138,7 @@ public:
 	double min_bic;
 	double p_overlap;
 	bool bUseGL;
-	void call_genotype(sv &, vector<double>&, vector<int>&, outvcf&, vector<double>&);
+	void call_genotype(sv &, vector<double>&, vector<double>&, vector<int>&, outvcf&, vector<double>&);
 	
 	int classify_del(vector<double>&, vector<int>&, vector< vector<int> >&, vector<int>&, int&,vector<Gaussian>&, bool);
 	int classify_cnv(vector<double>&, vector<int>&, vector<int>&, int&, vector<Gaussian>&);
@@ -152,10 +146,8 @@ public:
 	void EM(vector<double>&, vector<Gaussian>&, bool);
 	void EM(vector<double>&, vector<Gaussian>&);
 
-	void call_del(sv&, vector<double>&, vector<int>&, outvcf&, vector<double>&);
-	void call_cnv(sv&, vector<double>&, vector<int>&, outvcf&, vector<double>&);
-	
-	void conEM(vector<double>&, vector<double>&, vector<double>&, vector<double>&);
+	void call_del(sv&, vector<double>&, vector<double>&, vector<int>&, outvcf&, vector<double>&);
+	void call_cnv(sv&, vector<double>&, vector<double>&, vector<int>&, outvcf&, vector<double>&);
 	
 	gtype();
 };
@@ -165,11 +157,9 @@ template <class T> void vprint(vector<T>);
 
 double MAX(vector<double>&);
 double MIN(vector<double>&);
-double normpdf(double, double, double);
 double normpdf(double, Gaussian&);
 double mean(vector<double>&);
 double stdev(vector<double>&, double);
-
 
 void read_intervals_from_vcf(vector<string> &, vector<string> &, vector<sv> &);
 
@@ -180,6 +170,9 @@ void cluster_svs(vector<sv>&, vector< vector<sv> > &);
 double BayesError(vector<Gaussian>&);
 
 double BIC(vector<double>&, vector<Gaussian>&);
+double BIC2(vector<double>&, vector<double>&, vector<Gaussian2>&);
+double det(double*);
+
 bool ordered(vector<Gaussian>&);
 
 void read_index(string, vector<string>&, vector<string>&, vector<string>&, vector<double>&);
@@ -192,14 +185,6 @@ double getAvgDepth(string, string);
 string getCNVsegmentFileName(string, string);
 void readsv(string, int, vector<sv>&, vector<sv>&);
 
-class Data
-{
-	public:
-		ifstream dFile;
-		void open(string, unsigned&, unsigned&, unsigned&, vector<string>&, vector<double>&);
-	 	void read(unsigned, unsigned, vector<sv>&,  vector< vector<double> > &);
-		void write(string, vector<string>&, vector<sv>&,  vector<sv>&, vector< vector<double> >&, vector< vector<double> >&, vector<double>&);
-};
 
 void printCluster(vector<Gaussian> &C);
 
