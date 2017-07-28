@@ -184,6 +184,14 @@ void gtype::call_del(sv &s, vector<double> &X, vector<double> &Y, vector<int> &g
 		
 		//	printCluster(C3);
 	}
+	else // Just write down missing genotypes with three cluster info
+	{
+		double BE = BayesError(C3);
+		int NS=0;
+		int AC=0;
+		
+		v.write_del(s, geno, GQ, AC, NS, X, AvgDepth, C3, BE, false);
+	}
 }
 
 void gtype::call_cnv(sv &s, vector<double> &X, vector<double> &Y, vector<int> &geno, outvcf& v, vector<double> &AvgDepth)
@@ -214,7 +222,7 @@ void gtype::call_cnv(sv &s, vector<double> &X, vector<double> &Y, vector<int> &g
 	// Check up to 30 -- should be enough? -- let's go for 10 now
 	// It seems like too many components make probs too small hence failing
 	
-	for(unsigned i=2; i<4; ++i)
+	for(unsigned i=2; i<10; ++i)
 	{
 		Gaussian* pG = new Gaussian;
 		Comps.push_back(*pG);

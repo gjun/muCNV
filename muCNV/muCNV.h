@@ -37,9 +37,11 @@ class sv
 	uint64_t len() {return (end - pos + 1);};
 	bool operator < (const sv&) const;
 	bool operator == (const sv&) const;
+	
+	sv();
 };
 
-
+void pick_sv_from_merged(vector<sv> &, vector<sv> &);
 
 class SampleList
 {

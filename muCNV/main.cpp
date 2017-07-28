@@ -143,10 +143,11 @@ int main(int argc, char** argv)
 	for(int i=0; i<(int)merged_candidates.size(); ++i)
 	{
 		// 4. Genotype for each variant
-		vector<sv> &svlist = merged_candidates[i];
+		vector<sv> svlist;
+		pick_sv_from_merged(svlist, merged_candidates[i]); // TODO : pick one interval (median) from merged candidates
 //		cerr << "this merged list contains " << svlist.size() << " items" << endl;
-// TODO : pick one interval (median) from merged candidates
-		
+
+	
 		for(int j=0; j<(int)svlist.size(); ++j)
 		{
 			cnt++;
