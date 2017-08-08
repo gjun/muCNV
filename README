@@ -8,30 +8,14 @@ $ mucnv -i <input.index> -o <output prefix>
 
 Required parameters
 -i, --index <index file> : index file that contains sample information
--o, --out <output prefix> : file name prefix for output files
 
 Optional parameters
+-o, --out <output prefix> : file name prefix for output files default: muCNV.vcf
 -p, --posterior <number> : posterior probability threshold to make genotype calls
 -e, --error <number> : maximum overlap between clusters
 -v, --verbose : turn on verbose output
 
-1. Input index file
 
-muCNV takes Index file, which is a tab separated text file with
-
-(Sample ID), (ASM directory of the sample), (Junction events file), (Depth file)
-
-2. Junction event file
-
-CG sequenced samples contain "Junction" files under (Sample ASM directory)/SV. You can use Complete Genomics' cgatools with junctions2events command to generate SV events from this junction file. There are usually two different junction files: one with ALL junctions and one with only high confidence junctions. Default setup for junctions2event is using only high confidence junctions, and all junctions can be used to augment the information. 
-
-cgatools junctions2events --beta --reference (CG reference) --output-prefix (output filename) --junctions (high confidence junction file) --all-junctions (all junctions file) --repmask (mask for repeat regions) 
- 
- CG reference and rep mask files can be downloaded from Complete Genomics.
-
- More detailed information can be found at:
- http://cgatools.sourceforge.net/docs/1.8.0/cgatools-command-line-reference.html#junctions2events
-
- 3. Preparing depth files -- WARNING! This step might take a long time if not parallelized
-
- Complete genomics (CG) data has unique structures. For multi-sample CNV calling, we need to access sequencing depth for every (candidate) intervals. Read depths are stored in 'reference score' files in CG data structure. Unfortunately, these files are compressed with bzip2 and bzip2-compressed files are not random accessible. Sequential access to many intervals is too slow; hence we need to extract sequencing depth information from these files for CNV analyses. Note that this conversion also takes a lot of time, but it will make things much faster, especially if you need to access these depth files multiple times for CNV calling with different parameters or options. 
+Input index file
+muCNV takes Index file, which is a tab separated text file with:
+(Sample ID), (VCF file with list of detected SVs) , (BAM/CRAM file), (Average Depth)
