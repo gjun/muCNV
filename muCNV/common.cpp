@@ -16,7 +16,7 @@
  */
 #include "muCNV.h"
 
-static void split(const char* s, const char* delims, std::vector<std::string>& tokens)
+void split(const char* s, const char* delims, std::vector<std::string>& tokens)
 {
 	const char* p = s;
 	const char* c = p;

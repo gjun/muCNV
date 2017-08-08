@@ -6,7 +6,6 @@
 TARGET=  bin/muCNV
 SRCS := $(wildcard muCNV/*.cpp)
 OBJS := $(addprefix obj/,$(notdir $(SRCS:.cpp=.o)))
-# OBJS= Main.o Error.o File.o deletions.o cluster.o common.o duplications.o
 CFLAGS= -g -Wall -O2 -fPIC
 DFLAGS= -D_FILE_OFFSET_BITS=64
 CC= gcc

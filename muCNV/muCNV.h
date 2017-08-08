@@ -22,7 +22,7 @@ using namespace std;
 
 typedef pair<uint64_t, uint64_t> interval_t;
 
-static void split(const char*, const char*, std::vector<std::string>&);
+void split(const char*, const char*, std::vector<std::string>&);
 
 class sv
 {
@@ -61,24 +61,6 @@ typedef struct {     // auxiliary data structure
 	hts_itr_t *iter; // NULL if a region not specified
 	int min_mapQ, min_len; // mapQ filter; length filter
 } aux_t;
-
-// This function reads a BAM alignment from one BAM file.
-static int read_bam(void *data, bam1_t *b) // read level filters better go here to avoid pileup
-{
-	aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
-	int ret;
-	while (1)
-	{
-		ret = aux->iter? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->hdr, b);
-		if ( ret<0 ) break;
-		if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
-		if ( (int)b->core.qual < aux->min_mapQ ) continue;
-		if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
-		break;
-	}
-	return ret;
-}
-
 
 class Gaussian
 {

@@ -8,6 +8,7 @@
 
 #include "muCNV.h"
 #include <stdio.h>
+#include <math.h>
 
 void outvcf::open(string &fname)
 {
@@ -115,7 +116,7 @@ void outvcf::write_del(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 				fprintf(fp, "\t1/1:");
 				break;
 		}
-		fprintf(fp, "%u:", (unsigned)floor(X[j]*AvgDepth[j]));
+		fprintf(fp, "%u:", (unsigned)round(X[j]*AvgDepth[j]));
 		fprintf(fp, "%u", GQ[j]);
 	}
 	fprintf(fp, "\n");
@@ -197,7 +198,7 @@ void outvcf::write_cnv(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 				fprintf(fp, ".:");
 		}
 		
-		fprintf(fp, "%u:", (unsigned)floor(X[j]*AvgDepth[j]));
+		fprintf(fp, "%u:", (unsigned)round(X[j]*AvgDepth[j]));
 		fprintf(fp, "%u", GQ[j]);
 	}
 	fprintf(fp, "\n");

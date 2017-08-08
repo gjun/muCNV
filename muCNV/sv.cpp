@@ -7,6 +7,7 @@
 //
 
 #include "muCNV.h"
+#include <algorithm>
 
 bool sv::operator < (const sv& s) const
 {

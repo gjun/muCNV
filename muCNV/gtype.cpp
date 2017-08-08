@@ -41,26 +41,29 @@ void gtype::call_genotype(sv &s, vector<double> &X, vector<double> &Y, vector<in
 {
 	if (s.svtype == "DEL")
 	{
-		cerr << "calling deletion" << endl;
+//		cerr << "calling deletion" << endl;
 		call_del(s, X, Y, geno, v, AvgDepth);
-		cout << "m" << s.pos;
+//		cout << "m" << s.pos;
+/*
 		for(int i=0;i<(int)X.size(); ++i)
 		{
 			cout << "\t" << X[i];
 		}
-		cout << endl;
+		cout << endl;*/
 	}
 	else if (s.svtype =="DUP" || s.svtype =="CNV")
 	{
-		cerr << "calling cnv" << endl;
+//		cerr << "calling cnv" << endl;
 		call_cnv(s, X, Y, geno, v, AvgDepth);
 
-		cout << "m" << s.pos;
+//		cout << "m" << s.pos;
+/*
 		for(int i=0;i<(int)X.size(); ++i)
 		{
 			cout << "\t" << X[i];
 		}
 		cout << endl;
+		*/
 	}
 	
 }
@@ -187,7 +190,7 @@ void gtype::call_del(sv &s, vector<double> &X, vector<double> &Y, vector<int> &g
 	else // Just write down missing genotypes with three cluster info
 	{
 		double BE = BayesError(C3);
-		int NS=0;
+		int NS=X.size();
 		int AC=0;
 		
 		v.write_del(s, geno, GQ, AC, NS, X, AvgDepth, C3, BE, false);

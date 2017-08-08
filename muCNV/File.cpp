@@ -22,6 +22,24 @@ uint32_t CHR=1; // This is temporary, need to fix, 06/20/17
 // GRCh38
 int chrlen[26] = {0, 248956422,242193529,198295559,190214555,181538259,170805979,159345973,145138636,138394717,133797422,135086622,133275309,114364328,107043718,101991189,90338345,83257441,80373285,58617616,64444167,46709983,50818468,156040895,57227415, 16569};
 
+// This function reads a BAM alignment from one BAM file.
+static int read_bam(void *data, bam1_t *b) // read level filters better go here to avoid pileup
+{
+	aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
+	int ret;
+	while (1)
+	{
+		ret = aux->iter? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->hdr, b);
+		if ( ret<0 ) break;
+		if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
+		if ( (int)b->core.qual < aux->min_mapQ ) continue;
+		if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
+		break;
+	}
+	return ret;
+}
+
+
 void read_index(string index_file, vector<string> &sample_ids, vector<string> &vcf_files, vector<string> &bam_files, vector<double> &avg_depths)
 {
 	ifstream inFile(index_file.c_str(), ios::in);
@@ -301,14 +319,14 @@ void bfiles::get_readpair(sv &interval, vector<double> &Y)
 	// Before interval
 	int start1 = interval.pos - readlen - insertsize;
 	if (start1<0) start1=0;
-	int end1 = interval.pos + floor(0.5*readlen);
+//	int end1 = interval.pos + floor(0.5*readlen);
 	
 	// read distance to pairs that's downstream
 	
 	// After interval
 	int start2 = interval.end - floor(0.5*readlen);
 	if (start2<interval.pos) start2=interval.pos; // this is not likely, as we can rarely detect svs <50bp length
-	int end2 = interval.end + readlen + insertsize;
+//	int end2 = interval.end + readlen + insertsize;
 	
 	// read distance to pairs that's upstream
 

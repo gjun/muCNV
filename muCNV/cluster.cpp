@@ -54,17 +54,20 @@ void cluster_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidate
 	// find a block of sv intervals with overlap
 	while(curr<candidates.size())
 	{
+		//cout << "curr : " << curr<< endl;
 		int block_end = candidates[curr].end;
 		
 		int last_idx = curr;
 		
-		while(++last_idx < candidates.size() && candidates[last_idx].pos < block_end)
+		while(++last_idx < candidates.size() && candidates[last_idx].chr == candidates[curr].chr &&  candidates[last_idx].pos < block_end)
 		{
 			if (block_end<candidates[last_idx].end)
 			{
 				block_end = candidates[last_idx].end;
 			}
 		}
+
+		//cout << "last_idx : " << last_idx << endl;
 
 		int n = last_idx - curr;
 		double D[n][n];

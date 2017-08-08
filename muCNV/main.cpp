@@ -120,6 +120,12 @@ int main(int argc, char** argv)
 	read_intervals_from_vcf(sample_ids, vcf_files, candidates);
 	
 	cerr<< candidates.size() << " intervals read" << endl;
+	/*
+	for(int i=0;i<candidates.size();++i)
+	{
+		cout<<candidates[i].chr << ":" << candidates[i].pos << "-" << candidates[i].end << " " << candidates[i].svtype << endl;
+	}
+	*/
 	
 	// 2. Merge intervals with RO > minRO  (store all original informattion - merged intervals will be vector of intervals)
 	vector< vector<sv> > merged_candidates;
@@ -156,7 +162,7 @@ int main(int argc, char** argv)
 			vector<double> Y(n, 0);
 			vector<int> G(n, 0);
 
-			cerr << svlist[j].chr << "\t" << svlist[j].pos << "\t" << svlist[j].end << endl;
+	//		cerr << svlist[j].chr << "\t" << svlist[j].pos << "\t" << svlist[j].end << endl;
 
 			bf.read_depth(svlist[j], X);
 			// normalize
