@@ -27,10 +27,10 @@
 
 using namespace std;
 
-bool bUseGL = false;
-double P_THRESHOLD = 0.9;
-double BE_THRESHOLD = 0.01;
-double RO_THRESHOLD = 0.8;
+bool bUseGL = true;
+double P_THRESHOLD = 0.5;
+double BE_THRESHOLD = 0.05;
+double RO_THRESHOLD = 0.5;
 
 
 int main(int argc, char** argv)
@@ -68,10 +68,10 @@ int main(int argc, char** argv)
 		TCLAP::ValueArg<string> argOut("o","out","Prefix for output filename",false,"muCNV","string");
 		
 		//		TCLAP::ValueArg<string> argsv("n","interval","File containing list of candidate intervals",false,"","string");
-		TCLAP::ValueArg<double> argPos("p","posterior","(Optional) Posterior probability threshold",false,0.9,"double");
-		TCLAP::ValueArg<double> argBE("b","bayes","(Optional) Bayes error threshold",false,0.01,"double");
+		TCLAP::ValueArg<double> argPos("p","posterior","(Optional) Posterior probability threshold",false,0.5,"double");
+		TCLAP::ValueArg<double> argBE("b","bayes","(Optional) Bayes error threshold",false,0.2,"double");
 
-		TCLAP::ValueArg<double> argRO("r","reciprocal","(Optional) Reciprocal overlap threshold to merge candidate intervals (default: 0.8)",false,0.8,"double");
+		TCLAP::ValueArg<double> argRO("r","reciprocal","(Optional) Reciprocal overlap threshold to merge candidate intervals (default: 0.5)",false,0.5,"double");
 		//		TCLAP::SwitchArg switchGL("g","gl","Use likelihood instead of posterior to call",cmd,false);
 		TCLAP::SwitchArg switchVerbose("v","verbose","Turn on verbose mode",cmd,false);
 
@@ -108,34 +108,33 @@ int main(int argc, char** argv)
 	}
 	
 	// 0. Read (vcf, bam/cram) file list
-	// 0.0 Calculate average sequencing depth for each BAM -- make this a pre-processing step, write a Python script, to save redundant calculations -- or just do it here?
-	
+	// 0.0. Calculate average sequencing depth for each BAM
+	// 0.1. Calcualte GC-content statistics here
+
 	read_index(index_file, sample_ids, vcf_files, bam_names, avg_depths);
 	int n = (int)sample_ids.size();
 
-	cerr<< "index loaded" << endl;
+	cerr << n << " samples identified from the index file." << endl;
+//	cerr<< "index loaded" << endl;
 	
 	// 1. Read intervals from individual VCFs
 	vector<sv> candidates;
 	read_intervals_from_vcf(sample_ids, vcf_files, candidates);
 	
-	cerr<< candidates.size() << " intervals read" << endl;
-	/*
-	for(int i=0;i<candidates.size();++i)
-	{
-		cout<<candidates[i].chr << ":" << candidates[i].pos << "-" << candidates[i].end << " " << candidates[i].svtype << endl;
-	}
-	*/
-	
-	// 2. Merge intervals with RO > minRO  (store all original informattion - merged intervals will be vector of intervals)
-	vector< vector<sv> > merged_candidates;
-	cluster_svs(candidates, merged_candidates);
+	cerr<< candidates.size() << " intervals identified from the VCF file." << endl;
 
-	cerr<< merged_candidates.size() << " intervals clustered " << endl;
+	// 2. Merge intervals with RO > minRO  (store all original informattion - merged intervals will be vector of intervals)
+
+//	vector< vector<sv> > merged_candidates;
+//	cluster_svs(candidates, merged_candidates);
+
+//	cerr<< merged_candidates.size() << " sets of intervals after clustering." << endl;
 	bfiles bf;
+
 	// Open BAM file handles (create a class for bamfiles, method to read specific interval)
 	bf.initialize(bam_names);
-	//	bf.get_avg_depth(avg_depths); // maybe make this into a separate program
+
+	//	bf.get_avg_depth(avg_depths); // maybe make this into a separate program // samtools flagstat works good enough for overall depth, but not for GC content  
 	
 	// 3. For each interval, read depth  (+ read pair distance ?) from individual BAM/CRAM file
 
@@ -146,14 +145,15 @@ int main(int argc, char** argv)
 	vfile.write_header(sample_ids);
 	int cnt = 0;
 
-	for(int i=0; i<(int)merged_candidates.size(); ++i)
+//	for(int i=0; i<(int)merged_candidates.size(); ++i)
 	{
 		// 4. Genotype for each variant
-		vector<sv> svlist;
-		pick_sv_from_merged(svlist, merged_candidates[i]); // TODO : pick one interval (median) from merged candidates
+		vector<sv> &svlist = candidates;
+
+//		pick_sv_from_merged(svlist, merged_candidates[i]); // Pick one interval (median) from merged candidates, svlist will have only one element
+
 //		cerr << "this merged list contains " << svlist.size() << " items" << endl;
 
-	
 		for(int j=0; j<(int)svlist.size(); ++j)
 		{
 			cnt++;

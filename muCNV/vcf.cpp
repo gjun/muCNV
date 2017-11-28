@@ -66,7 +66,14 @@ void outvcf::write_del(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 	
 	fprintf(fp,"%d\t", chr);
 	fprintf(fp,"%d\t", pos);
-	fprintf(fp,"muCNV%d\t.\t<DEL>\t.\t", ++varcnt);
+	if (interval.svtype == "DEL")
+	{
+		fprintf(fp,"muCNV%d\t.\t<DEL>\t.\t", ++varcnt);
+	}
+	else
+	{
+		fprintf(fp,"muCNV%d\t.\t<INV>\t.\t", ++varcnt);
+	}
 
 	if (bFilter)
 	{
@@ -77,7 +84,21 @@ void outvcf::write_del(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 		fprintf(fp, "FAIL");
 	}
 	
-	fprintf(fp,"\tIMPRECISE;CIPOS=%d,%d;CIEND=%d,%d;VT=SV;END=%d;SVLEN=-%d;AC=%d;AF=%1.4f;AN=%d;NS=%d;P_OVERLAP=%1.8f;SVTYPE=DEL", interval.ci_pos.first, interval.ci_pos.second, interval.ci_end.first, interval.ci_end.second, svend, svend-pos, ac, (0.5*ac/ns), ns*2, ns, be);
+
+	double af=0;
+	if (ns>0)
+	{
+		af = 0.5*ac/ns;
+	}
+
+	if (interval.svtype == "DEL")
+	{
+		fprintf(fp,"\tIMPRECISE;CIPOS=%d,%d;CIEND=%d,%d;VT=SV;END=%d;SVLEN=-%d;AC=%d;AF=%1.4f;AN=%d;NS=%d;P_OVERLAP=%1.8f;SVTYPE=DEL", interval.ci_pos.first, interval.ci_pos.second, interval.ci_end.first, interval.ci_end.second, svend, svend-pos, ac, af, ns*2, ns, be);
+	}
+	else
+	{
+		fprintf(fp,"\tIMPRECISE;CIPOS=%d,%d;CIEND=%d,%d;VT=SV;END=%d;SVLEN=-%d;AC=%d;AF=%1.4f;AN=%d;NS=%d;P_OVERLAP=%1.8f;SVTYPE=INV", interval.ci_pos.first, interval.ci_pos.second, interval.ci_end.first, interval.ci_end.second, svend, svend-pos, ac, af, ns*2, ns, be);
+	}
 	fprintf(fp,";CLUS=%d", n_comp);
 	
 	fprintf(fp,";MEAN=%1.4f",C[0].Mean);
@@ -130,11 +151,43 @@ void outvcf::write_cnv(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 	int chr = interval.chr;
 	int pos = interval.pos;
 	int svend = interval.end;
+	int alts[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};;
 	
+	for(int j=0;j<(int)gt.size(); ++j)
+	{
+		if (gt[j] >0 && gt[j]<=10)
+		{
+			alts[gt[j]] = 1;
+		}
+	}
+
 	fprintf(fp,"%d\t", chr);
 	fprintf(fp,"%d\t", pos);
 	
-	fprintf(fp,"muCNV%d\t.\t<CNV>\t.\t", ++varcnt);
+	fprintf(fp,"muCNV%d\t.\t",++varcnt);
+
+	bool flag=false;
+	for(int j=1; j<11; ++j)
+	{
+		if (alts[j])
+		{
+			if (flag)
+			{
+				fprintf(fp,",<CN%d>",j);
+			}
+			else
+			{
+				flag=true;
+				fprintf(fp,"<CN%d>",j);
+			}
+		}
+	}
+	if (!flag)
+	{
+		fprintf(fp,"<CNV>");
+	}
+	fprintf(fp, "\t.\t");
+
 	if (bFilter)
 	{
 		fprintf(fp, "PASS");
@@ -143,7 +196,12 @@ void outvcf::write_cnv(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 	{
 		fprintf(fp, "FAIL");
 	}
-	fprintf(fp,"\tIMPRECISE;CIPOS=%d,%d;CIEND=%d,%d;VT=SV;END=%d;SVLEN=%d;AC=%d;AF=%1.4f;AN=%d;NS=%d;SVTYPE=CNV", interval.ci_pos.first, interval.ci_pos.second, interval.ci_end.first, interval.ci_end.second, svend, svend-pos, ac, (0.5*ac/ns), ns*2, ns);
+	double af=0;
+	if (ns>0)
+	{
+		af = 0.5*ac/ns;
+	}
+	fprintf(fp,"\tIMPRECISE;CIPOS=%d,%d;CIEND=%d,%d;VT=SV;END=%d;SVLEN=%d;AC=%d;AF=%1.4f;AN=%d;NS=%d;SVTYPE=CNV", interval.ci_pos.first, interval.ci_pos.second, interval.ci_end.first, interval.ci_end.second, svend, svend-pos, ac, af, ns*2, ns);
 	
 	fprintf(fp,";CLUS=%d", n_comp);
 	
@@ -166,6 +224,8 @@ void outvcf::write_cnv(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 	}
 	
 	fprintf(fp,"\tGT:CN:DP:GQ" );
+
+
 	for(int j=0; j<(int)gt.size(); ++j)
 	{
 		switch(gt[j])
