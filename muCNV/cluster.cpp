@@ -50,75 +50,54 @@ void cluster_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidate
 	// 1. sort intervals
 	std::sort(candidates.begin(), candidates.end());
 	candidates.erase( std::unique( candidates.begin(), candidates.end() ), candidates.end() );
-	
+
 	// find a block of sv intervals with overlap
-	while(curr<candidates.size())
+	while(curr<(int)candidates.size())
 	{
-		//cout << "curr : " << curr<< endl;
+		//		cerr << "curr : " << curr<< endl;
 		int block_end = candidates[curr].end;
-		
+
+		//		cerr << "block_end : " << block_end << endl;
 		int last_idx = curr;
-		
-		while(++last_idx < candidates.size() && candidates[last_idx].chr == candidates[curr].chr &&  candidates[last_idx].pos < block_end)
+
+		while(++last_idx < (int)candidates.size() && candidates[last_idx].chr == candidates[curr].chr &&  candidates[last_idx].pos < block_end)
 		{
+			//			cerr<< "pos : " << candidates[last_idx].pos  << ", end : " << candidates[last_idx].end << endl;
 			if (block_end<candidates[last_idx].end)
 			{
 				block_end = candidates[last_idx].end;
+
+				//				cerr << "block_end : " << block_end << endl;
 			}
 		}
 
-		//cout << "last_idx : " << last_idx << endl;
+		///		cerr << "last_idx : " << last_idx << endl; // TEMP : code reached up to here
 
 		int n = last_idx - curr;
-		double D[n][n];
-		double max_RO = 0;
-		int clusters[n];
-		int max_i = 0;
-		int max_j = 0;
-		
-		for(int i=0;i<n;++i)
+		if (n>2)
 		{
-			clusters[i] = i;
-		}
-		
-		for(int i=0;i<n;++i)
-		{
-			for(int j=i+1;j<n;++j)
+			vector< vector <double> >  D; // This might be problematic with dense intervals -- change it to malloc or std::vector
+			D.resize(n);
+			for(int i=0;i<n;++i)
 			{
-				D[i][j] = D[j][i] = RO(candidates[curr+i], candidates[curr+j]);
-				if (D[i][j] > max_RO)
-				{
-					max_RO = D[i][j];
-					max_i = i;
-					max_j = j;
-				}
+				D[i].resize(n);
 			}
-			D[i][i] = 0;
-		}
 
-		while(max_RO>RO_THRESHOLD)
-		{
-			// Merge clusters
-			clusters[max_j] = clusters[max_i];
-			// Update distances
+			double max_RO = 0;
+			int clusters[n];
+			int max_i = 0;
+			int max_j = 0;
+
 			for(int i=0;i<n;++i)
 			{
-				if (i != max_i)
-				{
-					D[max_i][i] = D[i][max_i] = (D[max_i][i] > D[max_j][i]) ? D[max_i][i] : D[max_j][i];
-				}
+				clusters[i] = i;
 			}
-			
-			for(int i=0;i<n;++i)
-			{
-				D[max_j][i] = D[i][max_j] = 0;
-			}
-			
-			max_RO = 0;
+
 			for(int i=0;i<n;++i)
 			{
 				for(int j=i+1;j<n;++j)
 				{
+					D[i][j] = D[j][i] = RO(candidates[curr+i], candidates[curr+j]);
 					if (D[i][j] > max_RO)
 					{
 						max_RO = D[i][j];
@@ -126,23 +105,68 @@ void cluster_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidate
 						max_j = j;
 					}
 				}
+				D[i][i] = 0;
 			}
-		}
-		
-		for(int i=0;i<n;++i)
-		{
-			vector<sv> t;
-			for(int j=0; j<n; ++j)
+
+			while(max_RO>RO_THRESHOLD)
 			{
-				if (clusters[j] == i)
+				// Merge clusters
+				clusters[max_j] = clusters[max_i];
+				// Update distances
+				for(int i=0;i<n;++i)
 				{
-					t.push_back(candidates[j+curr]);
+					if (i != max_i)
+					{
+						D[max_i][i] = D[i][max_i] = (D[max_i][i] > D[max_j][i]) ? D[max_i][i] : D[max_j][i];
+					}
+				}
+
+				for(int i=0;i<n;++i)
+				{
+					D[max_j][i] = D[i][max_j] = 0;
+				}
+
+				max_RO = 0;
+				for(int i=0;i<n;++i)
+				{
+					for(int j=i+1;j<n;++j)
+					{
+						if (D[i][j] > max_RO)
+						{
+							max_RO = D[i][j];
+							max_i = i;
+							max_j = j;
+						}
+					}
 				}
 			}
-			if (t.size()>0)
+
+
+			for(int i=0;i<n;++i)
 			{
-				merged_candidates.push_back(t); // Maybe not the best way with unnecessary copies
+				vector<sv> t;
+				for(int j=0; j<n; ++j)
+				{
+					if (clusters[j] == i)
+					{
+						t.push_back(candidates[j+curr]);
+					}
+				}
+				if (t.size()>0)
+				{
+					merged_candidates.push_back(t); // Maybe not the best way with unnecessary copies
+					// TODO:: Do not store all candidate intervals, just hold the median one
+					//     :: Maybe should be processed by a preprocessor -- not to deal with it here
+				}
 			}
+
+		}
+		else
+		{
+			vector<sv> t;
+			t.push_back(candidates[curr]);
+
+			merged_candidates.push_back(t);
 		}
 		curr=last_idx;
 	}

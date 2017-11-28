@@ -82,7 +82,8 @@ void read_index(string index_file, vector<string> &sample_ids, vector<string> &v
 
 void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_files, vector<sv> &candidates)
 {
-	for(int i=0;i<(int)sample_ids.size();++i)
+//	for(int i=0;i<(int)sample_ids.size();++i)
+int i=0; // TEMPORARY, READ SINGLE VCF FILE
 	{
 	//	cerr << "sample ID " << sample_ids[i] << endl;
 //		cerr << "opening " << vcf_files[i] << endl;
@@ -189,7 +190,7 @@ void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_fil
 							}
 								
 						}
-						if (new_interval.pos > 0 && new_interval.end > new_interval.pos)
+						if (new_interval.pos > 0 && new_interval.end > new_interval.pos && (new_interval.end - new_interval.pos)<=1000000)  // TEMPORARY!! 1Mb Max!
 						{
 							candidates.push_back(new_interval);
 						}
@@ -257,7 +258,8 @@ void bfiles::get_avg_depth(vector<double> &X)
 		while(rpos<chrlen[c])
 		{
 			char reg[100];
-			sprintf(reg, "%d:%d-%d",c, rpos, rpos+10);
+			// TEMPORARY!! Use correct CHR name 
+			sprintf(reg, "chr%d:%d-%d",c, rpos, rpos+10);
 //			cerr << reg << endl;
 			
 			for(int i=0;i<n;++i)
@@ -266,6 +268,7 @@ void bfiles::get_avg_depth(vector<double> &X)
 				data[i]->iter = sam_itr_querys(idx[i], data[i]->hdr, reg);
 				if (data[i]->iter == NULL)
 				{
+					cerr << reg << endl;
 					cerr << "Can't parse region" << endl;
 					exit(1);
 				}
@@ -335,8 +338,11 @@ void bfiles::get_readpair(sv &interval, vector<double> &Y)
 void bfiles::read_depth(sv &interval, vector<double> &X)
 {
 	char reg[100];
-	sprintf(reg, "%d:%d-%d",interval.chr, interval.pos, interval.end);
+//	sprintf(reg, "%d:%d-%d",interval.chr, interval.pos, interval.end);
 	
+
+	// TEMPORARY!! Use correct CHR name 
+	sprintf(reg, "chr%d:%d-%d",interval.chr, interval.pos, interval.end);
 
 	for(int i=0;i<n;++i)
 	{
@@ -344,6 +350,7 @@ void bfiles::read_depth(sv &interval, vector<double> &X)
 		data[i]->iter = sam_itr_querys(idx[i], data[i]->hdr, reg);
 		if (data[i]->iter == NULL)
 		{
+			cerr << reg << endl;
 			cerr << "Can't parse region" << endl;
 			exit(1);
 		}
