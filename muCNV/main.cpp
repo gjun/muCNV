@@ -35,18 +35,20 @@ double RO_THRESHOLD = 0.5;
 
 int main(int argc, char** argv)
 {
-	cerr << "muCNV 0.5 -- Multi-sample CNV genotyper" << endl;
+	cerr << "muCNV 0.6-- Multi-sample CNV genotyper" << endl;
 	cerr << "(c) 2017 Goo Jun" << endl << endl;
 	cerr.setf(ios::showpoint);
 
+	bool bGenotype;
 //	bool bVerbose;
 	string index_file;
-
+	string vcf_file;
 	string out_prefix;
+	string bam_file;
 	string sChr;
 
 	vector<string> sample_ids;
-	vector<string> vcf_files;
+	vector<string> vcfs;
 	vector<string> bam_names;
 	vector<double> avg_depths;
 	map<string, unsigned> hIdSex;
@@ -64,8 +66,13 @@ int main(int argc, char** argv)
 	try 
 	{
 		TCLAP::CmdLine cmd("Command description message", ' ', "0.01");
-		TCLAP::ValueArg<string> argIn("i","index","Input index file (sample ID, candidate VCF, BAM/CRAM)",true,"","string");
+//		TCLAP::ValueArg<string> argIn("i","index","Input index file (sample ID, candidate VCF, BAM/CRAM)",true,"","string");
+		TCLAP::ValueArg<string> argBam("b","bam","Input BAM/CRAM file name",false,"","string");
 		TCLAP::ValueArg<string> argOut("o","out","Prefix for output filename",false,"muCNV","string");
+		TCLAP::ValueArg<string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
+		
+		TCLAP::ValueArg<string> argIndex("i","index","List file containing list of intermediate pileups (required with -g option)",false,"","string");
+		TCLAP::SwitchArg switchGenotype("g","genotype","Generate Genotype from intermediate pileups", cmd, false);
 		
 		//		TCLAP::ValueArg<string> argsv("n","interval","File containing list of candidate intervals",false,"","string");
 		TCLAP::ValueArg<double> argPos("p","posterior","(Optional) Posterior probability threshold",false,0.5,"double");
@@ -75,25 +82,42 @@ int main(int argc, char** argv)
 		//		TCLAP::SwitchArg switchGL("g","gl","Use likelihood instead of posterior to call",cmd,false);
 		TCLAP::SwitchArg switchVerbose("v","verbose","Turn on verbose mode",cmd,false);
 
-		cmd.add(argIn);
+		cmd.add(argBam);
 		cmd.add(argOut);
+		cmd.add(argVcf);
+		cmd.add(argIndex);
 		cmd.add(argPos);
 
-		//		cmd.add(argsv);
+		cmd.add(switchGenotype);
 		cmd.add(argBE);
 		cmd.add(argRO);
 		cmd.parse(argc, argv);
-
-        // Index file:
-		// three columns (tab separated)
-		// sample ID, VCF with canddiate intervals, sequence file (BAM/CRAM)
-        // SampleID, DepthFile(bgzipped, tabixed)
-		
         
-		index_file = argIn.getValue();
-		//ssvFile = argsv.getValue();
+		bam_file = argBam.getValue();
+		index_file = argIndex.getValue();
 		out_prefix = argOut.getValue();
-
+		vcf_file = argVcf.getValue();
+		bGenotype = switchGenotype.getValue();
+		
+		if (bGenotype && index_file == "")
+		{
+			cerr << "Error: list file is required for genotyping" << endl;
+			exit(0);
+		}
+		else if (bGenotype == false)
+		{
+			if (bam_file == "")
+			{
+				cerr << "Error: BAM/CRAM file is required for individual processing mode." << endl;
+				exit(0);
+			}
+			if (vcf_file == "")
+			{
+				cerr << "Error: VCF file with SV events is required for individual processing mode." << endl;
+				exit(0);
+			}
+		}
+		
 		P_THRESHOLD = argPos.getValue();
 		BE_THRESHOLD = argBE.getValue();
 		RO_THRESHOLD = argRO.getValue();
@@ -111,23 +135,39 @@ int main(int argc, char** argv)
 	// 0.0. Calculate average sequencing depth for each BAM
 	// 0.1. Calcualte GC-content statistics here
 
-	read_index(index_file, sample_ids, vcf_files, bam_names, avg_depths);
-	int n = (int)sample_ids.size();
+//	read_index(listrea_file, sample_ids, vcf_files, bam_names, avg_depths);
+	
+	int n = 0;
+	if (bGenotype)
+	{
+		//TODO make read_index to read list files with intermediate results
+		read_index(index_file, sample_ids, vcfs, bam_names, avg_depths);
+		n = (int)sample_ids.size();
+		cerr << "Genotyping index loaded." << endl;
+	}
+	else
+	{
+		n = 1;
+		cerr << "Processing individual file." << endl;
+	}
 
-	cerr << n << " samples identified from the index file." << endl;
+	cerr << n << " samples identified." << endl;
 //	cerr<< "index loaded" << endl;
 	
 	// 1. Read intervals from individual VCFs
 	vector<sv> candidates;
-	read_intervals_from_vcf(sample_ids, vcf_files, candidates);
+	vcfs.push_back(vcf_file);
+	read_intervals_from_vcf(sample_ids, vcfs, candidates);
 	
 	cerr<< candidates.size() << " intervals identified from the VCF file." << endl;
 
 	// 2. Merge intervals with RO > minRO  (store all original informattion - merged intervals will be vector of intervals)
 
-//	vector< vector<sv> > merged_candidates;
+	vector< vector<sv> > merged_candidates;
 //	cluster_svs(candidates, merged_candidates);
-
+	// In sample-by-sample process, assume overlapping SVs are already clustered into a single event, so do simple merging without clustering
+	merge_svs(candidates, merged_candidates);
+	
 //	cerr<< merged_candidates.size() << " sets of intervals after clustering." << endl;
 	bfiles bf;
 
@@ -138,9 +178,9 @@ int main(int argc, char** argv)
 	
 	// 3. For each interval, read depth  (+ read pair distance ?) from individual BAM/CRAM file
 
-	string vcf_filename = out_prefix + ".vcf";
+	string out_filename = out_prefix + ".vcf";
 	outvcf vfile;
-	vfile.open(vcf_filename);
+	vfile.open(out_filename);
 	
 	vfile.write_header(sample_ids);
 	int cnt = 0;

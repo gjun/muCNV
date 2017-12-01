@@ -42,6 +42,50 @@ double RO(sv x, sv y)
 	return (l/L);
 }
 
+void merge_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidates)
+{
+	
+	int curr = 0;
+	
+	// 1. sort intervals
+	std::sort(candidates.begin(), candidates.end());
+	candidates.erase( std::unique( candidates.begin(), candidates.end() ), candidates.end() );
+	
+	// find a block of sv intervals with overlap
+	while(curr<(int)candidates.size())
+	{
+		//		cerr << "curr : " << curr<< endl;
+		int block_end = candidates[curr].end;
+		
+		//		cerr << "block_end : " << block_end << endl;
+		int last_idx = curr;
+		
+		while(++last_idx < (int)candidates.size() && candidates[last_idx].chr == candidates[curr].chr &&  candidates[last_idx].pos < block_end)
+		{
+			//			cerr<< "pos : " << candidates[last_idx].pos  << ", end : " << candidates[last_idx].end << endl;
+			if (block_end<candidates[last_idx].end)
+			{
+				block_end = candidates[last_idx].end;
+				
+				//				cerr << "block_end : " << block_end << endl;
+			}
+		}
+		
+		///		cerr << "last_idx : " << last_idx << endl; // TEMP : code reached up to here
+		
+		int n = last_idx - curr;
+
+		vector<sv> t;
+		for(int i=curr; i<last_idx; ++i)
+		{
+			t.push_back(candidates[i]);
+		}
+		merged_candidates.push_back(t);
+
+		curr=last_idx;
+	}
+}
+
 void cluster_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidates)
 {
 

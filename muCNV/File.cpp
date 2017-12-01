@@ -315,26 +315,6 @@ void bfiles::get_avg_depth(vector<double> &X)
 }
 
 
-void bfiles::get_readpair(sv &interval, vector<double> &Y)
-{
-	int readlen = 100;
-	int insertsize = 300; // ??
-	// Before interval
-	int start1 = interval.pos - readlen - insertsize;
-	if (start1<0) start1=0;
-//	int end1 = interval.pos + floor(0.5*readlen);
-	
-	// read distance to pairs that's downstream
-	
-	// After interval
-	int start2 = interval.end - floor(0.5*readlen);
-	if (start2<interval.pos) start2=interval.pos; // this is not likely, as we can rarely detect svs <50bp length
-//	int end2 = interval.end + readlen + insertsize;
-	
-	// read distance to pairs that's upstream
-
-}
-
 void bfiles::read_depth(sv &interval, vector<double> &X)
 {
 	char reg[100];
@@ -354,7 +334,6 @@ void bfiles::read_depth(sv &interval, vector<double> &X)
 			cerr << "Can't parse region" << endl;
 			exit(1);
 		}
-	
 //		cerr << "iterator set" << endl;
 	}
 

@@ -41,6 +41,18 @@ class sv
 	sv();
 };
 
+class breakpoint
+{
+public:
+	int pos;
+	bool type; // 0: start, 1: end
+	int idx;
+	bool operator < (const breakpoint&) const;
+	bool operator == (const breakpoint&) const;
+	
+	breakpoint();
+};
+
 void pick_sv_from_merged(vector<sv> &, vector<sv> &);
 
 class SampleList
@@ -99,10 +111,26 @@ public:
 
 	void read_depth(sv&, vector<double>&);
 	void get_avg_depth(vector<double>&);
-	void get_readpair(sv&, vector<double>&);
 	void initialize(vector<string>&);
 };
 
+// A class for a single file BAM I/O
+class bFile
+{
+public:
+	aux_t *data;
+	hts_idx_t* idx;
+//	int n;
+	vector<double> gcbin;
+	
+// Handle multiple, overlapping SVs
+	void read_depth(vector<sv> &, vector<double>&, vector<double>&);
+	void read_pair(vector<sv> &, vector<double>&);
+	// average depth, average gc-corrected depth, average insert size // stdev?
+	void get_avg_depth(double &, double&, double&);
+	
+	void initialize(string&);
+};
 
 class outvcf
 {
@@ -149,6 +177,7 @@ void read_intervals_from_vcf(vector<string> &, vector<string> &, vector<sv> &);
 
 
 double RO(interval_t, interval_t);
+void merge_svs(vector<sv> &, vector< vector<sv> > &);
 void cluster_svs(vector<sv>&, vector< vector<sv> > &);
 
 double BayesError(vector<Gaussian>&);
