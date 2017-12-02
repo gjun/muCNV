@@ -11,7 +11,7 @@
 
 bool sv::operator < (const sv& s) const
 {
-	if (chr==s.chr)
+	if (chrnum==s.chrnum)
 	{
 		if (pos==s.pos)
 		{
@@ -24,14 +24,15 @@ bool sv::operator < (const sv& s) const
 	}
 	else
 	{
-		return(chr<s.chr);
+		return(chrnum<s.chrnum);
 	}
 }
 
 sv::sv()
 {
 	svtype = "";
-	chr = -1;
+	chr = "";
+	chrnum = -1;
 	pos = -1;
 	ci_pos.first = 0;
 	ci_pos.second = 0;
@@ -42,7 +43,7 @@ sv::sv()
 
 bool sv::operator == (const sv& s) const
 {
-	return (chr == s.chr && pos == s.pos && end==s.end && svtype == s.svtype);
+	return (chrnum == s.chrnum && pos == s.pos && end==s.end && svtype == s.svtype);
 }
 
 void pick_sv_from_merged(vector<sv> &sv_list, vector<sv> &merged)
@@ -75,6 +76,7 @@ void pick_sv_from_merged(vector<sv> &sv_list, vector<sv> &merged)
 
 	new_sv.svtype = svtype;
 	new_sv.chr = merged[0].chr;
+	new_sv.chrnum = merged[0].chrnum;
 	if (pos.size()%2)
 	{
 		int idx =  floor(pos.size()/2.0);

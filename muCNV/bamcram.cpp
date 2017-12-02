@@ -29,7 +29,6 @@ bool breakpoint::operator == (const breakpoint& b) const
 	return (pos == b.pos);
 }
 
-int chrlen[26] = {0, 248956422,242193529,198295559,190214555,181538259,170805979,159345973,145138636,138394717,133797422,135086622,133275309,114364328,107043718,101991189,90338345,83257441,80373285,58617616,64444167,46709983,50818468,156040895,57227415, 16569};
 
 // This function reads a BAM alignment from one BAM file.
 static int read_bam(void *data, bam1_t *b) // read level filters better go here to avoid pileup
@@ -102,10 +101,9 @@ void bFile::get_avg_depth(double &avg, double &GCavg, double &avg_insert)
 	for(int c=20;c<21;++c)
 	{
 		int rpos=100000;
-		while(rpos<chrlen[c])
+	//	while(rpos<chrlen[c])
 		{
 			char reg[100];
-			// TEMPORARY!! Use correct CHR name
 			sprintf(reg, "chr%d:%d-%d",c, rpos, rpos+100);
 			//			cerr << reg << endl;
 			
@@ -146,12 +144,9 @@ void bFile::get_avg_depth(double &avg, double &GCavg, double &avg_insert)
 void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double> &GX)
 {
 	char reg[100];
-	//	sprintf(reg, "%d:%d-%d",interval.chr, interval.pos, interval.end);
+
 	
-	// TEMPORARY!! Use correct CHR name
-	// TODO: Change SV.chr to string
-	
-	int chr = m_interval[0].chr;
+	string chr = m_interval[0].chr;
 	int startpos = m_interval[0].pos;
 	int endpos = m_interval[0].end;
 	int n = (int) m_interval.size();
@@ -176,13 +171,14 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 	sort(bp.begin(), bp.end());
 	// make sure there's no SVs witn pos == end
 	
-	sprintf(reg, "chr%d:%d-%d", chr, startpos, endpos);
+	//sprintf(reg, "chr%d:%d-%d", chr, startpos, endpos);
+	sprintf(reg, "%s:%d-%d", chr.c_str(), startpos, endpos);
 
 	data->iter = sam_itr_querys(idx, data->hdr, reg);
 	if (data->iter == NULL)
 	{
 		cerr << reg << endl;
-		cerr << "Can't parse region" << reg << endl;
+		cerr << "Can't parse region " << reg << endl;
 		exit(1);
 		
 	}
@@ -233,6 +229,8 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 			cnt[*it]++;
 		}
 	}
+	sam_itr_destroy(data->iter);
+	bam_plp_destroy(plp);
 
 	for(int i=0;i<n;++i)
 	{

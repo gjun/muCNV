@@ -60,11 +60,12 @@ void outvcf::write_del(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 {
 	// For Deletions
 	int n_comp=(int)C.size();
-	int chr = interval.chr;
+	int chrnum = interval.chrnum;
+	string chr = interval.chr;
 	int pos = interval.pos;
 	int svend = interval.end;
 	
-	fprintf(fp,"%d\t", chr);
+	fprintf(fp,"%s\t", chr.c_str());
 	fprintf(fp,"%d\t", pos);
 	if (interval.svtype == "DEL")
 	{
@@ -148,7 +149,7 @@ void outvcf::write_del(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 void outvcf::write_cnv(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, int ns, vector<double>& X, vector<double>& AvgDepth, vector<Gaussian>& C, double be, bool bFilter)
 {
 	int n_comp=(int)C.size();
-	int chr = interval.chr;
+	string chr = interval.chr;
 	int pos = interval.pos;
 	int svend = interval.end;
 	int alts[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};;
@@ -161,7 +162,7 @@ void outvcf::write_cnv(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 		}
 	}
 
-	fprintf(fp,"%d\t", chr);
+	fprintf(fp,"%s\t", chr.c_str());
 	fprintf(fp,"%d\t", pos);
 	
 	fprintf(fp,"muCNV%d\t.\t",++varcnt);

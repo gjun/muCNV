@@ -73,8 +73,6 @@ void merge_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidates)
 		
 		///		cerr << "last_idx : " << last_idx << endl; // TEMP : code reached up to here
 		
-		int n = last_idx - curr;
-
 		vector<sv> t;
 		for(int i=curr; i<last_idx; ++i)
 		{

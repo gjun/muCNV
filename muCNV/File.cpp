@@ -17,7 +17,6 @@
 #include "muCNV.h"
 #include <stdlib.h>
 //extern uint32_t CHR;
-uint32_t CHR=1; // This is temporary, need to fix, 06/20/17
 
 // GRCh38
 int chrlen[26] = {0, 248956422,242193529,198295559,190214555,181538259,170805979,159345973,145138636,138394717,133797422,135086622,133275309,114364328,107043718,101991189,90338345,83257441,80373285,58617616,64444167,46709983,50818468,156040895,57227415, 16569};
@@ -137,7 +136,8 @@ int i=0; // TEMPORARY, READ SINGLE VCF FILE
 					if (chr >=1 && chr <=22) // X and Y will be added later, MT will be ignored
 					{
 						sv new_interval;
-						new_interval.chr = chr;
+						new_interval.chr = tokens[0]; // Dec 1, 2017
+						new_interval.chrnum = chr;
 						new_interval.pos = atoi(tokens[1].c_str());
 						new_interval.ci_pos.first = -1;
 						new_interval.ci_pos.second = -1;
@@ -248,7 +248,7 @@ void bfiles::initialize(vector<string> &bnames)
 
 void bfiles::get_avg_depth(vector<double> &X)
 {
-	int n = X.size();
+	int n = (int)X.size();
 	vector<double> sum (n,0);
 	vector<int> cnt (n,0);
 
@@ -322,7 +322,7 @@ void bfiles::read_depth(sv &interval, vector<double> &X)
 	
 
 	// TEMPORARY!! Use correct CHR name 
-	sprintf(reg, "chr%d:%d-%d",interval.chr, interval.pos, interval.end);
+	sprintf(reg, "%s:%d-%d",interval.chr.c_str(), interval.pos, interval.end);
 
 	for(int i=0;i<n;++i)
 	{

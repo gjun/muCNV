@@ -29,7 +29,8 @@ class sv
 	public:
 	string svtype;
 	string source;
-	int chr;
+	string chr;
+	int chrnum;
 	int pos;
 	int end;
 	pair<int,int> ci_pos;

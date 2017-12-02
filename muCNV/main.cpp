@@ -39,7 +39,7 @@ int main(int argc, char** argv)
 	cerr << "(c) 2017 Goo Jun" << endl << endl;
 	cerr.setf(ios::showpoint);
 
-	bool bGenotype;
+	bool bGenotype = false;
 //	bool bVerbose;
 	string index_file;
 	string vcf_file;
@@ -65,39 +65,41 @@ int main(int argc, char** argv)
 	// Parsing command-line arguments
 	try 
 	{
-		TCLAP::CmdLine cmd("Command description message", ' ', "0.01");
+		TCLAP::CmdLine cmd("Command description message", ' ', "0.06");
 //		TCLAP::ValueArg<string> argIn("i","index","Input index file (sample ID, candidate VCF, BAM/CRAM)",true,"","string");
+		
 		TCLAP::ValueArg<string> argBam("b","bam","Input BAM/CRAM file name",false,"","string");
 		TCLAP::ValueArg<string> argOut("o","out","Prefix for output filename",false,"muCNV","string");
 		TCLAP::ValueArg<string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
-		
-		TCLAP::ValueArg<string> argIndex("i","index","List file containing list of intermediate pileups (required with -g option)",false,"","string");
-		TCLAP::SwitchArg switchGenotype("g","genotype","Generate Genotype from intermediate pileups", cmd, false);
+		TCLAP::ValueArg<string> argIndex("i","index","List file containing list of intermediate pileups. Required with genotype option",false,"","string");
+		//TCLAP::SwitchArg switchGenotype("c","call","Generate Genotype from intermediate pileups", cmd, false);
 		
 		//		TCLAP::ValueArg<string> argsv("n","interval","File containing list of candidate intervals",false,"","string");
-		TCLAP::ValueArg<double> argPos("p","posterior","(Optional) Posterior probability threshold",false,0.5,"double");
-		TCLAP::ValueArg<double> argBE("b","bayes","(Optional) Bayes error threshold",false,0.2,"double");
+//		TCLAP::ValueArg<double> argPos("p","posterior","(Optional) Posterior probability threshold",false,0.5,"double");
+//		TCLAP::ValueArg<double> argBE("b","bayes","(Optional) Bayes error threshold",false,0.2,"double");
 
-		TCLAP::ValueArg<double> argRO("r","reciprocal","(Optional) Reciprocal overlap threshold to merge candidate intervals (default: 0.5)",false,0.5,"double");
+//		TCLAP::ValueArg<double> argRO("r","reciprocal","(Optional) Reciprocal overlap threshold to merge candidate intervals (default: 0.5)",false,0.5,"double");
 		//		TCLAP::SwitchArg switchGL("g","gl","Use likelihood instead of posterior to call",cmd,false);
-		TCLAP::SwitchArg switchVerbose("v","verbose","Turn on verbose mode",cmd,false);
+//		TCLAP::SwitchArg switchVerbose("v","verbose","Turn on verbose mode",cmd,false);
 
 		cmd.add(argBam);
 		cmd.add(argOut);
 		cmd.add(argVcf);
 		cmd.add(argIndex);
-		cmd.add(argPos);
+		//cmd.add(switchGenotype);
 
-		cmd.add(switchGenotype);
-		cmd.add(argBE);
-		cmd.add(argRO);
+//		cmd.add(argPos);
+
+//		cmd.add(argBE);
+//		cmd.add(argRO);
+		
 		cmd.parse(argc, argv);
         
 		bam_file = argBam.getValue();
 		index_file = argIndex.getValue();
 		out_prefix = argOut.getValue();
 		vcf_file = argVcf.getValue();
-		bGenotype = switchGenotype.getValue();
+	//	bGenotype = switchGenotype.getValue();
 		
 		if (bGenotype && index_file == "")
 		{
@@ -118,9 +120,9 @@ int main(int argc, char** argv)
 			}
 		}
 		
-		P_THRESHOLD = argPos.getValue();
-		BE_THRESHOLD = argBE.getValue();
-		RO_THRESHOLD = argRO.getValue();
+//		P_THRESHOLD = argPos.getValue();
+//		BE_THRESHOLD = argBE.getValue();
+//		RO_THRESHOLD = argRO.getValue();
 
       //  bVerbose = switchVerbose.getValue();
 
@@ -169,11 +171,15 @@ int main(int argc, char** argv)
 	merge_svs(candidates, merged_candidates);
 	
 //	cerr<< merged_candidates.size() << " sets of intervals after clustering." << endl;
-	bfiles bf;
+//	bfiles bf;
 
 	// Open BAM file handles (create a class for bamfiles, method to read specific interval)
-	bf.initialize(bam_names);
+	//bf.initialize(bam_names);
 
+	
+	bFile b;
+	b.initialize(bam_file);
+	
 	//	bf.get_avg_depth(avg_depths); // maybe make this into a separate program // samtools flagstat works good enough for overall depth, but not for GC content  
 	
 	// 3. For each interval, read depth  (+ read pair distance ?) from individual BAM/CRAM file
@@ -183,17 +189,28 @@ int main(int argc, char** argv)
 	vfile.open(out_filename);
 	
 	vfile.write_header(sample_ids);
-	int cnt = 0;
 
-//	for(int i=0; i<(int)merged_candidates.size(); ++i)
+	for(int i=0; i<(int)merged_candidates.size(); ++i)
 	{
 		// 4. Genotype for each variant
-		vector<sv> &svlist = candidates;
+		vector<sv> &svlist = merged_candidates[i];
 
 //		pick_sv_from_merged(svlist, merged_candidates[i]); // Pick one interval (median) from merged candidates, svlist will have only one element
 
 //		cerr << "this merged list contains " << svlist.size() << " items" << endl;
-
+		int m = (int)svlist.size();
+		vector<double> X(m,0);
+		vector<double> GX(m,0);
+		
+		b.read_depth(svlist, X, GX);
+		
+		for(int j=0;j<m;++j)
+		{
+			cerr << svlist[j].chr << ":" << svlist[j].pos << "-" << svlist[j].end << "\t";
+			cerr << X[j] << "\t" << GX[j] << endl;
+		}
+		
+		/*
 		for(int j=0; j<(int)svlist.size(); ++j)
 		{
 			cnt++;
@@ -212,6 +229,7 @@ int main(int argc, char** argv)
 			}
 			g.call_genotype(svlist[j], X, Y, G, vfile, avg_depths);
 		}
+		 */
 	}
 	
 	vfile.close();

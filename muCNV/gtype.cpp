@@ -549,8 +549,8 @@ int gtype::classify_cnv(vector<double>& x, vector<int>& GT, vector<int>& GQ, int
 // EM for deletions
 void gtype::EM(vector<double>& x, vector<Gaussian>& C, bool bFlip)
 {
-	unsigned n_sample = x.size();
-	unsigned n_comp = C.size();
+	unsigned n_sample = (unsigned) x.size();
+	unsigned n_comp = (unsigned) C.size();
 	
 	unsigned n_iter = 30;
 	// pseudo-counts
