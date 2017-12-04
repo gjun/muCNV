@@ -185,10 +185,13 @@ int main(int argc, char** argv)
 	// 3. For each interval, read depth  (+ read pair distance ?) from individual BAM/CRAM file
 
 	string out_filename = out_prefix + ".vcf";
-	outvcf vfile;
-	vfile.open(out_filename);
+//	outvcf vfile;
+//	vfile.open(out_filename);
 	
-	vfile.write_header(sample_ids);
+//	vfile.write_header(sample_ids);
+	
+	FILE *fp = fopen(out_filename.c_str(), "wt");
+	fprintf(fp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s\n", out_prefix.c_str());
 
 	for(int i=0; i<(int)merged_candidates.size(); ++i)
 	{
@@ -207,13 +210,15 @@ int main(int argc, char** argv)
 		
 		for(int j=0;j<m;++j)
 		{
-			double is = 0;
+		//	double is = 0;
 		//	double is = b.read_pair(svlist[j]);
 
-			cout << svlist[j].chr << ":" << svlist[j].pos << "-" << svlist[j].end << "\t";
-			cout << X[j] << "\t" << GX[j] << "\t" << is <<  endl;
+			fprintf(fp, "%s\t%d\t.\t.\t<%s>\t.\t.\tEND=%d;SVTYPE=%s;SVLEN=%d\tDP", svlist[j].chr.c_str(), svlist[j].pos,svlist[j].svtype.c_str(), svlist[j].end,svlist[j].svtype.c_str(),svlist[j].end - svlist[j].pos);
+			fprintf(fp,"\t%f\n",X[j]);
+			
+			//cout << svlist[j].chr << ":" << svlist[j].pos << "-" << svlist[j].end << "\t";
+			//cout << X[j] << "\t" << GX[j] << "\t" << is <<  endl;
 		}
-		
 		/*
 		for(int j=0; j<(int)svlist.size(); ++j)
 		{
@@ -235,8 +240,9 @@ int main(int argc, char** argv)
 		}
 		 */
 	}
-	
-	vfile.close();
+	fclose(fp);
+
+	//vfile.close();
 
 	return 0;
 }
