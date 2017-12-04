@@ -86,7 +86,7 @@ int main(int argc, char** argv)
 		cmd.add(argOut);
 		cmd.add(argVcf);
 		cmd.add(argIndex);
-		cmd.add(switchGenotype);
+//		cmd.add(switchGenotype);
 
 //		cmd.add(argPos);
 
