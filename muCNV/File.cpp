@@ -190,7 +190,7 @@ int i=0; // TEMPORARY, READ SINGLE VCF FILE
 							}
 								
 						}
-						if (new_interval.pos > 0 && new_interval.end > new_interval.pos && (new_interval.end - new_interval.pos)<=1000000)  // TEMPORARY!! 1Mb Max!
+						if (new_interval.pos > 0 && new_interval.end > new_interval.pos && (new_interval.end - new_interval.pos)<=1000000 )  // TEMPORARY!! 1Mb Max!
 						{
 							candidates.push_back(new_interval);
 						}

@@ -217,6 +217,7 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 	if (bp[0].idx != 0)
 	{
 		cerr << "Error: Merged interval's first element is not the earliest." << endl;
+		cerr << "first " << bp[0].idx  << " pos " << bp[0].pos << " second " << bp[1].idx << " pos " << bp[1].pos << endl;
 	}
 	if (bp[0].type)
 	{
