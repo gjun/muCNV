@@ -201,13 +201,16 @@ int main(int argc, char** argv)
 		int m = (int)svlist.size();
 		vector<double> X(m,0);
 		vector<double> GX(m,0);
+		vector<double> ISZ(m,0);
 		
 		b.read_depth(svlist, X, GX);
 		
 		for(int j=0;j<m;++j)
 		{
+			double is = b.read_pair(svlist[j]);
+
 			cerr << svlist[j].chr << ":" << svlist[j].pos << "-" << svlist[j].end << "\t";
-			cerr << X[j] << "\t" << GX[j] << endl;
+			cerr << X[j] << "\t" << GX[j] << "\t" << is <<  endl;
 		}
 		
 		/*

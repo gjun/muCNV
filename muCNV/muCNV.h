@@ -126,7 +126,7 @@ public:
 	
 // Handle multiple, overlapping SVs
 	void read_depth(vector<sv> &, vector<double>&, vector<double>&);
-	void read_pair(vector<sv> &, vector<double>&);
+	double read_pair(sv &);
 	// average depth, average gc-corrected depth, average insert size // stdev?
 	void get_avg_depth(double &, double&, double&);
 	
