@@ -79,6 +79,125 @@ void read_index(string index_file, vector<string> &sample_ids, vector<string> &v
 	
 }
 
+
+void vfiles::initialize(vector<string> &vcf_files)
+{
+	for(int i=0;i<(int)vcf_files.size(); ++i)
+	{
+		//	cerr << "sample ID " << sample_ids[i] << endl;
+		//		cerr << "opening " << vcf_files[i] << endl;
+		ifstream *f = new ifstream(vcf_files[i].c_str(), ios::in);
+		vfs.push_back(f);
+	}
+}
+
+int vfiles::read_interval(sv& interval, vector<double> &X)
+{
+	vector<string> lns (vfs.size(), "");
+
+	for(int i=0;i<vfs.size();++i)
+	{
+		if (!vfs[i]->good())
+			return -1;
+	}
+	bool flag=false;
+	for(int i=0;i<vfs.size();++i)
+	{
+		getline(*vfs[i],lns[i]);
+		if (lns[i].empty() || lns[i][0] == '#')
+			flag = true;
+	}
+	if (flag)
+		return 1;
+
+	int chr;
+	vector<string> tokens;
+	split(lns[0].c_str(), " \t\n", tokens);
+	// Let's add error handling later
+	if (tokens[0].substr(0,3) == "chr" || tokens[0].substr(0,3) == "Chr" )
+	{
+		tokens[0] = tokens[0].substr(3,2);
+	}
+	if (tokens[0] == "X")
+	{
+		chr = 23;
+	}
+	else if (tokens[0] == "Y")
+	{
+		chr = 24;
+	}
+	else if (tokens[0] == "M" || tokens[0] == "MT")
+	{
+		chr = 25;
+	}
+	else
+	{
+		try
+		{
+			chr = atoi(tokens[0].c_str());
+		}
+		catch(int e)
+		{
+			chr = 0;
+			
+		}
+	}
+	interval.chr = tokens[0]; // Dec 1, 2017
+	interval.chrnum = chr;
+	interval.pos = atoi(tokens[1].c_str());
+	interval.ci_pos.first = -1;
+	interval.ci_pos.second = -1;
+	interval.ci_end.first = -1;
+	interval.ci_end.second = -1;
+	string info = tokens[7];
+	
+	vector<string> infotokens;
+	
+	split(info.c_str(), ";", infotokens);
+	for(int j=0;j<(int)infotokens.size();++j)
+	{
+		vector<string> infofields;
+		//cerr << infotokens[j] << endl;
+		split(infotokens[j].c_str(), "=", infofields);
+		if (infofields.size()>1)
+		{
+			if (infofields[0] == "END")
+			{
+				interval.end = atoi(infofields[1].c_str());
+			}
+			else if (infofields[0] == "CIPOS")
+			{
+				vector<string> ci;
+				split(infofields[1].c_str(), ",", ci);
+				interval.ci_pos.first = atoi(ci[0].c_str());
+				interval.ci_pos.second = atoi(ci[1].c_str());
+			}
+			else if (infofields[0] == "CIEND")
+			{
+				vector<string> ci;
+				split(infofields[1].c_str(), ",", ci);
+				interval.ci_end.first = atoi(ci[0].c_str());
+				interval.ci_end.second = atoi(ci[1].c_str());
+			}
+			else if (infofields[0] == "SVTYPE")
+			{
+				interval.svtype = infofields[1];
+			}
+		}
+		
+	} // if chr >= 1 && chr <= 22
+	X[0] = atoi(tokens[9].c_str());
+	
+	for(int i=1;i<vfs.size();++i)
+	{
+		vector<string> tks;
+		split(lns[i].c_str(), " \t\n", tks);
+
+		X[i] = atoi(tks[9].c_str());
+	}
+	return 0;
+} //vfiles::read_vcf
+
 void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_files, vector<sv> &candidates)
 {
 //	for(int i=0;i<(int)sample_ids.size();++i)

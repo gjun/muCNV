@@ -102,6 +102,13 @@ public:
 	Gaussian2();
 };
 
+class vfiles
+{
+public:
+	vector<ifstream *> vfs;
+	void initialize(vector<string> &);
+	int read_interval(sv&, vector<double> &);
+};
 
 class bfiles
 {

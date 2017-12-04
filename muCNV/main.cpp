@@ -72,7 +72,7 @@ int main(int argc, char** argv)
 		TCLAP::ValueArg<string> argOut("o","out","Prefix for output filename",false,"muCNV","string");
 		TCLAP::ValueArg<string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
 		TCLAP::ValueArg<string> argIndex("i","index","List file containing list of intermediate pileups. Required with genotype option",false,"","string");
-		//TCLAP::SwitchArg switchGenotype("c","call","Generate Genotype from intermediate pileups", cmd, false);
+		TCLAP::SwitchArg switchGenotype("g","genotype","Generate Genotype from intermediate pileups", cmd, false);
 		
 		//		TCLAP::ValueArg<string> argsv("n","interval","File containing list of candidate intervals",false,"","string");
 //		TCLAP::ValueArg<double> argPos("p","posterior","(Optional) Posterior probability threshold",false,0.5,"double");
@@ -86,7 +86,7 @@ int main(int argc, char** argv)
 		cmd.add(argOut);
 		cmd.add(argVcf);
 		cmd.add(argIndex);
-		//cmd.add(switchGenotype);
+		cmd.add(switchGenotype);
 
 //		cmd.add(argPos);
 
@@ -99,7 +99,7 @@ int main(int argc, char** argv)
 		index_file = argIndex.getValue();
 		out_prefix = argOut.getValue();
 		vcf_file = argVcf.getValue();
-	//	bGenotype = switchGenotype.getValue();
+		bGenotype = switchGenotype.getValue();
 		
 		if (bGenotype && index_file == "")
 		{
@@ -146,103 +146,130 @@ int main(int argc, char** argv)
 		read_index(index_file, sample_ids, vcfs, bam_names, avg_depths);
 		n = (int)sample_ids.size();
 		cerr << "Genotyping index loaded." << endl;
+		cerr << n << " samples identified." << endl;
+		
+		outvcf vfile;
+		string out_filename = out_prefix + ".vcf";
+
+		vfile.open(out_filename);
+		
+		vfile.write_header(sample_ids);
+		
+		vfiles V;
+		V.initialize(vcfs);
+		
+		sv interval;
+		vector<double> X;
+		while(V.read_interval(interval, X)>=0)
+		{
+			gtype g;
+			vector<double> X(n, 0);
+			vector<double> Y(n, 0);
+			vector<int> G(n, 0);
+			
+			for(int k=0; k<n; ++k)
+			{
+				X[k] = X[k] / avg_depths[k];
+			}
+			g.call_genotype(interval, X, Y, G, vfile, avg_depths);
+		}
+		vfile.close();
 	}
 	else
 	{
 		n = 1;
 		cerr << "Processing individual file." << endl;
-	}
 
-	cerr << n << " samples identified." << endl;
-//	cerr<< "index loaded" << endl;
-	
-	// 1. Read intervals from individual VCFs
-	vector<sv> candidates;
-	vcfs.push_back(vcf_file);
-	read_intervals_from_vcf(sample_ids, vcfs, candidates);
-	
-	cerr<< candidates.size() << " intervals identified from the VCF file." << endl;
 
-	// 2. Merge intervals with RO > minRO  (store all original informattion - merged intervals will be vector of intervals)
-
-	vector< vector<sv> > merged_candidates;
-//	cluster_svs(candidates, merged_candidates);
-	// In sample-by-sample process, assume overlapping SVs are already clustered into a single event, so do simple merging without clustering
-	merge_svs(candidates, merged_candidates);
-	
-//	cerr<< merged_candidates.size() << " sets of intervals after clustering." << endl;
-//	bfiles bf;
-
-	// Open BAM file handles (create a class for bamfiles, method to read specific interval)
-	//bf.initialize(bam_names);
-
-	
-	bFile b;
-	b.initialize(bam_file);
-	
-	//	bf.get_avg_depth(avg_depths); // maybe make this into a separate program // samtools flagstat works good enough for overall depth, but not for GC content  
-	
-	// 3. For each interval, read depth  (+ read pair distance ?) from individual BAM/CRAM file
-
-	string out_filename = out_prefix + ".vcf";
-//	outvcf vfile;
-//	vfile.open(out_filename);
-	
-//	vfile.write_header(sample_ids);
-	
-	FILE *fp = fopen(out_filename.c_str(), "wt");
-	fprintf(fp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s\n", out_prefix.c_str());
-
-	for(int i=0; i<(int)merged_candidates.size(); ++i)
-	{
-		// 4. Genotype for each variant
-		vector<sv> &svlist = merged_candidates[i];
-
-//		pick_sv_from_merged(svlist, merged_candidates[i]); // Pick one interval (median) from merged candidates, svlist will have only one element
-
-//		cerr << "this merged list contains " << svlist.size() << " items" << endl;
-		int m = (int)svlist.size();
-		vector<double> X(m,0);
-		vector<double> GX(m,0);
-		vector<double> ISZ(m,0);
+	//	cerr<< "index loaded" << endl;
 		
-		b.read_depth(svlist, X, GX);
+		// 1. Read intervals from individual VCFs
+		vector<sv> candidates;
+		vcfs.push_back(vcf_file);
+		read_intervals_from_vcf(sample_ids, vcfs, candidates);
 		
-		for(int j=0;j<m;++j)
+		cerr<< candidates.size() << " intervals identified from the VCF file." << endl;
+
+		// 2. Merge intervals with RO > minRO  (store all original informattion - merged intervals will be vector of intervals)
+
+		vector< vector<sv> > merged_candidates;
+	//	cluster_svs(candidates, merged_candidates);
+		// In sample-by-sample process, assume overlapping SVs are already clustered into a single event, so do simple merging without clustering
+		merge_svs(candidates, merged_candidates);
+		
+	//	cerr<< merged_candidates.size() << " sets of intervals after clustering." << endl;
+	//	bfiles bf;
+
+		// Open BAM file handles (create a class for bamfiles, method to read specific interval)
+		//bf.initialize(bam_names);
+
+		
+		bFile b;
+		b.initialize(bam_file);
+		
+		//	bf.get_avg_depth(avg_depths); // maybe make this into a separate program // samtools flagstat works good enough for overall depth, but not for GC content
+		
+		// 3. For each interval, read depth  (+ read pair distance ?) from individual BAM/CRAM file
+
+		string out_filename = out_prefix + ".vcf";
+	//	outvcf vfile;
+	//	vfile.open(out_filename);
+		
+	//	vfile.write_header(sample_ids);
+		
+		FILE *fp = fopen(out_filename.c_str(), "wt");
+		fprintf(fp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s\n", out_prefix.c_str());
+
+		for(int i=0; i<(int)merged_candidates.size(); ++i)
 		{
-		//	double is = 0;
-		//	double is = b.read_pair(svlist[j]);
+			// 4. Genotype for each variant
+			vector<sv> &svlist = merged_candidates[i];
 
-			fprintf(fp, "%s\t%d\t.\t.\t<%s>\t.\t.\tEND=%d;SVTYPE=%s;SVLEN=%d\tDP", svlist[j].chr.c_str(), svlist[j].pos,svlist[j].svtype.c_str(), svlist[j].end,svlist[j].svtype.c_str(),svlist[j].end - svlist[j].pos);
-			fprintf(fp,"\t%f\n",X[j]);
+	//		pick_sv_from_merged(svlist, merged_candidates[i]); // Pick one interval (median) from merged candidates, svlist will have only one element
+
+	//		cerr << "this merged list contains " << svlist.size() << " items" << endl;
+			int m = (int)svlist.size();
+			vector<double> X(m,0);
+			vector<double> GX(m,0);
+			vector<double> ISZ(m,0);
 			
-			//cout << svlist[j].chr << ":" << svlist[j].pos << "-" << svlist[j].end << "\t";
-			//cout << X[j] << "\t" << GX[j] << "\t" << is <<  endl;
-		}
-		/*
-		for(int j=0; j<(int)svlist.size(); ++j)
-		{
-			cnt++;
-			gtype g;
-			vector<double> X(n, 0);
-			vector<double> Y(n, 0);
-			vector<int> G(n, 0);
-
-	//		cerr << svlist[j].chr << "\t" << svlist[j].pos << "\t" << svlist[j].end << endl;
-
-			bf.read_depth(svlist[j], X);
-			// normalize
-			for(int k=0; k<n; ++k)
+			b.read_depth(svlist, X, GX);
+			
+			for(int j=0;j<m;++j)
 			{
-				X[k] = X[k] / avg_depths[k];
+			//	double is = 0;
+			//	double is = b.read_pair(svlist[j]);
+
+				fprintf(fp, "%s\t%d\t.\t.\t<%s>\t.\t.\tEND=%d;SVTYPE=%s;SVLEN=%d\tDP", svlist[j].chr.c_str(), svlist[j].pos,svlist[j].svtype.c_str(), svlist[j].end,svlist[j].svtype.c_str(),svlist[j].end - svlist[j].pos);
+				fprintf(fp,"\t%f\n",X[j]);
+				
+				//cout << svlist[j].chr << ":" << svlist[j].pos << "-" << svlist[j].end << "\t";
+				//cout << X[j] << "\t" << GX[j] << "\t" << is <<  endl;
 			}
-			g.call_genotype(svlist[j], X, Y, G, vfile, avg_depths);
+			/*
+			for(int j=0; j<(int)svlist.size(); ++j)
+			{
+				cnt++;
+				gtype g;
+				vector<double> X(n, 0);
+				vector<double> Y(n, 0);
+				vector<int> G(n, 0);
+
+		//		cerr << svlist[j].chr << "\t" << svlist[j].pos << "\t" << svlist[j].end << endl;
+
+				bf.read_depth(svlist[j], X);
+				// normalize
+				for(int k=0; k<n; ++k)
+				{
+					X[k] = X[k] / avg_depths[k];
+				}
+				g.call_genotype(svlist[j], X, Y, G, vfile, avg_depths);
+			}
+			 */
 		}
-		 */
-	}
-	fclose(fp);
+		fclose(fp);
 
 	//vfile.close();
-
+	}
 	return 0;
 }
