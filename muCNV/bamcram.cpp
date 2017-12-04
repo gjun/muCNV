@@ -192,7 +192,7 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 	// make sure there's no SVs witn pos == end
 	
 	//sprintf(reg, "chr%d:%d-%d", chr, startpos, endpos);
-	sprintf(reg, "%s:%d-%d", chr.c_str(), startpos, endpos);
+	sprintf(reg, "chr%s:%d-%d", chr.c_str(), startpos, endpos);
 
 	data->iter = sam_itr_querys(idx, data->hdr, reg);
 	if (data->iter == NULL)
@@ -283,7 +283,7 @@ double bFile::read_pair(sv &interval)
 	int start2 = interval.end;
 	int end2 = interval.end + margin;
 	
-	sprintf(reg, "%s:%d-%d", chr.c_str(), start1, end1);
+	sprintf(reg, "chr%s:%d-%d", chr.c_str(), start1, end1);
 	
 	data->iter = sam_itr_querys(idx, data->hdr, reg);
 	bam1_t *b;
@@ -308,7 +308,7 @@ double bFile::read_pair(sv &interval)
 	}
 	hts_itr_destroy(data->iter);
 	
-	sprintf(reg, "%s:%d-%d", chr.c_str(), start2, end2);
+	sprintf(reg, "chr%s:%d-%d", chr.c_str(), start2, end2);
 	data->iter = sam_itr_querys(idx, data->hdr, reg);
 	if (data->iter == NULL)
 	{
