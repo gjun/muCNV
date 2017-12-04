@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <set>
 #include "muCNV.h"
+#include <algorithm>
 
 // GRCh38
 // TODO: Take FASTA and fai file input and match MD5 with BAMs? Or just use whatever given?
