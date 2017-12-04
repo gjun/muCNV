@@ -89,11 +89,15 @@ void vfiles::initialize(vector<string> &vcf_files)
 		ifstream *f = new ifstream(vcf_files[i].c_str(), ios::in);
 		vfs.push_back(f);
 	}
+
+	cerr << "Input VCF files initialized" <<endl;
 }
 
 int vfiles::read_interval(sv& interval, vector<double> &X)
 {
 	vector<string> lns (vfs.size(), "");
+
+	//cerr << "Reading vcf " <<endl;
 
 	for(int i=0;i<vfs.size();++i)
 	{
@@ -104,11 +108,14 @@ int vfiles::read_interval(sv& interval, vector<double> &X)
 	for(int i=0;i<vfs.size();++i)
 	{
 		getline(*vfs[i],lns[i]);
+
 		if (lns[i].empty() || lns[i][0] == '#')
 			flag = true;
 	}
 	if (flag)
 		return 1;
+
+   // cerr << "Reading depth" <<endl;
 
 	int chr;
 	vector<string> tokens;
@@ -157,7 +164,6 @@ int vfiles::read_interval(sv& interval, vector<double> &X)
 	for(int j=0;j<(int)infotokens.size();++j)
 	{
 		vector<string> infofields;
-		//cerr << infotokens[j] << endl;
 		split(infotokens[j].c_str(), "=", infofields);
 		if (infofields.size()>1)
 		{
@@ -186,14 +192,21 @@ int vfiles::read_interval(sv& interval, vector<double> &X)
 		}
 		
 	} // if chr >= 1 && chr <= 22
-	X[0] = atoi(tokens[9].c_str());
+
+   // cerr << "SV parsed" << interval.chr << ":" << interval.pos << "-" << interval.end << " depth " << tokens[9] << endl;
+
+	X[0] = atof(tokens[9].c_str());
 	
+   // cerr << "First sample depth read" <<endl;
+
 	for(int i=1;i<vfs.size();++i)
 	{
 		vector<string> tks;
 		split(lns[i].c_str(), " \t\n", tks);
 
-		X[i] = atoi(tks[9].c_str());
+		X[i] = atof(tks[9].c_str());
+
+    //	cerr << i << "-th sample depth read" <<endl;
 	}
 	return 0;
 } //vfiles::read_vcf

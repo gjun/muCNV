@@ -159,13 +159,13 @@ int main(int argc, char** argv)
 		V.initialize(vcfs);
 		
 		sv interval;
-		vector<double> X;
+		vector<double> X (n, 0);
+		vector<double> Y (n, 0);
+		vector<int> G(n, 0);
+
 		while(V.read_interval(interval, X)>=0)
 		{
 			gtype g;
-			vector<double> X(n, 0);
-			vector<double> Y(n, 0);
-			vector<int> G(n, 0);
 			
 			for(int k=0; k<n; ++k)
 			{
