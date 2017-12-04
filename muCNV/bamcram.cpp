@@ -188,7 +188,7 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 		}
 	}
 	
-	sort(bp.begin(), bp.end());
+	sort(bp.begin()+1, bp.end());
 	// make sure there's no SVs witn pos == end
 	
 	//sprintf(reg, "chr%d:%d-%d", chr, startpos, endpos);
