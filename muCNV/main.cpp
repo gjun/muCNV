@@ -207,7 +207,8 @@ int main(int argc, char** argv)
 		
 		for(int j=0;j<m;++j)
 		{
-			double is = b.read_pair(svlist[j]);
+			double is = 0;
+		//	double is = b.read_pair(svlist[j]);
 
 			cout << svlist[j].chr << ":" << svlist[j].pos << "-" << svlist[j].end << "\t";
 			cout << X[j] << "\t" << GX[j] << "\t" << is <<  endl;
