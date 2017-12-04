@@ -209,8 +209,8 @@ int main(int argc, char** argv)
 		{
 			double is = b.read_pair(svlist[j]);
 
-			cerr << svlist[j].chr << ":" << svlist[j].pos << "-" << svlist[j].end << "\t";
-			cerr << X[j] << "\t" << GX[j] << "\t" << is <<  endl;
+			cout << svlist[j].chr << ":" << svlist[j].pos << "-" << svlist[j].end << "\t";
+			cout << X[j] << "\t" << GX[j] << "\t" << is <<  endl;
 		}
 		
 		/*

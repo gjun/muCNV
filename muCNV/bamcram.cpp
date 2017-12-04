@@ -263,7 +263,7 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 		X[i] = (cnt[i]>0) ? sum[i]/(double)cnt[i] : 0;
 		GX[i] = X[i]; // TODO: do GC correction
 	}
-	cerr << "readcount " << readcount << endl;
+//	cerr << "readcount " << readcount << endl;
 }
 
 double bFile::read_pair(sv &interval)
