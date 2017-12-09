@@ -97,7 +97,7 @@ int vfiles::read_interval(sv& interval, vector<double> &X)
 {
 	vector<string> lns (vfs.size(), "");
 
-	//cerr << "Reading vcf " <<endl;
+//	cerr << "Reading vcf " <<endl;
 
 	for(int i=0;i<vfs.size();++i)
 	{
@@ -110,12 +110,15 @@ int vfiles::read_interval(sv& interval, vector<double> &X)
 		getline(*vfs[i],lns[i]);
 
 		if (lns[i].empty() || lns[i][0] == '#')
+		{
+//			cerr << i << "-th vcf has " << lns[i];
 			flag = true;
+		}
 	}
 	if (flag)
 		return 1;
 
-   // cerr << "Reading depth" <<endl;
+//    cerr << "Reading depth" <<endl;
 
 	int chr;
 	vector<string> tokens;
@@ -193,7 +196,7 @@ int vfiles::read_interval(sv& interval, vector<double> &X)
 		
 	} // if chr >= 1 && chr <= 22
 
-   // cerr << "SV parsed" << interval.chr << ":" << interval.pos << "-" << interval.end << " depth " << tokens[9] << endl;
+//   cerr << "SV parsed" << interval.chr << ":" << interval.pos << "-" << interval.end << " depth " << tokens[9] << endl;
 
 	X[0] = atof(tokens[9].c_str());
 	
