@@ -214,11 +214,10 @@ int main(int argc, char** argv)
 		string out_filename = out_prefix + ".vcf";
 	//	outvcf vfile;
 	//	vfile.open(out_filename);
-		
 	//	vfile.write_header(sample_ids);
 		
-		FILE *fp = fopen(out_filename.c_str(), "wt");
-		fprintf(fp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s\n", out_prefix.c_str());
+	//	FILE *fp = fopen(out_filename.c_str(), "wt");
+	//	fprintf(fp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s\n", out_prefix.c_str());
 
 		for(int i=0; i<(int)merged_candidates.size(); ++i)
 		{
@@ -226,48 +225,25 @@ int main(int argc, char** argv)
 			vector<sv> &svlist = merged_candidates[i];
 
 	//		pick_sv_from_merged(svlist, merged_candidates[i]); // Pick one interval (median) from merged candidates, svlist will have only one element
-
 	//		cerr << "this merged list contains " << svlist.size() << " items" << endl;
+
 			int m = (int)svlist.size();
 			vector<double> X(m,0);
 			vector<double> GX(m,0);
 			vector<double> ISZ(m,0);
 			
-			b.read_depth(svlist, X, GX);
+			b.read_depth(svlist, X, GX, ISZ);
 			
 			for(int j=0;j<m;++j)
 			{
-			//	double is = 0;
-			//	double is = b.read_pair(svlist[j]);
-
-				fprintf(fp, "%s\t%d\t.\t.\t<%s>\t.\t.\tEND=%d;SVTYPE=%s;SVLEN=%d\tDP", svlist[j].chr.c_str(), svlist[j].pos,svlist[j].svtype.c_str(), svlist[j].end,svlist[j].svtype.c_str(),svlist[j].end - svlist[j].pos);
-				fprintf(fp,"\t%f\n",X[j]);
-				
-				//cout << svlist[j].chr << ":" << svlist[j].pos << "-" << svlist[j].end << "\t";
-				//cout << X[j] << "\t" << GX[j] << "\t" << is <<  endl;
+				// fprintf(fp, "%s\t%d\t.\t.\t<%s>\t.\t.\tEND=%d;SVTYPE=%s;SVLEN=%d\tDP", svlist[j].chr.c_str(), svlist[j].pos,svlist[j].svtype.c_str(), svlist[j].end,svlist[j].svtype.c_str(),svlist[j].end - svlist[j].pos);
+				// fprintf(fp,"\t%f\n",X[j],GX[j],ISZ[j]);
+				printf("%s\t%d\t.\t.\t<%s>\t.\t.\tEND=%d;SVTYPE=%s;SVLEN=%d\tDP", svlist[j].chr.c_str(), svlist[j].pos,svlist[j].svtype.c_str(), svlist[j].end,svlist[j].svtype.c_str(),svlist[j].end - svlist[j].pos);
+				printf("\t%.1f:%.1f:%.1f\n",X[j],GX[j],ISZ[j]);
 			}
-			/*
-			for(int j=0; j<(int)svlist.size(); ++j)
-			{
-				cnt++;
-				gtype g;
-				vector<double> X(n, 0);
-				vector<double> Y(n, 0);
-				vector<int> G(n, 0);
 
-		//		cerr << svlist[j].chr << "\t" << svlist[j].pos << "\t" << svlist[j].end << endl;
-
-				bf.read_depth(svlist[j], X);
-				// normalize
-				for(int k=0; k<n; ++k)
-				{
-					X[k] = X[k] / avg_depths[k];
-				}
-				g.call_genotype(svlist[j], X, Y, G, vfile, avg_depths);
-			}
-			 */
 		}
-		fclose(fp);
+//		fclose(fp);
 
 	//vfile.close();
 	}

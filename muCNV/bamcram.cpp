@@ -68,6 +68,22 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 		//if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
 //		readcount++;
 //		cerr << bam_get_qname(b) << "/" << which_readpart(b) << " insert size : " << b->core.isize << endl;
+		if (b->core.isize > 0)
+		{
+			for(set<int>::iterator it=(*(aux->fwd_set)).begin(); it!=(*(aux->fwd_set)).end(); ++it)
+			{
+				(*(aux->isz_sum))[*it] += b->core.isize;
+				(*(aux->isz_cnt))[*it]++;
+			}
+		}
+		if(b->core.isize<0)
+		{
+			for(set<int>::iterator it=(*(aux->rev_set)).begin(); it!=(*(aux->rev_set)).end(); ++it)
+			{
+				(*(aux->isz_sum))[*it] -= b->core.isize;
+				(*(aux->isz_cnt))[*it]++;
+			}
+		}
 		break;
 	}
 
@@ -161,89 +177,133 @@ void bFile::get_avg_depth(double &avg, double &GCavg, double &avg_insert)
 
 
 // Get (overlapping) list of SV intervals, return average depth and GC-corrected average depth on intervals
-void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double> &GX)
+void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double> &GX, vector<double> &Y)
 {
 	char reg[100];
 	
 	string chr = m_interval[0].chr;
-	int startpos = m_interval[0].pos;
+	int startpos = 1;
 	int endpos = m_interval[0].end;
 	int n = (int) m_interval.size();
 	vector<breakpoint> bp;
-	bp.resize(n*2);
-	
+	bp.resize(n*4);  // 4 checkpoints per interval
 	// Make list of all breakpoints, to identify the transition points for calculating 'average depth'
+	// Breakpoints + read pair info (GAP = (AVG INSERT SIZE - AVG READ LEN) GAP bp before START, GAP bp after END point)
+	
+	// TODO : CHECK CIGAR to find SOFT CLIP with Breakpoint-Overlapping Reads? -- maybe not very complicated, but not sure how to incorporate into clustering model
 	for(int i=0; i<n; ++i)
 	{
-		bp[i*2].pos = m_interval[i].pos;
-		bp[i*2].type = false;
-		bp[i*2].idx = i;
-		bp[i*2+1].pos = m_interval[i].end;
-		bp[i*2+1].type = true;
-		bp[i*2+1].idx = i;
+		// START - GAP
+		bp[i*4].pos = m_interval[i].pos > 300 ? m_interval[i].pos - 300 : 1;
+		bp[i*4].type = 0;
+		bp[i*4].idx = i;
 		
-		if (m_interval[i].end > endpos)
+		// START
+		bp[i*4+1].pos = m_interval[i].pos;
+		bp[i*4+1].type = 1;
+		bp[i*4+1].idx = i;
+		
+		// END
+		bp[i*4+2].pos = m_interval[i].end;
+		bp[i*4+2].type = 2;
+		bp[i*4+2].idx = i;
+		
+		//END + GAP
+		bp[i*4+3].pos = m_interval[i].end + 300;
+		bp[i*4+3].type = 3;
+		bp[i*4+3].idx = i;
+		
+		if (m_interval[i].end <= m_interval[i].pos )
 		{
-			endpos = m_interval[i].end;
+			cerr << "Error! interval end point " << m_interval[i].end << " is before start point " << m_interval[i].pos << endl;
+		}
+		
+		if (m_interval[i].end + 300 > endpos)
+		{
+			endpos = m_interval[i].end + 300;
 		}
 	}
 	
-	sort(bp.begin()+1, bp.end());
-	// make sure there's no SVs witn pos == end
+	startpos = bp[0].pos;
 	
-	//sprintf(reg, "chr%d:%d-%d", chr, startpos, endpos);
-	sprintf(reg, "chr%s:%d-%d", chr.c_str(), startpos, endpos);
-
+	sort(bp.begin()+1, bp.end());
+	
+	//sprintf(reg, "chr%s:%d-%d", chr.c_str(), startpos, endpos);
+	sprintf(reg, "%s:%d-%d", chr.c_str(), startpos, endpos); // Check BAM/CRAM header for list of CHRs first?
 	data->iter = sam_itr_querys(idx, data->hdr, reg);
 	if (data->iter == NULL)
 	{
 		cerr << reg << endl;
 		cerr << "Can't parse region " << reg << endl;
 		exit(1);
-		
 	}
 
-	bam_plp_t plp = bam_plp_init(read_bam, (void*) data);
-	const bam_pileup1_t *p;
-	
 	int tid, pos;
 	int n_plp;
-	vector<double> sum (n,0);
-	vector<int> cnt (n,0);
-	set<int> currset;
-	currset.insert(bp[0].idx); // Should be always 0 because m_interval is sorted by position.
-	// What if there're SVs with the same starting positions?
 	
 	if (bp[0].idx != 0)
 	{
 		cerr << "Error: Merged interval's first element is not the earliest." << endl;
 		cerr << "first " << bp[0].idx  << " pos " << bp[0].pos << " second " << bp[1].idx << " pos " << bp[1].pos << endl;
 	}
-	if (bp[0].type)
+	if (bp[0].type > 1)
 	{
 		cerr << "Error: Merged interval's earliest position is SV-end, not SV-start." << endl;
 	}
-	int next = 1;
+	int nxt = 1;
+	
+	// For average DP
+	set<int> dp_set;
+	vector<double> dp_sum (n,0);
+	vector<int> dp_cnt (n,0);
+	
+	// For average Insert Size
+	set<int> f_set;
+	set<int> r_set;
+	vector<double> i_sum(n,0);
+	vector<int> i_cnt(n,0);
+	f_set.insert(bp[0].idx);
+	
+	data->fwd_set = &f_set;
+	data->rev_set = &r_set;
+	data->isz_sum = &i_sum;
+	data->isz_cnt = &i_cnt;
+	
+	bam_plp_t plp = bam_plp_init(read_bam, (void*) data);
+	const bam_pileup1_t *p;
 	
 	while((p = bam_plp_auto(plp, &tid, &pos, &n_plp))!=0)
 	{
 		if (pos<startpos || pos >=endpos) continue;
-		if (pos>=bp[next].pos)
+		
+		if (pos>=bp[nxt].pos)
 		{
-			if (bp[next].type)
+			switch(bp[nxt].type)
 			{
-				//SV-end
-				currset.erase(bp[next].idx);
-				next++;
-			}
-			else
-			{
-				//SV-start
-				currset.insert(bp[next].idx);
-				next++;
+				case 0:
+					//Pre-gap start
+					f_set.insert(bp[nxt].idx);
+					nxt++;
+					break;
+				case 1:
+					//Pre-gap end, interval start
+					f_set.erase(bp[nxt].idx);  // TODO, error checking : should check whether it exists in the set
+					dp_set.insert(bp[nxt].idx);
+					nxt++;
+					break;
+				case 2:
+					//interval end, post-gap start
+					r_set.insert(bp[nxt].idx);
+					dp_set.erase(bp[nxt].idx); 
+					nxt++;
+					break;
+				case 3:
+					//Post-gap end
+					r_set.erase(bp[nxt].idx);
+					break;
 			}
 		}
-		for(set<int>::iterator it=currset.begin(); it!=currset.end(); ++it)
+		for(set<int>::iterator it=dp_set.begin(); it!=dp_set.end(); ++it)
 		{
 			int m=0;
 		
@@ -252,8 +312,8 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 				if ((p+j)->is_del || (p+j)->is_refskip )
 					++m;
 			}
-			sum[*it] += n_plp-m;
-			cnt[*it]++;
+			dp_sum[*it] += n_plp-m;
+			dp_cnt[*it]++;
 		}
 	}
 	sam_itr_destroy(data->iter);
@@ -261,10 +321,13 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 
 	for(int i=0;i<n;++i)
 	{
-		X[i] = (cnt[i]>0) ? sum[i]/(double)cnt[i] : 0;
+		X[i] = (dp_cnt[i]>0) ? dp_sum[i]/(double)dp_cnt[i] : 0;
 		GX[i] = X[i]; // TODO: do GC correction
 	}
-//	cerr << "readcount " << readcount << endl;
+	for(int i=0;i<n;++i)
+	{
+		Y[i] = (i_cnt[i]>0) ? i_sum[i]/(double)i_cnt[i] : 0;
+	}
 }
 
 double bFile::read_pair(sv &interval)
@@ -309,7 +372,9 @@ double bFile::read_pair(sv &interval)
 	}
 	hts_itr_destroy(data->iter);
 	
-	sprintf(reg, "chr%s:%d-%d", chr.c_str(), start2, end2);
+	//sprintf(reg, "chr%s:%d-%d", chr.c_str(), start2, end2);
+	sprintf(reg, "%s:%d-%d", chr.c_str(), start2, end2);
+
 	data->iter = sam_itr_querys(idx, data->hdr, reg);
 	if (data->iter == NULL)
 	{
@@ -330,3 +395,48 @@ double bFile::read_pair(sv &interval)
 	double ret = (cnt>0) ? (double)sum/(double)cnt : 0;
 	return ret;
 }
+
+int gcContent::gcbin(int chr, int pos)
+{
+	return 0;
+}
+
+double gcContent::gcFactor(int, int)
+{
+	// chr, pos, return factor for GC correction
+	return 1;
+}
+
+void gcContent::initialize(string &gcFile)
+{// filename for GC content, populate all vectors
+	ifstream inFile(gcFile.c_str(), std::ios::in | std::ios::binary);
+	
+	// read number of chrs
+	inFile.read(reinterpret_cast <char *> (&num_chr), sizeof(uint16_t));
+	
+	// read size of chrs
+	chrSize.resize(num_chr);
+	for(uint16_t i=0;i<num_chr;++i)
+	{
+		inFile.read(reinterpret_cast <char *> (&chrSize[i]), sizeof(uint16_t));
+	}
+	// read size of GC bins
+	inFile.read(reinterpret_cast <char *> (&binsize), sizeof(uint16_t));
+
+	// read number of GC bins
+	inFile.read(reinterpret_cast <char *> (&num_bin), sizeof(uint16_t));
+
+	// read number of intervals per GC bin
+	inFile.read(reinterpret_cast <char *> (&int_per_bin), sizeof(uint16_t));
+
+	// read intervals (chr, start, end)
+	
+	// read GC content for each (bin size)-bp interval for each chromosome
+	
+
+//	vector< vector<sv> > regions; // Double array to store list of regions for each GC bin -- non-overlapping, so let's just be it out-of-order
+//	vector< vector<int> > gc_array; // Array to store GC content for every 400-bp (?) interval
+//	vector<double> gc_dist; // Array to store proportion of Ref genome for each GC content bin
+
+}
+

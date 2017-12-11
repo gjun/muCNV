@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <map>
+#include <set>
 #include <iostream>
 #include <string.h>
 #include <fstream>
@@ -46,7 +47,7 @@ class breakpoint
 {
 public:
 	int pos;
-	bool type; // 0: start, 1: end
+	int type; // 0 : insert start, 1: startpos, 2:endpos 3: insert end
 	int idx;
 	bool operator < (const breakpoint&) const;
 	bool operator == (const breakpoint&) const;
@@ -72,6 +73,10 @@ typedef struct {     // auxiliary data structure
 	samFile *fp;     // the file handle
 	bam_hdr_t *hdr;  // the file header
 	hts_itr_t *iter; // NULL if a region not specified
+	set<int> *fwd_set;
+	set<int> *rev_set;
+	vector<double> *isz_sum;
+	vector<int> *isz_cnt;
 	int min_mapQ, min_len; // mapQ filter; length filter
 } aux_t;
 
@@ -132,12 +137,29 @@ public:
 	vector<double> gcbin;
 	
 // Handle multiple, overlapping SVs
-	void read_depth(vector<sv> &, vector<double>&, vector<double>&);
+	void read_depth(vector<sv> &, vector<double>&, vector<double>&, vector<double>&);
 	double read_pair(sv &);
 	// average depth, average gc-corrected depth, average insert size // stdev?
 	void get_avg_depth(double &, double&, double&);
 	
 	void initialize(string&);
+};
+
+class gcContent
+{
+public:
+	int gcbin(int, int); // chr, pos, return GC bin index
+	double gcFactor(int, int); // chr, pos, return factor for GC correction
+	void initialize(string &); // filename for GC content, populate all vectors
+	vector< vector<sv> > regions; // Double array to store list of regions for each GC bin -- non-overlapping, so let's just be it out-of-order
+private:
+	uint16_t num_chr; //number of chrs
+	uint16_t binsize; // Size of GC bin (bp)
+	uint16_t int_per_bin; // Size of intervals per GC bin
+	uint16_t num_bin; // Number of GC bin
+	vector<uint16_t> chrSize;
+	vector<double> gc_dist; // Array to store proportion of Ref genome for each GC content bin
+	vector<int*> gc_array; // Array to store "GC bin number" for every 400-bp (?) interval of reference genome
 };
 
 class outvcf
