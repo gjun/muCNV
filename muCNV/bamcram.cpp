@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <set>
 #include "muCNV.h"
+#include <math.h>
 #include <algorithm>
 
 // GRCh38
@@ -420,19 +421,35 @@ void gcContent::initialize(string &gcFile)
 	{
 		inFile.read(reinterpret_cast <char *> (&chrSize[i]), sizeof(uint16_t));
 	}
-	// read size of GC bins
+	// read size of GC-interval bin
 	inFile.read(reinterpret_cast <char *> (&binsize), sizeof(uint16_t));
 
 	// read number of GC bins
 	inFile.read(reinterpret_cast <char *> (&num_bin), sizeof(uint16_t));
 
-	// read number of intervals per GC bin
-	inFile.read(reinterpret_cast <char *> (&int_per_bin), sizeof(uint16_t));
+	// read number of total intervals
+	inFile.read(reinterpret_cast <char *> (&total_bin), sizeof(uint16_t));
 
+	gc_array.resize(num_chr);
 	// read intervals (chr, start, end)
-	
+	for(int i=0; i<total_bin; ++i)
+	{
+		uint8_t c;
+		uint32_t pos1, pos2;
+		uint8_t gc;
+		inFile.read(reinterpret_cast<char *>(&c), sizeof(uint8_t));
+		inFile.read(reinterpret_cast<char *>(&pos1), sizeof(uint32_t));
+		inFile.read(reinterpret_cast<char *>(&pos2), sizeof(uint32_t));
+		inFile.read(reinterpret_cast<char *>(&gc), sizeof(uint8_t));
+	}
 	// read GC content for each (bin size)-bp interval for each chromosome
-	
+	for(int i=0; i<num_chr; ++i)
+	{
+		int N = ceil(chrSize[i] / (double)binsize);
+		gc_array[i] = (uint8_t *) calloc(N, sizeof(uint8_t));
+		inFile.read(reinterpret_cast<char *>(gc_array[i]), sizeof(uint8_t)*N);
+	}
+	inFile.close();
 
 //	vector< vector<sv> > regions; // Double array to store list of regions for each GC bin -- non-overlapping, so let's just be it out-of-order
 //	vector< vector<int> > gc_array; // Array to store GC content for every 400-bp (?) interval

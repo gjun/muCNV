@@ -155,11 +155,11 @@ public:
 private:
 	uint16_t num_chr; //number of chrs
 	uint16_t binsize; // Size of GC bin (bp)
-	uint16_t int_per_bin; // Size of intervals per GC bin
+	uint16_t total_bin; // Size of intervals per GC bin
 	uint16_t num_bin; // Number of GC bin
 	vector<uint16_t> chrSize;
 	vector<double> gc_dist; // Array to store proportion of Ref genome for each GC content bin
-	vector<int*> gc_array; // Array to store "GC bin number" for every 400-bp (?) interval of reference genome
+	vector<uint8_t *> gc_array; // Array to store "GC bin number" for every 400-bp (?) interval of reference genome
 };
 
 class outvcf
