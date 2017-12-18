@@ -12,6 +12,7 @@
 #include "muCNV.h"
 #include <math.h>
 #include <algorithm>
+#include <string>
 
 // GRCh38
 // TODO: Take FASTA and fai file input and match MD5 with BAMs? Or just use whatever given?
@@ -21,8 +22,6 @@ breakpoint::breakpoint()
 	pos = 0;
 	type = 0;
 }
-
-static int readcount;
 
 bool breakpoint::operator < (const breakpoint& b) const
 {
@@ -36,6 +35,19 @@ bool breakpoint::operator == (const breakpoint& b) const
 
 typedef enum { READ_UNKNOWN = 0, READ_1 = 1, READ_2 = 2 } readpart;
 
+void readmagic(ifstream &F)
+{
+	char buf[100];
+	F.read(reinterpret_cast<char *>(buf), 7);
+	buf[7] = '\0';
+	if (strcmp(buf, "mCNVMGC"))
+	{
+		cerr << "Error: GC content file is corrupted." << endl;
+		exit(1);
+	}
+}
+
+/*
 static readpart which_readpart(const bam1_t *b)
 {
 	if ((b->core.flag & BAM_FREAD1) && !(b->core.flag & BAM_FREAD2)) {
@@ -46,6 +58,7 @@ static readpart which_readpart(const bam1_t *b)
 		return READ_UNKNOWN;
 	}
 }
+*/
 
 // This function reads a BAM alignment from one BAM file.
 static int read_bam(void *data, bam1_t *b) // read level filters better go here to avoid pileup
@@ -57,9 +70,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 	{
 		ret = aux->iter ? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->hdr, b);
 		
-		// readcount++;
 		// cerr << "insert size : " << b->core.isize << endl;
-	
 
 		if ( ret<0 ) break;
 		if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
@@ -67,22 +78,23 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 
 		// Nov 29, 2017, commented out
 		//if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
-//		readcount++;
 //		cerr << bam_get_qname(b) << "/" << which_readpart(b) << " insert size : " << b->core.isize << endl;
 		if (b->core.isize > 0)
 		{
 			for(set<int>::iterator it=(*(aux->fwd_set)).begin(); it!=(*(aux->fwd_set)).end(); ++it)
 			{
-				(*(aux->isz_sum))[*it] += b->core.isize;
-				(*(aux->isz_cnt))[*it]++;
+				(*(aux->isz_list))[*it].push_back(b->core.isize);
+//				(*(aux->isz_cnt))[*it]++;
 			}
 		}
 		if(b->core.isize<0)
 		{
 			for(set<int>::iterator it=(*(aux->rev_set)).begin(); it!=(*(aux->rev_set)).end(); ++it)
 			{
-				(*(aux->isz_sum))[*it] -= b->core.isize;
-				(*(aux->isz_cnt))[*it]++;
+
+				(*(aux->isz_list))[*it].push_back(0-b->core.isize);
+//				(*(aux->isz_sum))[*it] -= b->core.isize;
+//				(*(aux->isz_cnt))[*it]++;
 			}
 		}
 		break;
@@ -94,6 +106,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 
 void bFile::initialize(string &bname)
 {
+
 	data = (aux_t*)calloc(1, sizeof(aux_t));
 	data->fp = hts_open(bname.c_str(), "r");
 		
@@ -128,30 +141,46 @@ void bFile::initialize(string &bname)
 	idx = tmp_idx;
 }
 
-void bFile::get_avg_depth(double &avg, double &GCavg, double &avg_insert)
+void bFile::get_avg_depth()
 {
 	// TODO : SAMPLE regions of whole genome
 	// TODO : Get GC Content estimates and calculate GC-corrected average depth
 	
-	double sum = 0;
-	double cnt = 0;
-	for(int c=20;c<21;++c)
+	vector<double> sums (GC.num_bin, 0);
+	vector<double> cnts (GC.num_bin, 0);
+
+	// For average Insert Size
+	set<int> f_set;
+	set<int> r_set;
+	vector< vector<int> > i_list;
+
+	i_list.resize(1);
+
+	f_set.insert(0);
+	r_set.insert(0);
+
+	data->fwd_set = &f_set;
+	data->rev_set = &r_set;
+	data->isz_list = &i_list;
+
+	vector< vector <double> > GCdata;
+	GCdata.resize(GC.num_bin);
+
+	for(int i=0; i<GC.regions.size();++i)
 	{
-		int rpos=100000;
 	//	while(rpos<chrlen[c])
 		{
 			char reg[100];
-			sprintf(reg, "chr%d:%d-%d",c, rpos, rpos+100);
-			//			cerr << reg << endl;
-			
+			sprintf(reg, "chr%d:%d-%d",GC.regions[i].chrnum, GC.regions[i].pos, GC.regions[i].end);
 
 			data->iter = sam_itr_querys(idx, data->hdr, reg);
-			if (data->iter == NULL)
+				if (data->iter == NULL)
 			{
 				cerr << reg << endl;
 				cerr << "Can't parse region" << endl;
 				exit(1);
 			}
+
 			bam_plp_t plp = bam_plp_init(read_bam, (void*) data);
 			const bam_pileup1_t *p;
 			
@@ -161,31 +190,80 @@ void bFile::get_avg_depth(double &avg, double &GCavg, double &avg_insert)
 			while((p = bam_plp_auto(plp, &tid, &pos, &n_plp))!=0)
 			{
 				//			cerr << "tid " << tid << " pos " << pos << endl;
-				if (pos<rpos || pos >=rpos+10) continue;
-				sum += n_plp;
-				cnt ++;
+				if (pos<GC.regions[i].pos || pos >GC.regions[i].end) continue;
+				sums[GC.regions[i].gcbin] += n_plp;
+				cnts[GC.regions[i].gcbin] += 1;
+				GCdata[GC.regions[i].gcbin].push_back(n_plp);
 			}
-			delete p;
+			sam_itr_destroy(data->iter);
 			bam_plp_destroy(plp);
-			rpos+=1000000;
 		}
 	}
 
-	avg = sum/cnt;
-	GCavg = avg;
-	avg_insert = 500; //TEMPORARY - FIX!
+	double avg = 0;
+	vector<double> meds (GC.num_bin,0);
+
+	for(int i=0; i<GC.num_bin; ++i)
+	{
+		if (cnts[i] > 0)
+		{
+			avg += (sums[i]/cnts[i]) * GC.gc_dist[i];
+//			cerr << "Avg DP for GC bin " << i << " is " << sums[i]/cnts[i] << ", median is " ;
+			sort(GCdata[i].begin(), GCdata[i].end());
+			int m = (int)(GCdata[i].size()/2) -1;
+			meds[i] = (GCdata[i][m] + GCdata[i][m+1]) /2.0;
+//			cerr << meds[i] << endl;
+		}
+	}
+
+	cerr << "Average Depth: " << avg << endl;
+
+	sort(i_list[0].begin(), i_list[0].end());
+	int m = (int)(i_list[0].size()/2) -1;
+	avg_isize = (i_list[0][m] + i_list[0][m+1])/2.0; //TEMPORARY - FIX!
+
+	cerr << "Median Insert Size : " << avg_isize << endl;
+	gc_factor.resize(GC.num_bin);
+
+	for(int i=0; i<GC.num_bin; ++i)
+	{
+		gc_factor[i] = meds[i] / avg;
+		cerr << "bin " << i << " factor " << gc_factor[i] << endl;
+	}
+
+	avg_dp = avg;
+	avg_rlen = 150; //TEMPORARY - FIX!
 }
 
 
+double bFile::gcCorrected(double D, int chr, int pos)
+{
+	int p = (int)round(pos / 200.0);
+	int bin = GC.gc_array[chr][p];
+//	if (bin>17) bin=17;
+
+	if (bin<20 && gc_factor[bin]>0)
+	{
+//		cerr << D << " at " << chr << ":" << pos << " is adjusted to " << D/gc_factor[bin] << " by gc Factor "<< gc_factor[bin] << endl;
+		return D / gc_factor[bin];
+	}
+	else
+	{
+		return D;
+	}
+}
+
 // Get (overlapping) list of SV intervals, return average depth and GC-corrected average depth on intervals
-void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double> &GX, vector<double> &Y)
+void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double> &GX, vector< vector<int> > &Y)
 {
 	char reg[100];
 	
 	string chr = m_interval[0].chr;
+	int chrnum = m_interval[0].chrnum;
 	int startpos = 1;
 	int endpos = m_interval[0].end;
 	int n = (int) m_interval.size();
+	int gap = avg_isize-avg_rlen;
 	vector<breakpoint> bp;
 	bp.resize(n*4);  // 4 checkpoints per interval
 	// Make list of all breakpoints, to identify the transition points for calculating 'average depth'
@@ -195,7 +273,7 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 	for(int i=0; i<n; ++i)
 	{
 		// START - GAP
-		bp[i*4].pos = m_interval[i].pos > 300 ? m_interval[i].pos - 300 : 1;
+		bp[i*4].pos = m_interval[i].pos > gap ? m_interval[i].pos - gap : 1;
 		bp[i*4].type = 0;
 		bp[i*4].idx = i;
 		
@@ -210,7 +288,7 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 		bp[i*4+2].idx = i;
 		
 		//END + GAP
-		bp[i*4+3].pos = m_interval[i].end + 300;
+		bp[i*4+3].pos = m_interval[i].end + gap;
 		bp[i*4+3].type = 3;
 		bp[i*4+3].idx = i;
 		
@@ -219,18 +297,18 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 			cerr << "Error! interval end point " << m_interval[i].end << " is before start point " << m_interval[i].pos << endl;
 		}
 		
-		if (m_interval[i].end + 300 > endpos)
+		if (m_interval[i].end + gap > endpos)
 		{
-			endpos = m_interval[i].end + 300;
+			endpos = m_interval[i].end + gap;
 		}
 	}
 	
+	sort(bp.begin()+1, bp.end());
+
 	startpos = bp[0].pos;
 	
-	sort(bp.begin()+1, bp.end());
-	
-	//sprintf(reg, "chr%s:%d-%d", chr.c_str(), startpos, endpos);
-	sprintf(reg, "%s:%d-%d", chr.c_str(), startpos, endpos); // Check BAM/CRAM header for list of CHRs first?
+	sprintf(reg, "chr%s:%d-%d", chr.c_str(), startpos, endpos);
+//	sprintf(reg, "%s:%d-%d", chr.c_str(), startpos, endpos); // Check BAM/CRAM header for list of CHRs first?
 	data->iter = sam_itr_querys(idx, data->hdr, reg);
 	if (data->iter == NULL)
 	{
@@ -256,19 +334,26 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 	// For average DP
 	set<int> dp_set;
 	vector<double> dp_sum (n,0);
+	vector<double> gc_dp_sum (n,0);
 	vector<int> dp_cnt (n,0);
 	
 	// For average Insert Size
 	set<int> f_set;
 	set<int> r_set;
-	vector<double> i_sum(n,0);
-	vector<int> i_cnt(n,0);
+	vector< vector<int> > i_list;
+	i_list.resize(n);
+
+//	vector<double> i_sum(n,0);
+//	vector<int> i_cnt(n,0);
 	f_set.insert(bp[0].idx);
 	
 	data->fwd_set = &f_set;
 	data->rev_set = &r_set;
+	data->isz_list = &i_list;
+	/*
 	data->isz_sum = &i_sum;
 	data->isz_cnt = &i_cnt;
+	*/
 	
 	bam_plp_t plp = bam_plp_init(read_bam, (void*) data);
 	const bam_pileup1_t *p;
@@ -304,16 +389,19 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 					break;
 			}
 		}
+		int m=0;
+		for(int j=0;j<n_plp;++j)
+		{
+			if ((p+j)->is_del || (p+j)->is_refskip )
+				++m;
+		}
+		double dpval = n_plp-m;
+		double gc_dpval = gcCorrected(n_plp-m, chrnum, pos);
+
 		for(set<int>::iterator it=dp_set.begin(); it!=dp_set.end(); ++it)
 		{
-			int m=0;
-		
-			for(int j=0;j<n_plp;++j)
-			{
-				if ((p+j)->is_del || (p+j)->is_refskip )
-					++m;
-			}
-			dp_sum[*it] += n_plp-m;
+			dp_sum[*it] += dpval;
+			gc_dp_sum[*it] += gc_dpval;
 			dp_cnt[*it]++;
 		}
 	}
@@ -323,11 +411,27 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 	for(int i=0;i<n;++i)
 	{
 		X[i] = (dp_cnt[i]>0) ? dp_sum[i]/(double)dp_cnt[i] : 0;
-		GX[i] = X[i]; // TODO: do GC correction
+		GX[i] = (dp_cnt[i]>0) ? gc_dp_sum[i]/(double)dp_cnt[i] : 0;
 	}
 	for(int i=0;i<n;++i)
 	{
-		Y[i] = (i_cnt[i]>0) ? i_sum[i]/(double)i_cnt[i] : 0;
+		for(int j=0;j<i_list[i].size();++j)
+		{
+
+			if ((i_list[i][j] - avg_isize) < m_interval[i].len()/2)
+			{
+				Y[i][0]++;
+			}
+			else if ((i_list[i][j] - avg_isize) < m_interval[i].len()*1.5)
+			{
+				Y[i][1]++;
+			}
+			else
+			{
+				Y[i][2]++;
+			}
+		}
+//		Y[i] = (i_cnt[i]>0) ? i_sum[i]/(double)i_cnt[i] : 0;
 	}
 }
 
@@ -397,40 +501,47 @@ double bFile::read_pair(sv &interval)
 	return ret;
 }
 
-int gcContent::gcbin(int chr, int pos)
-{
-	return 0;
-}
-
-double gcContent::gcFactor(int, int)
-{
-	// chr, pos, return factor for GC correction
-	return 1;
-}
-
 void gcContent::initialize(string &gcFile)
 {// filename for GC content, populate all vectors
 	ifstream inFile(gcFile.c_str(), std::ios::in | std::ios::binary);
+	if (!inFile.good())
+	{
+		cerr << "Error: cannot open GC file."<< endl;
+		exit(1);
+	}
 	
+	readmagic(inFile);
 	// read number of chrs
-	inFile.read(reinterpret_cast <char *> (&num_chr), sizeof(uint16_t));
+	inFile.read(reinterpret_cast <char *> (&num_chr), sizeof(uint8_t));
 	
+	cerr << (int)num_chr << " chromosomes in GC content file." << endl;
+
 	// read size of chrs
 	chrSize.resize(num_chr);
-	for(uint16_t i=0;i<num_chr;++i)
+	for(int i=0;i<num_chr;++i)
 	{
-		inFile.read(reinterpret_cast <char *> (&chrSize[i]), sizeof(uint16_t));
+		inFile.read(reinterpret_cast <char *> (&chrSize[i]), sizeof(uint32_t));
+//		cerr << "Chr " << i << " size: " << chrSize[i] <<  endl;
 	}
+
 	// read size of GC-interval bin
 	inFile.read(reinterpret_cast <char *> (&binsize), sizeof(uint16_t));
+	cerr << "Bin size: " << (int) binsize << endl;
 
 	// read number of GC bins
 	inFile.read(reinterpret_cast <char *> (&num_bin), sizeof(uint16_t));
+	cerr << "Num_bin : " << num_bin << endl;
 
 	// read number of total intervals
 	inFile.read(reinterpret_cast <char *> (&total_bin), sizeof(uint16_t));
+	cerr << "Total bin : " << total_bin << endl;
+
+	regions.resize(total_bin);
+
+	readmagic(inFile);
 
 	gc_array.resize(num_chr);
+
 	// read intervals (chr, start, end)
 	for(int i=0; i<total_bin; ++i)
 	{
@@ -441,19 +552,46 @@ void gcContent::initialize(string &gcFile)
 		inFile.read(reinterpret_cast<char *>(&pos1), sizeof(uint32_t));
 		inFile.read(reinterpret_cast<char *>(&pos2), sizeof(uint32_t));
 		inFile.read(reinterpret_cast<char *>(&gc), sizeof(uint8_t));
+
+		regions[i].chrnum = c;
+		regions[i].chr = "chr" + to_string(c);
+		regions[i].pos = pos1;
+		regions[i].end = pos2;
+		regions[i].gcbin = gc;
 	}
+
+	readmagic(inFile);
 	// read GC content for each (bin size)-bp interval for each chromosome
+	// cerr << "Currnet position : " << inFile.tellg() << endl;
 	for(int i=0; i<num_chr; ++i)
 	{
-		int N = ceil(chrSize[i] / (double)binsize);
+		int N = ceil((chrSize[i] / (double)binsize)*2.0) ;
 		gc_array[i] = (uint8_t *) calloc(N, sizeof(uint8_t));
 		inFile.read(reinterpret_cast<char *>(gc_array[i]), sizeof(uint8_t)*N);
+		readmagic(inFile);
+
+		if (!inFile.good())
+		{
+			cerr << "Cannot finish reading GC content file." <<endl;
+			exit(1);
+		}
+//		cerr << "Chr " << i << " GC content array loaded for "<<  N << " segments. " <<  endl;
 	}
+//	cerr << "Currnet position : " << inFile.tellg() << endl;
+
+	for(int i=0;i<num_bin;++i)
+	{
+		if (!inFile.good())
+		{
+			cerr << "Cannot finish reading GC content file." <<endl;
+			exit(1);
+		}
+		double v;
+		inFile.read(reinterpret_cast<char *>(&v), sizeof(double));
+//		cerr << "Bin " << i << " GC content proportion: "<< v << endl;
+		gc_dist.push_back(v);
+	}
+	readmagic(inFile);
 	inFile.close();
-
-//	vector< vector<sv> > regions; // Double array to store list of regions for each GC bin -- non-overlapping, so let's just be it out-of-order
-//	vector< vector<int> > gc_array; // Array to store GC content for every 400-bp (?) interval
-//	vector<double> gc_dist; // Array to store proportion of Ref genome for each GC content bin
-
 }
 

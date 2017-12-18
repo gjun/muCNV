@@ -34,10 +34,10 @@ sv::sv()
 	chr = "";
 	chrnum = -1;
 	pos = -1;
-	ci_pos.first = 0;
-	ci_pos.second = 0;
-	ci_end.first = 0;
-	ci_end.second = 0;
+//	ci_pos.first = 0;
+//	ci_pos.second = 0;
+//	ci_end.first = 0;
+//	ci_end.second = 0;
 	
 }
 
@@ -95,10 +95,10 @@ void pick_sv_from_merged(vector<sv> &sv_list, vector<sv> &merged)
 		new_sv.pos = pos[0];
 		new_sv.end = end[end.size()-1];
 	}
-	new_sv.ci_pos.first = pos[0] - new_sv.pos;
-	new_sv.ci_pos.second = pos[pos.size()-1] - new_sv.pos;
-	new_sv.ci_end.first = end[0] - new_sv.end;
-	new_sv.ci_end.second = end[pos.size()-1] - new_sv.end;
+//	new_sv.ci_pos.first = pos[0] - new_sv.pos;
+//	new_sv.ci_pos.second = pos[pos.size()-1] - new_sv.pos;
+//	new_sv.ci_end.first = end[0] - new_sv.end;
+//	new_sv.ci_end.second = end[pos.size()-1] - new_sv.end;
 	
 	sv_list.push_back(new_sv);
 }

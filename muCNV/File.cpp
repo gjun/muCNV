@@ -99,13 +99,13 @@ int vfiles::read_interval(sv& interval, vector<double> &X)
 
 //	cerr << "Reading vcf " <<endl;
 
-	for(int i=0;i<vfs.size();++i)
+	for(int i=0;i<(int)vfs.size();++i)
 	{
 		if (!vfs[i]->good())
 			return -1;
 	}
 	bool flag=false;
-	for(int i=0;i<vfs.size();++i)
+	for(int i=0;i<(int)vfs.size();++i)
 	{
 		getline(*vfs[i],lns[i]);
 
@@ -155,10 +155,10 @@ int vfiles::read_interval(sv& interval, vector<double> &X)
 	interval.chr = tokens[0]; // Dec 1, 2017
 	interval.chrnum = chr;
 	interval.pos = atoi(tokens[1].c_str());
-	interval.ci_pos.first = -1;
-	interval.ci_pos.second = -1;
-	interval.ci_end.first = -1;
-	interval.ci_end.second = -1;
+//	interval.ci_pos.first = -1;
+//	interval.ci_pos.second = -1;
+//	interval.ci_end.first = -1;
+//	interval.ci_end.second = -1;
 	string info = tokens[7];
 	
 	vector<string> infotokens;
@@ -174,6 +174,7 @@ int vfiles::read_interval(sv& interval, vector<double> &X)
 			{
 				interval.end = atoi(infofields[1].c_str());
 			}
+			/*
 			else if (infofields[0] == "CIPOS")
 			{
 				vector<string> ci;
@@ -188,6 +189,7 @@ int vfiles::read_interval(sv& interval, vector<double> &X)
 				interval.ci_end.first = atoi(ci[0].c_str());
 				interval.ci_end.second = atoi(ci[1].c_str());
 			}
+			*/
 			else if (infofields[0] == "SVTYPE")
 			{
 				interval.svtype = infofields[1];
@@ -202,7 +204,7 @@ int vfiles::read_interval(sv& interval, vector<double> &X)
 	
    // cerr << "First sample depth read" <<endl;
 
-	for(int i=1;i<vfs.size();++i)
+	for(int i=1;i<(int)vfs.size();++i)
 	{
 		vector<string> tks;
 		split(lns[i].c_str(), " \t\n", tks);
@@ -274,10 +276,10 @@ int i=0; // TEMPORARY, READ SINGLE VCF FILE
 						new_interval.chr = tokens[0]; // Dec 1, 2017
 						new_interval.chrnum = chr;
 						new_interval.pos = atoi(tokens[1].c_str());
-						new_interval.ci_pos.first = -1;
-						new_interval.ci_pos.second = -1;
-						new_interval.ci_end.first = -1;
-						new_interval.ci_end.second = -1;
+//						new_interval.ci_pos.first = -1;
+//						new_interval.ci_pos.second = -1;
+//						new_interval.ci_end.first = -1;
+//						new_interval.ci_end.second = -1;
 
 //						cerr << "pos : " << new_interval.pos << endl;
 
@@ -299,6 +301,7 @@ int i=0; // TEMPORARY, READ SINGLE VCF FILE
 									new_interval.end = atoi(infofields[1].c_str());
 									//cerr << "\tEND: " << new_interval.end << endl;
 								}
+								/*
 								else if (infofields[0] == "CIPOS")
 								{
 									vector<string> ci;
@@ -316,6 +319,7 @@ int i=0; // TEMPORARY, READ SINGLE VCF FILE
 									new_interval.ci_end.second = atoi(ci[1].c_str());
 									//cerr << "\tCIEND: " << new_interval.ci_end.first << " , " << new_interval.ci_end.second << endl;
 								}
+								*/
 								else if (infofields[0] == "SVTYPE")
 								{
 									new_interval.svtype = infofields[1];

@@ -42,7 +42,8 @@ double RO(sv x, sv y)
 	return (l/L);
 }
 
-void merge_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidates)
+//void merge_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidates)
+void merge_svs(vector<sv> &candidates , vector<int> &idxs)
 {
 	
 	int curr = 0;
@@ -54,31 +55,28 @@ void merge_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidates)
 	// find a block of sv intervals with overlap
 	while(curr<(int)candidates.size())
 	{
-		//		cerr << "curr : " << curr<< endl;
 		int block_end = candidates[curr].end;
-		
-		//		cerr << "block_end : " << block_end << endl;
 		int last_idx = curr;
+		idxs.push_back(curr);
 		
-		while(++last_idx < (int)candidates.size() && candidates[last_idx].chr == candidates[curr].chr &&  candidates[last_idx].pos < block_end)
+		int cnt = 0;
+		while(++last_idx < (int)candidates.size() && candidates[last_idx].chr == candidates[curr].chr &&  candidates[last_idx].pos < block_end && cnt<200) // MAX candidates in a single interval: 200
 		{
-			//			cerr<< "pos : " << candidates[last_idx].pos  << ", end : " << candidates[last_idx].end << endl;
 			if (block_end<candidates[last_idx].end)
 			{
 				block_end = candidates[last_idx].end;
-				
-				//				cerr << "block_end : " << block_end << endl;
 			}
+			cnt++;
 		}
 		
-		///		cerr << "last_idx : " << last_idx << endl; // TEMP : code reached up to here
-		
+		/*
 		vector<sv> t;
 		for(int i=curr; i<last_idx; ++i)
 		{
 			t.push_back(candidates[i]);
 		}
 		merged_candidates.push_back(t);
+		*/
 
 		curr=last_idx;
 	}

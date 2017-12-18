@@ -94,11 +94,13 @@ void outvcf::write_del(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 
 	if (interval.svtype == "DEL")
 	{
-		fprintf(fp,"\tIMPRECISE;CIPOS=%d,%d;CIEND=%d,%d;VT=SV;END=%d;SVLEN=-%d;AC=%d;AF=%1.4f;AN=%d;NS=%d;P_OVERLAP=%1.8f;SVTYPE=DEL", interval.ci_pos.first, interval.ci_pos.second, interval.ci_end.first, interval.ci_end.second, svend, svend-pos, ac, af, ns*2, ns, be);
+		//fprintf(fp,"\tIMPRECISE;CIPOS=%d,%d;CIEND=%d,%d;VT=SV;END=%d;SVLEN=-%d;AC=%d;AF=%1.4f;AN=%d;NS=%d;P_OVERLAP=%1.8f;SVTYPE=DEL", interval.ci_pos.first, interval.ci_pos.second, interval.ci_end.first, interval.ci_end.second, svend, svend-pos, ac, af, ns*2, ns, be);
+		fprintf(fp,"\tIMPRECISE;VT=SV;END=%d;SVLEN=-%d;AC=%d;AF=%1.4f;AN=%d;NS=%d;P_OVERLAP=%1.8f;SVTYPE=DEL", svend, svend-pos, ac, af, ns*2, ns, be);
 	}
 	else
 	{
-		fprintf(fp,"\tIMPRECISE;CIPOS=%d,%d;CIEND=%d,%d;VT=SV;END=%d;SVLEN=-%d;AC=%d;AF=%1.4f;AN=%d;NS=%d;P_OVERLAP=%1.8f;SVTYPE=INV", interval.ci_pos.first, interval.ci_pos.second, interval.ci_end.first, interval.ci_end.second, svend, svend-pos, ac, af, ns*2, ns, be);
+		//fprintf(fp,"\tIMPRECISE;CIPOS=%d,%d;CIEND=%d,%d;VT=SV;END=%d;SVLEN=-%d;AC=%d;AF=%1.4f;AN=%d;NS=%d;P_OVERLAP=%1.8f;SVTYPE=INV", interval.ci_pos.first, interval.ci_pos.second, interval.ci_end.first, interval.ci_end.second, svend, svend-pos, ac, af, ns*2, ns, be);
+		fprintf(fp,"\tIMPRECISE;VT=SV;END=%d;SVLEN=-%d;AC=%d;AF=%1.4f;AN=%d;NS=%d;P_OVERLAP=%1.8f;SVTYPE=INV", svend, svend-pos, ac, af, ns*2, ns, be);
 	}
 	fprintf(fp,";CLUS=%d", n_comp);
 	
@@ -202,7 +204,8 @@ void outvcf::write_cnv(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 	{
 		af = 0.5*ac/ns;
 	}
-	fprintf(fp,"\tIMPRECISE;CIPOS=%d,%d;CIEND=%d,%d;VT=SV;END=%d;SVLEN=%d;AC=%d;AF=%1.4f;AN=%d;NS=%d;SVTYPE=CNV", interval.ci_pos.first, interval.ci_pos.second, interval.ci_end.first, interval.ci_end.second, svend, svend-pos, ac, af, ns*2, ns);
+	//fprintf(fp,"\tIMPRECISE;CIPOS=%d,%d;CIEND=%d,%d;VT=SV;END=%d;SVLEN=%d;AC=%d;AF=%1.4f;AN=%d;NS=%d;SVTYPE=CNV", interval.ci_pos.first, interval.ci_pos.second, interval.ci_end.first, interval.ci_end.second, svend, svend-pos, ac, af, ns*2, ns);
+	fprintf(fp,"\tIMPRECISE;VT=SV;END=%d;SVLEN=%d;AC=%d;AF=%1.4f;AN=%d;NS=%d;SVTYPE=CNV", svend, svend-pos, ac, af, ns*2, ns);
 	
 	fprintf(fp,";CLUS=%d", n_comp);
 	

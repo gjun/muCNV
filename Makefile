@@ -6,7 +6,7 @@
 TARGET=  bin/muCNV
 SRCS := $(wildcard muCNV/*.cpp)
 OBJS := $(addprefix obj/,$(notdir $(SRCS:.cpp=.o)))
-CFLAGS= -g -Wall -O2 -fPIC
+CFLAGS= -g -Wall -O2 -fPIC -std=c++0x
 DFLAGS= -D_FILE_OFFSET_BITS=64
 CC= gcc
 CXX= g++ 

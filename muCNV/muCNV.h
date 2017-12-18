@@ -34,14 +34,21 @@ class sv
 	int chrnum;
 	int pos;
 	int end;
-	pair<int,int> ci_pos;
-	pair<int,int> ci_end;
+//	pair<int,int> ci_pos;
+//	pair<int,int> ci_end;
 	uint64_t len() {return (end - pos + 1);};
 	bool operator < (const sv&) const;
 	bool operator == (const sv&) const;
 	
 	sv();
 };
+
+class gcint : public sv
+{
+	public:
+	uint8_t gcbin;
+};
+
 
 class breakpoint
 {
@@ -75,8 +82,9 @@ typedef struct {     // auxiliary data structure
 	hts_itr_t *iter; // NULL if a region not specified
 	set<int> *fwd_set;
 	set<int> *rev_set;
-	vector<double> *isz_sum;
-	vector<int> *isz_cnt;
+//	vector<double> *isz_sum;
+//	vector<int> *isz_cnt;
+	vector< vector <int> > *isz_list;
 	int min_mapQ, min_len; // mapQ filter; length filter
 } aux_t;
 
@@ -127,6 +135,23 @@ public:
 	void initialize(vector<string>&);
 };
 
+
+class gcContent
+{
+public:
+	void initialize(string &); // filename for GC content, populate all vectors
+
+	uint16_t num_bin; // Number of GC bin
+	uint8_t num_chr; //number of chrs
+	uint16_t binsize; // Size of GC bin (bp)
+	uint16_t total_bin; // Size of intervals per GC bin
+
+	vector<gcint> regions; // Double array to store list of regions for each GC bin -- non-overlapping, so let's just be it out-of-order
+	vector<double> gc_dist; // Array to store proportion of Ref genome for each GC content bin
+	vector<uint32_t> chrSize;
+	vector<uint8_t *> gc_array; // Array to store "GC bin number" for every 400-bp (?) interval of reference genome
+};
+
 // A class for a single file BAM I/O
 class bFile
 {
@@ -134,32 +159,25 @@ public:
 	aux_t *data;
 	hts_idx_t* idx;
 //	int n;
-	vector<double> gcbin;
+	gcContent& GC;
+	double avg_dp;
+	double avg_isize;
+	double avg_rlen;
+	
+	vector<double> gc_factor;
+
+	// Get GC corrected depth for chr / pos
+	double gcCorrected(double, int, int);
 	
 // Handle multiple, overlapping SVs
-	void read_depth(vector<sv> &, vector<double>&, vector<double>&, vector<double>&);
+	void read_depth(vector<sv> &, vector<double>&, vector<double>&, vector< vector<int> >&);
 	double read_pair(sv &);
 	// average depth, average gc-corrected depth, average insert size // stdev?
-	void get_avg_depth(double &, double&, double&);
+	void get_avg_depth();
+	void initialize(string &);
 	
-	void initialize(string&);
-};
+	bFile (gcContent &x) : GC(x) {};
 
-class gcContent
-{
-public:
-	int gcbin(int, int); // chr, pos, return GC bin index
-	double gcFactor(int, int); // chr, pos, return factor for GC correction
-	void initialize(string &); // filename for GC content, populate all vectors
-	vector< vector<sv> > regions; // Double array to store list of regions for each GC bin -- non-overlapping, so let's just be it out-of-order
-private:
-	uint16_t num_chr; //number of chrs
-	uint16_t binsize; // Size of GC bin (bp)
-	uint16_t total_bin; // Size of intervals per GC bin
-	uint16_t num_bin; // Number of GC bin
-	vector<uint16_t> chrSize;
-	vector<double> gc_dist; // Array to store proportion of Ref genome for each GC content bin
-	vector<uint8_t *> gc_array; // Array to store "GC bin number" for every 400-bp (?) interval of reference genome
 };
 
 class outvcf
@@ -207,7 +225,7 @@ void read_intervals_from_vcf(vector<string> &, vector<string> &, vector<sv> &);
 
 
 double RO(interval_t, interval_t);
-void merge_svs(vector<sv> &, vector< vector<sv> > &);
+void merge_svs(vector<sv> &, vector<int> &);
 void cluster_svs(vector<sv>&, vector< vector<sv> > &);
 
 double BayesError(vector<Gaussian>&);
