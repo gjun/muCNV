@@ -221,6 +221,13 @@ int main(int argc, char** argv)
 			}
 			vector<sv> svlist(candidates.begin()+idxs[i], candidates.begin() + last_idx)  ;
 
+			cerr << "processing SV block for " << svlist.size() << " intervals" << endl;
+
+			for(int j=0;j<svlist.size(); ++j)
+			{
+				cerr << svlist[j].chr <<  ":" << svlist[j].pos << "-" << svlist[j].end << "\t" << svlist[j].svtype << endl;
+			}
+
 			int m = (int)svlist.size();
 			vector<double> X(m,0);
 			vector<double> GX(m,0);
@@ -234,7 +241,9 @@ int main(int argc, char** argv)
 				ISZ[j][2] = 0;
 			}
 			
+			cerr << "reading depth... " ;
 			b.read_depth(svlist, X, GX, ISZ);
+			cerr << "done " << endl;
 			
 			for(int j=0;j<m;++j)
 			{

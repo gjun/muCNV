@@ -138,7 +138,8 @@ enum htsExactFormat {
     unknown_format,
     binary_format, text_format,
     sam, bam, bai, cram, crai, vcf, bcf, csi, gzi, tbi, bed,
-    json,
+    htsget,
+    json HTS_DEPRECATED_ENUM("Use htsExactFormat 'htsget' instead") = htsget,
     format_maximum = 32767
 };
 
@@ -210,7 +211,7 @@ enum hts_fmt_option {
     // CRAM specific
     CRAM_OPT_DECODE_MD,
     CRAM_OPT_PREFIX,
-    CRAM_OPT_VERBOSITY,  // make general
+    CRAM_OPT_VERBOSITY,  // obsolete, use hts_set_log_level() instead
     CRAM_OPT_SEQS_PER_SLICE,
     CRAM_OPT_SLICES_PER_CONTAINER,
     CRAM_OPT_RANGE,
@@ -235,6 +236,7 @@ enum hts_fmt_option {
     HTS_OPT_NTHREADS,
     HTS_OPT_THREAD_POOL,
     HTS_OPT_CACHE_SIZE,
+    HTS_OPT_BLOCK_SIZE,
 };
 
 // For backwards compatibility
@@ -610,7 +612,7 @@ int hts_idx_set_meta(hts_idx_t *idx, uint32_t l_meta, uint8_t *meta, int is_copy
     @param flags   Or'ed-together combination of HTS_PARSE_* flags
     @return  Converted value of the parsed number.
 
-    When @a strend is NULL, a warning will be printed (if hts_verbose is 2
+    When @a strend is NULL, a warning will be printed (if hts_verbose is HTS_LOG_WARNING
     or more) if there are any trailing characters after the number.
 */
 long long hts_parse_decimal(const char *str, char **strend, int flags);

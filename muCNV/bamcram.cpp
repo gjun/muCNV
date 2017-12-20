@@ -78,23 +78,36 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 
 		// Nov 29, 2017, commented out
 		//if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
-//		cerr << bam_get_qname(b) << "/" << which_readpart(b) << " insert size : " << b->core.isize << endl;
-		if (b->core.isize > 0)
+		//		cerr << bam_get_qname(b) << "/" << which_readpart(b) << " insert size : " << b->core.isize << endl;
+		try
 		{
-			for(set<int>::iterator it=(*(aux->fwd_set)).begin(); it!=(*(aux->fwd_set)).end(); ++it)
+			if (b->core.isize > 0)
 			{
-				(*(aux->isz_list))[*it].push_back(b->core.isize);
-//				(*(aux->isz_cnt))[*it]++;
+				for(set<int>::iterator it=(*(aux->fwd_set)).begin(); it!=(*(aux->fwd_set)).end(); ++it)
+				{
+					(*(aux->isz_list))[*it].push_back(b->core.isize);
+				}
+			}
+			if(b->core.isize<0)
+			{
+				for(set<int>::iterator it=(*(aux->rev_set)).begin(); it!=(*(aux->rev_set)).end(); ++it)
+				{
+
+					(*(aux->isz_list))[*it].push_back(-1 * b->core.isize);
+				}
 			}
 		}
-		if(b->core.isize<0)
+		catch (exception e)
 		{
-			for(set<int>::iterator it=(*(aux->rev_set)).begin(); it!=(*(aux->rev_set)).end(); ++it)
+			cerr << "Exception with isize set" << endl;
+			cerr << "isizae : " << b->core.isize << endl;
+			if (b->core.isize>0)
 			{
-
-				(*(aux->isz_list))[*it].push_back(0-b->core.isize);
-//				(*(aux->isz_sum))[*it] -= b->core.isize;
-//				(*(aux->isz_cnt))[*it]++;
+				cerr << "fwd set size:  " << (*(aux->fwd_set)).size();
+			}
+			else
+			{
+				cerr << "rev set size:  " << (*(aux->rev_set)).size();
 			}
 		}
 		break;
@@ -228,8 +241,12 @@ void bFile::get_avg_depth()
 	for(int i=0; i<GC.num_bin; ++i)
 	{
 		gc_factor[i] = meds[i] / avg;
-		cerr << "bin " << i << " factor " << gc_factor[i] << endl;
+	//	cerr << "bin " << i << " factor " << gc_factor[i] << endl;
 	}
+	// TEMPORARY - HARD CODING for 20 BINS
+	gc_factor[18] = gc_factor[17];
+	gc_factor[19] = gc_factor[17];
+
 
 	avg_dp = avg;
 	avg_rlen = 150; //TEMPORARY - FIX!
@@ -238,17 +255,21 @@ void bFile::get_avg_depth()
 
 double bFile::gcCorrected(double D, int chr, int pos)
 {
-	int p = (int)round(pos / 200.0);
-	int bin = GC.gc_array[chr][p];
+	int p = pos / 200;
+//	cerr << "pos " << pos << " p " << p << endl;
+	int bin = GC.gc_array[chr-1][p];
+
+//	cerr << "bin " << GC.gc_array[chr-1][p] << endl;
 //	if (bin>17) bin=17;
 
-	if (bin<20 && gc_factor[bin]>0)
+	if (bin<20 && gc_factor[bin]>0.0001)
 	{
 //		cerr << D << " at " << chr << ":" << pos << " is adjusted to " << D/gc_factor[bin] << " by gc Factor "<< gc_factor[bin] << endl;
 		return D / gc_factor[bin];
 	}
 	else
 	{
+		// Let's not make adjustment for bins with '255' value
 		return D;
 	}
 }
@@ -396,7 +417,9 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 				++m;
 		}
 		double dpval = n_plp-m;
-		double gc_dpval = gcCorrected(n_plp-m, chrnum, pos);
+		double gc_dpval = dpval;
+
+		gc_dpval = gcCorrected(n_plp-m, chrnum, pos);
 
 		for(set<int>::iterator it=dp_set.begin(); it!=dp_set.end(); ++it)
 		{

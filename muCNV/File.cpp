@@ -284,6 +284,7 @@ int i=0; // TEMPORARY, READ SINGLE VCF FILE
 //						cerr << "pos : " << new_interval.pos << endl;
 
 						string info = tokens[7];
+						string chr2 = new_interval.chr;
 						
 						//cerr << "info : " << info << endl;
 
@@ -326,10 +327,14 @@ int i=0; // TEMPORARY, READ SINGLE VCF FILE
 
 									//cerr << "\tSVTYPE: " << new_interval.svtype << endl;
 								}
+								else if (infofields[0] == "CHR2")
+								{
+									chr2 = infofields[1];
+								}
 							}
 								
 						}
-						if (new_interval.pos > 0 && new_interval.end > new_interval.pos && (new_interval.end - new_interval.pos)<=1000000 )  // TEMPORARY!! 1Mb Max!
+						if (chr2 == new_interval.chr && new_interval.pos > 0 && new_interval.end > new_interval.pos && (new_interval.end - new_interval.pos)<=10000000 )  // TEMPORARY!! 10Mb Max!
 						{
 							candidates.push_back(new_interval);
 						}
