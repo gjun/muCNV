@@ -80,11 +80,14 @@ typedef struct {     // auxiliary data structure
 	samFile *fp;     // the file handle
 	bam_hdr_t *hdr;  // the file header
 	hts_itr_t *iter; // NULL if a region not specified
-	set<int> *fwd_set;
-	set<int> *rev_set;
+	set<int> *isz_set;
 //	vector<double> *isz_sum;
 //	vector<int> *isz_cnt;
 	vector< vector <int> > *isz_list;
+	vector< vector <int> > *pos_list;
+
+	vector< vector <int> > *rev_isz_list;
+	vector< vector <int> > *rev_pos_list;
 	int min_mapQ, min_len; // mapQ filter; length filter
 } aux_t;
 
@@ -123,18 +126,6 @@ public:
 	int read_interval(sv&, vector<double> &);
 };
 
-class bfiles
-{
-public:
-	aux_t **data;
-	vector<hts_idx_t*> idx;
-	int n;
-
-	void read_depth(sv&, vector<double>&);
-	void get_avg_depth(vector<double>&);
-	void initialize(vector<string>&);
-};
-
 
 class gcContent
 {
@@ -162,6 +153,8 @@ public:
 	gcContent& GC;
 	double avg_dp;
 	double avg_isize;
+	double std_isize;
+	double med_isize;
 	double avg_rlen;
 	
 	vector<double> gc_factor;
@@ -170,11 +163,15 @@ public:
 	double gcCorrected(double, int, int);
 	
 // Handle multiple, overlapping SVs
-	void read_depth(vector<sv> &, vector<double>&, vector<double>&, vector< vector<int> >&);
+	//void read_depth(vector<sv> &, vector<double>&, vector<double>&, vector< vector<int> >&);
+	void read_depth(vector<sv> &, vector<string> &);
+	void process_readpair(sv &, vector<int> &, vector<int> &, string &);
 	double read_pair(sv &);
 	// average depth, average gc-corrected depth, average insert size // stdev?
 	void get_avg_depth();
 	void initialize(string &);
+
+	int median(vector<int> &);
 	
 	bFile (gcContent &x) : GC(x) {};
 

@@ -16,28 +16,6 @@
  */
 #include "muCNV.h"
 #include <stdlib.h>
-//extern uint32_t CHR;
-
-// GRCh38
-int chrlen[26] = {0, 248956422,242193529,198295559,190214555,181538259,170805979,159345973,145138636,138394717,133797422,135086622,133275309,114364328,107043718,101991189,90338345,83257441,80373285,58617616,64444167,46709983,50818468,156040895,57227415, 16569};
-
-// This function reads a BAM alignment from one BAM file.
-static int read_bam(void *data, bam1_t *b) // read level filters better go here to avoid pileup
-{
-	aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
-	int ret;
-	while (1)
-	{
-		ret = aux->iter? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->hdr, b);
-		if ( ret<0 ) break;
-		if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
-		if ( (int)b->core.qual < aux->min_mapQ ) continue;
-		if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
-		break;
-	}
-	return ret;
-}
-
 
 void read_index(string index_file, vector<string> &sample_ids, vector<string> &vcf_files, vector<string> &bam_files, vector<double> &avg_depths)
 {
@@ -270,7 +248,7 @@ int i=0; // TEMPORARY, READ SINGLE VCF FILE
 						}
 					}
 //					cerr << "chr : " << chr << endl;
-					if (chr >=1 && chr <=22) // X and Y will be added later, MT will be ignored
+					if (chr >=1 && chr <=24)  // include chrs 1-22, X, Y
 					{
 						sv new_interval;
 						new_interval.chr = tokens[0]; // Dec 1, 2017
@@ -346,180 +324,6 @@ int i=0; // TEMPORARY, READ SINGLE VCF FILE
 		
 	}
 } //read_intervals_from_vcf
-
-void bfiles::initialize(vector<string> &bnames)
-{
-	n = (int)bnames.size();
-	
-	data = (aux_t**)calloc(n, sizeof(aux_t*));
-	
-	for(int i=0;i<n;++i)
-	{
-		data[i] = (aux_t*)calloc(1, sizeof(aux_t));
-		data[i]->fp = hts_open(bnames[i].c_str(), "r");
-
-		int rf = SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_SEQ | SAM_QUAL;
-		
-		if (hts_set_opt(data[i]->fp, CRAM_OPT_REQUIRED_FIELDS, rf))
-		{
-			cerr << "Failed to set CRAM_OPT_REQUIRED_FIELDS value" << endl;
-			exit(1);
-		}
-		if (hts_set_opt(data[i]->fp, CRAM_OPT_DECODE_MD, 0))
-		{
-			fprintf(stderr, "Failed to set CRAM_OPT_DECODE_MD value\n");
-			exit(1);
-		}
-		data[i]->min_mapQ = 1; //filter out only MQ0
-		data[i]->min_len = 0;
-		data[i]->hdr = sam_hdr_read(data[i]->fp);
-		if (data[i]->hdr == NULL)
-		{
-			cerr << "Cannot open CRAM/BAM header" << endl;
-			exit(1);
-		}
-		
-		hts_idx_t* tmp_idx = sam_index_load(data[i]->fp, bnames[i].c_str());
-		if (tmp_idx == NULL)
-		{
-			cerr << "Cannot open CRAM/BAM index" << endl;
-			exit(1);
-		}
-		idx.push_back(tmp_idx);
-
-	}
-}
-
-void bfiles::get_avg_depth(vector<double> &X)
-{
-	int n = (int)X.size();
-	vector<double> sum (n,0);
-	vector<int> cnt (n,0);
-
-	for(int c=20;c<21;++c)
-	{
-		int rpos=100000;
-		while(rpos<chrlen[c])
-		{
-			char reg[100];
-			// TEMPORARY!! Use correct CHR name 
-			sprintf(reg, "chr%d:%d-%d",c, rpos, rpos+10);
-//			cerr << reg << endl;
-			
-			for(int i=0;i<n;++i)
-			{
-
-				data[i]->iter = sam_itr_querys(idx[i], data[i]->hdr, reg);
-				if (data[i]->iter == NULL)
-				{
-					cerr << reg << endl;
-					cerr << "Can't parse region" << endl;
-					exit(1);
-				}
-			
-		//		cerr << "iterator set" << endl;
-			}
-
-			bam_mplp_t mplp = bam_mplp_init(n, read_bam, (void**)data);
-			int *n_plp = (int*)calloc(n, sizeof(int));
-			const bam_pileup1_t **plp = (const bam_pileup1_t**)calloc(n, sizeof(bam_pileup1_t*));
-			
-// THIS IS WRONG CODE, FIX LATER, REFER read_depth() 
-			for(int i=0;i<n;++i)
-			{
-//				cerr << "reading " << i << "-th BAM file: " << endl;
-		
-				int tid, pos;
-				
-				while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0)
-				{
-		//			cerr << "tid " << tid << " pos " << pos << endl;
-					if (pos<rpos || pos >=rpos+10) continue;
-					int j, m = 0;
-					for(j=0; j<n_plp[i]; ++j)
-					{
-						const bam_pileup1_t *p = plp[i] + j;
-						if (p->is_del || p->is_refskip) ++m;
-						else if (bam_get_qual(p->b)[p->qpos] < 20) ++m;
-					}
-					sum[i] = sum[i] + n_plp[i] - m;
-					cnt[i] ++;
-				}
-			}
-			free(n_plp);
-			free(plp);
-			bam_mplp_destroy(mplp);
-			rpos+=1000000;
-		}
-	}
-	for(int i=0;i<n;++i)
-	{
-		X[i] = sum[i]/cnt[i];
-	}
-}
-
-
-void bfiles::read_depth(sv &interval, vector<double> &X)
-{
-	char reg[100];
-//	sprintf(reg, "%d:%d-%d",interval.chr, interval.pos, interval.end);
-	
-
-	// TEMPORARY!! Use correct CHR name 
-	sprintf(reg, "%s:%d-%d",interval.chr.c_str(), interval.pos, interval.end);
-
-	for(int i=0;i<n;++i)
-	{
-
-		data[i]->iter = sam_itr_querys(idx[i], data[i]->hdr, reg);
-		if (data[i]->iter == NULL)
-		{
-			cerr << reg << endl;
-			cerr << "Can't parse region" << endl;
-			exit(1);
-		}
-//		cerr << "iterator set" << endl;
-	}
-
-	bam_mplp_t mplp = bam_mplp_init(n, read_bam, (void**)data);
-	int *n_plp = (int*)calloc(n, sizeof(int));
-	const bam_pileup1_t **plp = (const bam_pileup1_t**)calloc(n, sizeof(bam_pileup1_t*));
-	
-
-//		cerr << "reading " << i << "-th BAM file: " << endl;
-	
-	int tid, pos;
-
-	vector<double> sum (n,0);
-	vector<int> cnt(n,0);
-		
-	while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0)
-	{
-//			cerr << "tid " << tid << " pos " << pos << endl;
-		if (pos<interval.pos || pos >=interval.end) continue;
-
-		for(int i=0;i<n;++i)
-		{
-			int j, m = 0;
-			for(j=0; j<n_plp[i]; ++j)
-			{
-				const bam_pileup1_t *p = plp[i] + j;
-				if (p->is_del || p->is_refskip) ++m;
-				else if (bam_get_qual(p->b)[p->qpos] < 1) ++m; // Filter out BQ0 only ?
-			}
-			sum[i] += (n_plp[i] - m);
-			cnt[i] ++;
-		}
-	}
-
-	for(int i=0;i<n;++i)
-	{
-		X[i] = (cnt[i]>0) ? sum[i]/(double)cnt[i] : 0;
-	}
-	free(n_plp);
-	free(plp);
-	bam_mplp_destroy(mplp);
-}
 
 
 void readFam(string sFamFile, map<string, unsigned> &hIdSex)

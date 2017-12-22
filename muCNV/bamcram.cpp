@@ -14,8 +14,7 @@
 #include <algorithm>
 #include <string>
 
-// GRCh38
-// TODO: Take FASTA and fai file input and match MD5 with BAMs? Or just use whatever given?
+#define IS_PROPERLYPAIRED(bam) (((bam)->core.flag&(BAM_FPAIRED|BAM_FPROPER_PAIR)) == (BAM_FPAIRED|BAM_FPROPER_PAIR) && !((bam)->core.flag&BAM_FUNMAP))
 
 breakpoint::breakpoint()
 {
@@ -61,6 +60,33 @@ static readpart which_readpart(const bam1_t *b)
 */
 
 // This function reads a BAM alignment from one BAM file.
+static int read_bam_basic(void *data, bam1_t *b) // read level filters better go here to avoid pileup
+{
+	aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
+	int ret;
+
+	while (1)
+	{
+		ret = aux->iter ? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->hdr, b);
+
+		if ( ret<0 ) break;
+		if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
+		if ( (int)b->core.qual < aux->min_mapQ ) continue;
+		// Nov 29, 2017, commented out
+		//if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
+		//		cerr << bam_get_qname(b) << "/" << which_readpart(b) << " insert size : " << b->core.isize << endl;
+		if (IS_PROPERLYPAIRED(b) && (b->core.qual > 20) && (b->core.tid == b->core.mtid) && b->core.mpos>0 )
+		{
+			if (b->core.isize < 10000 && b->core.isize>-10000)
+			(*(aux->isz_list))[0].push_back(abs(b->core.isize));
+		}
+		break;
+	}
+	return ret;
+}
+
+
+// This function reads a BAM alignment from one BAM file.
 static int read_bam(void *data, bam1_t *b) // read level filters better go here to avoid pileup
 {
 	aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
@@ -69,51 +95,34 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 	while (1)
 	{
 		ret = aux->iter ? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->hdr, b);
-		
-		// cerr << "insert size : " << b->core.isize << endl;
 
 		if ( ret<0 ) break;
 		if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
 		if ( (int)b->core.qual < aux->min_mapQ ) continue;
-
 		// Nov 29, 2017, commented out
 		//if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
-		//		cerr << bam_get_qname(b) << "/" << which_readpart(b) << " insert size : " << b->core.isize << endl;
-		try
-		{
-			if (b->core.isize > 0)
-			{
-				for(set<int>::iterator it=(*(aux->fwd_set)).begin(); it!=(*(aux->fwd_set)).end(); ++it)
-				{
-					(*(aux->isz_list))[*it].push_back(b->core.isize);
-				}
-			}
-			if(b->core.isize<0)
-			{
-				for(set<int>::iterator it=(*(aux->rev_set)).begin(); it!=(*(aux->rev_set)).end(); ++it)
-				{
 
-					(*(aux->isz_list))[*it].push_back(-1 * b->core.isize);
-				}
+		if (b->core.qual>20 && ((b->core.flag & BAM_FREVERSE) == BAM_FREVERSE) == ((b->core.flag & BAM_FMREVERSE) == BAM_FMREVERSE) && b->core.tid == b->core.mtid && b->core.isize !=0 && b->core.mpos>0)
+		{
+//			cerr << "REVERSED tid " << b->core.tid << " pos " << b->core.pos << " qual " <<(int)b->core.qual << " insert size " << b->core.isize << " mtid " << b->core.mtid <<  " mpos " << b->core.mpos << endl;
+
+			for(set<int>::iterator it=(*(aux->isz_set)).begin(); it!=(*(aux->isz_set)).end(); ++it)
+			{
+				(*(aux->rev_isz_list))[*it].push_back(b->core.isize);
+				(*(aux->rev_pos_list))[*it].push_back(b->core.pos);
 			}
 		}
-		catch (exception e)
+		else if (b->core.qual> 20 && ! IS_PROPERLYPAIRED(b) && (b->core.tid == b->core.mtid) && (b->core.isize !=0 ) && b->core.mpos>0)
 		{
-			cerr << "Exception with isize set" << endl;
-			cerr << "isizae : " << b->core.isize << endl;
-			if (b->core.isize>0)
+//			cerr << "NOTPROPER tid " << b->core.tid << " pos " << b->core.pos << " qual " <<(int)b->core.qual << " insert size " << b->core.isize << " mtid " << b->core.mtid <<  " mpos " << b->core.mpos << endl;
+			for(set<int>::iterator it=(*(aux->isz_set)).begin(); it!=(*(aux->isz_set)).end(); ++it)
 			{
-				cerr << "fwd set size:  " << (*(aux->fwd_set)).size();
-			}
-			else
-			{
-				cerr << "rev set size:  " << (*(aux->rev_set)).size();
+				(*(aux->isz_list))[*it].push_back(b->core.isize);
+				(*(aux->pos_list))[*it].push_back(b->core.pos);
 			}
 		}
 		break;
 	}
-
-	
 	return ret;
 }
 
@@ -125,7 +134,7 @@ void bFile::initialize(string &bname)
 		
 	//int rf = SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_SEQ | SAM_QUAL;
 	// Nov30, 2017, removed CIGAR flag
-	int rf = SAM_FLAG | SAM_QNAME | SAM_AUX | SAM_POS | SAM_MAPQ | SAM_SEQ | SAM_QUAL | SAM_TLEN ;
+	int rf = SAM_FLAG |  SAM_MAPQ | SAM_QUAL| SAM_POS | SAM_TLEN | SAM_RNEXT | SAM_PNEXT;
 	if (hts_set_opt(data->fp, CRAM_OPT_REQUIRED_FIELDS, rf))
 	{
 		cerr << "Failed to set CRAM_OPT_REQUIRED_FIELDS value" << endl;
@@ -136,7 +145,7 @@ void bFile::initialize(string &bname)
 		fprintf(stderr, "Failed to set CRAM_OPT_DECODE_MD value\n");
 		exit(1);
 	}
-	data->min_mapQ = 1; //filter out only MQ0
+	data->min_mapQ = 1; //filter out by MQ10
 	data->min_len = 0; // does not set minimum length
 	data->hdr = sam_hdr_read(data->fp);
 	if (data->hdr == NULL)
@@ -163,23 +172,16 @@ void bFile::get_avg_depth()
 	vector<double> cnts (GC.num_bin, 0);
 
 	// For average Insert Size
-	set<int> f_set;
-	set<int> r_set;
 	vector< vector<int> > i_list;
 
 	i_list.resize(1);
 
-	f_set.insert(0);
-	r_set.insert(0);
-
-	data->fwd_set = &f_set;
-	data->rev_set = &r_set;
 	data->isz_list = &i_list;
 
 	vector< vector <double> > GCdata;
 	GCdata.resize(GC.num_bin);
 
-	for(int i=0; i<GC.regions.size();++i)
+	for(int i=0; i<(int)GC.regions.size();++i)
 	{
 	//	while(rpos<chrlen[c])
 		{
@@ -194,7 +196,7 @@ void bFile::get_avg_depth()
 				exit(1);
 			}
 
-			bam_plp_t plp = bam_plp_init(read_bam, (void*) data);
+			bam_plp_t plp = bam_plp_init(read_bam_basic, (void*) data);
 			const bam_pileup1_t *p;
 			
 			int tid, pos;
@@ -221,32 +223,57 @@ void bFile::get_avg_depth()
 		if (cnts[i] > 0)
 		{
 			avg += (sums[i]/cnts[i]) * GC.gc_dist[i];
-//			cerr << "Avg DP for GC bin " << i << " is " << sums[i]/cnts[i] << ", median is " ;
+	//		cerr << "Avg DP for GC bin " << i << " is " << sums[i]/cnts[i] << ", median is " ;
 			sort(GCdata[i].begin(), GCdata[i].end());
 			int m = (int)(GCdata[i].size()/2) -1;
 			meds[i] = (GCdata[i][m] + GCdata[i][m+1]) /2.0;
-//			cerr << meds[i] << endl;
+			//cerr << meds[i] << endl;
 		}
 	}
 
 	cerr << "Average Depth: " << avg << endl;
 
-	sort(i_list[0].begin(), i_list[0].end());
-	int m = (int)(i_list[0].size()/2) -1;
-	avg_isize = (i_list[0][m] + i_list[0][m+1])/2.0; //TEMPORARY - FIX!
+	med_isize = median(i_list[0]);
 
-	cerr << "Median Insert Size : " << avg_isize << endl;
-	gc_factor.resize(GC.num_bin);
+	double sum_is = 0, sumsq_is = 0;
+	int cnt_is = 0;
+	for(int i=0;i<(int)i_list[0].size();++i)
+	{
+		sum_is += i_list[0][i];
+		sumsq_is += i_list[0][i] * i_list[0][i];
+		cnt_is += 1;
+	}
+//	cerr << "sum " << sum_is << " sumsq " << sumsq_is << " cnt " << cnt_is << endl;
 
+	if (cnt_is>0)
+	{
+		avg_isize = sum_is / cnt_is;
+		std_isize = sqrt( (sumsq_is / (double)cnt_is) - (avg_isize * avg_isize) );
+	}
+	else
+	{
+		avg_isize = 0;
+		std_isize = 0;
+	}
+
+	gc_factor.resize(GC.num_bin); 
+
+	cerr << "Median Insert Size : " << med_isize << endl;
+	cerr << "Average Insert Size : " << avg_isize << " (+/- " << std_isize << ")" << endl;
+
+//	cerr << "gc factor size : " << gc_factor.size() << endl;
+	
 	for(int i=0; i<GC.num_bin; ++i)
 	{
-		gc_factor[i] = meds[i] / avg;
-	//	cerr << "bin " << i << " factor " << gc_factor[i] << endl;
+//		cerr << "meds[" << i << "]=" << meds[i]<< " avg=" << avg << " factor " << meds[i]/avg <<endl;
+		gc_factor[i] = meds[i]/avg; 
+
+//		cerr << "bin " << i << " factor " << gc_factor[i] << endl;
 	}
+
 	// TEMPORARY - HARD CODING for 20 BINS
 	gc_factor[18] = gc_factor[17];
 	gc_factor[19] = gc_factor[17];
-
 
 	avg_dp = avg;
 	avg_rlen = 150; //TEMPORARY - FIX!
@@ -275,7 +302,7 @@ double bFile::gcCorrected(double D, int chr, int pos)
 }
 
 // Get (overlapping) list of SV intervals, return average depth and GC-corrected average depth on intervals
-void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double> &GX, vector< vector<int> > &Y)
+void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 {
 	char reg[100];
 	
@@ -284,13 +311,12 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 	int startpos = 1;
 	int endpos = m_interval[0].end;
 	int n = (int) m_interval.size();
-	int gap = avg_isize-avg_rlen;
+	int gap = med_isize-(avg_rlen/2);
 	vector<breakpoint> bp;
 	bp.resize(n*4);  // 4 checkpoints per interval
-	// Make list of all breakpoints, to identify the transition points for calculating 'average depth'
-	// Breakpoints + read pair info (GAP = (AVG INSERT SIZE - AVG READ LEN) GAP bp before START, GAP bp after END point)
 	
-	// TODO : CHECK CIGAR to find SOFT CLIP with Breakpoint-Overlapping Reads? -- maybe not very complicated, but not sure how to incorporate into clustering model
+	// TODO : CHECK CIGAR to find SOFT CLIP with Breakpoint-Overlapping Reads? -- maybe not very complicated, but could be slow
+
 	for(int i=0; i<n; ++i)
 	{
 		// START - GAP
@@ -359,22 +385,26 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 	vector<int> dp_cnt (n,0);
 	
 	// For average Insert Size
-	set<int> f_set;
-	set<int> r_set;
-	vector< vector<int> > i_list;
-	i_list.resize(n);
+	set<int> isz_set;
 
-//	vector<double> i_sum(n,0);
-//	vector<int> i_cnt(n,0);
-	f_set.insert(bp[0].idx);
+	vector< vector<int> > isz_list;
+	vector< vector<int> > pos_list;
+
+	vector< vector<int> > rev_isz_list;
+	vector< vector<int> > rev_pos_list;
+
+	isz_list.resize(n);
+	pos_list.resize(n);
+	rev_isz_list.resize(n);
+	rev_pos_list.resize(n);
 	
-	data->fwd_set = &f_set;
-	data->rev_set = &r_set;
-	data->isz_list = &i_list;
-	/*
-	data->isz_sum = &i_sum;
-	data->isz_cnt = &i_cnt;
-	*/
+	isz_set.insert(bp[0].idx);
+
+	data->isz_set = &isz_set;
+	data->isz_list = &isz_list;
+	data->pos_list = &pos_list;
+	data->rev_isz_list = &rev_isz_list;
+	data->rev_pos_list = &rev_pos_list;
 	
 	bam_plp_t plp = bam_plp_init(read_bam, (void*) data);
 	const bam_pileup1_t *p;
@@ -389,24 +419,22 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 			{
 				case 0:
 					//Pre-gap start
-					f_set.insert(bp[nxt].idx);
+					isz_set.insert(bp[nxt].idx);
 					nxt++;
 					break;
 				case 1:
 					//Pre-gap end, interval start
-					f_set.erase(bp[nxt].idx);  // TODO, error checking : should check whether it exists in the set
 					dp_set.insert(bp[nxt].idx);
 					nxt++;
 					break;
 				case 2:
 					//interval end, post-gap start
-					r_set.insert(bp[nxt].idx);
 					dp_set.erase(bp[nxt].idx); 
 					nxt++;
 					break;
 				case 3:
 					//Post-gap end
-					r_set.erase(bp[nxt].idx);
+					isz_set.erase(bp[nxt].idx);
 					break;
 			}
 		}
@@ -433,28 +461,91 @@ void bFile::read_depth(vector<sv> &m_interval, vector<double> &X, vector<double>
 
 	for(int i=0;i<n;++i)
 	{
-		X[i] = (dp_cnt[i]>0) ? dp_sum[i]/(double)dp_cnt[i] : 0;
-		GX[i] = (dp_cnt[i]>0) ? gc_dp_sum[i]/(double)dp_cnt[i] : 0;
-	}
-	for(int i=0;i<n;++i)
-	{
-		for(int j=0;j<i_list[i].size();++j)
-		{
+		string &txt = G[i];
 
-			if ((i_list[i][j] - avg_isize) < m_interval[i].len()/2)
-			{
-				Y[i][0]++;
-			}
-			else if ((i_list[i][j] - avg_isize) < m_interval[i].len()*1.5)
-			{
-				Y[i][1]++;
-			}
-			else
-			{
-				Y[i][2]++;
-			}
-		}
+		char buf[100];
+
+		double dp = (dp_cnt[i]>0) ? dp_sum[i]/(double)dp_cnt[i] : 0;
+		double gc_dp = (dp_cnt[i]>0) ? gc_dp_sum[i]/(double)dp_cnt[i] : 0;
+
+		sprintf(buf,  "%.1f:%.1f:", dp, gc_dp);
+
+		txt = buf;
+
+//		cerr << m_interval[i].chr <<  ":" << m_interval[i].pos << "-" << m_interval[i].end << "\t" << m_interval[i].len() << "\t"<<  m_interval[i].svtype << "\t" << X[i] << "\t" << GX[i] <<"\t";
+
+		process_readpair(m_interval[i], isz_list[i], pos_list[i], txt);
+
+		txt += ":";
+
+		process_readpair(m_interval[i], rev_isz_list[i], rev_pos_list[i], txt);
+
+//		cerr << endl;
 //		Y[i] = (i_cnt[i]>0) ? i_sum[i]/(double)i_cnt[i] : 0;
+	}
+}
+
+
+int bFile::median(vector<int> &L)
+{
+
+	int med=0;
+	if (L.size() > 0)
+	{
+		sort(L.begin(), L.end());
+
+		if (L.size()%2)
+		{
+			int m = (L.size()-1)/2;
+			med = L[m];
+		}
+		else
+		{
+			int m = L.size()/2;
+			med = (int)(L[m-1] + L[m])/2;
+		}
+	}
+	return med;
+}
+
+void bFile::process_readpair(sv &currsv, vector<int> &isz_list, vector<int> &pos_list, string &txt)
+{
+
+	vector<int> P_isz;
+	vector<int> N_isz;
+	vector<int> P_pos;
+	vector<int> N_pos;
+	for(int i=0;i<(int)isz_list.size();++i)
+	{
+		if (isz_list[i]>0 && isz_list[i] < 10*currsv.len() ) 
+		{
+			P_isz.push_back(isz_list[i]);
+			P_pos.push_back(pos_list[i]);
+		}
+		else if (isz_list[i] > -10 * currsv.len())
+		{
+			N_isz.push_back(isz_list[i]);
+			N_pos.push_back(pos_list[i]);
+		}
+	}
+
+	if (P_isz.size() > 0)
+	{
+		txt += to_string(median(P_isz)) + "," + to_string(median(P_pos)+1 - currsv.pos );
+	}
+	else
+	{
+		txt += ".,.";
+	}
+	txt += ":";
+
+	if (N_isz.size() > 0)
+	{
+		txt += to_string(median(N_isz)) + "," + to_string(median(N_pos)+1 - currsv.pos);
+	}
+	else
+	{
+		txt += ".,.";
 	}
 }
 
@@ -537,7 +628,7 @@ void gcContent::initialize(string &gcFile)
 	// read number of chrs
 	inFile.read(reinterpret_cast <char *> (&num_chr), sizeof(uint8_t));
 	
-	cerr << (int)num_chr << " chromosomes in GC content file." << endl;
+//	cerr << (int)num_chr << " chromosomes in GC content file." << endl;
 
 	// read size of chrs
 	chrSize.resize(num_chr);
@@ -549,15 +640,15 @@ void gcContent::initialize(string &gcFile)
 
 	// read size of GC-interval bin
 	inFile.read(reinterpret_cast <char *> (&binsize), sizeof(uint16_t));
-	cerr << "Bin size: " << (int) binsize << endl;
+//	cerr << "Bin size: " << (int) binsize << endl;
 
 	// read number of GC bins
 	inFile.read(reinterpret_cast <char *> (&num_bin), sizeof(uint16_t));
-	cerr << "Num_bin : " << num_bin << endl;
+//	cerr << "Num_bin : " << num_bin << endl;
 
 	// read number of total intervals
 	inFile.read(reinterpret_cast <char *> (&total_bin), sizeof(uint16_t));
-	cerr << "Total bin : " << total_bin << endl;
+//	cerr << "Total bin : " << total_bin << endl;
 
 	regions.resize(total_bin);
 

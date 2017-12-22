@@ -205,7 +205,7 @@ int main(int argc, char** argv)
 		
 		FILE *fp = fopen(out_filename.c_str(), "wt");
 		fprintf(fp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s\n", sampID.c_str());
-		fprintf(fp, "0\t0\t.\t.\t.\t.\t.\tAVGDP=%.1f;AVG_ISIZE=%.1f\tDP:GC:IS\t.:.:.\n", b.avg_dp, b.avg_isize);
+		fprintf(fp, "0\t0\t.\t.\t.\t.\t.\tAVGDP=%.1f;AVG_ISIZE=%.1f;STD_ISIZE=%.1f;MED_ISIZE=%1.f\tDP:GC:IS\t.:.:.\n", b.avg_dp, b.avg_isize,b.std_isize,b.med_isize);
 
 		for(int i=0; i<(int)idxs.size(); ++i)
 		{
@@ -221,14 +221,15 @@ int main(int argc, char** argv)
 			}
 			vector<sv> svlist(candidates.begin()+idxs[i], candidates.begin() + last_idx)  ;
 
-			cerr << "processing SV block for " << svlist.size() << " intervals" << endl;
+		//	cerr << "processing SV block for " << svlist.size() << " intervals" << endl;
 
-			for(int j=0;j<svlist.size(); ++j)
-			{
-				cerr << svlist[j].chr <<  ":" << svlist[j].pos << "-" << svlist[j].end << "\t" << svlist[j].svtype << endl;
-			}
+	//		for(int j=0;j<svlist.size(); ++j)
+	//		{
+	//			cerr << svlist[j].chr <<  ":" << svlist[j].pos << "-" << svlist[j].end << "\t" << svlist[j].svtype << endl;
+	//		}
 
 			int m = (int)svlist.size();
+			/*
 			vector<double> X(m,0);
 			vector<double> GX(m,0);
 			vector< vector<int> > ISZ;
@@ -240,15 +241,18 @@ int main(int argc, char** argv)
 				ISZ[j][1] = 0;
 				ISZ[j][2] = 0;
 			}
+			*/
 			
-			cerr << "reading depth... " ;
-			b.read_depth(svlist, X, GX, ISZ);
-			cerr << "done " << endl;
+			vector<string> G (m, "");
+		//	cerr << "reading depth... " ;
+			b.read_depth(svlist, G);
+		//	cerr << "done " << endl;
 			
 			for(int j=0;j<m;++j)
 			{
-				fprintf(fp, "%s\t%d\t.\t.\t.\t.\t.\tEND=%d;SVTYPE=%s\tDP:GC:IS", svlist[j].chr.c_str(), svlist[j].pos,svlist[j].end,svlist[j].svtype.c_str());
-				fprintf(fp, "\t%.1f:%.1f:%d,%d,%d\n",X[j],GX[j],ISZ[j][0],ISZ[j][1],ISZ[j][2]);
+				fprintf(fp, "%s\t%d\t.\t.\t.\t.\t.\tEND=%d;SVTYPE=%s\t.", svlist[j].chr.c_str(), svlist[j].pos,svlist[j].end,svlist[j].svtype.c_str());
+				fprintf(fp, "\t%s\n", G[j].c_str());
+//				fprintf(fp, "\t%.1f:%.1f:%d,%d,%d\n",X[j],GX[j],ISZ[j][0],ISZ[j][1],ISZ[j][2]);
 			}
 
 		}
