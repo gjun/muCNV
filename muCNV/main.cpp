@@ -257,6 +257,7 @@ int main(int argc, char** argv)
 
 		}
 		fclose(fp);
+		cerr << "Finished without an error" << endl;
 	}
 	return 0;
 }
