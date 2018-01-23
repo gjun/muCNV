@@ -101,7 +101,7 @@ double normpdf(double x, Gaussian& C)
 double BayesError(vector<Gaussian>& Comps)
 {
 	// Returns maximum Bhattacharyya coefficient (== exp(-D) ) between components
-	unsigned n_comp = Comps.size();
+	unsigned n_comp = (unsigned) Comps.size();
 	double min_d = DBL_MAX;
 	
 	if (n_comp <2 )

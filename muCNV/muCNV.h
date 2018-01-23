@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <map>
+#include <set>
 #include <iostream>
 #include <string.h>
 #include <fstream>
@@ -28,17 +29,37 @@ class sv
 {
 	public:
 	string svtype;
-	string source;
-	int chr;
+//	string source;
+	string chr;
+	int chrnum;
 	int pos;
 	int end;
-	pair<int,int> ci_pos;
-	pair<int,int> ci_end;
+//	pair<int,int> ci_pos;
+//	pair<int,int> ci_end;
 	uint64_t len() {return (end - pos + 1);};
 	bool operator < (const sv&) const;
 	bool operator == (const sv&) const;
 	
 	sv();
+};
+
+class gcint : public sv
+{
+	public:
+	uint8_t gcbin;
+};
+
+
+class breakpoint
+{
+public:
+	int pos;
+	int type; // 0 : insert start, 1: startpos, 2:endpos 3: insert end
+	int idx;
+	bool operator < (const breakpoint&) const;
+	bool operator == (const breakpoint&) const;
+	
+	breakpoint();
 };
 
 void pick_sv_from_merged(vector<sv> &, vector<sv> &);
@@ -59,6 +80,14 @@ typedef struct {     // auxiliary data structure
 	samFile *fp;     // the file handle
 	bam_hdr_t *hdr;  // the file header
 	hts_itr_t *iter; // NULL if a region not specified
+	set<int> *isz_set;
+//	vector<double> *isz_sum;
+//	vector<int> *isz_cnt;
+	vector< vector <int> > *isz_list;
+	vector< vector <int> > *pos_list;
+
+	vector< vector <int> > *rev_isz_list;
+	vector< vector <int> > *rev_pos_list;
 	int min_mapQ, min_len; // mapQ filter; length filter
 } aux_t;
 
@@ -89,20 +118,63 @@ public:
 	Gaussian2();
 };
 
+class vfiles
+{
+public:
+	vector<ifstream *> vfs;
+	void initialize(vector<string> &);
+	int read_interval(sv&, vector<double> &);
+};
 
-class bfiles
+
+class gcContent
+{
+public:
+	void initialize(string &); // filename for GC content, populate all vectors
+
+	uint16_t num_bin; // Number of GC bin
+	uint8_t num_chr; //number of chrs
+	uint16_t binsize; // Size of GC bin (bp)
+	uint16_t total_bin; // Size of intervals per GC bin
+
+	vector<gcint> regions; // Double array to store list of regions for each GC bin -- non-overlapping, so let's just be it out-of-order
+	vector<double> gc_dist; // Array to store proportion of Ref genome for each GC content bin
+	vector<uint32_t> chrSize;
+	vector<uint8_t *> gc_array; // Array to store "GC bin number" for every 400-bp (?) interval of reference genome
+};
+
+// A class for a single file BAM I/O
+class bFile
 {
 public:
 	aux_t **data;
-	vector<hts_idx_t*> idx;
-	int n;
+	hts_idx_t* idx;
+//	int n;
+	gcContent& GC;
+	double avg_dp;
+	double avg_isize;
+	double std_isize;
+	double med_isize;
+	double avg_rlen;
+	
+	vector<double> gc_factor;
 
-	void read_depth(sv&, vector<double>&);
-	void get_avg_depth(vector<double>&);
-	void get_readpair(sv&, vector<double>&);
-	void initialize(vector<string>&);
+	// Get GC corrected depth for chr / pos
+	double gcCorrected(double, int, int);
+	
+// Handle multiple, overlapping SVs
+	//void read_depth(vector<sv> &, vector<double>&, vector<double>&, vector< vector<int> >&);
+	void read_depth(vector<sv> &, vector<string> &);
+	void process_readpair(sv &, vector<int> &, vector<int> &, string &);
+	// average depth, average gc-corrected depth, average insert size // stdev?
+	void get_avg_depth();
+	void initialize(string &);
+
+	int median(vector<int> &);
+	
+	bFile (gcContent &x) : GC(x) {};
+
 };
-
 
 class outvcf
 {
@@ -149,6 +221,7 @@ void read_intervals_from_vcf(vector<string> &, vector<string> &, vector<sv> &);
 
 
 double RO(interval_t, interval_t);
+void merge_svs(vector<sv> &, vector<int> &);
 void cluster_svs(vector<sv>&, vector< vector<sv> > &);
 
 double BayesError(vector<Gaussian>&);

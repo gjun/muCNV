@@ -39,7 +39,7 @@ gtype::gtype()
 
 void gtype::call_genotype(sv &s, vector<double> &X, vector<double> &Y, vector<int> &geno, outvcf& v, vector<double> &AvgDepth)
 {
-	if (s.svtype == "DEL")
+	if (s.svtype == "DEL" || s.svtype == "INV")
 	{
 //		cerr << "calling deletion" << endl;
 		call_del(s, X, Y, geno, v, AvgDepth);
@@ -187,13 +187,27 @@ void gtype::call_del(sv &s, vector<double> &X, vector<double> &Y, vector<int> &g
 		
 		//	printCluster(C3);
 	}
-	else // Just write down missing genotypes with three cluster info
+	else  // TODO: Write more about filtering reasons
 	{
-		double BE = BayesError(C3);
-		int NS=X.size();
-		int AC=0;
-		
-		v.write_del(s, geno, GQ, AC, NS, X, AvgDepth, C3, BE, false);
+		if (bic[1] < bic[2])
+		{
+			double BE = BayesError(C2);
+
+			int NS=0;
+			int AC = classify_del(X, geno, GL, GQ, NS, C2, bFlip);
+			
+			v.write_del(s, geno, GQ, AC, NS, X, AvgDepth, C2, BE, false);
+		}
+		else
+		{
+			double BE = BayesError(C3);
+
+			int NS=0;
+			int AC = classify_del(X, geno, GL, GQ, NS, C3, bFlip);
+			
+			v.write_del(s, geno, GQ, AC, NS, X, AvgDepth, C3, BE, false);
+	
+		}
 	}
 }
 
@@ -393,6 +407,7 @@ int gtype::classify_del(vector<double>& x, vector<int>& GT, vector< vector<int> 
 		else
 		{
 			GT[j] = 0;
+
 			if (sum_p>1e-100)
 			{
 				double p_err = (sum_p-max_p) / sum_p;
@@ -443,7 +458,8 @@ int gtype::classify_cnv(vector<double>& x, vector<int>& GT, vector<int>& GQ, int
 		{
 			//posterior
 			lk[m]  = normpdf(x[j], Comps[m] );
-			pos[m] = Comps[m].Alpha * lk[m];
+			pos[m] = lk[m]; //TEMPORARY, USE LIKELIHOOD
+		//	pos[m] = Comps[m].Alpha * lk[m];
 			
 			sum_pos += pos[m];
 			sum_lk += lk[m];
@@ -470,6 +486,8 @@ int gtype::classify_cnv(vector<double>& x, vector<int>& GT, vector<int>& GQ, int
 		
 		if (max_p / sum_p > P_THRESHOLD && sum_p > 1e-100)
 		{
+
+//			cerr << "GOOD: max_p is " << max_p << " and sum_p is " << sum_p << ", P_THRESHOLD is " << P_THRESHOLD << " GT is " << gt << endl;
 			GT[j] = gt;
 			if (gt>2)
 			{
@@ -495,6 +513,8 @@ int gtype::classify_cnv(vector<double>& x, vector<int>& GT, vector<int>& GQ, int
 		}
 		else
 		{
+
+//			cerr << "BAD: max_p is " << max_p << " and sum_p is " << sum_p << ", P_THRESHOLD is " << P_THRESHOLD << " GT is " << gt << endl;
 			GT[j] = 0;
 			if (sum_p>1e-100)
 			{
@@ -529,8 +549,8 @@ int gtype::classify_cnv(vector<double>& x, vector<int>& GT, vector<int>& GQ, int
 // EM for deletions
 void gtype::EM(vector<double>& x, vector<Gaussian>& C, bool bFlip)
 {
-	unsigned n_sample = x.size();
-	unsigned n_comp = C.size();
+	unsigned n_sample = (unsigned) x.size();
+	unsigned n_comp = (unsigned) C.size();
 	
 	unsigned n_iter = 30;
 	// pseudo-counts

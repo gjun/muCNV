@@ -11,7 +11,7 @@
 
 bool sv::operator < (const sv& s) const
 {
-	if (chr==s.chr)
+	if (chrnum==s.chrnum)
 	{
 		if (pos==s.pos)
 		{
@@ -24,25 +24,26 @@ bool sv::operator < (const sv& s) const
 	}
 	else
 	{
-		return(chr<s.chr);
+		return(chrnum<s.chrnum);
 	}
 }
 
 sv::sv()
 {
 	svtype = "";
-	chr = -1;
+	chr = "";
+	chrnum = -1;
 	pos = -1;
-	ci_pos.first = 0;
-	ci_pos.second = 0;
-	ci_end.first = 0;
-	ci_end.second = 0;
+//	ci_pos.first = 0;
+//	ci_pos.second = 0;
+//	ci_end.first = 0;
+//	ci_end.second = 0;
 	
 }
 
 bool sv::operator == (const sv& s) const
 {
-	return (chr == s.chr && pos == s.pos && end==s.end && svtype == s.svtype);
+	return (chrnum == s.chrnum && pos == s.pos && end==s.end && svtype == s.svtype);
 }
 
 void pick_sv_from_merged(vector<sv> &sv_list, vector<sv> &merged)
@@ -75,6 +76,7 @@ void pick_sv_from_merged(vector<sv> &sv_list, vector<sv> &merged)
 
 	new_sv.svtype = svtype;
 	new_sv.chr = merged[0].chr;
+	new_sv.chrnum = merged[0].chrnum;
 	if (pos.size()%2)
 	{
 		int idx =  floor(pos.size()/2.0);
@@ -93,10 +95,10 @@ void pick_sv_from_merged(vector<sv> &sv_list, vector<sv> &merged)
 		new_sv.pos = pos[0];
 		new_sv.end = end[end.size()-1];
 	}
-	new_sv.ci_pos.first = pos[0] - new_sv.pos;
-	new_sv.ci_pos.second = pos[pos.size()-1] - new_sv.pos;
-	new_sv.ci_end.first = end[0] - new_sv.end;
-	new_sv.ci_end.second = end[pos.size()-1] - new_sv.end;
+//	new_sv.ci_pos.first = pos[0] - new_sv.pos;
+//	new_sv.ci_pos.second = pos[pos.size()-1] - new_sv.pos;
+//	new_sv.ci_end.first = end[0] - new_sv.end;
+//	new_sv.ci_end.second = end[pos.size()-1] - new_sv.end;
 	
 	sv_list.push_back(new_sv);
 }
