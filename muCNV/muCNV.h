@@ -29,7 +29,7 @@ class sv
 {
 	public:
 	string svtype;
-	string source;
+//	string source;
 	string chr;
 	int chrnum;
 	int pos;
@@ -147,7 +147,7 @@ public:
 class bFile
 {
 public:
-	aux_t *data;
+	aux_t **data;
 	hts_idx_t* idx;
 //	int n;
 	gcContent& GC;
@@ -166,7 +166,6 @@ public:
 	//void read_depth(vector<sv> &, vector<double>&, vector<double>&, vector< vector<int> >&);
 	void read_depth(vector<sv> &, vector<string> &);
 	void process_readpair(sv &, vector<int> &, vector<int> &, string &);
-	double read_pair(sv &);
 	// average depth, average gc-corrected depth, average insert size // stdev?
 	void get_avg_depth();
 	void initialize(string &);

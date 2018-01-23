@@ -205,7 +205,7 @@ int main(int argc, char** argv)
 		
 		FILE *fp = fopen(out_filename.c_str(), "wt");
 		fprintf(fp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s\n", sampID.c_str());
-		fprintf(fp, "0\t0\t.\t.\t.\t.\t.\tAVGDP=%.1f;AVG_ISIZE=%.1f;STD_ISIZE=%.1f;MED_ISIZE=%1.f\tDP:GC:IS\t.:.:.\n", b.avg_dp, b.avg_isize,b.std_isize,b.med_isize);
+		fprintf(fp, "0\t0\t.\t.\t.\t.\t.\tAVGDP;AVG_ISIZE;STD_ISIZE;MED_ISIZE\tDP:AI:SI:MI\t%.1f:%.1f:%.1f:%.1f\n", b.avg_dp, b.avg_isize,b.std_isize,b.med_isize);
 
 		for(int i=0; i<(int)idxs.size(); ++i)
 		{

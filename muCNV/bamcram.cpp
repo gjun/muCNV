@@ -102,7 +102,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 		// Nov 29, 2017, commented out
 		//if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
 
-		if (b->core.qual>20 && ((b->core.flag & BAM_FREVERSE) == BAM_FREVERSE) == ((b->core.flag & BAM_FMREVERSE) == BAM_FMREVERSE) && b->core.tid == b->core.mtid && b->core.isize !=0 && b->core.mpos>0)
+		if ((int)b->core.qual>10 && ((b->core.flag & BAM_FREVERSE) == BAM_FREVERSE) == ((b->core.flag & BAM_FMREVERSE) == BAM_FMREVERSE) && b->core.tid == b->core.mtid && b->core.isize !=0 && b->core.mpos>0)
 		{
 //			cerr << "REVERSED tid " << b->core.tid << " pos " << b->core.pos << " qual " <<(int)b->core.qual << " insert size " << b->core.isize << " mtid " << b->core.mtid <<  " mpos " << b->core.mpos << endl;
 
@@ -112,7 +112,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 				(*(aux->rev_pos_list))[*it].push_back(b->core.pos);
 			}
 		}
-		else if (b->core.qual> 20 && ! IS_PROPERLYPAIRED(b) && (b->core.tid == b->core.mtid) && (b->core.isize !=0 ) && b->core.mpos>0)
+		else if ((int)b->core.qual>10 && ! IS_PROPERLYPAIRED(b) && (b->core.tid == b->core.mtid) && (b->core.isize !=0 ) && b->core.mpos>0)
 		{
 //			cerr << "NOTPROPER tid " << b->core.tid << " pos " << b->core.pos << " qual " <<(int)b->core.qual << " insert size " << b->core.isize << " mtid " << b->core.mtid <<  " mpos " << b->core.mpos << endl;
 			for(set<int>::iterator it=(*(aux->isz_set)).begin(); it!=(*(aux->isz_set)).end(); ++it)
@@ -129,32 +129,38 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 void bFile::initialize(string &bname)
 {
 
-	data = (aux_t*)calloc(1, sizeof(aux_t));
-	data->fp = hts_open(bname.c_str(), "r");
+//	data = (aux_t*)calloc(1, sizeof(aux_t));
+	data = (aux_t**)calloc(1, sizeof(aux_t*));
+	data[0] = (aux_t*)calloc(1, sizeof(aux_t));
+	data[0]->fp = hts_open(bname.c_str(), "r");
 		
 	//int rf = SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_SEQ | SAM_QUAL;
-	// Nov30, 2017, removed CIGAR flag
-	int rf = SAM_FLAG |  SAM_MAPQ | SAM_QUAL| SAM_POS | SAM_TLEN | SAM_RNEXT | SAM_PNEXT;
-	if (hts_set_opt(data->fp, CRAM_OPT_REQUIRED_FIELDS, rf))
+	int rf = SAM_FLAG |  SAM_MAPQ | SAM_QUAL| SAM_POS | SAM_SEQ | SAM_CIGAR| SAM_TLEN | SAM_RNEXT | SAM_PNEXT;
+	if (hts_set_opt(data[0]->fp, CRAM_OPT_REQUIRED_FIELDS, rf))
 	{
 		cerr << "Failed to set CRAM_OPT_REQUIRED_FIELDS value" << endl;
 		exit(1);
 	}
-	if (hts_set_opt(data->fp, CRAM_OPT_DECODE_MD, 0))
+	if (hts_set_opt(data[0]->fp, CRAM_OPT_DECODE_MD, 0))
 	{
 		fprintf(stderr, "Failed to set CRAM_OPT_DECODE_MD value\n");
 		exit(1);
 	}
-	data->min_mapQ = 1; //filter out by MQ10
-	data->min_len = 0; // does not set minimum length
-	data->hdr = sam_hdr_read(data->fp);
-	if (data->hdr == NULL)
+//	data->min_mapQ = 1; //filter out by MQ10
+//	data->min_len = 0; // does not set minimum length
+//	data->hdr = sam_hdr_read(data->fp);
+
+	data[0]->min_mapQ = 1;
+	data[0]->min_len = 0;
+	data[0]->hdr = sam_hdr_read(data[0]->fp);;
+
+	if (data[0]->hdr == NULL)
 	{
 		cerr << "Cannot open CRAM/BAM header" << endl;
 		exit(1);
 	}
 	
-	hts_idx_t* tmp_idx = sam_index_load(data->fp, bname.c_str());
+	hts_idx_t* tmp_idx = sam_index_load(data[0]->fp, bname.c_str());
 	if (tmp_idx == NULL)
 	{
 		cerr << "Cannot open CRAM/BAM index" << endl;
@@ -176,7 +182,7 @@ void bFile::get_avg_depth()
 
 	i_list.resize(1);
 
-	data->isz_list = &i_list;
+	data[0]->isz_list = &i_list;
 
 	vector< vector <double> > GCdata;
 	GCdata.resize(GC.num_bin);
@@ -188,31 +194,39 @@ void bFile::get_avg_depth()
 			char reg[100];
 			sprintf(reg, "chr%d:%d-%d",GC.regions[i].chrnum, GC.regions[i].pos, GC.regions[i].end);
 
-			data->iter = sam_itr_querys(idx, data->hdr, reg);
-				if (data->iter == NULL)
+			data[0]->iter = sam_itr_querys(idx, data[0]->hdr, reg);
+				if (data[0]->iter == NULL)
 			{
 				cerr << reg << endl;
 				cerr << "Can't parse region" << endl;
 				exit(1);
 			}
 
-			bam_plp_t plp = bam_plp_init(read_bam_basic, (void*) data);
-			const bam_pileup1_t *p;
+//			bam_plp_t plp = bam_plp_init(read_bam_basic, (void*) data);
+			bam_mplp_t mplp = bam_mplp_init(1, read_bam_basic, (void**)data);
+
+			//const bam_pileup1_t *p;
+			const bam_pileup1_t **plp;
 			
 			int tid, pos;
-			int n_plp;
+//			int n_plp;
+			int *n_plp = (int *) calloc (1, sizeof(int));
+			plp = (const bam_pileup1_t**) calloc(1, sizeof(bam_pileup1_t*));
 			
-			while((p = bam_plp_auto(plp, &tid, &pos, &n_plp))!=0)
+//			while((p = bam_plp_auto(plp, &tid, &pos, &n_plp))!=0)
+			while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0)
 			{
 				//			cerr << "tid " << tid << " pos " << pos << endl;
 				if (pos<GC.regions[i].pos || pos >GC.regions[i].end) continue;
-				sums[GC.regions[i].gcbin] += n_plp;
+				sums[GC.regions[i].gcbin] += n_plp[0];
 				cnts[GC.regions[i].gcbin] += 1;
-				GCdata[GC.regions[i].gcbin].push_back(n_plp);
+				GCdata[GC.regions[i].gcbin].push_back(n_plp[0]);
 			}
-			sam_itr_destroy(data->iter);
-			bam_plp_destroy(plp);
+			free(n_plp); free(plp);
+			sam_itr_destroy(data[0]->iter);
+			bam_mplp_destroy(mplp);
 		}
+
 	}
 
 	double avg = 0;
@@ -353,11 +367,12 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 	sort(bp.begin()+1, bp.end());
 
 	startpos = bp[0].pos;
+	endpos += 1;
 	
 	sprintf(reg, "chr%s:%d-%d", chr.c_str(), startpos, endpos);
 //	sprintf(reg, "%s:%d-%d", chr.c_str(), startpos, endpos); // Check BAM/CRAM header for list of CHRs first?
-	data->iter = sam_itr_querys(idx, data->hdr, reg);
-	if (data->iter == NULL)
+	data[0]->iter = sam_itr_querys(idx, data[0]->hdr, reg);
+	if (data[0]->iter == NULL)
 	{
 		cerr << reg << endl;
 		cerr << "Can't parse region " << reg << endl;
@@ -365,7 +380,6 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 	}
 
 	int tid, pos;
-	int n_plp;
 	
 	if (bp[0].idx != 0)
 	{
@@ -400,20 +414,21 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 	
 	isz_set.insert(bp[0].idx);
 
-	data->isz_set = &isz_set;
-	data->isz_list = &isz_list;
-	data->pos_list = &pos_list;
-	data->rev_isz_list = &rev_isz_list;
-	data->rev_pos_list = &rev_pos_list;
+	data[0]->isz_set = &isz_set;
+	data[0]->isz_list = &isz_list;
+	data[0]->pos_list = &pos_list;
+	data[0]->rev_isz_list = &rev_isz_list;
+	data[0]->rev_pos_list = &rev_pos_list;
 	
-	bam_plp_t plp = bam_plp_init(read_bam, (void*) data);
-	const bam_pileup1_t *p;
+	int* n_plp = (int *) calloc(1, sizeof(int));;
+	const bam_pileup1_t **plp = (const bam_pileup1_t **) calloc(1, sizeof(bam_pileup1_t*));
+	bam_mplp_t mplp = bam_mplp_init(1, read_bam, (void**) data);
+
+//	const bam_pileup1_t *p;
 	
-	while((p = bam_plp_auto(plp, &tid, &pos, &n_plp))!=0)
+	while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0)
 	{
-		if (pos<startpos || pos >=endpos) continue;
-		
-		if (pos>=bp[nxt].pos)
+		while (nxt < n*4 && pos>=bp[nxt].pos)
 		{
 			switch(bp[nxt].type)
 			{
@@ -425,39 +440,49 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 				case 1:
 					//Pre-gap end, interval start
 					dp_set.insert(bp[nxt].idx);
+//					cerr << "interval " << bp[nxt].idx << " : "  << m_interval[bp[nxt].idx].pos << "-" << m_interval[bp[nxt].idx].end << " has been inserted at " << pos <<endl;; 
 					nxt++;
 					break;
 				case 2:
 					//interval end, post-gap start
 					dp_set.erase(bp[nxt].idx); 
+//					cerr << "interval " << bp[nxt].idx << " : "  << m_interval[bp[nxt].idx].pos << "-" << m_interval[bp[nxt].idx].end << " has been removed at " << pos << endl; 
 					nxt++;
 					break;
 				case 3:
 					//Post-gap end
 					isz_set.erase(bp[nxt].idx);
+					nxt++;
+					break;
+				default:
+					cerr << "Something Wrong" << endl;
+					exit(1);
 					break;
 			}
 		}
 		int m=0;
-		for(int j=0;j<n_plp;++j)
+		for(int j=0;j<n_plp[0];++j)
 		{
-			if ((p+j)->is_del || (p+j)->is_refskip )
+			const bam_pileup1_t *p = plp[0]+j;
+			if (p->is_del || p->is_refskip )
 				++m;
 		}
-		double dpval = n_plp-m;
+		double dpval = n_plp[0]-m;
 		double gc_dpval = dpval;
 
-		gc_dpval = gcCorrected(n_plp-m, chrnum, pos);
+		gc_dpval = gcCorrected(dpval, chrnum, pos);
 
 		for(set<int>::iterator it=dp_set.begin(); it!=dp_set.end(); ++it)
 		{
+//			cerr<< "dpval for pos " << pos << " is " << dpval << endl;
 			dp_sum[*it] += dpval;
 			gc_dp_sum[*it] += gc_dpval;
 			dp_cnt[*it]++;
 		}
 	}
-	sam_itr_destroy(data->iter);
-	bam_plp_destroy(plp);
+	sam_itr_destroy(data[0]->iter);
+	free(plp); free(n_plp);
+	bam_mplp_destroy(mplp);
 
 	for(int i=0;i<n;++i)
 	{
@@ -465,6 +490,10 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 
 		char buf[100];
 
+//		if (dp_cnt[i] == 0)
+//		{
+//			cerr << " pos " << m_interval[i].pos << "-" << m_interval[i].end << " has count 0." << endl;;
+//		}
 		double dp = (dp_cnt[i]>0) ? dp_sum[i]/(double)dp_cnt[i] : 0;
 		double gc_dp = (dp_cnt[i]>0) ? gc_dp_sum[i]/(double)dp_cnt[i] : 0;
 
@@ -531,7 +560,7 @@ void bFile::process_readpair(sv &currsv, vector<int> &isz_list, vector<int> &pos
 
 	if (P_isz.size() > 0)
 	{
-		txt += to_string(median(P_isz)) + "," + to_string(median(P_pos)+1 - currsv.pos );
+		txt += to_string(P_isz.size()) + "," + to_string(median(P_isz)) + "," + to_string(median(P_pos)+1 - currsv.pos );
 	}
 	else
 	{
@@ -541,78 +570,12 @@ void bFile::process_readpair(sv &currsv, vector<int> &isz_list, vector<int> &pos
 
 	if (N_isz.size() > 0)
 	{
-		txt += to_string(median(N_isz)) + "," + to_string(median(N_pos)+1 - currsv.pos);
+		txt += to_string(N_isz.size()) + "," + to_string(median(N_isz)) + "," + to_string(median(N_pos)+1 - currsv.pos);
 	}
 	else
 	{
 		txt += ".,.";
 	}
-}
-
-double bFile::read_pair(sv &interval)
-{
-	char reg[100];
-	
-	int isize = 400; // TEMPORARY - get value from average insert size & read lengh?
-	int readlen = 150;
-	int margin = isize - readlen/2;
-	int sum = 0;
-	int cnt = 0;
-	
-	string chr = interval.chr;
-	int start1 = interval.pos > margin ? interval.pos - margin : 1;
-	int end1 = interval.pos > readlen ? interval.pos - readlen : 1;
-
-	int start2 = interval.end;
-	int end2 = interval.end + margin;
-	
-	sprintf(reg, "chr%s:%d-%d", chr.c_str(), start1, end1);
-	
-	data->iter = sam_itr_querys(idx, data->hdr, reg);
-	bam1_t *b;
-	b=bam_init1();
-	
-	if (data->iter == NULL)
-	{
-		cerr << reg << endl;
-		cerr << "Can't parse region " << reg << endl;
-		exit(1);
-	}
-	int result;
-	while((result = sam_itr_next(data->fp , data->iter, b)) >= 0)
-	{
-		if (b->core.flag & (BAM_FDUP)) continue;
-		if (b->core.isize > 0)
-		{
-			sum += b->core.isize;
-			cnt ++ ;
-		}
-
-	}
-	hts_itr_destroy(data->iter);
-	
-	//sprintf(reg, "chr%s:%d-%d", chr.c_str(), start2, end2);
-	sprintf(reg, "%s:%d-%d", chr.c_str(), start2, end2);
-
-	data->iter = sam_itr_querys(idx, data->hdr, reg);
-	if (data->iter == NULL)
-	{
-		cerr << reg << endl;
-		cerr << "Can't parse region " << reg << endl;
-		exit(1);
-	}
-	while((result = sam_itr_next(data->fp , data->iter, b)) >= 0)
-	{
-		if (b->core.flag & (BAM_FDUP)) continue;
-		if (b->core.isize < 0)
-		{
-			sum -= b->core.isize;
-			cnt ++;
-		}
-	}
-	bam_destroy1(b);
-	double ret = (cnt>0) ? (double)sum/(double)cnt : 0;
-	return ret;
 }
 
 void gcContent::initialize(string &gcFile)
