@@ -102,23 +102,38 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 		// Nov 29, 2017, commented out
 		//if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
 
-		if ((int)b->core.qual>10 && ((b->core.flag & BAM_FREVERSE) == BAM_FREVERSE) == ((b->core.flag & BAM_FMREVERSE) == BAM_FMREVERSE) && b->core.tid == b->core.mtid && b->core.isize !=0 && b->core.mpos>0)
-		{
-//			cerr << "REVERSED tid " << b->core.tid << " pos " << b->core.pos << " qual " <<(int)b->core.qual << " insert size " << b->core.isize << " mtid " << b->core.mtid <<  " mpos " << b->core.mpos << endl;
+		if ((int)b->core.qual>10 && b->core.tid == b->core.mtid && b->core.isize !=0 && b->core.mpos > 0)
+		{			
+			if (((b->core.flag & BAM_FREVERSE) == BAM_FREVERSE) == ((b->core.flag & BAM_FMREVERSE) == BAM_FMREVERSE))
+			{
+	//			cerr << "REVERSED tid " << b->core.tid << " pos " << b->core.pos << " qual " <<(int)b->core.qual << " insert size " << b->core.isize << " mtid " << b->core.mtid <<  " mpos " << b->core.mpos << endl;
 
-			for(set<int>::iterator it=(*(aux->isz_set)).begin(); it!=(*(aux->isz_set)).end(); ++it)
-			{
-				(*(aux->rev_isz_list))[*it].push_back(b->core.isize);
-				(*(aux->rev_pos_list))[*it].push_back(b->core.pos);
+				for(set<int>::iterator it=(*(aux->isz_set)).begin(); it!=(*(aux->isz_set)).end(); ++it)
+				{
+					(*(aux->rev_isz_list))[*it].push_back(b->core.isize);
+//					(*(aux->rev_pos_list))[*it].push_back(b->core.pos);
+				}
 			}
-		}
-		else if ((int)b->core.qual>10 && ! IS_PROPERLYPAIRED(b) && (b->core.tid == b->core.mtid) && (b->core.isize !=0 ) && b->core.mpos>0)
-		{
-//			cerr << "NOTPROPER tid " << b->core.tid << " pos " << b->core.pos << " qual " <<(int)b->core.qual << " insert size " << b->core.isize << " mtid " << b->core.mtid <<  " mpos " << b->core.mpos << endl;
-			for(set<int>::iterator it=(*(aux->isz_set)).begin(); it!=(*(aux->isz_set)).end(); ++it)
+			else 
 			{
-				(*(aux->isz_list))[*it].push_back(b->core.isize);
-				(*(aux->pos_list))[*it].push_back(b->core.pos);
+				if (! IS_PROPERLYPAIRED(b) )
+				{
+		//			cerr << "NOTPROPER tid " << b->core.tid << " pos " << b->core.pos << " qual " <<(int)b->core.qual << " insert size " << b->core.isize << " mtid " << b->core.mtid <<  " mpos " << b->core.mpos << endl;
+					for(set<int>::iterator it=(*(aux->isz_set)).begin(); it!=(*(aux->isz_set)).end(); ++it)
+					{
+						(*(aux->isz_list))[*it].push_back(b->core.isize);
+	//					(*(aux->pos_list))[*it].push_back(b->core.pos);
+					}
+				}
+				else
+				{
+					for(set<int>::iterator it=(*(aux->isz_set)).begin(); it!=(*(aux->isz_set)).end(); ++it)
+					{
+						(*(aux->isz_sum))[*it] += abs(b->core.isize);
+						(*(aux->isz_cnt))[*it] += 1;
+					}
+
+				}
 			}
 		}
 		break;
@@ -328,8 +343,6 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 	int gap = med_isize-(avg_rlen/2);
 	vector<breakpoint> bp;
 	bp.resize(n*4);  // 4 checkpoints per interval
-	
-	// TODO : CHECK CIGAR to find SOFT CLIP with Breakpoint-Overlapping Reads? -- maybe not very complicated, but could be slow
 
 	for(int i=0; i<n; ++i)
 	{
@@ -371,6 +384,7 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 	
 	sprintf(reg, "chr%s:%d-%d", chr.c_str(), startpos, endpos);
 //	sprintf(reg, "%s:%d-%d", chr.c_str(), startpos, endpos); // Check BAM/CRAM header for list of CHRs first?
+
 	data[0]->iter = sam_itr_querys(idx, data[0]->hdr, reg);
 	if (data[0]->iter == NULL)
 	{
@@ -402,23 +416,28 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 	set<int> isz_set;
 
 	vector< vector<int> > isz_list;
-	vector< vector<int> > pos_list;
+//	vector< vector<int> > pos_list;
 
 	vector< vector<int> > rev_isz_list;
-	vector< vector<int> > rev_pos_list;
+//	vector< vector<int> > rev_pos_list;
+
+	vector<double> isz_sum(n,0);
+	vector<int> isz_cnt(n,0);
 
 	isz_list.resize(n);
-	pos_list.resize(n);
+//	pos_list.resize(n);
 	rev_isz_list.resize(n);
-	rev_pos_list.resize(n);
+//	rev_pos_list.resize(n);
 	
 	isz_set.insert(bp[0].idx);
 
 	data[0]->isz_set = &isz_set;
 	data[0]->isz_list = &isz_list;
-	data[0]->pos_list = &pos_list;
+//	data[0]->pos_list = &pos_list;
 	data[0]->rev_isz_list = &rev_isz_list;
-	data[0]->rev_pos_list = &rev_pos_list;
+//	data[0]->rev_pos_list = &rev_pos_list;
+	data[0]->isz_sum = &isz_sum;
+	data[0]->isz_cnt = &isz_cnt;
 	
 	int* n_plp = (int *) calloc(1, sizeof(int));;
 	const bam_pileup1_t **plp = (const bam_pileup1_t **) calloc(1, sizeof(bam_pileup1_t*));
@@ -503,12 +522,24 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 
 //		cerr << m_interval[i].chr <<  ":" << m_interval[i].pos << "-" << m_interval[i].end << "\t" << m_interval[i].len() << "\t"<<  m_interval[i].svtype << "\t" << X[i] << "\t" << GX[i] <<"\t";
 
-		process_readpair(m_interval[i], isz_list[i], pos_list[i], txt);
+		//process_readpair(m_interval[i], isz_list[i], pos_list[i], txt);
+		process_readpair(m_interval[i], isz_list[i], txt);
 
 		txt += ":";
 
-		process_readpair(m_interval[i], rev_isz_list[i], rev_pos_list[i], txt);
+//		process_readpair(m_interval[i], rev_isz_list[i], rev_pos_list[i], txt);
+		process_readpair(m_interval[i], rev_isz_list[i], txt);
 
+		txt += ":";
+
+		if (isz_cnt[i] >0)
+		{
+			txt += to_string(isz_cnt[i]) + "," + to_string((int)((double)isz_sum[i] / (double)isz_cnt[i])) ;
+		}
+		else
+		{
+			txt += "0,.";
+		}
 //		cerr << endl;
 //		Y[i] = (i_cnt[i]>0) ? i_sum[i]/(double)i_cnt[i] : 0;
 	}
@@ -537,44 +568,46 @@ int bFile::median(vector<int> &L)
 	return med;
 }
 
-void bFile::process_readpair(sv &currsv, vector<int> &isz_list, vector<int> &pos_list, string &txt)
+//void bFile::process_readpair(sv &currsv, vector<int> &isz_list, vector<int> &pos_list, string &txt)
+void bFile::process_readpair(sv &currsv, vector<int> &isz_list, string &txt)
 {
 
 	vector<int> P_isz;
 	vector<int> N_isz;
-	vector<int> P_pos;
-	vector<int> N_pos;
+//	vector<int> P_pos;
+//	vector<int> N_pos;
 	for(int i=0;i<(int)isz_list.size();++i)
 	{
 		if (isz_list[i]>0 && isz_list[i] < 10*currsv.len() ) 
 		{
 			P_isz.push_back(isz_list[i]);
-			P_pos.push_back(pos_list[i]);
+//			P_pos.push_back(pos_list[i]);
 		}
 		else if (isz_list[i] > -10 * currsv.len())
 		{
 			N_isz.push_back(isz_list[i]);
-			N_pos.push_back(pos_list[i]);
+//			N_pos.push_back(pos_list[i]);
 		}
 	}
 
 	if (P_isz.size() > 0)
 	{
-		txt += to_string(P_isz.size()) + "," + to_string(median(P_isz)) + "," + to_string(median(P_pos)+1 - currsv.pos );
+		//txt += to_string(P_isz.size()) + "," + to_string(median(P_isz)) + "," + to_string(median(P_pos)+1 - currsv.pos );
+		txt += to_string(P_isz.size()) + "," + to_string(median(P_isz)) ;
 	}
 	else
 	{
-		txt += ".,.";
+		txt += ".";
 	}
 	txt += ":";
 
 	if (N_isz.size() > 0)
 	{
-		txt += to_string(N_isz.size()) + "," + to_string(median(N_isz)) + "," + to_string(median(N_pos)+1 - currsv.pos);
+		txt += to_string(N_isz.size()) + "," + to_string(median(N_isz));
 	}
 	else
 	{
-		txt += ".,.";
+		txt += ".";
 	}
 }
 

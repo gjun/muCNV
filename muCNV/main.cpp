@@ -200,7 +200,7 @@ int main(int argc, char** argv)
 
 		bFile b(GC);
 		b.initialize(bam_file);
-		cerr << "BAM file initialized" << endl;
+		cerr << "BAM/CRAM file initialized" << endl;
 		b.get_avg_depth();
 		
 		FILE *fp = fopen(out_filename.c_str(), "wt");

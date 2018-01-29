@@ -81,13 +81,15 @@ typedef struct {     // auxiliary data structure
 	bam_hdr_t *hdr;  // the file header
 	hts_itr_t *iter; // NULL if a region not specified
 	set<int> *isz_set;
+	vector<double> *isz_sum;
+	vector<int> *isz_cnt;
 //	vector<double> *isz_sum;
 //	vector<int> *isz_cnt;
 	vector< vector <int> > *isz_list;
-	vector< vector <int> > *pos_list;
+//	vector< vector <int> > *pos_list;
 
 	vector< vector <int> > *rev_isz_list;
-	vector< vector <int> > *rev_pos_list;
+//	vector< vector <int> > *rev_pos_list;
 	int min_mapQ, min_len; // mapQ filter; length filter
 } aux_t;
 
@@ -165,7 +167,8 @@ public:
 // Handle multiple, overlapping SVs
 	//void read_depth(vector<sv> &, vector<double>&, vector<double>&, vector< vector<int> >&);
 	void read_depth(vector<sv> &, vector<string> &);
-	void process_readpair(sv &, vector<int> &, vector<int> &, string &);
+	//void process_readpair(sv &, vector<int> &, vector<int> &, string &);
+	void process_readpair(sv &, vector<int> &, string &);
 	// average depth, average gc-corrected depth, average insert size // stdev?
 	void get_avg_depth();
 	void initialize(string &);
