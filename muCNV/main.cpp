@@ -112,24 +112,24 @@ int main(int argc, char** argv)
 		if (bGenotype && index_file == "")
 		{
 			cerr << "Error: list file is required for genotyping" << endl;
-			exit(0);
+			exit(1);
 		}
 		else if (bGenotype == false)
 		{
 			if (bam_file == "")
 			{
 				cerr << "Error: BAM/CRAM file is required for individual processing mode." << endl;
-				exit(0);
+				exit(1);
 			}
 			if (vcf_file == "")
 			{
 				cerr << "Error: VCF file with SV events is required for individual processing mode." << endl;
-				exit(0);
+				exit(1);
 			}
 			if (sampID == "")
 			{
 				cerr << "Error: Sample ID should be supplied with -s option." << endl;
-				exit(0);
+				exit(1);
 			}
 		}
 		
@@ -147,8 +147,11 @@ int main(int argc, char** argv)
 	int n = 0;
 	if (bGenotype)
 	{
-		//TODO make read_index to read list files with intermediate results
-		read_index(index_file, sample_ids, vcfs, bam_names, avg_depths);
+		invcfs V;
+		read_vcf_list(index_file, vcfs);
+		V.initialize(vcfs);
+
+	//	read_index(index_file, sample_ids, vcfs, bam_names, avg_depths);
 		n = (int)sample_ids.size();
 		cerr << "Genotyping index loaded." << endl;
 		cerr << n << " samples identified." << endl;
@@ -158,9 +161,6 @@ int main(int argc, char** argv)
 		vfile.open(out_filename);
 		
 		vfile.write_header(sample_ids);
-		
-		vfiles V;
-		V.initialize(vcfs);
 		
 		sv interval;
 		vector<double> X (n, 0);

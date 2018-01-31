@@ -17,6 +17,23 @@
 #include "muCNV.h"
 #include <stdlib.h>
 
+void read_vcf_list(string &index_file, vector<string> &vcf_files)
+{
+	ifstream inFile(index_file.c_str(), ios::in);
+	
+	while(inFile.good())
+	{
+		string ln;
+		getline(inFile,ln);
+		if (!ln.empty())
+		{
+			vcf_files.push_back(ln);
+		}
+	}
+	cerr<< vcf_files.size() << " VCF files exist in the index file." << endl;
+}
+		
+	
 void read_index(string index_file, vector<string> &sample_ids, vector<string> &vcf_files, vector<string> &bam_files, vector<double> &avg_depths)
 {
 	ifstream inFile(index_file.c_str(), ios::in);
@@ -58,7 +75,7 @@ void read_index(string index_file, vector<string> &sample_ids, vector<string> &v
 }
 
 
-void vfiles::initialize(vector<string> &vcf_files)
+void invcfs::initialize(vector<string> &vcf_files)
 {
 	for(int i=0;i<(int)vcf_files.size(); ++i)
 	{
@@ -71,7 +88,7 @@ void vfiles::initialize(vector<string> &vcf_files)
 	cerr << "Input VCF files initialized" <<endl;
 }
 
-int vfiles::read_interval(sv& interval, vector<double> &X)
+int invcfs::read_interval(sv& interval, vector<double> &X)
 {
 	vector<string> lns (vfs.size(), "");
 
@@ -192,7 +209,7 @@ int vfiles::read_interval(sv& interval, vector<double> &X)
     //	cerr << i << "-th sample depth read" <<endl;
 	}
 	return 0;
-} //vfiles::read_vcf
+} //invcfs::read_vcf
 
 void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_files, vector<sv> &candidates)
 {

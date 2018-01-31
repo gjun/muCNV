@@ -120,10 +120,13 @@ public:
 	Gaussian2();
 };
 
-class vfiles
+class invcfs
 {
 public:
 	vector<ifstream *> vfs;
+	vector<int> id_offset;
+	vector<int> n_id;
+
 	void initialize(vector<string> &);
 	int read_interval(sv&, vector<double> &);
 };
@@ -235,6 +238,7 @@ double det(double*);
 
 bool ordered(vector<Gaussian>&);
 
+void read_vcf_list(string &, vector<string>&);
 void read_index(string, vector<string>&, vector<string>&, vector<string>&, vector<double>&);
 
 void readIndex(string, vector<string>&, vector<string>&, vector<string>&, vector<string>&);
