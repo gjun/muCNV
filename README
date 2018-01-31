@@ -1,21 +1,53 @@
-Multi-sample CNV caller for WGS data
+muCNV: Multi-sample SV caller for large-scale WGS data
 
 (c) Goo Jun
 
-Command Line 
-
-$ mucnv -i <input.index> -o <output prefix>
-
-Required parameters
--i, --index <index file> : index file that contains sample information
-
-Optional parameters
--o, --out <output prefix> : file name prefix for output files default: muCNV.vcf
--p, --posterior <number> : posterior probability threshold to make genotype calls
--e, --error <number> : maximum overlap between clusters
--v, --verbose : turn on verbose output
+muCNV has two-stage model for multi-sample SV calling: 1) From candiate list
+of SVs, generate sample-level summary from CRAM/BAM files 2) Multi-sample
+genotyping from summary files.
 
 
-Input index file
-muCNV takes Index file, which is a tab separated text file with:
-(Sample ID), (VCF file with list of detected SVs) , (BAM/CRAM file), (Average Depth)
+1. Generate sample-by-sample summary from list of candidate SVs
+
+$ mucnv -s <sample ID> -v <VCF> -f <GRCh file> -b <BAM/CRAM file> -o <output prefix>
+
+GRCh file for human reference genome build 38 is provided in resources/GRCh38.gc
+
+Required parameters:
+   -s <string>,  --sample <string>
+     Sample ID
+
+   -f <string>,  --gcFile <string>
+     File containing GC content information
+
+   -v <string>,  --vcf <string>
+     VCF file containing candidate SVs
+
+   -o <string>,  --out <string>
+     Prefix for sample-level summary VCF file
+
+   -b <string>,  --bam <string>
+     Input BAM/CRAM file name
+
+
+2. Multi-sample genotyping
+
+$ mucnv -g -i <input.index> -o <output prefix>
+
+Required parameters:
+
+   -i <string>,  --index <string>
+     List file containing list of sample-level VCF files 
+
+   -g,  --genotype
+     Switch argument to generate multi-sample genotype
+
+   -o <string>,  --out <string>
+     Prefix for output VCF file
+
+
+For full list of options:
+$ ./muCNV -h 
+
+
+
