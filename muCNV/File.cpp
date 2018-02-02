@@ -75,7 +75,7 @@ void read_index(string index_file, vector<string> &sample_ids, vector<string> &v
 }
 
 
-void invcfs::initialize(vector<string> &vcf_files)
+void invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, vector<double> &avg_depths, vector<double> &avg_isizes)
 {
 	for(int i=0;i<(int)vcf_files.size(); ++i)
 	{

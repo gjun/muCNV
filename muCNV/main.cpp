@@ -35,8 +35,8 @@ double RO_THRESHOLD = 0.5;
 
 int main(int argc, char** argv)
 {
-	cerr << "muCNV 0.6-- Multi-sample CNV genotyper" << endl;
-	cerr << "(c) 2017 Goo Jun" << endl << endl;
+	cerr << "muCNV 0.7 -- Multi-sample CNV genotyper" << endl;
+	cerr << "(c) 2018 Goo Jun" << endl << endl;
 	cerr.setf(ios::showpoint);
 
 	bool bGenotype = false;
@@ -48,19 +48,12 @@ int main(int argc, char** argv)
 	string sChr;
 	string gc_file;
 	string sampID;
-
+	
 	vector<string> sample_ids;
 	vector<string> vcfs;
 	vector<string> bam_names;
-	vector<double> avg_depths;
 	map<string, unsigned> hIdSex;
 
-	vector<double> AvgDepth;
-	//	vector<interval_t> del_intervals;
-	//	vector<interval_t> dup_intervals;
-	//	vector<sv> del_intervals;
-	// vector<sv> dup_intervals;
-	// vector<sv> all_intervals;
 
 	srand((unsigned int)time(NULL));
 
@@ -147,9 +140,12 @@ int main(int argc, char** argv)
 	int n = 0;
 	if (bGenotype)
 	{
-		invcfs V;
+		vector<double> avg_depths;
+		vector<double> avg_isizes;
+		
+		invcfs V_list;
 		read_vcf_list(index_file, vcfs);
-		V.initialize(vcfs);
+		V_list.initialize(vcfs, sample_ids, avg_depths, avg_isizes);
 
 	//	read_index(index_file, sample_ids, vcfs, bam_names, avg_depths);
 		n = (int)sample_ids.size();
@@ -167,7 +163,7 @@ int main(int argc, char** argv)
 		vector<double> Y (n, 0);
 		vector<int> G(n, 0);
 
-		while(V.read_interval(interval, X)>=0)
+		while(V_list.read_interval(interval, X)>=0)
 		{
 			gtype g;
 			
@@ -217,7 +213,7 @@ int main(int argc, char** argv)
 			}
 			else
 			{
-				last_idx = candidates.size();
+				last_idx = (int)candidates.size();
 			}
 			vector<sv> svlist(candidates.begin()+idxs[i], candidates.begin() + last_idx)  ;
 
