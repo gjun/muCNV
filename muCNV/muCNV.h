@@ -127,7 +127,8 @@ public:
 	vector<int> id_offset;
 	vector<int> n_id;
 
-	void initialize(vector<string> &, vector<string> &, vector<double> &, vector<double> &);
+	int initialize(vector<string> &, vector<string> &, vector<double> &, vector<double> &);
+	int read_interval_multi(sv& , vector<double> &, vector<double> &, vector<double> &, vector<double> &, vector<double> &);
 	int read_interval(sv&, vector<double> &);
 };
 

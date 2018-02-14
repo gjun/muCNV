@@ -66,10 +66,22 @@
       <CommandLineArguments>
          <CommandLineArgument
             argument = "-b /Users/gjun/data/cram/NA12878.fragment.cram"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-i /Users/gjun/prj/muCNV/index.txt"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-v /Users/gjun/data/vcf/sv.vcf"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-g"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-o /Users/gjun/prj/muCNV/muCNV.vcf"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

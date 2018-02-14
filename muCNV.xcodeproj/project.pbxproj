@@ -16,7 +16,6 @@
 		F138FD8C1CAD74EE00CD5539 /* common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD841CAD74EE00CD5539 /* common.cpp */; };
 		F138FD8F1CAD74EE00CD5539 /* Error.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD871CAD74EE00CD5539 /* Error.cpp */; };
 		F138FD901CAD74EE00CD5539 /* File.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD891CAD74EE00CD5539 /* File.cpp */; };
-		F138FDC11CAD7F2600CD5539 /* libtabix.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F138FDC01CAD7F2600CD5539 /* libtabix.a */; };
 		F138FDC31CAD7FB900CD5539 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = F138FDC21CAD7FB900CD5539 /* libz.tbd */; };
 		F194ED351F25A41400489E0C /* gtype.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED341F25A41400489E0C /* gtype.cpp */; };
 		F194ED371F25B3C900489E0C /* sv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED361F25B3C900489E0C /* sv.cpp */; };
@@ -50,7 +49,6 @@
 		F138FD891CAD74EE00CD5539 /* File.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = File.cpp; sourceTree = "<group>"; };
 		F138FD8A1CAD74EE00CD5539 /* muCNV.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = muCNV.h; sourceTree = "<group>"; };
 		F138FD911CAD74F600CD5539 /* pException.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pException.h; sourceTree = "<group>"; };
-		F138FDC01CAD7F2600CD5539 /* libtabix.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtabix.a; path = tabix/libtabix.a; sourceTree = "<group>"; };
 		F138FDC21CAD7FB900CD5539 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
 		F138FDC41CAD844700CD5539 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		F138FDC51CAD844700CD5539 /* README */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
@@ -94,7 +92,6 @@
 				F129E1121EF901D2007793FB /* libcurl.tbd in Frameworks */,
 				F129E1101EF901CA007793FB /* liblzma.tbd in Frameworks */,
 				F138FDC31CAD7FB900CD5539 /* libz.tbd in Frameworks */,
-				F138FDC11CAD7F2600CD5539 /* libtabix.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -119,7 +116,6 @@
 				F138FDC41CAD844700CD5539 /* Makefile */,
 				F138FDC51CAD844700CD5539 /* README */,
 				F138FDC21CAD7FB900CD5539 /* libz.tbd */,
-				F138FDC01CAD7F2600CD5539 /* libtabix.a */,
 				F138FD7A1CAD744A00CD5539 /* Products */,
 				F129E10C1EF90129007793FB /* Frameworks */,
 			);
@@ -306,7 +302,6 @@
 					"tclap-1.2.1/include",
 					tabix,
 				);
-				LIBRARY_SEARCH_PATHS = tabix;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				New_Setting = "";
@@ -358,7 +353,6 @@
 					"tclap-1.2.1/include",
 					tabix,
 				);
-				LIBRARY_SEARCH_PATHS = tabix;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				New_Setting = "";

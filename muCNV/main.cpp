@@ -151,7 +151,7 @@ int main(int argc, char** argv)
 		n = (int)sample_ids.size();
 		cerr << "Genotyping index loaded." << endl;
 		cerr << n << " samples identified." << endl;
-		
+	
 		outvcf vfile;
 
 		vfile.open(out_filename);
@@ -159,19 +159,23 @@ int main(int argc, char** argv)
 		vfile.write_header(sample_ids);
 		
 		sv interval;
-		vector<double> X (n, 0);
-		vector<double> Y (n, 0);
+		vector<double> dp (n, 0);
+		vector<double> isz_cnv_pos(n, 0);
+		vector<double> isz_cnv_neg(n, 0);
+		vector<double> isz_inv_pos(n, 0);
+		vector<double> isz_inv_neg(n, 0);
+
 		vector<int> G(n, 0);
 
-		while(V_list.read_interval(interval, X)>=0)
+		while(V_list.read_interval_multi(interval, dp, isz_cnv_pos, isz_cnv_neg, isz_inv_pos, isz_inv_neg)>=0)
 		{
 			gtype g;
 			
 			for(int k=0; k<n; ++k)
 			{
-				X[k] = X[k] / avg_depths[k];
+				dp[k] = dp[k] / avg_depths[k];
 			}
-			g.call_genotype(interval, X, Y, G, vfile, avg_depths);
+			g.call_genotype(interval, dp, isz_cnv_pos, G, vfile, avg_depths);
 		}
 		vfile.close();
 	}

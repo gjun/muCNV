@@ -75,8 +75,10 @@ void read_index(string index_file, vector<string> &sample_ids, vector<string> &v
 }
 
 
-void invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, vector<double> &avg_depths, vector<double> &avg_isizes)
+int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, vector<double> &avg_depths, vector<double> &avg_isizes)
 {
+	//vector<string> lns (vcf_files.size(), "");
+	
 	for(int i=0;i<(int)vcf_files.size(); ++i)
 	{
 		//	cerr << "sample ID " << sample_ids[i] << endl;
@@ -85,14 +87,112 @@ void invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, v
 		vfs.push_back(f);
 	}
 
+	
+	for(int i=0;i<(int)vfs.size();++i)
+	{
+		if (!vfs[i]->good())
+		{
+			cerr<< "Error initializing VCF files\n" << endl;
+			return -1;
+		}
+	}
+	
+	for(int i=0;i<(int)vfs.size();++i)
+	{
+		bool flag = true;
+		while(flag)
+		{
+			string ln;
+			getline(*vfs[i],ln);
+			if (ln.empty())
+			{
+				// Error! Empty line in the header
+			}
+			else if (ln[0] == '#' && ln[1] == 'C' && ln[2] == 'H' && ln[3] == 'R')
+			{
+				// read sample ids
+				vector<string> tokens;
+				split(ln.c_str(), " \t\n", tokens);
+				for(int j=9; j<tokens.size(); ++j)
+				{
+					sample_ids.push_back(tokens[j]);
+				}
+			}
+			else if (ln[0] == '#' && ln[1] == '#')
+			{
+				// Skip these header lines
+			}
+			else if (ln[0] == '0' && (ln[1] == '\t' || ln[1] == ' '))
+			{
+				// Read avg depth
+				flag = false;
+				vector<string> tokens;
+				split(ln.c_str(), " \t\n", tokens);
+				for(int j=9;j<tokens.size();++j)
+				{
+					vector<string> fields;
+					split(tokens[j].c_str(), ":", fields);
+
+					avg_depths.push_back(atof(fields[0].c_str()));
+					avg_isizes.push_back(atof(fields[1].c_str()));
+				}
+			}
+		}
+		if (sample_ids.size() != avg_depths.size() || avg_depths.size() != avg_isizes.size())
+		{
+			cerr << "Error: number of fields for avegerage depth does not match" << endl;
+			cerr << "sample ids has " << sample_ids.size() << " and average depths has " << avg_depths.size() << endl;
+			return -1;
+		}
+	}
 	cerr << "Input VCF files initialized" <<endl;
+	return 0;
+}
+
+int invcfs::read_interval_multi(sv& interval, vector<double> &dp, vector<double> &isz_cnv_pos,
+								vector<double> &isz_cnv_neg, vector<double> &isz_inv_pos, vector<double> &inz_inv_neg)
+{
+	for(int i=0;i<(int)vfs.size();++i)
+	{
+		bool flag = true;
+		while(flag)
+		{
+			string ln;
+			getline(*vfs[i],ln);
+			if (ln.empty())
+			{
+				// Error! Empty line in the header
+			}
+			else if (ln[0] == '#')
+			{
+				// Skip these header lines
+				// Should never happen because headers are already processed in initialize()
+			}
+			else
+			{
+				// Read interval information
+				
+				// Read per-sample depth, insert size info
+				flag = false;
+				vector<string> tokens;
+				split(ln.c_str(), " \t\n", tokens);
+				for(int j=9;j<tokens.size();++j)
+				{
+					vector<string> fields;
+					split(tokens[j].c_str(), ":", fields);
+					
+					//avg_depths.push_back(atof(fields[0].c_str()));
+					//avg_isizes.push_back(atof(fields[1].c_str()));
+				}
+			}
+		}
+	}
+	return 0;
 }
 
 int invcfs::read_interval(sv& interval, vector<double> &X)
 {
 	vector<string> lns (vfs.size(), "");
-
-//	cerr << "Reading vcf " <<endl;
 
 	for(int i=0;i<(int)vfs.size();++i)
 	{
@@ -100,20 +200,24 @@ int invcfs::read_interval(sv& interval, vector<double> &X)
 			return -1;
 	}
 	bool flag=false;
+	int cnt = 0;
 	for(int i=0;i<(int)vfs.size();++i)
 	{
 		getline(*vfs[i],lns[i]);
 
 		if (lns[i].empty() || lns[i][0] == '#')
 		{
-//			cerr << i << "-th vcf has " << lns[i];
 			flag = true;
 		}
+		cnt++;
 	}
 	if (flag)
-		return 1;
-
-//    cerr << "Reading depth" <<endl;
+	{
+		if (cnt>0)
+			return -1;
+		else
+			return 1;
+	}
 
 	int chr;
 	vector<string> tokens;
