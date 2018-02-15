@@ -171,13 +171,21 @@ int main(int argc, char** argv)
 		{
 			gtype g;
 			
+			if (interval.pos == 1478801)
+			{
+				for(int j=0;j<n;++j)
+				{
+					printf("%f\t%f\t%f\n", dp[j], isz_cnv_pos[j], isz_cnv_neg[j]);
+				}
+			}
+			
 			for(int k=0; k<n; ++k)
 			{
 				dp[k] = dp[k] / avg_depths[k];
 			}
 			g.call_genotype(interval, dp, isz_cnv_pos, G, vfile, avg_depths);
 		}
-		vfile.close();
+ 		vfile.close();
 	}
 	else
 	{

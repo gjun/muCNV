@@ -78,27 +78,37 @@ void read_index(string index_file, vector<string> &sample_ids, vector<string> &v
 int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, vector<double> &avg_depths, vector<double> &avg_isizes)
 {
 	//vector<string> lns (vcf_files.size(), "");
+	int n_vcf = (int)vcf_files.size();
 	
-	for(int i=0;i<(int)vcf_files.size(); ++i)
+	for(int i=0;i<n_vcf; ++i)
 	{
 		//	cerr << "sample ID " << sample_ids[i] << endl;
 		//		cerr << "opening " << vcf_files[i] << endl;
 		ifstream *f = new ifstream(vcf_files[i].c_str(), ios::in);
 		vfs.push_back(f);
 	}
-
 	
-	for(int i=0;i<(int)vfs.size();++i)
+	start_num.resize(n_vcf);
+	num_id.resize(n_vcf);
+	
+	for(int i=0;i<n_vcf;++i)
 	{
 		if (!vfs[i]->good())
 		{
 			cerr<< "Error initializing VCF files\n" << endl;
 			return -1;
 		}
+		start_num[i] = 0;
+		num_id[i] = 0;
 	}
+
 	
-	for(int i=0;i<(int)vfs.size();++i)
+	for(int i=0;i<n_vcf;++i)
 	{
+		if (i>0)
+		{
+			start_num[i] = start_num[i-1] + num_id[i-1];
+		}
 		bool flag = true;
 		while(flag)
 		{
@@ -115,6 +125,7 @@ int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, ve
 				split(ln.c_str(), " \t\n", tokens);
 				for(int j=9; j<tokens.size(); ++j)
 				{
+					num_id[i]++;
 					sample_ids.push_back(tokens[j]);
 				}
 			}
@@ -149,9 +160,88 @@ int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, ve
 	return 0;
 }
 
-int invcfs::read_interval_multi(sv& interval, vector<double> &dp, vector<double> &isz_cnv_pos,
-								vector<double> &isz_cnv_neg, vector<double> &isz_inv_pos, vector<double> &inz_inv_neg)
+
+void invcfs::parse_sv(vector<string> &tokens, sv& interval)
 {
+	int chr;
+
+	if (tokens[0].substr(0,3) == "chr" || tokens[0].substr(0,3) == "Chr" )
+	{
+		tokens[0] = tokens[0].substr(3,2);
+	}
+	if (tokens[0] == "X")
+	{
+		chr = 23;
+	}
+	else if (tokens[0] == "Y")
+	{
+		chr = 24;
+	}
+	else if (tokens[0] == "M" || tokens[0] == "MT")
+	{
+		chr = 25;
+	}
+	else
+	{
+		try
+		{
+			chr = atoi(tokens[0].c_str());
+		}
+		catch(int e)
+		{
+			chr = 0;
+			
+		}
+	}
+	interval.chr = tokens[0]; // Dec 1, 2017
+	interval.chrnum = chr;
+	interval.pos = atoi(tokens[1].c_str());
+
+	string info = tokens[7];
+
+	vector<string> infotokens;
+
+	split(info.c_str(), ";", infotokens);
+	for(int j=0;j<(int)infotokens.size();++j)
+	{
+		vector<string> infofields;
+		split(infotokens[j].c_str(), "=", infofields);
+		if (infofields.size()>1)
+		{
+			if (infofields[0] == "END")
+			{
+				interval.end = atoi(infofields[1].c_str());
+			}
+
+			else if (infofields[0] == "SVTYPE")
+			{
+				interval.svtype = infofields[1];
+			}
+		}
+		
+	} // if chr >= 1 && chr <= 22
+}
+
+double invcfs::get_second_value(string &t)
+{
+	if (t==".") return 0;
+	
+	int p=0;
+	while(t[p++] != ',');
+	return abs(atof(t.substr(p,string::npos).c_str()));
+}
+
+int invcfs::read_interval_multi(sv& interval, vector<double> &dp, vector<double> &isz_cnv_pos,
+								vector<double> &isz_cnv_neg, vector<double> &isz_inv_pos, vector<double> &isz_inv_neg)
+{
+	int idx = 0;
+	
+	for(int i=0;i<(int)vfs.size();++i)
+	{
+		if (!vfs[i]->good())
+			return -1;
+	}
+	
 	for(int i=0;i<(int)vfs.size();++i)
 	{
 		bool flag = true;
@@ -162,6 +252,12 @@ int invcfs::read_interval_multi(sv& interval, vector<double> &dp, vector<double>
 			if (ln.empty())
 			{
 				// Error! Empty line in the header
+				if (i>0)
+				{
+					cerr << "Error reading VCF files" << endl;
+					exit(1);
+				}
+				return -1;
 			}
 			else if (ln[0] == '#')
 			{
@@ -170,23 +266,38 @@ int invcfs::read_interval_multi(sv& interval, vector<double> &dp, vector<double>
 			}
 			else
 			{
-				// Read interval information
 				
 				// Read per-sample depth, insert size info
 				flag = false;
 				vector<string> tokens;
 				split(ln.c_str(), " \t\n", tokens);
+				
+				// Read interval information
+				if (i==0)
+				{
+					// Parse SV info only from the first VCF
+					parse_sv(tokens, interval);
+				}
+
 				for(int j=9;j<tokens.size();++j)
 				{
 					vector<string> fields;
 					split(tokens[j].c_str(), ":", fields);
 					
-					//avg_depths.push_back(atof(fields[0].c_str()));
-					//avg_isizes.push_back(atof(fields[1].c_str()));
+					// GC corrected depth
+					dp[idx] = atof(fields[1].c_str());
+					
+					isz_cnv_pos[idx] = get_second_value(fields[2]);
+					isz_cnv_neg[idx] = get_second_value(fields[3]);
+					isz_inv_pos[idx] = get_second_value(fields[4]);
+					isz_inv_neg[idx] = get_second_value(fields[5]);
+					idx++;
+
 				}
 			}
 		}
 	}
+
 	return 0;
 }
 

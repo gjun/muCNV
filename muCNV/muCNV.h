@@ -124,14 +124,15 @@ class invcfs
 {
 public:
 	vector<ifstream *> vfs;
-	vector<int> id_offset;
-	vector<int> n_id;
+	vector<int> num_id;
+	vector<int> start_num;
 
+	void parse_sv(vector<string> &, sv &);
+	double get_second_value(string &);
 	int initialize(vector<string> &, vector<string> &, vector<double> &, vector<double> &);
 	int read_interval_multi(sv& , vector<double> &, vector<double> &, vector<double> &, vector<double> &, vector<double> &);
 	int read_interval(sv&, vector<double> &);
 };
-
 
 class gcContent
 {
