@@ -259,7 +259,7 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 		
 		info +=";AC=" + to_string(ac) + ";NS=" + to_string(ns) + ";AF=" + to_string((double)ac/(double)(2.0*ns))  + "\tGT:CN";
 		
-		if ((ac>0 && ns>n_sample *0.5) && ((dp_flag && BE_dp<0.3) || pos_flag || neg_flag))
+		if ((ac>0 && ns>n_sample *0.5) && ((dp_flag && BE_dp<0.2) || pos_flag || neg_flag))
 		{
 			filt = "PASS";
 		}
