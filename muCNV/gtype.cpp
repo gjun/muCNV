@@ -42,7 +42,7 @@ void gtype::format_output(sv &s, string &ln)
 {
 	ln = s.chr;
 	
-	ln += "\t" + to_string(s.pos) + "\t" + s.svtype + "_" + s.chr + ":" + to_string(s.pos) + "-" + to_string(s.end) + "\t.\t<" + s.svtype + ">";
+	ln += "\t" + to_string(s.pos) + "\t" + s.svtype + "_" + s.chr + ":" + to_string(s.pos) + "-" + to_string(s.end) + "\t.\t<" + s.svtype + ">\t.\t";
 }
 
 void gtype::copyComps(vector<Gaussian> &C, vector<Gaussian> &C0)
@@ -145,7 +145,7 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 	double BE_pos = BayesError(C_pos2);
 	bool pos_flag = false;
 	
-	if (BIC(dt.norm_cnv_pos, C_pos2) <BIC(dt.norm_cnv_pos, C_pos1) && C_pos2[1].Mean > 0.5 && C_pos2[1].Alpha > 4.5/(n_sample + 4.0))
+	if (BIC(dt.norm_cnv_pos, C_pos2) <BIC(dt.norm_cnv_pos, C_pos1) && C_pos2[1].Mean > 0.5 &&  C_pos2[1].Mean < 2 && C_pos2[1].Alpha > 4.5/(n_sample + 4.0))
 	{
 		pos_flag = true;
 	}
@@ -164,7 +164,7 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 	double BE_neg = BayesError(C_neg2);
 	bool neg_flag = false;
 	
-	if (BIC(dt.norm_cnv_neg, C_neg2) <BIC(dt.norm_cnv_neg, C_neg1) && C_neg2[1].Mean > 0.5 && C_neg2[1].Alpha > 4.5/(n_sample + 4.0))
+	if (BIC(dt.norm_cnv_neg, C_neg2) <BIC(dt.norm_cnv_neg, C_neg1) && C_neg2[1].Mean > 0.5 && C_neg2[1].Mean < 2 && C_neg2[1].Alpha > 4.5/(n_sample + 4.0))
 	{
 		neg_flag = true;
 	}
@@ -179,45 +179,92 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 			BE_dp = BayesError(C3);
 		}
 		
+		vector<int> gt(n_sample, 0);
+
 		format_output(s, ln);
-		ln += "\t.\tPASS\t";
-		ln += "SVTYPE=" + s.svtype + ";END=" + to_string(s.end) + ";SVLEN=" + to_string(s.len) + ";BE_DP=" + to_string(BE_dp);
+		
+		string filt = "FAIL";
+		string info = "SVTYPE=" + s.svtype + ";END=" + to_string(s.end) + ";SVLEN=" + to_string(s.len) + ";P_OVERLAP=" + to_string(BE_dp);
 		if (dp_flag)
 		{
-			ln += ";DP";
+			info += ";DP";
 		}
 		if (pos_flag)
 		{
-			ln += ";POS";
+			info += ";POS";
 		}
 		if (neg_flag)
 		{
-			ln += ";NEG";
+			info += ";NEG";
 		}
 		for(int i=0;i<C.size(); ++i)
 		{
-			ln += ";M" + to_string(i) + "=" + to_string(C[i].Mean);
+			info += ";M" + to_string(i) + "=" + to_string(C[i].Mean);
 		}
 		for(int i=0;i<C.size(); ++i)
 		{
-			ln += ";S" + to_string(i) + "=" + to_string(C[i].Stdev);
+			info += ";S" + to_string(i) + "=" + to_string(C[i].Stdev);
 		}
 		
-		vector<int> gt(n_sample, 0);
 		int ac = 0;
 		int ns = 0;
 		
 		for(int i=0;i<n_sample;++i)
 		{
-			gt[i] = assign(X[i], C);
-			if (gt[i] >= 0 )
+			int cn;
+			bool pos_gt = false, neg_gt = false;
+			
+			cn = assign(X[i], C);
+			if (pos_flag && dt.norm_cnv_pos[i] > 0.75 && dt.norm_cnv_pos[i] < 1.5)
+			{
+				pos_gt = true;
+			}
+			if (neg_flag && dt.norm_cnv_neg[i] > 0.75 && dt.norm_cnv_neg[i] < 1.5)
+			{
+				neg_gt = true;
+			}
+			
+			gt[i] = -1;
+			switch(cn)
+			{
+				case -1:
+					if (pos_gt || neg_gt)
+					{
+						gt[i] = 1;
+					}
+					break;
+				case 0:
+					gt[i] = 2;
+					break;
+				case 1:
+					gt[i] = 1;
+					break;
+				case 2:
+					if (pos_gt || neg_gt)
+					{
+						gt[i] = 1;
+					}
+					else
+					{
+						gt[i] = 0;
+					}
+					break;
+			}
+			if (gt[i] >=0 )
 			{
 				ac += gt[i];
 				ns += 1;
 			}
 		}
-		ln +=";AC=" + to_string(ac) + ";NS=" + to_string(ns) + "\tGT:CN";
 		
+		info +=";AC=" + to_string(ac) + ";NS=" + to_string(ns) + ";AF=" + to_string((double)ac/(double)(2.0*ns))  + "\tGT:CN";
+		
+		if ((ac>0 && ns>n_sample *0.5) && ((dp_flag && BE_dp<0.3) || pos_flag || neg_flag))
+		{
+			filt = "PASS";
+		}
+		
+		ln += filt + "\t" + info;
 		
 		for(int i=0;i<n_sample;++i)
 		{
@@ -253,9 +300,11 @@ int gtype::assign(double x, vector<Gaussian> &C)
 	double max_P = -1;
 	double max_R = -1;
 	int ret = -1;
+
 	for(int i=0;i<n_comp; ++i)
 	{
 		p[i] = C[i].pdf(x);
+		
 		if (p[i] > max_P)
 		{
 			max_P = p[i];
@@ -274,18 +323,13 @@ int gtype::assign(double x, vector<Gaussian> &C)
 		}
 	}
 	
+	ret = round(C[ret].Mean * 2);
+	
 	if (max_R >0.5)
 	{
 		return -1;
 	}
 	
-	if (n_comp == 2)
-	{
-		if (C[0].Mean < 0.75 && C[1].Mean < 0.25)
-		{
-			ret = ret + 1;
-		}
-	}
 	return ret;
 }
 
