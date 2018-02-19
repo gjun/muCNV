@@ -16,6 +16,7 @@
  */
 
 #include "muCNV.h"
+
 extern double BE_THRESHOLD;
 extern double P_THRESHOLD;
 
@@ -33,6 +34,7 @@ gtype::gtype()
 {
 	min_bic = 0;
 	bUseGL = false;
+	dFlag = false;
 	p_overlap = 0;
 }
 
@@ -70,6 +72,7 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 	
 	// For each candidate region, run EM
 	// Run EM with 2 and 3 components, compare likelihoods with the 1-gaussian model, apply BIC
+
 	
 	C1[0].estimate(X);
 	C1[0].Alpha = 1;
@@ -87,8 +90,8 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 	}
 	
 	// Two-component model, af < 0.5
-	C2[0].set(1, 0.5);
-	C2[1].set(0.5, 0.5);
+	C2[0].set(1, 0.1);
+	C2[1].set(0.5, 0.1);
 	C2[0].Alpha = C2[1].Alpha = 0.5;
 	EM(X, C2);
 	bic2 = BIC(X, C2);
@@ -100,8 +103,8 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 		copyComps(C, C2);
 	}
 	// Two-component model, af > 0.5
-	C2_rev[0].set(0.5, 0.5);
-	C2_rev[1].set(0, 0.5);
+	C2_rev[0].set(0.5, 0.1);
+	C2_rev[1].set(0, 0.1);
 	C2_rev[0].Alpha = C2_rev[1].Alpha = 0.5;
 	EM(X, C2_rev);
 	bic2_rev = BIC(X, C2_rev);
@@ -113,9 +116,9 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 		copyComps(C, C2_rev);
 	}
 	// Three-component model
-	C3[0].set(1, 0.5);
-	C3[1].set(0.5, 0.5);
-	C3[2].set(0, 0.5);
+	C3[0].set(1, 0.1);
+	C3[1].set(0.5, 0.1);
+	C3[2].set(0, 0.1);
 	C3[0].Alpha = C3[1].Alpha = C3[2].Alpha = 1.0/3.0;
 	EM(X, C3);
 	bic3 = BIC(X, C3);
@@ -134,15 +137,15 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 	C_pos1[0].Alpha=1;
 	
 	vector<Gaussian> C_pos2(2);
-	C_pos2[0].set(0,0.5);
-	C_pos2[1].set(1,0.5);
+	C_pos2[0].set(0,0.1);
+	C_pos2[1].set(1,0.1);
 	C_pos2[0].Alpha = C_pos2[1].Alpha = 0.5;
 	EM(dt.norm_cnv_pos, C_pos2);
 
 	double BE_pos = BayesError(C_pos2);
 	bool pos_flag = false;
 	
-	if (BIC(dt.norm_cnv_pos, C_pos2) <BIC(dt.norm_cnv_pos, C_pos1) && C_pos2[1].Mean > 0.5 && C_pos2[1].Alpha >= 5.0/(n_sample + 4.0))
+	if (BIC(dt.norm_cnv_pos, C_pos2) <BIC(dt.norm_cnv_pos, C_pos1) && C_pos2[1].Mean > 0.5 && C_pos2[1].Alpha > 4.5/(n_sample + 4.0))
 	{
 		pos_flag = true;
 	}
@@ -153,19 +156,19 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 	C_neg1[0].Alpha = 1;
 	
 	vector<Gaussian> C_neg2(2);
-	C_neg2[0].set(0,0.5);
-	C_neg2[1].set(1,0.5);
+	C_neg2[0].set(0,0.1);
+	C_neg2[1].set(1,0.1);
 	C_neg2[0].Alpha = C_neg2[1].Alpha = 0.5;
 	EM(dt.norm_cnv_neg, C_neg2);
 	
 	double BE_neg = BayesError(C_neg2);
 	bool neg_flag = false;
 	
-	if (BIC(dt.norm_cnv_neg, C_neg2) <BIC(dt.norm_cnv_neg, C_neg1) && C_neg2[1].Mean > 0.5 && C_neg2[1].Alpha >= 5.0/(n_sample + 4.0))
+	if (BIC(dt.norm_cnv_neg, C_neg2) <BIC(dt.norm_cnv_neg, C_neg1) && C_neg2[1].Mean > 0.5 && C_neg2[1].Alpha > 4.5/(n_sample + 4.0))
 	{
 		neg_flag = true;
 	}
-	
+
 	// if any of three clustering meets criteria
 	if (dp_flag || pos_flag || neg_flag)
 	{
@@ -239,6 +242,7 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 	{
 		ln = "";
 	}
+
 }
 
 
@@ -883,6 +887,7 @@ void gtype::EM(vector<double>& x, vector<Gaussian>& C, bool bFlip)
 		vector<double> sum_pr (n_comp,0);
 		vector<double> sum_err (n_comp,0);
 		
+		
 		// E step
 		for(unsigned j=0; j<n_sample; ++j)
 		{
@@ -918,10 +923,13 @@ void gtype::EM(vector<double>& x, vector<Gaussian>& C, bool bFlip)
 		// Add pseudo-count values
 		for(unsigned m=0;m<n_comp; ++m)
 		{
+
+
 			sum[m] += p_val[m] * p_count;
 			sum_err[m] += (p_val[m] - C[m].Mean)*(p_val[m] - C[m].Mean) * p_count;
 			sum_pr[m] += p_count;
 		}
+		cerr << endl;
 		
 		// M step
 		for(unsigned m=0;m<n_comp;++m)
@@ -948,14 +956,19 @@ void gtype::EM(vector<double>& x, vector<Gaussian>& Comps)
 {
 	unsigned n_sample = (unsigned) x.size();
 	unsigned n_comp = (unsigned) Comps.size();
-	unsigned n_iter = 30;
+	unsigned n_iter = 20;
 	
 	unsigned p_count= 2;
 	double p_val[n_comp];
+	int zeroidx = -1;
 	
 	for(unsigned i=0; i<n_comp; ++i)
 	{
 		p_val[i] = Comps[i].Mean;
+		if (p_val[i] <1e-10) // zero
+		{
+			zeroidx = i;
+		}
 	}
 	
 	for(unsigned i=0; i<n_iter; ++i)
@@ -972,6 +985,10 @@ void gtype::EM(vector<double>& x, vector<Gaussian>& Comps)
 			for(unsigned m=0;m<n_comp;++m)
 			{
 				pr[m] = Comps[m].Alpha * normpdf(x[j], Comps[m]);
+				if (zeroidx == (int)m )
+				{
+					pr[m] *= 2.0;
+				}
 				sum_p += pr[m];
 			}
 			
@@ -992,23 +1009,23 @@ void gtype::EM(vector<double>& x, vector<Gaussian>& Comps)
 		{
 			sum[m] += p_val[m] * p_count;
 			
-			sum_err[m] += (p_val[m] - Comps[m].Mean) * p_count;
+			sum_err[m] += (p_val[m] - Comps[m].Mean)*(p_val[m]-Comps[m].Mean) * p_count;
 			sum_pr[m] += p_count;
 		}
 		
 		// M step
 		for(unsigned m=0;m<n_comp;++m)
 		{
-			if (sum_pr[m]>1e-30)
-			{
-				Comps[m].Mean = sum[m]/sum_pr[m];
-				Comps[m].Stdev = sqrt(sum_err[m] / (sum_pr[m] ));
-			}
-			else
-			{
-				// Do not change previous estimates if no points assigned
-			}
+
+			Comps[m].Mean = sum[m]/sum_pr[m];
+			Comps[m].Stdev = sqrt(sum_err[m] / (sum_pr[m] ));
+
 			Comps[m].Alpha = sum_pr[m] /( n_sample + n_comp*p_count);
+			
+			if (zeroidx == (int)m)
+			{
+				Comps[m].Mean = 0;
+			}
 		}
 	}
 }

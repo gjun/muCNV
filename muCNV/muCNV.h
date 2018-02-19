@@ -288,6 +288,8 @@ public:
 	double min_bic;
 	double p_overlap;
 	bool bUseGL;
+	bool dFlag;
+	
 //	void call_genotype(sv &, vector<double>&, vector<double>&, vector<int>&, outvcf&, vector<double>&);
 	void call_del(sv &, svdata &, string& ln);
 	//void call_del2(sv &, svdata &, string& ln);

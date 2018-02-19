@@ -151,13 +151,13 @@ int main(int argc, char** argv)
 			
 			if (interval.svtype == "DEL")
 			{
-				/*
+			
 				g.call_del(interval, dt, ln);
 				if (ln != "")
 				{
 					vfile.print(ln);
-				}*/
-				g.call_del(interval, dt.norm_dp, dt.norm_readcount , G, vfile, avg_depths);
+				}
+			//	g.call_del(interval, dt.norm_dp, dt.norm_readcount , G, vfile, avg_depths);
 
 			}
 			else if (interval.svtype == "CNV" || interval.svtype == "DUP")
