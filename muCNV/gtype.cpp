@@ -108,7 +108,7 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 	C2_rev[0].Alpha = C2_rev[1].Alpha = 0.5;
 	EM(X, C2_rev);
 	bic2_rev = BIC(X, C2_rev);
-	if (bic2_rev < min_bic)
+	if (bic2_rev < min_bic && (C2_rev[0].Mean < 0.7 && C2_rev[0].Mean >0.3) && (C2_rev[1].Mean < 0.2))
 	{
 		min_bic = bic2_rev;
 		dp_flag = true;
@@ -169,6 +169,10 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 		neg_flag = true;
 	}
 
+	if (s.pos==2084366)
+	{
+		//here
+	}
 	// if any of three clustering meets criteria
 	if (dp_flag || pos_flag || neg_flag)
 	{
