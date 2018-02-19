@@ -151,27 +151,34 @@ int main(int argc, char** argv)
 		while(V_list.read_interval_multi(interval, dt)>=0)
 		{
 			gtype g;
-			dt.normalize(interval, avg_depths);
+			dt.normalize(interval, avg_depths, avg_isizes);
 			string ln;
 			
 			if (interval.svtype == "DEL")
 			{
-			
 				g.call_del(interval, dt, ln);
 				if (ln != "")
 				{
 					vfile.print(ln);
 				}
-			//	g.call_del(interval, dt.norm_dp, dt.norm_readcount , G, vfile, avg_depths);
-
 			}
 			else if (interval.svtype == "CNV" || interval.svtype == "DUP")
 			{
-			//	g.call_cnv(interval, dt, g);
+				string ln;
+				g.call_cnv(interval, dt, ln);
+				if (ln != "")
+				{
+					vfile.print(ln);
+				}
 			}
 			else if (interval.svtype == "INV")
 			{
-			//	g.call_inversion(interval, dt, g);
+				string ln;
+				g.call_inv(interval, dt, ln);
+				if (ln != "")
+				{
+					vfile.print(ln);
+				}
 			}
 			
 			// Write Output

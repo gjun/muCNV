@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F114FEA7203B7D5100DE1FBC /* gtype_old.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F114FEA5203B7D5100DE1FBC /* gtype_old.cpp */; };
 		F129E1101EF901CA007793FB /* liblzma.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = F129E10F1EF901CA007793FB /* liblzma.tbd */; };
 		F129E1121EF901D2007793FB /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = F129E1111EF901D2007793FB /* libcurl.tbd */; };
 		F129E1131EF901E1007793FB /* libhts.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F129E10D1EF90129007793FB /* libhts.a */; };
@@ -36,6 +37,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		F114FEA5203B7D5100DE1FBC /* gtype_old.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = gtype_old.cpp; sourceTree = "<group>"; };
 		F129E10D1EF90129007793FB /* libhts.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libhts.a; path = lib/libhts.a; sourceTree = "<group>"; };
 		F129E10F1EF901CA007793FB /* liblzma.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = liblzma.tbd; path = usr/lib/liblzma.tbd; sourceTree = SDKROOT; };
 		F129E1111EF901D2007793FB /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
@@ -141,6 +143,7 @@
 				F138FD8A1CAD74EE00CD5539 /* muCNV.h */,
 				F138FD7C1CAD744A00CD5539 /* main.cpp */,
 				F194ED341F25A41400489E0C /* gtype.cpp */,
+				F114FEA5203B7D5100DE1FBC /* gtype_old.cpp */,
 				F194ED361F25B3C900489E0C /* sv.cpp */,
 				F194ED381F2623BB00489E0C /* vcf.cpp */,
 				F194ED3A1F2708CC00489E0C /* Gaussian.cpp */,
@@ -242,6 +245,7 @@
 				F138FD8B1CAD74EE00CD5539 /* cluster.cpp in Sources */,
 				F194ED371F25B3C900489E0C /* sv.cpp in Sources */,
 				F194ED351F25A41400489E0C /* gtype.cpp in Sources */,
+				F114FEA7203B7D5100DE1FBC /* gtype_old.cpp in Sources */,
 				F13828731FCF36CC003ADE67 /* bamcram.cpp in Sources */,
 				F138FD8C1CAD74EE00CD5539 /* common.cpp in Sources */,
 				F138FD7D1CAD744A00CD5539 /* main.cpp in Sources */,

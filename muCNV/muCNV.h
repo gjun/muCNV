@@ -97,7 +97,7 @@ public:
 		norm_readcount.resize(n);
 	};
 	
-	void normalize(sv &interval, vector<double> &avg_depth)
+	void normalize(sv &interval, vector<double> &avg_depth, vector<double> &avg_isize)
 	{
 		for(int i=0;i<n;++i)
 		{
@@ -108,11 +108,27 @@ public:
 			norm_inv_pos[i] = (inv_pos[i] - isz[i]) / interval.len;
 			norm_inv_neg[i] = (inv_neg[i] - isz[i]) / interval.len;
 			 */
-			norm_cnv_pos[i] = (cnv_pos[i] ) / interval.len;
-			norm_cnv_neg[i] = (cnv_neg[i] ) / interval.len;
-			norm_inv_pos[i] = (inv_pos[i] ) / interval.len;
-			norm_inv_neg[i] = (inv_neg[i] ) / interval.len;
-			
+			if (interval.svtype == "DEL")
+			{
+				norm_cnv_pos[i] = (cnv_pos[i] ) / interval.len;
+				norm_cnv_neg[i] = (cnv_neg[i] ) / interval.len;
+				norm_inv_pos[i] = (inv_pos[i] ) / interval.len;
+				norm_inv_neg[i] = (inv_neg[i] ) / interval.len;
+			}
+			else if (interval.svtype == "DUP" || interval.svtype == "CNV")
+			{
+				norm_cnv_pos[i] = (cnv_pos[i] ) / avg_isize[i];
+				norm_cnv_neg[i] = (cnv_neg[i] ) / avg_isize[i];
+				norm_inv_pos[i] = (inv_pos[i] ) / interval.len;
+				norm_inv_neg[i] = (inv_neg[i] ) / interval.len;
+			}
+			else if (interval.svtype == " INV" )
+			{
+				norm_cnv_pos[i] = (cnv_pos[i] ) / avg_isize[i];
+				norm_cnv_neg[i] = (cnv_neg[i] ) / avg_isize[i];
+				norm_inv_pos[i] = (inv_pos[i] ) / interval.len;
+				norm_inv_neg[i] = (inv_neg[i] ) / interval.len;
+			}
 			// READLEN fixed to 150 : later!!
 			norm_readcount[i] = (double)n_isz[i] * 150.0 / interval.len / avg_depth[i];
 		}
@@ -292,10 +308,8 @@ public:
 	
 //	void call_genotype(sv &, vector<double>&, vector<double>&, vector<int>&, outvcf&, vector<double>&);
 	void call_del(sv &, svdata &, string& ln);
-	//void call_del2(sv &, svdata &, string& ln);
-
-	void call_cnv(sv &, svdata &, vector<int> &);
-	void call_inv(sv &, svdata &, vector<int> &);
+	void call_cnv(sv &, svdata &, string& ln);
+	void call_inv(sv &, svdata &, string& ln);
 
 	void eval_cluster(sv &, vector<double> &, vector<double> &, vector<Gaussian2> &, double &, double &);
 
