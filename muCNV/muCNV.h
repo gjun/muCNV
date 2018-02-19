@@ -34,13 +34,100 @@ class sv
 	int chrnum;
 	int pos;
 	int end;
+	int len;
 //	pair<int,int> ci_pos;
 //	pair<int,int> ci_end;
-	uint64_t len() {return (end - pos + 1);};
+	void get_len()
+	{
+		len = end - pos + 1;
+	};
 	bool operator < (const sv&) const;
 	bool operator == (const sv&) const;
 	
 	sv();
+};
+
+class svdata
+{
+public:
+	int n;
+	vector<double> dp;
+	vector<double> isz;
+	
+	vector<double> cnv_pos;
+	vector<double> cnv_neg;
+	vector<double> inv_pos;
+	vector<double> inv_neg;
+	
+	vector<int> n_isz;
+	vector<int> n_cnv_pos;
+	vector<int> n_cnv_neg;
+	vector<int> n_inv_pos;
+	vector<int> n_inv_neg;
+	
+	vector<double> norm_dp;
+	vector<double> norm_cnv_pos;
+	vector<double> norm_cnv_neg;
+	vector<double> norm_inv_pos;
+	vector<double> norm_inv_neg;
+	vector<double> norm_readcount;
+	
+	void set_size(int num)
+	{
+		n = num;
+		dp.resize(n);
+		isz.resize(n);
+		
+		cnv_pos.resize(n);
+		cnv_neg.resize(n);
+		inv_pos.resize(n);
+		inv_neg.resize(n);
+		
+		n_isz.resize(n);
+		n_cnv_pos.resize(n);
+		n_cnv_neg.resize(n);
+		n_inv_pos.resize(n);
+		n_inv_neg.resize(n);
+		
+		norm_dp.resize(n);
+		norm_cnv_pos.resize(n);
+		norm_cnv_neg.resize(n);
+		norm_inv_pos.resize(n);
+		norm_inv_neg.resize(n);
+		norm_readcount.resize(n);
+	};
+	
+	void normalize(sv &interval, vector<double> &avg_depth)
+	{
+		for(int i=0;i<n;++i)
+		{
+			norm_dp[i] = dp[i] / avg_depth[i];
+			/*
+			norm_cnv_pos[i] = (cnv_pos[i] - isz[i]) / interval.len;
+			norm_cnv_neg[i] = (cnv_neg[i] - isz[i]) / interval.len;
+			norm_inv_pos[i] = (inv_pos[i] - isz[i]) / interval.len;
+			norm_inv_neg[i] = (inv_neg[i] - isz[i]) / interval.len;
+			 */
+			norm_cnv_pos[i] = (cnv_pos[i] ) / interval.len;
+			norm_cnv_neg[i] = (cnv_neg[i] ) / interval.len;
+			norm_inv_pos[i] = (inv_pos[i] ) / interval.len;
+			norm_inv_neg[i] = (inv_neg[i] ) / interval.len;
+			
+			// READLEN fixed to 150 : later!!
+			norm_readcount[i] = (double)n_isz[i] * 150.0 / interval.len / avg_depth[i];
+		}
+	};
+	
+	void print(sv &interval)
+	{
+		fprintf(stderr, "Inversion, %d:%d-%d, length %d\n", interval.chrnum, interval.pos, interval.end, interval.len);
+		for(int j=0;j<n;++j)
+		{
+			fprintf(stderr, "%f\t%d,%f\t%d,%f\t%d,%f\t%d,%f\t%d,%f\n", norm_dp[j], n_cnv_pos[j],  norm_cnv_pos[j], n_cnv_neg[j], norm_cnv_neg[j],
+				   n_inv_pos[j], norm_inv_pos[j], n_inv_neg[j], norm_inv_neg[j], n_isz[j], isz[j]);
+		}
+	}
+	
 };
 
 class gcint : public sv
@@ -48,7 +135,6 @@ class gcint : public sv
 	public:
 	uint8_t gcbin;
 };
-
 
 class breakpoint
 {
@@ -100,7 +186,8 @@ public:
 	double Stdev;
 	double Alpha;
 	double pdf(const double &);
-	
+	void set(const double &, const double &);
+	void estimate(vector<double> &);
 	Gaussian();
 };
 
@@ -114,6 +201,8 @@ public:
 	double Det; // determinant
 	double Alpha;
 	double pdf(const double&, const double&);
+	void set(const double &, const double &, const double &, const double &, const double &, const double &);
+	void estimate(vector<double> &, vector<double> &);
 	double logpdf(const double&, const double&);
 	void update(); // update precision matrix
 	
@@ -129,8 +218,9 @@ public:
 
 	void parse_sv(vector<string> &, sv &);
 	double get_second_value(string &);
+	void get_value_pair(string &, int &, double &);
 	int initialize(vector<string> &, vector<string> &, vector<double> &, vector<double> &);
-	int read_interval_multi(sv& , vector<double> &, vector<double> &, vector<double> &, vector<double> &, vector<double> &);
+	int read_interval_multi(sv& , svdata &);
 	int read_interval(sv&, vector<double> &);
 };
 
@@ -156,7 +246,6 @@ class bFile
 public:
 	aux_t **data;
 	hts_idx_t* idx;
-//	int n;
 	gcContent& GC;
 	double avg_dp;
 	double avg_isize;
@@ -169,12 +258,8 @@ public:
 	// Get GC corrected depth for chr / pos
 	double gcCorrected(double, int, int);
 	
-// Handle multiple, overlapping SVs
-	//void read_depth(vector<sv> &, vector<double>&, vector<double>&, vector< vector<int> >&);
 	void read_depth(vector<sv> &, vector<string> &);
-	//void process_readpair(sv &, vector<int> &, vector<int> &, string &);
 	void process_readpair(sv &, vector<int> &, string &);
-	// average depth, average gc-corrected depth, average insert size // stdev?
 	void get_avg_depth();
 	void initialize(string &);
 
@@ -191,6 +276,7 @@ public:
 	int varcnt;
 	void open(string&);
 	void close();
+	void print(string &);
 	void write_header(vector<string>&);
 	void write_del(sv&, vector<int>&, vector<int>&, int, int, vector<double>&, vector<double>&, vector<Gaussian>&, double, bool);
 	void write_cnv(sv&, vector<int>&, vector<int>&, int, int, vector<double>&, vector<double>&, vector<Gaussian>&, double, bool);
@@ -202,17 +288,27 @@ public:
 	double min_bic;
 	double p_overlap;
 	bool bUseGL;
-	void call_genotype(sv &, vector<double>&, vector<double>&, vector<int>&, outvcf&, vector<double>&);
-	
+//	void call_genotype(sv &, vector<double>&, vector<double>&, vector<int>&, outvcf&, vector<double>&);
+	void call_del(sv &, svdata &, string& ln);
+	//void call_del2(sv &, svdata &, string& ln);
+
+	void call_cnv(sv &, svdata &, vector<int> &);
+	void call_inv(sv &, svdata &, vector<int> &);
+
+	void eval_cluster(sv &, vector<double> &, vector<double> &, vector<Gaussian2> &, double &, double &);
+
 	int classify_del(vector<double>&, vector<int>&, vector< vector<int> >&, vector<int>&, int&,vector<Gaussian>&, bool);
 	int classify_cnv(vector<double>&, vector<int>&, vector<int>&, int&, vector<Gaussian>&);
 
 	void EM(vector<double>&, vector<Gaussian>&, bool);
 	void EM(vector<double>&, vector<Gaussian>&);
+	void EM2(vector<double>&, vector<double> &, vector<Gaussian2>&);
 
+	int assign(double, vector<Gaussian> &);
+	void copyComps(vector<Gaussian> &, vector<Gaussian> &);
 	void call_del(sv&, vector<double>&, vector<double>&, vector<int>&, outvcf&, vector<double>&);
 	void call_cnv(sv&, vector<double>&, vector<double>&, vector<int>&, outvcf&, vector<double>&);
-	
+	void format_output(sv &, string &);
 	gtype();
 };
 
@@ -233,9 +329,10 @@ void merge_svs(vector<sv> &, vector<int> &);
 void cluster_svs(vector<sv>&, vector< vector<sv> > &);
 
 double BayesError(vector<Gaussian>&);
+double BayesError(vector<Gaussian2>&);
 
 double BIC(vector<double>&, vector<Gaussian>&);
-double BIC2(vector<double>&, vector<double>&, vector<Gaussian2>&);
+double BIC(vector<double>&, vector<double>&, vector<Gaussian2>&);
 double det(double*);
 
 bool ordered(vector<Gaussian>&);

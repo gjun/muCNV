@@ -17,7 +17,6 @@
 
 #include <algorithm>
 
-// #include "pFile.h"
 #include "muCNV.h"
 
 // TCLAP headers
@@ -32,15 +31,13 @@ double P_THRESHOLD = 0.5;
 double BE_THRESHOLD = 0.05;
 double RO_THRESHOLD = 0.5;
 
-
 int main(int argc, char** argv)
 {
-	cerr << "muCNV 0.7 -- Multi-sample CNV genotyper" << endl;
+	cerr << "muCNV 0.8 -- Multi-sample CNV genotyper" << endl;
 	cerr << "(c) 2018 Goo Jun" << endl << endl;
 	cerr.setf(ios::showpoint);
 
 	bool bGenotype = false;
-//	bool bVerbose;
 	string index_file;
 	string vcf_file;
 	string out_filename;
@@ -61,7 +58,6 @@ int main(int argc, char** argv)
 	try 
 	{
 		TCLAP::CmdLine cmd("Command description message", ' ', "0.06");
-//		TCLAP::ValueArg<string> argIn("i","index","Input index file (sample ID, candidate VCF, BAM/CRAM)",true,"","string");
 		
 		TCLAP::ValueArg<string> argBam("b","bam","Input BAM/CRAM file name",false,"","string");
 		TCLAP::ValueArg<string> argOut("o","out","Output filename",false,"muCNV.vcf","string");
@@ -71,13 +67,6 @@ int main(int argc, char** argv)
 		TCLAP::ValueArg<string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "string");
 		TCLAP::SwitchArg switchGenotype("g","genotype","Generate Genotype from intermediate pileups", cmd, false);
 		
-		//		TCLAP::ValueArg<string> argsv("n","interval","File containing list of candidate intervals",false,"","string");
-//		TCLAP::ValueArg<double> argPos("p","posterior","(Optional) Posterior probability threshold",false,0.5,"double");
-//		TCLAP::ValueArg<double> argBE("b","bayes","(Optional) Bayes error threshold",false,0.2,"double");
-
-//		TCLAP::ValueArg<double> argRO("r","reciprocal","(Optional) Reciprocal overlap threshold to merge candidate intervals (default: 0.5)",false,0.5,"double");
-		//		TCLAP::SwitchArg switchGL("g","gl","Use likelihood instead of posterior to call",cmd,false);
-//		TCLAP::SwitchArg switchVerbose("v","verbose","Turn on verbose mode",cmd,false);
 
 		cmd.add(argBam);
 		cmd.add(argOut);
@@ -85,12 +74,6 @@ int main(int argc, char** argv)
 		cmd.add(argGcfile);
 		cmd.add(argIndex);
 		cmd.add(argSampleID);
-//		cmd.add(switchGenotype);
-
-//		cmd.add(argPos);
-
-//		cmd.add(argBE);
-//		cmd.add(argRO);
 		
 		cmd.parse(argc, argv);
         
@@ -125,11 +108,6 @@ int main(int argc, char** argv)
 				exit(1);
 			}
 		}
-		
-//		P_THRESHOLD = argPos.getValue();
-//		BE_THRESHOLD = argBE.getValue();
-//		RO_THRESHOLD = argRO.getValue();
-
 	}
 	catch (TCLAP::ArgException &e)
 	{
@@ -140,6 +118,8 @@ int main(int argc, char** argv)
 	int n = 0;
 	if (bGenotype)
 	{
+		// Multi-sample genotyping from summary VCFs
+		
 		vector<double> avg_depths;
 		vector<double> avg_isizes;
 		
@@ -147,7 +127,6 @@ int main(int argc, char** argv)
 		read_vcf_list(index_file, vcfs);
 		V_list.initialize(vcfs, sample_ids, avg_depths, avg_isizes);
 
-	//	read_index(index_file, sample_ids, vcfs, bam_names, avg_depths);
 		n = (int)sample_ids.size();
 		cerr << "Genotyping index loaded." << endl;
 		cerr << n << " samples identified." << endl;
@@ -159,38 +138,45 @@ int main(int argc, char** argv)
 		vfile.write_header(sample_ids);
 		
 		sv interval;
-		vector<double> dp (n, 0);
-		vector<double> isz_cnv_pos(n, 0);
-		vector<double> isz_cnv_neg(n, 0);
-		vector<double> isz_inv_pos(n, 0);
-		vector<double> isz_inv_neg(n, 0);
-
+		svdata dt;
+		
 		vector<int> G(n, 0);
-
-		while(V_list.read_interval_multi(interval, dp, isz_cnv_pos, isz_cnv_neg, isz_inv_pos, isz_inv_neg)>=0)
+		dt.set_size(n);
+		
+		while(V_list.read_interval_multi(interval, dt)>=0)
 		{
 			gtype g;
+			dt.normalize(interval, avg_depths);
+			string ln;
 			
-			if (interval.pos == 1478801)
+			if (interval.svtype == "DEL")
 			{
-				for(int j=0;j<n;++j)
+				g.call_del(interval, dt, ln);
+				if (ln != "")
 				{
-					printf("%f\t%f\t%f\n", dp[j], isz_cnv_pos[j], isz_cnv_neg[j]);
+					vfile.print(ln);
 				}
 			}
-			
-			for(int k=0; k<n; ++k)
+			else if (interval.svtype == "CNV" || interval.svtype == "DUP")
 			{
-				dp[k] = dp[k] / avg_depths[k];
+			//	g.call_cnv(interval, dt, g);
 			}
-			g.call_genotype(interval, dp, isz_cnv_pos, G, vfile, avg_depths);
+			else if (interval.svtype == "INV")
+			{
+			//	g.call_inversion(interval, dt, g);
+			}
+			
+			// Write Output
+			
 		}
  		vfile.close();
 	}
 	else
 	{
+		// Generate summary VCF from BAM/CRAM
+
 		n = 1;
-		cerr << "Processing individual file." << endl;
+		cerr << "Processing individual BAM/CRAM file to genearte summary VCF." << endl;
 
 		gcContent GC;
 		GC.initialize(gc_file);
@@ -200,10 +186,12 @@ int main(int argc, char** argv)
 		read_intervals_from_vcf(sample_ids, vcfs, candidates);
 		
 		cerr<< candidates.size() << " intervals identified from the VCF file." << endl;
-
 		vector<int> idxs;
 
-		// In sample-by-sample process, assume overlapping SVs are already clustered into a single event, so do simple merging without clustering
+		// Here we assume overlapping SVs are already clustered into a single event, so do simple merging without clustering
+		// - For large sample size, procesing merging by a separate task reduces sample-by-sample runtime
+		// - For small sample size, probably genotyping every candidate event would yield better
+		
 		merge_svs(candidates, idxs);
 
 		bFile b(GC);
@@ -217,7 +205,6 @@ int main(int argc, char** argv)
 
 		for(int i=0; i<(int)idxs.size(); ++i)
 		{
-			// 4. Genotype for each variant
 			int last_idx;
 			if (i<idxs.size()-1)
 			{
@@ -229,38 +216,15 @@ int main(int argc, char** argv)
 			}
 			vector<sv> svlist(candidates.begin()+idxs[i], candidates.begin() + last_idx)  ;
 
-		//	cerr << "processing SV block for " << svlist.size() << " intervals" << endl;
-
-	//		for(int j=0;j<svlist.size(); ++j)
-	//		{
-	//			cerr << svlist[j].chr <<  ":" << svlist[j].pos << "-" << svlist[j].end << "\t" << svlist[j].svtype << endl;
-	//		}
-
 			int m = (int)svlist.size();
-			/*
-			vector<double> X(m,0);
-			vector<double> GX(m,0);
-			vector< vector<int> > ISZ;
-			ISZ.resize(m);
-			for(int j=0;j<m;++j)
-			{
-				ISZ[j].resize(3);
-				ISZ[j][0] = 0;
-				ISZ[j][1] = 0;
-				ISZ[j][2] = 0;
-			}
-			*/
-			
+
 			vector<string> G (m, "");
-		//	cerr << "reading depth... " ;
 			b.read_depth(svlist, G);
-		//	cerr << "done " << endl;
 			
 			for(int j=0;j<m;++j)
 			{
 				fprintf(fp, "%s\t%d\t.\t.\t.\t.\t.\tEND=%d;SVTYPE=%s\t.", svlist[j].chr.c_str(), svlist[j].pos,svlist[j].end,svlist[j].svtype.c_str());
 				fprintf(fp, "\t%s\n", G[j].c_str());
-//				fprintf(fp, "\t%.1f:%.1f:%d,%d,%d\n",X[j],GX[j],ISZ[j][0],ISZ[j][1],ISZ[j][2]);
 			}
 
 		}

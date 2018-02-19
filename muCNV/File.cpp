@@ -231,8 +231,23 @@ double invcfs::get_second_value(string &t)
 	return abs(atof(t.substr(p,string::npos).c_str()));
 }
 
-int invcfs::read_interval_multi(sv& interval, vector<double> &dp, vector<double> &isz_cnv_pos,
-								vector<double> &isz_cnv_neg, vector<double> &isz_inv_pos, vector<double> &isz_inv_neg)
+void invcfs::get_value_pair(string &t, int &n, double &x)
+{
+	if (t==".")
+	{
+		n=0;
+		x=0;
+		return;
+	}
+	
+	int p=0;
+	while(t[p++] != ',');
+	
+	n = atoi(t.substr(0, p-1).c_str());
+	x = abs(atof(t.substr(p,string::npos).c_str()));
+}
+
+int invcfs::read_interval_multi(sv& interval, svdata& dt)
 {
 	int idx = 0;
 	
@@ -266,7 +281,6 @@ int invcfs::read_interval_multi(sv& interval, vector<double> &dp, vector<double>
 			}
 			else
 			{
-				
 				// Read per-sample depth, insert size info
 				flag = false;
 				vector<string> tokens;
@@ -277,6 +291,7 @@ int invcfs::read_interval_multi(sv& interval, vector<double> &dp, vector<double>
 				{
 					// Parse SV info only from the first VCF
 					parse_sv(tokens, interval);
+					interval.get_len();
 				}
 
 				for(int j=9;j<tokens.size();++j)
@@ -285,14 +300,13 @@ int invcfs::read_interval_multi(sv& interval, vector<double> &dp, vector<double>
 					split(tokens[j].c_str(), ":", fields);
 					
 					// GC corrected depth
-					dp[idx] = atof(fields[1].c_str());
-					
-					isz_cnv_pos[idx] = get_second_value(fields[2]);
-					isz_cnv_neg[idx] = get_second_value(fields[3]);
-					isz_inv_pos[idx] = get_second_value(fields[4]);
-					isz_inv_neg[idx] = get_second_value(fields[5]);
+					dt.dp[idx] = atof(fields[1].c_str());
+					get_value_pair(fields[2], dt.n_cnv_pos[idx], dt.cnv_pos[idx] );
+					get_value_pair(fields[3], dt.n_cnv_neg[idx], dt.cnv_neg[idx] );
+					get_value_pair(fields[4], dt.n_inv_pos[idx], dt.inv_pos[idx] );
+					get_value_pair(fields[5], dt.n_inv_neg[idx], dt.inv_neg[idx] );
+					get_value_pair(fields[6], dt.n_isz[idx], dt.isz[idx]);
 					idx++;
-
 				}
 			}
 		}

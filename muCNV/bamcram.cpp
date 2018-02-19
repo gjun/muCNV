@@ -556,12 +556,12 @@ int bFile::median(vector<int> &L)
 
 		if (L.size()%2)
 		{
-			int m = (L.size()-1)/2;
+			int m = (int) (L.size()-1)/2;
 			med = L[m];
 		}
 		else
 		{
-			int m = L.size()/2;
+			int m = (int) L.size()/2;
 			med = (int)(L[m-1] + L[m])/2;
 		}
 	}
@@ -578,15 +578,15 @@ void bFile::process_readpair(sv &currsv, vector<int> &isz_list, string &txt)
 //	vector<int> N_pos;
 	for(int i=0;i<(int)isz_list.size();++i)
 	{
-		if (isz_list[i]>0 && isz_list[i] < 10*currsv.len() ) 
+		if (isz_list[i]>0 && isz_list[i] < 10*currsv.len )
 		{
 			P_isz.push_back(isz_list[i]);
-//			P_pos.push_back(pos_list[i]);
+			//			P_pos.push_back(pos_list[i]);
 		}
-		else if (isz_list[i] > -10 * currsv.len())
+		else if (isz_list[i] > -10 * currsv.len)
 		{
 			N_isz.push_back(isz_list[i]);
-//			N_pos.push_back(pos_list[i]);
+			//			N_pos.push_back(pos_list[i]);
 		}
 	}
 

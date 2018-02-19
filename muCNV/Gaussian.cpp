@@ -15,6 +15,19 @@ Gaussian::Gaussian()
 	Stdev=1;
 }
 
+void Gaussian::set(const double &m, const double &s)
+{
+	Mean = m;
+	Stdev = s;
+}
+
+void Gaussian::estimate(vector<double> &x)
+{
+	Mean = mean(x);
+	Stdev = stdev(x, Mean);
+}
+
+
 double Gaussian::pdf(const double& x)
 {
 	double z = (x-Mean)/Stdev;
@@ -37,8 +50,22 @@ Gaussian2::Gaussian2()
 	Cov[1]=0;
 	Cov[2]=0;
 	Cov[3]=1;
+	
 	update();
 }
+
+void Gaussian2::set(const double &m0, const double & m1, const double & c0, const double & c1, const double & c2, const double & c3)
+{
+	Mean[0] = m0;
+	Mean[1] = m1;
+	Cov[0] = c0;
+	Cov[1] = c1;
+	Cov[2] = c2;
+	Cov[3] = c3;
+	
+	update();
+}
+
 
 void Gaussian2::update()
 {
@@ -52,11 +79,39 @@ void Gaussian2::update()
 	}
 	else
 	{
-		Prc[0]=0;
+		 // ??
+		Prc[0]=100;
 		Prc[1]=0;
 		Prc[2]=0;
-		Prc[3]=0;
+		Prc[3]=100;
 	}
+}
+
+void Gaussian2::estimate(vector<double> &x, vector<double> &y)
+{
+	int n = (int)x.size();
+	double sum_x=0;
+	double sum_y=0;
+	double sum_xx=0;
+	double sum_yy=0;
+	double sum_xy=0;
+	
+	for(int i=0;i<n;++i)
+	{
+		sum_x+=x[i];
+		sum_y+=y[i];
+		sum_xx+=x[i]*x[i];
+		sum_xy+=x[i]*y[i];
+		sum_yy+=y[i]*y[i];
+	}
+	
+	Mean[0] = sum_x/(double)n;
+	Mean[1] = sum_y/(double)n;
+	Cov[0] = sum_xx/(double)n - (Mean[0]*Mean[0]);
+	Cov[1] = sum_xy/(double)n - (Mean[0]*Mean[1]);
+	Cov[2] = Cov[1];
+	Cov[3] = sum_yy/(double)n - (Mean[1]*Mean[1]);
+	update();
 }
 
 double Gaussian2::pdf(const double& x, const double& y)
@@ -166,6 +221,33 @@ double BayesError(vector<Gaussian2>& Comps)
 		}
 	}
 	return exp(-1.0*min_d);
+}
+
+
+double BIC(vector<double>& x, vector<double>& y, vector<Gaussian2> &C)
+{
+	int n_sample = (int)x.size();
+	int n_comp = (int)C.size();
+	
+	double llk = 0;
+	double ret = 0;
+	
+	for(int j=0; j<n_sample; ++j)
+	{
+		double l = 0;
+		for(int m=0; m<n_comp; ++m)
+		{
+			l += C[m].Alpha * C[m].pdf(x[j], y[j]);
+		}
+		if (l>0)
+		{
+			llk += log(l);
+		}
+	}
+	
+	ret = -2.0 * llk +  5*n_comp*log(n_sample);
+	
+	return ret;
 }
 
 double BIC(vector<double>& x, vector<Gaussian> &C)

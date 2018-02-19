@@ -55,6 +55,10 @@ void outvcf::write_header(vector<string> &sampleIDs)
 	
 }
 
+void outvcf::print(string &ln)
+{
+	fprintf(fp, "%s\n", ln.c_str());
+}
 
 void outvcf::write_del(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, int ns, vector<double>& X, vector<double>& AvgDepth, vector<Gaussian>& C, double be, bool bFilter)
 {

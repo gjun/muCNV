@@ -36,36 +36,253 @@ gtype::gtype()
 	p_overlap = 0;
 }
 
-
-void gtype::call_genotype(sv &s, vector<double> &X, vector<double> &Y, vector<int> &geno, outvcf& v, vector<double> &AvgDepth)
+void gtype::format_output(sv &s, string &ln)
 {
-	if (s.svtype == "DEL" || s.svtype == "INV")
-	{
-//		cerr << "calling deletion" << endl;
-		call_del(s, X, Y, geno, v, AvgDepth);
-//		cout << "m" << s.pos;
-/*
-		for(int i=0;i<(int)X.size(); ++i)
-		{
-			cout << "\t" << X[i];
-		}
-		cout << endl;*/
-	}
-	else if (s.svtype =="DUP" || s.svtype =="CNV")
-	{
-//		cerr << "calling cnv" << endl;
-		call_cnv(s, X, Y, geno, v, AvgDepth);
+	ln = s.chr;
+	
+	ln += "\t" + to_string(s.pos) + "\t" + s.svtype + "_" + s.chr + ":" + to_string(s.pos) + "-" + to_string(s.end) + "\t.\t<" + s.svtype + ">";
+}
 
-//		cout << "m" << s.pos;
-/*
-		for(int i=0;i<(int)X.size(); ++i)
-		{
-			cout << "\t" << X[i];
-		}
-		cout << endl;
-		*/
+void gtype::copyComps(vector<Gaussian> &C, vector<Gaussian> &C0)
+{
+	C.clear();
+	C.resize(C0.size());
+	for(int j=0;j<C.size(); ++j)
+	{
+		C[j].set(C0[j].Mean, C0[j].Stdev);
+		C[j].Alpha = C0[j].Alpha;
+	}
+}
+
+void gtype::call_del(sv &s, svdata& dt, string &ln)
+{
+	int n_sample=dt.n;
+	double bic1, bic2, bic2_rev, bic3;
+
+	vector<Gaussian> C;
+	vector<Gaussian> C1(1); // 1-component model
+	vector<Gaussian> C2(2); // 2-component model
+	vector<Gaussian> C2_rev(2); // 2-component model, with reversed
+	vector<Gaussian> C3(3); // 3-component model
+	
+	vector<double> &X = dt.norm_dp;
+	vector<double> &Y = dt.norm_readcount;
+	
+	// For each candidate region, run EM
+	// Run EM with 2 and 3 components, compare likelihoods with the 1-gaussian model, apply BIC
+	
+	C1[0].estimate(X);
+	C1[0].Alpha = 1;
+	
+	double min_bic = DBL_MAX;
+	bool dp_flag = false;
+	double BE_dp = 1;
+	
+	// Single-component model
+	bic1 = BIC(X, C1);
+	if (bic1 < min_bic)
+	{
+		min_bic = bic1;
+		copyComps(C, C1);
 	}
 	
+	// Two-component model, af < 0.5
+	C2[0].set(1, 0.5);
+	C2[1].set(0.5, 0.5);
+	C2[0].Alpha = C2[1].Alpha = 0.5;
+	EM(X, C2);
+	bic2 = BIC(X, C2);
+	if (bic2 < min_bic)
+	{
+		min_bic = bic2;
+		dp_flag = true;
+		BE_dp = BayesError(C2);
+		copyComps(C, C2);
+	}
+	// Two-component model, af > 0.5
+	C2_rev[0].set(0.5, 0.5);
+	C2_rev[1].set(0, 0.5);
+	C2_rev[0].Alpha = C2_rev[1].Alpha = 0.5;
+	EM(X, C2_rev);
+	bic2_rev = BIC(X, C2_rev);
+	if (bic2_rev < min_bic)
+	{
+		min_bic = bic2_rev;
+		dp_flag = true;
+		BE_dp = BayesError(C2_rev);
+		copyComps(C, C2_rev);
+	}
+	// Three-component model
+	C3[0].set(1, 0.5);
+	C3[1].set(0.5, 0.5);
+	C3[2].set(0, 0.5);
+	C3[0].Alpha = C3[1].Alpha = C3[2].Alpha = 1.0/3.0;
+	EM(X, C3);
+	bic3 = BIC(X, C3);
+	if (bic3 < min_bic)
+	{
+		min_bic = bic3;
+		dp_flag = true;
+		BE_dp = BayesError(C3);
+		copyComps(C, C3);
+	}
+	// TODO: Check whether clusters are in order, after each clustering
+	
+	// do clustering with positive insert size - if successful, starting breakpoint is accurate
+	vector<Gaussian> C_pos1(1);
+	C_pos1[0].estimate(dt.norm_cnv_pos);
+	C_pos1[0].Alpha=1;
+	
+	vector<Gaussian> C_pos2(2);
+	C_pos2[0].set(0,0.5);
+	C_pos2[1].set(1,0.5);
+	C_pos2[0].Alpha = C_pos2[1].Alpha = 0.5;
+	EM(dt.norm_cnv_pos, C_pos2);
+
+	double BE_pos = BayesError(C_pos2);
+	bool pos_flag = false;
+	
+	if (BIC(dt.norm_cnv_pos, C_pos2) <BIC(dt.norm_cnv_pos, C_pos1) && C_pos2[1].Mean > 0.5 && C_pos2[1].Alpha >= 5.0/(n_sample + 4.0))
+	{
+		pos_flag = true;
+	}
+	
+	// do clustering with negative insert size - if successful, ending breakpoint is accurate
+	vector<Gaussian> C_neg1(1);
+	C_neg1[0].estimate(dt.norm_cnv_neg);
+	C_neg1[0].Alpha = 1;
+	
+	vector<Gaussian> C_neg2(2);
+	C_neg2[0].set(0,0.5);
+	C_neg2[1].set(1,0.5);
+	C_neg2[0].Alpha = C_neg2[1].Alpha = 0.5;
+	EM(dt.norm_cnv_neg, C_neg2);
+	
+	double BE_neg = BayesError(C_neg2);
+	bool neg_flag = false;
+	
+	if (BIC(dt.norm_cnv_neg, C_neg2) <BIC(dt.norm_cnv_neg, C_neg1) && C_neg2[1].Mean > 0.5 && C_neg2[1].Alpha >= 5.0/(n_sample + 4.0))
+	{
+		neg_flag = true;
+	}
+	
+	// if any of three clustering meets criteria
+	if (dp_flag || pos_flag || neg_flag)
+	{
+		if (!dp_flag)
+		{
+			// Depth-based clustering failed, force 3-component model
+			copyComps(C, C3);
+			BE_dp = BayesError(C3);
+		}
+		
+		format_output(s, ln);
+		ln += "\t.\tPASS\t";
+		ln += "SVTYPE=" + s.svtype + ";END=" + to_string(s.end) + ";SVLEN=" + to_string(s.len) + ";BE_DP=" + to_string(BE_dp);
+		if (dp_flag)
+		{
+			ln += ";DP";
+		}
+		if (pos_flag)
+		{
+			ln += ";POS";
+		}
+		if (neg_flag)
+		{
+			ln += ";NEG";
+		}
+		for(int i=0;i<C.size(); ++i)
+		{
+			ln += ";M" + to_string(i) + "=" + to_string(C[i].Mean);
+		}
+		for(int i=0;i<C.size(); ++i)
+		{
+			ln += ";S" + to_string(i) + "=" + to_string(C[i].Stdev);
+		}
+		
+		vector<int> gt(n_sample, 0);
+		int ac = 0;
+		int ns = 0;
+		
+		for(int i=0;i<n_sample;++i)
+		{
+			gt[i] = assign(X[i], C);
+			if (gt[i] >= 0 )
+			{
+				ac += gt[i];
+				ns += 1;
+			}
+		}
+		ln +=";AC=" + to_string(ac) + ";NS=" + to_string(ns) + "\tGT:CN";
+		
+		
+		for(int i=0;i<n_sample;++i)
+		{
+			switch(gt[i])
+			{
+				case 0:
+					ln += "\t0/0:2";
+					break;
+				case 1:
+					ln += "\t0/1:1";
+					break;
+				case 2:
+					ln += "\t1/1:0";
+					break;
+				default:
+					ln += "\t.:.";
+					break;
+			}
+		}
+	}
+	else
+	{
+		ln = "";
+	}
+}
+
+
+int gtype::assign(double x, vector<Gaussian> &C)
+{
+	int n_comp = (int) C.size();
+	double p[n_comp];
+	double max_P = -1;
+	double max_R = -1;
+	int ret = -1;
+	for(int i=0;i<n_comp; ++i)
+	{
+		p[i] = C[i].pdf(x);
+		if (p[i] > max_P)
+		{
+			max_P = p[i];
+			ret = i;
+		}
+	}
+	for(int i=0;i<n_comp; ++i)
+	{
+		if (ret != i)
+		{
+			double R = p[i] / max_P;
+			if (R>max_R)
+			{
+				max_R = R;
+			}
+		}
+	}
+	
+	if (max_R >0.5)
+	{
+		return -1;
+	}
+	
+	if (n_comp == 2)
+	{
+		if (C[0].Mean < 0.75 && C[1].Mean < 0.25)
+		{
+			ret = ret + 1;
+		}
+	}
+	return ret;
 }
 
 void gtype::call_del(sv &s, vector<double> &X, vector<double> &Y, vector<int> &geno, outvcf& v, vector<double> &AvgDepth)
@@ -544,6 +761,101 @@ int gtype::classify_cnv(vector<double>& x, vector<int>& GT, vector<int>& GQ, int
 	return ac;
 }
 
+void gtype::EM2(vector<double>& x, vector<double> &y, vector<Gaussian2>& C)
+{
+	
+	// Let's not consider half-normal distribution -- for now
+	
+	unsigned n_sample = (unsigned) x.size();
+	unsigned n_comp = (unsigned) C.size();
+	
+	unsigned n_iter = 30;
+	// pseudo-counts
+	unsigned p_count= 2;
+	double p_val[n_comp][2];
+	
+	for(unsigned i=0; i<n_comp; ++i)
+	{
+		p_val[i][0] = C[i].Mean[0];
+		p_val[i][1] = C[i].Mean[1];
+	}
+		
+	// pseudo-means
+//	double p_val[3] = {1.0, 0.5, 0};
+	
+	for(unsigned i=0; i<n_iter; ++i)
+	{
+		vector<double> sum_x (n_comp,0);
+		vector<double> sum_y (n_comp,0);
+
+		vector<double> sum_e_xx (n_comp,0);
+		vector<double> sum_e_xy (n_comp,0);
+		vector<double> sum_e_yy (n_comp,0);
+		
+		vector<double> sum_pr (n_comp,0);
+		
+		// E step
+		for(unsigned j=0; j<n_sample; ++j)
+		{
+			double sum_p = 0;
+			vector<double> pr(n_comp, 0);
+			for(unsigned m=0;m<n_comp;++m)
+			{
+				pr[m] = C[m].Alpha * C[m].pdf(x[j], y[j]);
+				sum_p += pr[m];
+			}
+			
+			// M step
+
+			if (sum_p > 1e-100) // if the value is an outlier, exclude it from calculations
+			{
+				for(unsigned m=0;m<n_comp;++m)
+				{
+					pr[m] /= sum_p;
+					sum_x[m] += pr[m] * x[j];
+					sum_y[m] += pr[m] * y[j];
+					
+					double ex = x[j] - C[m].Mean[0];
+					double ey = y[j] - C[m].Mean[1];
+					
+					sum_e_xx[m] += pr[m] * ex * ex;
+					sum_e_xy[m] += pr[m] * ex * ey;
+					sum_e_yy[m] += pr[m] * ey * ey;
+					sum_pr[m] += pr[m];
+				}
+			}
+		}
+
+		// Add pseudo-count values
+		/*
+		for(unsigned m=0; m<n_comp; ++m)
+		{
+			sum_x[m] += p_val[m][0] * p_count;
+			sum_y[m] += p_val[m][1] * p_count;
+
+			sum_e_xx[m] += (p_val[m][0] - C[m].Mean[0])*(p_val[m][0] - C[m].Mean[0]) * p_count;
+			sum_e_xy[m] += (p_val[m][0] - C[m].Mean[0])*(p_val[m][1] - C[m].Mean[1]) * p_count;
+			sum_e_yy[m] += (p_val[m][1] - C[m].Mean[1])*(p_val[m][1] - C[m].Mean[1]) * p_count;
+			sum_pr[m] += p_count;
+		}
+		*/
+		for(unsigned m=0;m<n_comp;++m)
+		{
+			C[m].Mean[0] = sum_x[m]/sum_pr[m];
+			C[m].Mean[1] = sum_y[m]/sum_pr[m];
+			
+			C[m].Cov[0] = sum_e_xx[m] / sum_pr[m];
+			C[m].Cov[1] = C[m].Cov[2] = sum_e_xy[m] / sum_pr[m];
+			C[m].Cov[3] = sum_e_yy[m] / sum_pr[m];
+			C[m].Alpha = sum_pr[m] / (n_sample );
+
+			//C[m].Alpha = sum_pr[m] / (n_sample + n_comp*p_count);
+			C[m].update();
+
+			
+		}
+	}
+}
 
 
 // EM for deletions
@@ -616,7 +928,7 @@ void gtype::EM(vector<double>& x, vector<Gaussian>& C, bool bFlip)
 		{
 			C[m].Mean = sum[m]/sum_pr[m];
 			C[m].Stdev = sqrt(sum_err[m] / (sum_pr[m] ));
-			C[m].Alpha = sum_pr[m] / (n_sample + p_count*n_comp);
+			C[m].Alpha = sum_pr[m] / (n_sample + n_comp*p_count);
 			if (m==2)
 			{
 				// half-normal with mean 0 and sigma
@@ -638,6 +950,14 @@ void gtype::EM(vector<double>& x, vector<Gaussian>& Comps)
 	unsigned n_comp = (unsigned) Comps.size();
 	unsigned n_iter = 30;
 	
+	unsigned p_count= 2;
+	double p_val[n_comp];
+	
+	for(unsigned i=0; i<n_comp; ++i)
+	{
+		p_val[i] = Comps[i].Mean;
+	}
+	
 	for(unsigned i=0; i<n_iter; ++i)
 	{
 		vector<double> sum (n_comp,0);
@@ -655,7 +975,7 @@ void gtype::EM(vector<double>& x, vector<Gaussian>& Comps)
 				sum_p += pr[m];
 			}
 			
-			if (sum_p > 1e-100) // if the value is an outlier, exclude it from calculations
+			if (sum_p > 1e-30) // if the value is an outlier, exclude it from calculations
 			{
 				for(unsigned m=0;m<n_comp;++m)
 				{
@@ -667,12 +987,28 @@ void gtype::EM(vector<double>& x, vector<Gaussian>& Comps)
 			}
 		}
 		
+		// Add pseudo-count values
+		for(unsigned m=0; m<n_comp; ++m)
+		{
+			sum[m] += p_val[m] * p_count;
+			
+			sum_err[m] += (p_val[m] - Comps[m].Mean) * p_count;
+			sum_pr[m] += p_count;
+		}
+		
 		// M step
 		for(unsigned m=0;m<n_comp;++m)
 		{
-			Comps[m].Mean = sum[m]/sum_pr[m];
-			Comps[m].Stdev = sqrt(sum_err[m] / (sum_pr[m] ));
-			Comps[m].Alpha = sum_pr[m] / n_sample;
+			if (sum_pr[m]>1e-30)
+			{
+				Comps[m].Mean = sum[m]/sum_pr[m];
+				Comps[m].Stdev = sqrt(sum_err[m] / (sum_pr[m] ));
+			}
+			else
+			{
+				// Do not change previous estimates if no points assigned
+			}
+			Comps[m].Alpha = sum_pr[m] /( n_sample + n_comp*p_count);
 		}
 	}
 }
