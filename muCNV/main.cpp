@@ -76,6 +76,8 @@ int main(int argc, char** argv)
 		cmd.add(argGcfile);
 		cmd.add(argIndex);
 		cmd.add(argSampleID);
+		cmd.add(argBE);
+		cmd.add(argR);
 		
 		cmd.parse(argc, argv);
         
