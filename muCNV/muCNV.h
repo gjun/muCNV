@@ -122,7 +122,7 @@ public:
 				norm_inv_pos[i] = (inv_pos[i] ) / interval.len;
 				norm_inv_neg[i] = (inv_neg[i] ) / interval.len;
 			}
-			else if (interval.svtype == " INV" )
+			else if (interval.svtype == "INV" )
 			{
 				norm_cnv_pos[i] = (cnv_pos[i] ) / avg_isize[i];
 				norm_cnv_neg[i] = (cnv_neg[i] ) / avg_isize[i];

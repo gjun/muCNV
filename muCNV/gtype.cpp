@@ -587,7 +587,7 @@ void gtype::call_inv(sv &s, svdata& dt, string &ln)
 
 	EM(dt.norm_cnv_pos, C2);
 	
-	if (BIC(dt.norm_cnv_pos, C2) <BIC(dt.norm_cnv_pos, C1) && C2[1].Mean > 0.5 &&  C2[1].Mean < 2 && C2[1].Alpha > 4.5/(n_sample + 4.0))
+	if (BIC(dt.norm_cnv_pos, C2) <BIC(dt.norm_cnv_pos, C1) && C2[1].Mean > 0.5 &&  C2[1].Mean < 3 && C2[1].Alpha > 4.5/(n_sample + 4.0))
 	{
 		cnv_pos_flag = true;
 	}
@@ -601,7 +601,7 @@ void gtype::call_inv(sv &s, svdata& dt, string &ln)
 	
 	EM(dt.norm_cnv_neg, C2);
 	
-	if (BIC(dt.norm_cnv_neg, C2) <BIC(dt.norm_cnv_neg, C1) && C2[1].Mean > 0.5 &&  C2[1].Mean < 2 && C2[1].Alpha > 4.5/(n_sample + 4.0))
+	if (BIC(dt.norm_cnv_neg, C2) <BIC(dt.norm_cnv_neg, C1) && C2[1].Mean > 0.5 &&  C2[1].Mean < 3 && C2[1].Alpha > 4.5/(n_sample + 4.0))
 	{
 		cnv_neg_flag = true;
 	}
@@ -615,7 +615,7 @@ void gtype::call_inv(sv &s, svdata& dt, string &ln)
 	
 	EM(dt.norm_inv_pos, C2);
 	
-	if (BIC(dt.norm_inv_pos, C2) <BIC(dt.norm_inv_pos, C1) && C2[1].Mean > 0.5 &&  C2[1].Mean < 2 && C2[1].Alpha > 4.5/(n_sample + 4.0))
+	if (BIC(dt.norm_inv_pos, C2) <BIC(dt.norm_inv_pos, C1) && C2[1].Mean > 0.5 &&  C2[1].Mean < 3 && C2[1].Alpha > 4.5/(n_sample + 4.0))
 	{
 		cnv_pos_flag = true;
 	}
@@ -629,7 +629,7 @@ void gtype::call_inv(sv &s, svdata& dt, string &ln)
 	
 	EM(dt.norm_inv_neg, C2);
 	
-	if (BIC(dt.norm_inv_neg, C2) <BIC(dt.norm_inv_neg, C1) && C2[1].Mean > 0.5 &&  C2[1].Mean < 2 && C2[1].Alpha > 4.5/(n_sample + 4.0))
+	if (BIC(dt.norm_inv_neg, C2) <BIC(dt.norm_inv_neg, C1) && C2[1].Mean > 0.5 &&  C2[1].Mean < 3 && C2[1].Alpha > 4.5/(n_sample + 4.0))
 	{
 		cnv_neg_flag = true;
 	}
@@ -669,19 +669,19 @@ void gtype::call_inv(sv &s, svdata& dt, string &ln)
 		for(int i=0;i<n_sample;++i)
 		{
 			int cnt = 0;
-			if (cnv_pos_flag && dt.norm_cnv_pos[i] > 0.75 && dt.norm_cnv_pos[i] < 1.5)
+			if (cnv_pos_flag && dt.norm_cnv_pos[i] > 0.5)
 			{
 				cnt++;
 			}
-			if (cnv_neg_flag && dt.norm_cnv_neg[i] > 0.75 && dt.norm_cnv_neg[i] < 1.5 )
+			if (cnv_neg_flag && dt.norm_cnv_neg[i] > 0.5)
 			{
 				cnt++;
 			}
-			if (inv_pos_flag && dt.norm_inv_pos[i] > 0.75 && dt.norm_inv_pos[i] < 1.5)
+			if (inv_pos_flag && dt.norm_inv_pos[i] > 0.5 )
 			{
 				cnt++;
 			}
-			if (inv_neg_flag && dt.norm_inv_neg[i] > 0.75 && dt.norm_inv_neg[i] < 1.5 )
+			if (inv_neg_flag && dt.norm_inv_neg[i] > 0.5  )
 			{
 				cnt++;
 			}
@@ -720,8 +720,6 @@ void gtype::call_inv(sv &s, svdata& dt, string &ln)
 		ln = "";
 	}
 }
-
-
 
 // EM for general CNVs
 void gtype::EM(vector<double>& x, vector<Gaussian>& Comps)
