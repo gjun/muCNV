@@ -242,6 +242,12 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 		{
 			info += "," + to_string(C[i].Stdev);
 		}
+		info += ";FRAC=" + to_string(C[0].Alpha);
+		for(int i=1;i<C.size(); ++i)
+		{
+			info += "," + to_string(C[i].Alpha);
+		}
+		
 		
 		int ac = 0;
 		int ns = 0;
@@ -294,7 +300,7 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 			}
 		}
 		
-		info +=";AC=" + to_string(ac) + ";NS=" + to_string(ns) + ";AF=" + to_string((double)ac/(double)(2.0*ns))  + "\tGT:CN";
+		info +=";AC=" + to_string(ac) + ";NS=" + to_string(ns) + ";AF=" + to_string((double)ac/(double)(2.0*ns))  + "\tGT:CN:ND:DP:FP:FN";
 		
 		if ((ac>0 && ns>n_sample *0.7) && ((dp_flag && BE_dp<BE_THRESHOLD) || pos_flag || neg_flag))
 		{
@@ -320,6 +326,7 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 					ln += "\t.:.";
 					break;
 			}
+			ln += ":" + to_string(dt.norm_dp[i]).substr(0,4) + ":" + to_string((int)dt.dp[i]) + ":" + to_string((int)dt.cnv_pos[i]) + ":" + to_string((int)dt.cnv_neg[i]);
 		}
 	}
 	else
@@ -466,6 +473,11 @@ void gtype::call_cnv(sv &s, svdata& dt, string &ln)
 		{
 			info += "," + to_string(Comps[i].Stdev);
 		}
+		info += ";FRAC=" + to_string(Comps[0].Alpha);
+		for(int i=1;i<Comps.size(); ++i)
+		{
+			info += "," + to_string(Comps[i].Alpha);
+		}
 		
 		int ac = 0;
 		int ns = 0;
@@ -528,8 +540,10 @@ void gtype::call_cnv(sv &s, svdata& dt, string &ln)
 						gt += "\t.:.";
 						break;
 				}
+				gt += ":" + to_string(dt.norm_dp[i]).substr(0,4) + ":" + to_string((int)dt.dp[i]) + ":" + to_string((int)dt.cnv_pos[i]) + ":" + to_string((int)dt.cnv_neg[i]);
+
 			}
-			info +=";AC=" + to_string(ac) + ";NS=" + to_string(ns) + ";AF=" + to_string((double)ac/(double)(2.0*ns))  + "\tGT:CN";
+			info +=";AC=" + to_string(ac) + ";NS=" + to_string(ns) + ";AF=" + to_string((double)ac/(double)(2.0*ns))  + "\tGT:CN:ND:DP:FP:FN";
 		}
 		else
 		{
@@ -544,8 +558,9 @@ void gtype::call_cnv(sv &s, svdata& dt, string &ln)
 				{
 					gt += "\t.";
 				}
+				gt += ":" + to_string(dt.norm_dp[i]).substr(0,4) + ":" + to_string((int)dt.dp[i]) + ":" + to_string((int)dt.cnv_pos[i]) + ":" + to_string((int)dt.cnv_neg[i]);
 			}
-			info +=";NS=" + to_string(ns) + "\tCN";
+			info +=";NS=" + to_string(ns) + "\tCN:ND:DP:FP:FN";
 		}
 				
 		
@@ -704,9 +719,11 @@ void gtype::call_inv(sv &s, svdata& dt, string &ln)
 				ns ++;
 				ac +=0;
 			}
+			gt += ":" + to_string(dt.norm_readcount[i]).substr(0,4) + ":" + to_string((int)dt.dp[i]) + ":" + to_string((int)dt.cnv_pos[i]) + ":" + to_string((int)dt.cnv_neg[i]) + ":" + to_string((int)dt.inv_pos[i]) + ":" + to_string((int)dt.inv_neg[i]);
+
 		}
 		
-		info +=";AC=" + to_string(ac) + ";NS=" + to_string(ns) + ";AF=" + to_string((double)ac/(double)(2.0*ns))  + "\tGT";
+		info +=";AC=" + to_string(ac) + ";NS=" + to_string(ns) + ";AF=" + to_string((double)ac/(double)(2.0*ns))  + "\tGT:PR:DP:FP:FN:IP:IN";
 
 		if (ac>0)
 		{
