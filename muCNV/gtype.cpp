@@ -35,7 +35,7 @@ int gtype::assign(double x, vector<Gaussian> &C)
 	double max_P = -1;
 	double max_R = -1;
 	int ret = -1;
-	
+
 	for(int i=0;i<n_comp; ++i)
 	{
 		p[i] = C[i].pdf(x);
@@ -80,12 +80,13 @@ void gtype::copyComps(vector<Gaussian> &C, vector<Gaussian> &C0)
 {
 	C.clear();
 	C.resize(C0.size());
-	for(int j=0;j<C.size(); ++j)
+	for(unsigned j=0;j<C.size(); ++j)
 	{
 		C[j].set(C0[j].Mean, C0[j].Stdev);
 		C[j].Alpha = C0[j].Alpha;
 	}
 }
+
 
 void gtype::call_del(sv &s, svdata& dt, string &ln)
 {
@@ -123,9 +124,11 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 	C2[0].set(1, 0.1);
 	C2[1].set(0.5, 0.1);
 	C2[0].Alpha = C2[1].Alpha = 0.5;
-	EM(X, C2);
+	//EM(X, C2);
+	fit(X, C2);
 	bic2 = BIC(X, C2);
-	if (bic2 < min_bic)
+//	if (bic2 < min_bic && C2[0].Mean > C2[1].Mean && C2[0].Mean > 0.75 && C2[1].Mean > 0.35 && C2[1].Mean < 0.65)
+	if (bic2 < min_bic) // now we do not compare mean
 	{
 		min_bic = bic2;
 		dp_flag = true;
@@ -133,6 +136,7 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 		copyComps(C, C2);
 	}
 	// Two-component model, af > 0.5
+	/*
 	C2_rev[0].set(0.5, 0.1);
 	C2_rev[1].set(0, 0.1);
 	C2_rev[0].Alpha = C2_rev[1].Alpha = 0.5;
@@ -141,17 +145,20 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 	if (bic2_rev < min_bic && (C2_rev[0].Mean < 0.7 && C2_rev[0].Mean >0.3) && (C2_rev[1].Mean < 0.2))
 	{
 		min_bic = bic2_rev;
-		dp_flag = true;
+	//	dp_flag = true;
 		BE_dp = BayesError(C2_rev);
 		copyComps(C, C2_rev);
 	}
+	*/
 	// Three-component model
 	C3[0].set(1, 0.1);
 	C3[1].set(0.5, 0.1);
 	C3[2].set(0, 0.1);
 	C3[0].Alpha = C3[1].Alpha = C3[2].Alpha = 1.0/3.0;
-	EM(X, C3);
+//	EM(X, C3);
+	fit(X, C3);
 	bic3 = BIC(X, C3);
+//	if (bic3 < min_bic && C3[0].Mean > (C3[1].Mean+0.3) && C3[1].Mean > (C3[2].Mean+0.3))
 	if (bic3 < min_bic)
 	{
 		min_bic = bic3;
@@ -163,7 +170,7 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 	bool pos_flag = false;
 	bool neg_flag = false;
 
-	if (s.len > 50)
+//	if (s.len > 50)
 	{
 		// do clustering with positive insert size - if successful, starting breakpoint is accurate
 		vector<Gaussian> C_pos1(1);
@@ -174,17 +181,16 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 		C_pos2[0].set(0,0.1);
 		C_pos2[1].set(1,0.1);
 		C_pos2[0].Alpha = C_pos2[1].Alpha = 0.5;
-		EM(dt.norm_cnv_pos, C_pos2);
+		fit(dt.norm_cnv_pos, C_pos2);
+//		EM(dt.norm_cnv_pos, C_pos2);
 
-		
-		if (BIC(dt.norm_cnv_pos, C_pos2) <BIC(dt.norm_cnv_pos, C_pos1) && C_pos2[1].Mean > 0.5 &&  C_pos2[1].Mean < 2 && C_pos2[1].Alpha > 4.5/(n_sample + 4.0))
+//		if (BIC(dt.norm_cnv_pos, C_pos2) <BIC(dt.norm_cnv_pos, C_pos1) && C_pos2[1].Mean > 0.5 &&  C_pos2[1].Mean < 2 && C_pos2[1].Alpha > 4.5/(n_sample + 4.0))
+		if (BIC(dt.norm_cnv_pos, C_pos2) <BIC(dt.norm_cnv_pos, C_pos1))
 		{
 			pos_flag = true;
 		}
 		
 		// do clustering with negative insert size - if successful, ending breakpoint is accurate
-
-		
 		vector<Gaussian> C_neg1(1);
 		C_neg1[0].estimate(dt.norm_cnv_neg);
 		C_neg1[0].Alpha = 1;
@@ -194,9 +200,11 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 		C_neg2[1].set(1,0.1);
 		C_neg2[0].Alpha = C_neg2[1].Alpha = 0.5;
 		
-		EM(dt.norm_cnv_neg, C_neg2);
+	//	EM(dt.norm_cnv_neg, C_neg2);
+		fit(dt.norm_cnv_neg, C_neg2);
 		
-		if (BIC(dt.norm_cnv_neg, C_neg2) <BIC(dt.norm_cnv_neg, C_neg1) && C_neg2[1].Mean > 0.5 && C_neg2[1].Mean < 2 && C_neg2[1].Alpha > 4.5/(n_sample + 4.0))
+//		if (BIC(dt.norm_cnv_neg, C_neg2) <BIC(dt.norm_cnv_neg, C_neg1) && C_neg2[1].Mean > 0.5 && C_neg2[1].Mean < 2 && C_neg2[1].Alpha > 4.5/(n_sample + 4.0))
+		if (BIC(dt.norm_cnv_neg, C_neg2) <BIC(dt.norm_cnv_neg, C_neg1))
 		{
 			neg_flag = true;
 		}
@@ -209,10 +217,19 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 		if (!dp_flag)
 		{
 			// Depth-based clustering failed, force 3-component model
-			copyComps(C, C3);
-			BE_dp = BayesError(C3);
+			if (bic2 < bic3)
+			{
+				C.clear();
+				copyComps(C, C2);
+			}
+			else
+			{
+				C.clear();
+				copyComps(C, C3);
+			}
+			BE_dp = BayesError(C);
 		}
-		
+
 		vector<int> gt(n_sample, 0);
 
 		format_output(s, ln);
@@ -233,36 +250,42 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 		}
 		
 		info += ";MEAN=" + to_string(C[0].Mean);
-		for(int i=1;i<C.size(); ++i)
+		for(unsigned i=1;i<C.size(); ++i)
 		{
 			info += "," + to_string(C[i].Mean);
 		}
 		info += ";STDEV=" + to_string(C[0].Stdev);
-		for(int i=1;i<C.size(); ++i)
+		for(unsigned i=1;i<C.size(); ++i)
 		{
 			info += "," + to_string(C[i].Stdev);
 		}
 		info += ";FRAC=" + to_string(C[0].Alpha);
-		for(int i=1;i<C.size(); ++i)
+		for(unsigned i=1;i<C.size(); ++i)
 		{
 			info += "," + to_string(C[i].Alpha);
 		}
 		
-		
 		int ac = 0;
 		int ns = 0;
+
+/*
+		for(int m=0; m<(int)C.size(); ++m)
+		{
+			C[m].Stdev = 0.1;
+		}
 		
+		*/
 		for(int i=0;i<n_sample;++i)
 		{
 			int cn;
 			bool pos_gt = false, neg_gt = false;
 			
 			cn = assign(X[i], C);
-			if (pos_flag && dt.norm_cnv_pos[i] > 0.75 && dt.norm_cnv_pos[i] < 1.5 && s.len>50)
+			if (pos_flag && dt.norm_cnv_pos[i] > 0.5 && dt.norm_cnv_pos[i] < 2 && s.len>50 && dt.n_cnv_pos[i] > 1)
 			{
 				pos_gt = true;
 			}
-			if (neg_flag && dt.norm_cnv_neg[i] > 0.75 && dt.norm_cnv_neg[i] < 1.5 && s.len>50)
+			if (neg_flag && dt.norm_cnv_neg[i] > 0.5 && dt.norm_cnv_neg[i] < 2 && s.len>50 && dt.n_cnv_neg[i] > 1)
 			{
 				neg_gt = true;
 			}
@@ -271,9 +294,29 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 			switch(cn)
 			{
 				case -1:
-					if (pos_gt || neg_gt)
+					if (pos_gt && neg_gt)
 					{
-						gt[i] = 1;
+//						if ( 0.2< dt.norm_dp[i] && dt.norm_dp[i] < 0.85)
+						if ( 0.2< dt.norm_dp[i])
+						{
+							gt[i] = 1;
+						}
+						else if (dt.norm_dp[i] <= 0.2)
+						{
+							gt[i] = 2;
+						}
+					}
+					else if (pos_gt || neg_gt)
+					{
+//						if ( 0.3< dt.norm_dp[i] && dt.norm_dp[i] < 0.75)
+						if ( 0.2< dt.norm_dp[i])
+						{
+							gt[i] = 1;
+						}
+						else if (dt.norm_dp[i] < 0.2)
+						{
+							gt[i] = 2;
+						}
 					}
 					break;
 				case 0:
@@ -283,9 +326,27 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 					gt[i] = 1;
 					break;
 				case 2:
-					if (pos_gt || neg_gt)
+					if (pos_gt && neg_gt)
 					{
-						gt[i] = 1;
+						if (dt.norm_dp[i] < 0.8)
+						{
+							gt[i] = 1;
+						}
+						else
+						{
+							gt[i] = 0;
+						}
+					}
+					else if (pos_gt || neg_gt)
+					{
+						if (dt.norm_dp[i] < 0.75)
+						{
+							gt[i] = 1;
+						}
+						else
+						{
+							gt[i] = 0;
+						}
 					}
 					else
 					{
@@ -302,7 +363,7 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 		
 		info +=";AC=" + to_string(ac) + ";NS=" + to_string(ns) + ";AF=" + to_string((double)ac/(double)(2.0*ns))  + "\tGT:CN:ND:DP:FP:FN";
 		
-		if ((ac>0 && ns>n_sample *0.7) && ((dp_flag && BE_dp<BE_THRESHOLD) || pos_flag || neg_flag))
+		if ((ac>0 &&  ac < (2*n_sample) && ns>(n_sample *0.5)) && ((dp_flag && BE_dp<BE_THRESHOLD) ||  (BE_dp < BE_THRESHOLD *2 && (neg_flag || pos_flag)) || (BE_dp < 0.5&& neg_flag && pos_flag)))
 		{
 			filt = "PASS";
 		}
@@ -363,12 +424,13 @@ void gtype::call_cnv(sv &s, svdata& dt, string &ln)
 		
 		for(unsigned j=0; j<i; ++j)
 		{
-			Comps[j].Mean = 1.0 + (double)j*0.5;
+			Comps[j].Mean = (double)j*0.5;
 			Comps[j].Stdev = 0.1;
 			Comps[j].Alpha = 1;
 		}
 		// Run EM with i components
-		EM(X, Comps);
+//		EM(X, Comps);
+		fit(X, Comps);
 		
 		bic[i-1] = BIC(X, Comps);
 		
@@ -384,12 +446,13 @@ void gtype::call_cnv(sv &s, svdata& dt, string &ln)
 	
 	for(unsigned j=0;j<n_comp;++j)
 	{
-		Comps[j].Mean = 1.0 + (double)j*0.5;
+		Comps[j].Mean = (double)j*0.5;
 		Comps[j].Stdev = 0.1;
 		Comps[j].Alpha = 1;
 	}
 
-	EM(X, Comps);
+//	EM(X, Comps);
+	fit(X, Comps);
 	
 	bool dp_flag = false;
 	double BE = 1;
@@ -403,7 +466,7 @@ void gtype::call_cnv(sv &s, svdata& dt, string &ln)
 	bool pos_flag = false;
 	bool neg_flag = false;
 	
-	if (s.len > 50)
+//	if (s.len > 50)
 	{
 		// do clustering with positive insert size - if successful, starting breakpoint is accurate
 		vector<Gaussian> C_pos1(1);
@@ -414,9 +477,11 @@ void gtype::call_cnv(sv &s, svdata& dt, string &ln)
 		C_pos2[0].set(0,0.1);
 		C_pos2[1].set(1,0.1);
 		C_pos2[0].Alpha = C_pos2[1].Alpha = 0.5;
-		EM(dt.norm_cnv_pos, C_pos2);
+		//EM(dt.norm_cnv_pos, C_pos2);
+		fit(dt.norm_cnv_pos, C_pos2);
 		
-		if (BIC(dt.norm_cnv_pos, C_pos2) <BIC(dt.norm_cnv_pos, C_pos1) && C_pos2[1].Mean > 0.5 &&  C_pos2[1].Mean < 2 && C_pos2[1].Alpha > 4.5/(n_sample + 4.0))
+//		if (BIC(dt.norm_cnv_pos, C_pos2) <BIC(dt.norm_cnv_pos, C_pos1) && C_pos2[1].Mean > 0.5 &&  C_pos2[1].Mean < 2 && C_pos2[1].Alpha > 4.5/(n_sample + 4.0))
+		if (BIC(dt.norm_cnv_pos, C_pos2) <BIC(dt.norm_cnv_pos, C_pos1))
 		{
 			pos_flag = true;
 		}
@@ -432,9 +497,11 @@ void gtype::call_cnv(sv &s, svdata& dt, string &ln)
 		C_neg2[1].set(1,0.1);
 		C_neg2[0].Alpha = C_neg2[1].Alpha = 0.5;
 		
-		EM(dt.norm_cnv_neg, C_neg2);
+		//EM(dt.norm_cnv_neg, C_neg2);
+		fit(dt.norm_cnv_neg, C_neg2);
 		
-		if (BIC(dt.norm_cnv_neg, C_neg2) <BIC(dt.norm_cnv_neg, C_neg1) && C_neg2[1].Mean > 0.5 && C_neg2[1].Mean < 2 && C_neg2[1].Alpha > 4.5/(n_sample + 4.0))
+//		if (BIC(dt.norm_cnv_neg, C_neg2) <BIC(dt.norm_cnv_neg, C_neg1) && C_neg2[1].Mean > 0.5 && C_neg2[1].Mean < 2 && C_neg2[1].Alpha > 4.5/(n_sample + 4.0))
+		if (BIC(dt.norm_cnv_neg, C_neg2) <BIC(dt.norm_cnv_neg, C_neg1))
 		{
 			neg_flag = true;
 		}
@@ -464,17 +531,17 @@ void gtype::call_cnv(sv &s, svdata& dt, string &ln)
 		}
 		
 		info += ";MEAN=" + to_string(Comps[0].Mean);
-		for(int i=1;i<Comps.size(); ++i)
+		for(unsigned i=1;i<Comps.size(); ++i)
 		{
 			info += "," + to_string(Comps[i].Mean);
 		}
 		info += ";STDEV=" + to_string(Comps[0].Stdev);
-		for(int i=1;i<Comps.size(); ++i)
+		for(unsigned i=1;i<Comps.size(); ++i)
 		{
 			info += "," + to_string(Comps[i].Stdev);
 		}
 		info += ";FRAC=" + to_string(Comps[0].Alpha);
-		for(int i=1;i<Comps.size(); ++i)
+		for(unsigned i=1;i<Comps.size(); ++i)
 		{
 			info += "," + to_string(Comps[i].Alpha);
 		}
@@ -487,20 +554,20 @@ void gtype::call_cnv(sv &s, svdata& dt, string &ln)
 			bool pos_gt = false, neg_gt = false;
 			
 			cn[i] = assign(X[i], Comps);
-			if (pos_flag && dt.norm_cnv_pos[i] > 0.75 && dt.norm_cnv_pos[i] < 1.5 && s.len>50)
+			if (pos_flag && dt.n_cnv_pos[i]>1)
 			{
 				pos_gt = true;
 			}
-			if (neg_flag && dt.norm_cnv_neg[i] > 0.75 && dt.norm_cnv_neg[i] < 1.5 && s.len>50)
+			if (neg_flag && dt.n_cnv_neg[i] >1)
 			{
 				neg_gt = true;
 			}
 			
-			if (cn[i] == -1 || cn[i] == 2)
+			if (cn[i] == -1)
 			{
 				if (pos_gt || neg_gt)
 				{
-					cn[i] = 3; // Maybe... ?
+					cn[i] = round(dt.norm_dp[i]*2.0);
 				}
 			}
 		}
@@ -553,6 +620,10 @@ void gtype::call_cnv(sv &s, svdata& dt, string &ln)
 				{
 					gt += "\t" + to_string(cn[i]);
 					ns ++;
+					if (cn[i]>2)
+					{
+						ac++;
+					}
 				}
 				else
 				{
@@ -560,15 +631,14 @@ void gtype::call_cnv(sv &s, svdata& dt, string &ln)
 				}
 				gt += ":" + to_string(dt.norm_dp[i]).substr(0,4) + ":" + to_string((int)dt.dp[i]) + ":" + to_string((int)dt.cnv_pos[i]) + ":" + to_string((int)dt.cnv_neg[i]);
 			}
-			info +=";NS=" + to_string(ns) + "\tCN:ND:DP:FP:FN";
+			info +=";AC=" + to_string(ac) + ";NS=" + to_string(ns) + ";AF=" + to_string((double)ac/(double)(ns))  + "\tCN:ND:DP:FP:FN";
 		}
 				
 		
-		if (((b_biallelic && ac>0 && ns>n_sample * 0.7 ) || (!b_biallelic && ns>n_sample>0.7)) && ((dp_flag && BE<BE_THRESHOLD) || pos_flag || neg_flag))
+		if ((ac>0 &&  ac < (2*n_sample) && ns>(n_sample *0.5)) && ((dp_flag && BE<BE_THRESHOLD) ||  (BE < BE_THRESHOLD *2 && (neg_flag || pos_flag)) || (BE < 0.5 && neg_flag && pos_flag)))
 		{
 			filt = "PASS";
 		}
-		
 		ln += filt + "\t" + info + "\t" + gt;
 	}
 	else
@@ -600,9 +670,11 @@ void gtype::call_inv(sv &s, svdata& dt, string &ln)
 	C2[1].set(1,0.1);
 	C2[0].Alpha = C2[1].Alpha = 0.5;
 
-	EM(dt.norm_cnv_pos, C2);
+	//EM(dt.norm_cnv_pos, C2);
+	fit(dt.norm_cnv_pos, C2);
 	
-	if (BIC(dt.norm_cnv_pos, C2) <BIC(dt.norm_cnv_pos, C1) && C2[1].Mean > 0.5 &&  C2[1].Mean < 3 && C2[1].Alpha > 4.5/(n_sample + 4.0))
+	//if (BIC(dt.norm_cnv_pos, C2) <BIC(dt.norm_cnv_pos, C1) && C2[1].Mean > 0.5 &&  C2[1].Mean < 3 && C2[1].Alpha > 4.5/(n_sample + 4.0))
+	if (BIC(dt.norm_cnv_pos, C2) <BIC(dt.norm_cnv_pos, C1))
 	{
 		cnv_pos_flag = true;
 	}
@@ -614,9 +686,11 @@ void gtype::call_inv(sv &s, svdata& dt, string &ln)
 	C2[1].set(1,0.1);
 	C2[0].Alpha = C2[1].Alpha = 0.5;
 	
-	EM(dt.norm_cnv_neg, C2);
+//	EM(dt.norm_cnv_neg, C2);
+	fit(dt.norm_cnv_neg, C2);
 	
-	if (BIC(dt.norm_cnv_neg, C2) <BIC(dt.norm_cnv_neg, C1) && C2[1].Mean > 0.5 &&  C2[1].Mean < 3 && C2[1].Alpha > 4.5/(n_sample + 4.0))
+	//if (BIC(dt.norm_cnv_neg, C2) <BIC(dt.norm_cnv_neg, C1) && C2[1].Mean > 0.5 &&  C2[1].Mean < 3 && C2[1].Alpha > 4.5/(n_sample + 4.0))
+	if (BIC(dt.norm_cnv_neg, C2) <BIC(dt.norm_cnv_neg, C1))
 	{
 		cnv_neg_flag = true;
 	}
@@ -628,13 +702,16 @@ void gtype::call_inv(sv &s, svdata& dt, string &ln)
 	C2[1].set(1,0.1);
 	C2[0].Alpha = C2[1].Alpha = 0.5;
 	
-	EM(dt.norm_inv_pos, C2);
+	//EM(dt.norm_inv_pos, C2);
+	fit(dt.norm_inv_pos, C2);
 	
-	if (BIC(dt.norm_inv_pos, C2) <BIC(dt.norm_inv_pos, C1) && C2[1].Mean > 0.5 &&  C2[1].Mean < 3 && C2[1].Alpha > 4.5/(n_sample + 4.0))
+	//if (BIC(dt.norm_inv_pos, C2) <BIC(dt.norm_inv_pos, C1) && C2[1].Mean > 0.5 &&  C2[1].Mean < 3 && C2[1].Alpha > 4.5/(n_sample + 4.0))
+	if (BIC(dt.norm_inv_pos, C2) <BIC(dt.norm_inv_pos, C1))
 	{
 		cnv_pos_flag = true;
 	}
 	
+	/*
 	C1[0].estimate(dt.norm_inv_neg);
 	C1[0].Alpha=1;
 	
@@ -642,11 +719,16 @@ void gtype::call_inv(sv &s, svdata& dt, string &ln)
 	C2[1].set(1,0.1);
 	C2[0].Alpha = C2[1].Alpha = 0.5;
 	
-	EM(dt.norm_inv_neg, C2);
+	//EM(dt.norm_inv_neg, C2);
+	fit(dt.norm_inv_neg, C2);
 	
-	if (BIC(dt.norm_inv_neg, C2) <BIC(dt.norm_inv_neg, C1) && C2[1].Mean > 0.5 &&  C2[1].Mean < 3 && C2[1].Alpha > 4.5/(n_sample + 4.0))
+//	if (BIC(dt.norm_inv_neg, C2) <BIC(dt.norm_inv_neg, C1) && C2[1].Mean > 0.5 &&  C2[1].Mean < 3 && C2[1].Alpha > 4.5/(n_sample + 4.0))
+	if (BIC(dt.norm_inv_neg, C2) <BIC(dt.norm_inv_neg, C1))
+		*/
+	for(int i=0;i<n_sample; ++i)
 	{
-		cnv_neg_flag = true;
+		if (dt.n_inv_neg[i] >0 && dt.n_inv_pos[i] >0)
+			cnv_neg_flag = true;
 	}
 	
 	// if any of three clustering meets criteria
@@ -692,26 +774,30 @@ void gtype::call_inv(sv &s, svdata& dt, string &ln)
 			{
 				cnt++;
 			}
-			if (inv_pos_flag && dt.norm_inv_pos[i] > 0.5 )
+			if (inv_pos_flag)
 			{
 				cnt++;
 			}
-			if (inv_neg_flag && dt.norm_inv_neg[i] > 0.5  )
+			if (inv_neg_flag)
 			{
 				cnt++;
 			}
-			if (cnt>1 && dt.norm_readcount[i] < 0.5)
+			if (cnt>0 && (inv_pos_flag||inv_neg_flag) && dt.norm_readcount[i] < 0.5)
 			{
 				// 1/1
 				gt += "\t1/1";
 				ns ++;
 				ac +=2;
 			}
-			else if (cnt >0)
+			else if (cnt >0 && (inv_pos_flag||inv_neg_flag))
 			{
 				gt += "\t0/1";
 				ns ++;
 				ac +=1;
+			}
+			else if ((inv_pos_flag || inv_neg_flag) || cnt>1)
+			{
+				gt += "\t./.";
 			}
 			else
 			{
@@ -814,6 +900,54 @@ void gtype::EM(vector<double>& x, vector<Gaussian>& Comps)
 				Comps[m].Mean = 0;
 			}
 		}
+	}
+}
+
+
+// EM for general CNVs
+void gtype::fit(vector<double>& x, vector<Gaussian>& Comps)
+{
+	unsigned n_sample = (unsigned) x.size();
+	unsigned n_comp = (unsigned) Comps.size();
+	
+	// Just update the variance, do not change mean
+
+	vector<double> sum (n_comp,0);
+	vector<double> sum_pr (n_comp,0);
+	vector<double> sum_err (n_comp,0);
+		
+	for(unsigned j=0; j<n_sample; ++j)
+	{
+		double sum_p = 0;
+		vector<double> pr(n_comp, 0);
+		for(unsigned m=0;m<n_comp;++m)
+		{
+			pr[m] = Comps[m].Alpha * normpdf(x[j], Comps[m]);
+			if (Comps[m].Mean < 1e-10)
+			{
+				pr[m] *= 2.0;
+			}
+			sum_p += pr[m];
+		}
+			
+		if (sum_p > 1e-30) // if the value is an outlier, exclude it from calculations
+		{
+			for(unsigned m=0;m<n_comp;++m)
+			{
+				pr[m] /= sum_p;
+				sum[m] += pr[m] * x[j];
+				sum_err[m] += pr[m] * (x[j] - Comps[m].Mean)*(x[j]-Comps[m].Mean);
+				sum_pr[m] += pr[m];
+			}
+		}
+	}
+	
+	for(unsigned m=0;m<n_comp;++m)
+	{
+		if (sum_pr[m] > 1e-10)
+			Comps[m].Stdev = sqrt(sum_err[m] / (sum_pr[m] ));
+
+		Comps[m].Alpha = sum_pr[m] /( n_sample);
 	}
 }
 

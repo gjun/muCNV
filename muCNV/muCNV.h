@@ -318,6 +318,7 @@ public:
 
 	void EM(vector<double>&, vector<Gaussian>&, bool);
 	void EM(vector<double>&, vector<Gaussian>&);
+	void fit(vector<double>&, vector<Gaussian>&);
 	void EM2(vector<double>&, vector<double> &, vector<Gaussian2>&);
 
 	int assign(double, vector<Gaussian> &);

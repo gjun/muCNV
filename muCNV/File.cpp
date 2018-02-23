@@ -228,7 +228,7 @@ double invcfs::get_second_value(string &t)
 	
 	int p=0;
 	while(t[p++] != ',');
-	return abs(atof(t.substr(p,string::npos).c_str()));
+	return atof(t.substr(p,string::npos).c_str());
 }
 
 void invcfs::get_value_pair(string &t, int &n, double &x)
@@ -244,7 +244,11 @@ void invcfs::get_value_pair(string &t, int &n, double &x)
 	while(t[p++] != ',');
 	
 	n = atoi(t.substr(0, p-1).c_str());
-	x = abs(atof(t.substr(p,string::npos).c_str()));
+	x = atof(t.substr(p,string::npos).c_str());
+	if (x<0)
+	{
+		x= -1*x;
+	}
 }
 
 int invcfs::read_interval_multi(sv& interval, svdata& dt)
