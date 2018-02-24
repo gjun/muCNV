@@ -26,10 +26,10 @@
 
 using namespace std;
 
-bool bUseGL = true;
-double P_THRESHOLD = 0.2;
-double BE_THRESHOLD = 0.3;
-double RO_THRESHOLD = 0.5;
+bool bUseGL;
+double P_THRESHOLD;
+double BE_THRESHOLD;
+double RO_THRESHOLD;
 
 int main(int argc, char** argv)
 {
@@ -65,7 +65,7 @@ int main(int argc, char** argv)
 		TCLAP::ValueArg<string> argSampleID("s","sample","Sample ID",false,"","string");
 		TCLAP::ValueArg<string> argIndex("i","index","List file containing list of intermediate pileups. Required with genotype option",false,"","string");
 		TCLAP::ValueArg<string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "string");
-		TCLAP::ValueArg<double> argBE("e","error","Threshold for BayesError",false,0.3,"double");
+		TCLAP::ValueArg<double> argBE("e","error","Threshold for BayesError",false,0.1,"double");
 		TCLAP::ValueArg<double> argR("r","ratio","Threshold for likelihood ratio",false,5,"double");
 		TCLAP::SwitchArg switchGenotype("g","genotype","Generate Genotype from intermediate pileups", cmd, false);
 		

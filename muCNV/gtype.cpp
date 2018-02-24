@@ -296,20 +296,18 @@ void gtype::call_del(sv &s, svdata& dt, string &ln)
 				case -1:
 					if (pos_gt && neg_gt)
 					{
-//						if ( 0.2< dt.norm_dp[i] && dt.norm_dp[i] < 0.85)
-						if ( 0.2< dt.norm_dp[i])
+						if ( 0.2 <= dt.norm_dp[i] && dt.norm_dp[i]< 0.8)
 						{
 							gt[i] = 1;
 						}
-						else if (dt.norm_dp[i] <= 0.2)
+						else if (dt.norm_dp[i] < 0.2)
 						{
 							gt[i] = 2;
 						}
 					}
 					else if (pos_gt || neg_gt)
 					{
-//						if ( 0.3< dt.norm_dp[i] && dt.norm_dp[i] < 0.75)
-						if ( 0.2< dt.norm_dp[i])
+						if ( 0.2 <= dt.norm_dp[i] && dt.norm_dp[i] < 0.7)
 						{
 							gt[i] = 1;
 						}
