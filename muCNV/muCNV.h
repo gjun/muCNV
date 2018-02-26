@@ -13,7 +13,13 @@
 #include <vector>
 // #include "pFile.h"
 
+#include "hts.h"
+#include "vcf.h"
+#include "bgzf.h"
+#include "regidx.h"
 #include "sam.h"
+#include "tbx.h"
+#include "kseq.h"
 
 const double PI=3.1415926535897932384626433832795028841968;
 const double sqPI=1.7724538509055160272981674833411451827974;
@@ -228,16 +234,18 @@ public:
 class invcfs
 {
 public:
-	vector<ifstream *> vfs;
+	// vector<ifstream *> vfs;
+	vector<htsFile*> vfs;
+	vector<tbx_t*> tbs;
+	vector<hts_itr_t *> m_itr;
 	vector<int> num_id;
 	vector<int> start_num;
 
 	void parse_sv(vector<string> &, sv &);
 	double get_second_value(string &);
 	void get_value_pair(string &, int &, double &);
-	int initialize(vector<string> &, vector<string> &, vector<double> &, vector<double> &);
-	int read_interval_multi(sv& , svdata &);
-	int read_interval(sv&, vector<double> &);
+	int initialize(vector<string> &, vector<string> &, vector<double> &, vector<double> &, const char *);
+	int read_interval_multi(sv& , svdata &, const char *);	
 };
 
 class gcContent

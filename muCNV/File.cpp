@@ -32,7 +32,6 @@ void read_vcf_list(string &index_file, vector<string> &vcf_files)
 	}
 	cerr<< vcf_files.size() << " VCF files exist in the index file." << endl;
 }
-		
 	
 void read_index(string index_file, vector<string> &sample_ids, vector<string> &vcf_files, vector<string> &bam_files, vector<double> &avg_depths)
 {
@@ -74,35 +73,39 @@ void read_index(string index_file, vector<string> &sample_ids, vector<string> &v
 	
 }
 
-
-int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, vector<double> &avg_depths, vector<double> &avg_isizes)
+int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, vector<double> &avg_depths, vector<double> &avg_isizes, const char* reg)
 {
-	//vector<string> lns (vcf_files.size(), "");
 	int n_vcf = (int)vcf_files.size();
 	
 	for(int i=0;i<n_vcf; ++i)
 	{
-		//	cerr << "sample ID " << sample_ids[i] << endl;
-		//		cerr << "opening " << vcf_files[i] << endl;
-		ifstream *f = new ifstream(vcf_files[i].c_str(), ios::in);
-		vfs.push_back(f);
+		htsFile *fp = hts_open(vcf_files[i].c_str(), "r");
+		
+		if (!fp)
+		{
+			cerr << "Cannot open " << vcf_files[i] << endl;
+			exit(1);
+		}
+
+		vfs.push_back(fp);
 	}
 	
 	start_num.resize(n_vcf);
 	num_id.resize(n_vcf);
-	
+
 	for(int i=0;i<n_vcf;++i)
 	{
-		if (!vfs[i]->good())
+		tbx_t *tbx = tbx_index_load(vcf_files[i].c_str());
+		if (!tbx)
 		{
-			cerr<< "Error initializing VCF files\n" << endl;
-			return -1;
+			cerr << "Cannot load tabix index " + vcf_files[i] + ".tbi" << endl;
+			exit(1);
 		}
+		tbs.push_back(tbx);
 		start_num[i] = 0;
 		num_id[i] = 0;
 	}
 
-	
 	for(int i=0;i<n_vcf;++i)
 	{
 		if (i>0)
@@ -112,33 +115,48 @@ int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, ve
 		bool flag = true;
 		while(flag)
 		{
-			string ln;
-			getline(*vfs[i],ln);
-			if (ln.empty())
+			kstring_t str = {0,0,0};
+			
+			while(hts_getline(vfs[i], KS_SEP_LINE, &str) >= 0)
 			{
-				// Error! Empty line in the header
-			}
-			else if (ln[0] == '#' && ln[1] == 'C' && ln[2] == 'H' && ln[3] == 'R')
-			{
-				// read sample ids
-				vector<string> tokens;
-				split(ln.c_str(), " \t\n", tokens);
-				for(int j=9; j<tokens.size(); ++j)
+			
+				if ( !str.l || str.s[0]!=tbs[i]->conf.meta_char )
 				{
-					num_id[i]++;
-					sample_ids.push_back(tokens[j]);
+					break;
+				}
+				
+				if (str.s[0] == '#' && str.s[1] == 'C' && str.s[2] == 'H' && str.s[3] == 'R')
+				{
+					// read sample ids
+					vector<string> tokens;
+					split(str.s, " \t\n", tokens);
+					for(int j=9; j<tokens.size(); ++j)
+					{
+						num_id[i]++;
+						sample_ids.push_back(tokens[j]);
+					}
+				}
+				else if (str.s[0] == '#' && str.s[1] == '#')
+				{
+					// Skip these header lines
 				}
 			}
-			else if (ln[0] == '#' && ln[1] == '#')
+
+			hts_itr_t *itr = tbx_itr_querys(tbs[i], "0:0");
+			if (!itr)
 			{
-				// Skip these header lines
+				cerr << "Cannot read averaged depth info from " << vcf_files[i] << endl;
+				exit(1);
 			}
-			else if (ln[0] == '0' && (ln[1] == '\t' || ln[1] == ' '))
+			while (tbx_itr_next(vfs[i], tbs[i], itr, &str) >= 0)
 			{
+				// there should be only one line with chromosome 0
+				// (str.s[0] == '0' && (str.s[1] == '\t' || str.s[1] == ' '))
+
 				// Read avg depth
 				flag = false;
 				vector<string> tokens;
-				split(ln.c_str(), " \t\n", tokens);
+				split(str.s, " \t\n", tokens);
 				for(int j=9;j<tokens.size();++j)
 				{
 					vector<string> fields;
@@ -148,6 +166,17 @@ int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, ve
 					avg_isizes.push_back(atof(fields[1].c_str()));
 				}
 			}
+			tbx_itr_destroy(itr);
+			
+			itr = tbx_itr_querys(tbs[i], reg);
+			if (!itr)
+			{
+				cerr << "Cannot parse region " << reg <<  " from " << vcf_files[i] << endl;
+				exit(1);
+			}
+			m_itr.push_back(itr);
+			
+			free(str.s);
 		}
 		if (sample_ids.size() != avg_depths.size() || avg_depths.size() != avg_isizes.size())
 		{
@@ -156,6 +185,7 @@ int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, ve
 			return -1;
 		}
 	}
+	
 	cerr << "Input VCF files initialized" <<endl;
 	return 0;
 }
@@ -251,198 +281,70 @@ void invcfs::get_value_pair(string &t, int &n, double &x)
 	}
 }
 
-int invcfs::read_interval_multi(sv& interval, svdata& dt)
+int invcfs::read_interval_multi(sv& interval, svdata& dt, const char *region)
 {
 	int idx = 0;
 	
-	for(int i=0;i<(int)vfs.size();++i)
+	kstring_t str = {0,0,0};
+
+	vector<string> tks;
+	split(region, ":-", tks);
+	if (tks.size() != 3)
 	{
-		if (!vfs[i]->good())
-			return -1;
+		cerr << "Cannot parse region " << region << endl;
+		exit(1);
 	}
+	int startpos = atoi(tks[1].c_str());
+	int endpos = atoi(tks[2].c_str());
 	
-	for(int i=0;i<(int)vfs.size();++i)
+	for(int i=0;i<(int)vfs.size(); ++i)
 	{
-		bool flag = true;
-		while(flag)
+		if (tbx_itr_next(vfs[i], tbs[i], m_itr[i], &str) >=0)
 		{
-			string ln;
-			getline(*vfs[i],ln);
-			if (ln.empty())
+			// Read per-sample depth, insert size info
+			vector<string> tokens;
+			split(str.s, " \t\n", tokens);
+			
+			// Read interval information
+			if (i==0)	// Parse SV info only from the first VCF
 			{
-				// Error! Empty line in the header
-				if (i>0)
-				{
-					cerr << "Error reading VCF files" << endl;
-					exit(1);
-				}
-				return -1;
+				parse_sv(tokens, interval);
+				interval.get_len();
 			}
-			else if (ln[0] == '#')
+			for(int j=9;j<tokens.size();++j) // Parse genotype fields
 			{
-				// Skip these header lines
-				// Should never happen because headers are already processed in initialize()
-			}
-			else
-			{
-				// Read per-sample depth, insert size info
-				flag = false;
-				vector<string> tokens;
-				split(ln.c_str(), " \t\n", tokens);
+				vector<string> fields;
+				split(tokens[j].c_str(), ":", fields);
 				
-				// Read interval information
-				if (i==0)
-				{
-					// Parse SV info only from the first VCF
-					parse_sv(tokens, interval);
-					interval.get_len();
-				}
-
-				for(int j=9;j<tokens.size();++j)
-				{
-					vector<string> fields;
-					split(tokens[j].c_str(), ":", fields);
-					
-					// GC corrected depth
-					dt.dp[idx] = atof(fields[1].c_str());
-					get_value_pair(fields[2], dt.n_cnv_pos[idx], dt.cnv_pos[idx] );
-					get_value_pair(fields[3], dt.n_cnv_neg[idx], dt.cnv_neg[idx] );
-					get_value_pair(fields[4], dt.n_inv_pos[idx], dt.inv_pos[idx] );
-					get_value_pair(fields[5], dt.n_inv_neg[idx], dt.inv_neg[idx] );
-					get_value_pair(fields[6], dt.n_isz[idx], dt.isz[idx]);
-					idx++;
-				}
+				// GC corrected depth
+				dt.dp[idx] = atof(fields[1].c_str());
+				get_value_pair(fields[2], dt.n_cnv_pos[idx], dt.cnv_pos[idx] );
+				get_value_pair(fields[3], dt.n_cnv_neg[idx], dt.cnv_neg[idx] );
+				get_value_pair(fields[4], dt.n_inv_pos[idx], dt.inv_pos[idx] );
+				get_value_pair(fields[5], dt.n_inv_neg[idx], dt.inv_neg[idx] );
+				get_value_pair(fields[6], dt.n_isz[idx], dt.isz[idx]);
+				idx++;
 			}
-		}
-	}
-
-	return 0;
-}
-
-int invcfs::read_interval(sv& interval, vector<double> &X)
-{
-	vector<string> lns (vfs.size(), "");
-
-	for(int i=0;i<(int)vfs.size();++i)
-	{
-		if (!vfs[i]->good())
-			return -1;
-	}
-	bool flag=false;
-	int cnt = 0;
-	for(int i=0;i<(int)vfs.size();++i)
-	{
-		getline(*vfs[i],lns[i]);
-
-		if (lns[i].empty() || lns[i][0] == '#')
-		{
-			flag = true;
-		}
-		cnt++;
-	}
-	if (flag)
-	{
-		if (cnt>0)
-			return -1;
+		} // if tbx_itr_next>=0
 		else
-			return 1;
+		{
+			// no next record
+			return -1;
+		}
 	}
 
-	int chr;
-	vector<string> tokens;
-	split(lns[0].c_str(), " \t\n", tokens);
-	// Let's add error handling later
-	if (tokens[0].substr(0,3) == "chr" || tokens[0].substr(0,3) == "Chr" )
+	free(str.s);
+	
+	if (interval.pos < startpos || interval.pos > endpos)
 	{
-		tokens[0] = tokens[0].substr(3,2);
-	}
-	if (tokens[0] == "X")
-	{
-		chr = 23;
-	}
-	else if (tokens[0] == "Y")
-	{
-		chr = 24;
-	}
-	else if (tokens[0] == "M" || tokens[0] == "MT")
-	{
-		chr = 25;
+		return 0;
 	}
 	else
 	{
-		try
-		{
-			chr = atoi(tokens[0].c_str());
-		}
-		catch(int e)
-		{
-			chr = 0;
-			
-		}
+		return 1;
 	}
-	interval.chr = tokens[0]; // Dec 1, 2017
-	interval.chrnum = chr;
-	interval.pos = atoi(tokens[1].c_str());
-//	interval.ci_pos.first = -1;
-//	interval.ci_pos.second = -1;
-//	interval.ci_end.first = -1;
-//	interval.ci_end.second = -1;
-	string info = tokens[7];
-	
-	vector<string> infotokens;
-	
-	split(info.c_str(), ";", infotokens);
-	for(int j=0;j<(int)infotokens.size();++j)
-	{
-		vector<string> infofields;
-		split(infotokens[j].c_str(), "=", infofields);
-		if (infofields.size()>1)
-		{
-			if (infofields[0] == "END")
-			{
-				interval.end = atoi(infofields[1].c_str());
-			}
-			/*
-			else if (infofields[0] == "CIPOS")
-			{
-				vector<string> ci;
-				split(infofields[1].c_str(), ",", ci);
-				interval.ci_pos.first = atoi(ci[0].c_str());
-				interval.ci_pos.second = atoi(ci[1].c_str());
-			}
-			else if (infofields[0] == "CIEND")
-			{
-				vector<string> ci;
-				split(infofields[1].c_str(), ",", ci);
-				interval.ci_end.first = atoi(ci[0].c_str());
-				interval.ci_end.second = atoi(ci[1].c_str());
-			}
-			*/
-			else if (infofields[0] == "SVTYPE")
-			{
-				interval.svtype = infofields[1];
-			}
-		}
-		
-	} // if chr >= 1 && chr <= 22
+}
 
-//   cerr << "SV parsed" << interval.chr << ":" << interval.pos << "-" << interval.end << " depth " << tokens[9] << endl;
-
-	X[0] = atof(tokens[9].c_str());
-	
-   // cerr << "First sample depth read" <<endl;
-
-	for(int i=1;i<(int)vfs.size();++i)
-	{
-		vector<string> tks;
-		split(lns[i].c_str(), " \t\n", tks);
-
-		X[i] = atof(tks[9].c_str());
-
-    //	cerr << i << "-th sample depth read" <<endl;
-	}
-	return 0;
-} //invcfs::read_vcf
 
 void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_files, vector<sv> &candidates)
 {

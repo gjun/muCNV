@@ -45,6 +45,7 @@ int main(int argc, char** argv)
 	string sChr;
 	string gc_file;
 	string sampID;
+	string region;
 	
 	vector<string> sample_ids;
 	vector<string> vcfs;
@@ -65,8 +66,9 @@ int main(int argc, char** argv)
 		TCLAP::ValueArg<string> argSampleID("s","sample","Sample ID",false,"","string");
 		TCLAP::ValueArg<string> argIndex("i","index","List file containing list of intermediate pileups. Required with genotype option",false,"","string");
 		TCLAP::ValueArg<string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "string");
-		TCLAP::ValueArg<double> argBE("e","error","Threshold for BayesError",false,0.1,"double");
-		TCLAP::ValueArg<double> argR("r","ratio","Threshold for likelihood ratio",false,5,"double");
+//		TCLAP::ValueArg<double> argBE("e","error","Threshold for BayesError",false,0.1,"double");
+//		TCLAP::ValueArg<double> argR("r","ratio","Threshold for likelihood ratio",false,5,"double");
+		TCLAP::ValueArg<string> argRegion("r", "region", "Genomic region (chr:start-end)", false, "", "string" );
 		TCLAP::SwitchArg switchGenotype("g","genotype","Generate Genotype from intermediate pileups", cmd, false);
 		
 
@@ -76,8 +78,9 @@ int main(int argc, char** argv)
 		cmd.add(argGcfile);
 		cmd.add(argIndex);
 		cmd.add(argSampleID);
-		cmd.add(argBE);
-		cmd.add(argR);
+		//cmd.add(argBE);
+		//cmd.add(argR);
+		cmd.add(argRegion);
 		
 		cmd.parse(argc, argv);
         
@@ -88,9 +91,13 @@ int main(int argc, char** argv)
 		vcf_file = argVcf.getValue();
 		gc_file = argGcfile.getValue();
 		bGenotype = switchGenotype.getValue();
+		region = argRegion.getValue();
 		
-		BE_THRESHOLD = argBE.getValue();
-		P_THRESHOLD = 1.0/ argR.getValue();
+		//BE_THRESHOLD = argBE.getValue();
+		//P_THRESHOLD = 1.0/ argR.getValue();
+		
+		BE_THRESHOLD = 0.1;
+		P_THRESHOLD = 0.2;
 		
 		if (bGenotype && index_file == "")
 		{
@@ -132,7 +139,7 @@ int main(int argc, char** argv)
 		
 		invcfs V_list;
 		read_vcf_list(index_file, vcfs);
-		V_list.initialize(vcfs, sample_ids, avg_depths, avg_isizes);
+		V_list.initialize(vcfs, sample_ids, avg_depths, avg_isizes, "1:1");
 
 		n = (int)sample_ids.size();
 		cerr << "Genotyping index loaded." << endl;
@@ -149,41 +156,42 @@ int main(int argc, char** argv)
 		
 		vector<int> G(n, 0);
 		dt.set_size(n);
-		
-		while(V_list.read_interval_multi(interval, dt)>=0)
+		int val;
+		while((val = V_list.read_interval_multi(interval, dt, "1:1-1500000"))>=0)
 		{
-			gtype g;
-			dt.normalize(interval, avg_depths, avg_isizes);
-			string ln;
-			
-			if (interval.svtype == "DEL")
+			if (val>0)
 			{
-				g.call_del(interval, dt, ln);
-				if (ln != "")
-				{
-					vfile.print(ln);
-				}
-			}
-			else if (interval.svtype == "CNV" || interval.svtype == "DUP")
-			{
+				gtype g;
+				dt.normalize(interval, avg_depths, avg_isizes);
 				string ln;
-				g.call_cnv(interval, dt, ln);
-				if (ln != "")
+				
+				if (interval.svtype == "DEL")
 				{
-					vfile.print(ln);
+					g.call_del(interval, dt, ln);
+					if (ln != "")
+					{
+						vfile.print(ln);
+					}
+				}
+				else if (interval.svtype == "CNV" || interval.svtype == "DUP")
+				{
+					string ln;
+					g.call_cnv(interval, dt, ln);
+					if (ln != "")
+					{
+						vfile.print(ln);
+					}
+				}
+				else if (interval.svtype == "INV")
+				{
+					string ln;
+					g.call_inv(interval, dt, ln);
+					if (ln != "")
+					{
+						vfile.print(ln);
+					}
 				}
 			}
-			else if (interval.svtype == "INV")
-			{
-				string ln;
-				g.call_inv(interval, dt, ln);
-				if (ln != "")
-				{
-					vfile.print(ln);
-				}
-			}
-			
-			// Write Output
 			
 		}
  		vfile.close();
