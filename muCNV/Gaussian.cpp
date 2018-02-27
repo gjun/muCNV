@@ -31,7 +31,7 @@ void Gaussian::estimate(vector<double> &x)
 double Gaussian::pdf(const double& x)
 {
 	double z = (x-Mean)/Stdev;
-	double val =  (sqPI * exp(-0.5*z*z) /Stdev);
+	double val =  (invsqrt2pi * exp(-0.5*z*z) /Stdev);
 	if (isnan(val))
 	{
 		return 0;
@@ -141,7 +141,7 @@ double Gaussian2::logpdf(const double& x, const double& y)
 double normpdf(double x, Gaussian& C)
 {
 	double z = (x-C.Mean)/C.Stdev;
-	double val =  (sqPI * exp(-0.5*z*z) /C.Stdev);
+	double val =  (invsqrt2pi * exp(-0.5*z*z) /C.Stdev);
 	if (isnan(val))
 	{
 		return 0;
@@ -161,7 +161,7 @@ double BayesError(vector<Gaussian>& Comps)
 	
 	if (n_comp <2 )
 	{
-		return DBL_MAX;
+		return 1;
 	}
 	
 	// Get minimum distance between all pairs

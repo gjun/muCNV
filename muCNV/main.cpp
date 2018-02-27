@@ -139,7 +139,7 @@ int main(int argc, char** argv)
 		
 		invcfs V_list;
 		read_vcf_list(index_file, vcfs);
-		V_list.initialize(vcfs, sample_ids, avg_depths, avg_isizes, "1:1");
+		V_list.initialize(vcfs, sample_ids, avg_depths, avg_isizes, region);
 
 		n = (int)sample_ids.size();
 		cerr << "Genotyping index loaded." << endl;
@@ -151,41 +151,46 @@ int main(int argc, char** argv)
 		
 		vfile.write_header(sample_ids);
 		
-		sv interval;
-		svdata dt;
+		sv S;
+		svdata D;
+		svgeno G;
 		
-		vector<int> G(n, 0);
-		dt.set_size(n);
+		D.set_size(n);
+		G.initilize(n);
+
 		int val;
-		while((val = V_list.read_interval_multi(interval, dt, "1:1-1500000"))>=0)
+		while((val = V_list.read_interval_multi(S, D, region))>=0)
 		{
 			if (val>0)
 			{
-				gtype g;
-				dt.normalize(interval, avg_depths, avg_isizes);
+				gtype T;
+				svgeno G; 
+
+				D.normalize(S, avg_depths, avg_isizes);
 				string ln;
 				
-				if (interval.svtype == "DEL")
+				if (S.svtype == "DEL")
 				{
-					g.call_del(interval, dt, ln);
+					T.call_del(S, D, G);
+					G.print(S, D, ln);
+
 					if (ln != "")
 					{
 						vfile.print(ln);
 					}
 				}
-				else if (interval.svtype == "CNV" || interval.svtype == "DUP")
+				else if (S.svtype == "CNV" || S.svtype == "DUP")
 				{
-					string ln;
-					g.call_cnv(interval, dt, ln);
+					T.call_cnv(S, D, G);
+					G.print(S, D, ln);
 					if (ln != "")
 					{
 						vfile.print(ln);
 					}
 				}
-				else if (interval.svtype == "INV")
+				else if (S.svtype == "INV")
 				{
-					string ln;
-					g.call_inv(interval, dt, ln);
+					T.call_inv(S, D, G);
 					if (ln != "")
 					{
 						vfile.print(ln);

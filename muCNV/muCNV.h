@@ -21,8 +21,9 @@
 #include "tbx.h"
 #include "kseq.h"
 
-const double PI=3.1415926535897932384626433832795028841968;
-const double sqPI=1.7724538509055160272981674833411451827974;
+const double PI=3.14159265358979;
+const double sqPI=1.77245385090552;
+const double invsqrt2pi= 0.398942280401433;
 const double log2pi = 0.7981798684;
 
 using namespace std;
@@ -116,10 +117,10 @@ public:
 			 */
 			if (interval.svtype == "DEL")
 			{
-				norm_cnv_pos[i] = (cnv_pos[i] ) / interval.len;
-				norm_cnv_neg[i] = (cnv_neg[i] ) / interval.len;
-				norm_inv_pos[i] = (inv_pos[i] ) / interval.len;
-				norm_inv_neg[i] = (inv_neg[i] ) / interval.len;
+				norm_cnv_pos[i] = (cnv_pos[i] - avg_isize[i] ) / interval.len;
+				norm_cnv_neg[i] = (cnv_neg[i] - avg_isize[i] ) / interval.len;
+				norm_inv_pos[i] = (inv_pos[i] - avg_isize[i] ) / interval.len;
+				norm_inv_neg[i] = (inv_neg[i] - avg_isize[i] ) / interval.len;
 			}
 			else if (interval.svtype == "DUP" || interval.svtype == "CNV")
 			{
@@ -244,8 +245,8 @@ public:
 	void parse_sv(vector<string> &, sv &);
 	double get_second_value(string &);
 	void get_value_pair(string &, int &, double &);
-	int initialize(vector<string> &, vector<string> &, vector<double> &, vector<double> &, const char *);
-	int read_interval_multi(sv& , svdata &, const char *);	
+	int initialize(vector<string> &, vector<string> &, vector<double> &, vector<double> &, string &);
+	int read_interval_multi(sv& , svdata &, string &);	
 };
 
 class gcContent
@@ -306,35 +307,79 @@ public:
 	void write_cnv(sv&, vector<int>&, vector<int>&, int, int, vector<double>&, vector<double>&, vector<Gaussian>&, double, bool);
 };
 
+class svgeno 
+{
+	bool b_biallelic;
+	bool b_pass;
+
+	bool dp_flag;
+	bool pos_flag;
+	bool neg_flag;
+
+	bool cnv_pos_flag;
+	bool cnv_neg_flag;
+	bool inv_pos_flag;
+	bool inv_neg_flag;
+
+	double p_overlap;
+	int n_sample;
+
+	int ac;
+	int ns;
+
+	vector<Gaussian> Comps;
+
+	vector<int> gt; // bi-allelic genotype
+	vector<int> cn; // copy number
+
+	void initialize(int N)
+	{
+		n_sample = N;
+		Comps.clear();
+
+		gt.resize(n_sample);
+		cn.resize(n_sample);
+		b_biallelic = false;
+		b_pass = false;
+
+		dp_flag = false;
+		pos_flag = false;
+		neg_flag = false;
+		// For inversions
+		cnv_pos_flag = false;
+		cnv_neg_flag = false;
+		inv_pos_flag = false;
+		inv_neg_flag = false;
+
+
+		for(int i=0;i<n_sample;++i)
+		{
+			gt[i] = -1;
+		}
+		for(int i=0;i<n_sample;++i)
+		{
+			cn[i] = -1;
+		}
+	};
+	void print (sv &, svdata &, string &);
+};
+
+
 class gtype
 {
 public:
-	double min_bic;
-	double p_overlap;
-	bool bUseGL;
-	bool dFlag;
-	
-//	void call_genotype(sv &, vector<double>&, vector<double>&, vector<int>&, outvcf&, vector<double>&);
-	void call_del(sv &, svdata &, string& ln);
-	void call_cnv(sv &, svdata &, string& ln);
-	void call_inv(sv &, svdata &, string& ln);
+	void call_del(sv &, svdata &, svgeno &);
+	void call_cnv(sv &, svdata &, svgeno &);
+	void call_inv(sv &, svdata &, svgeno &);
 
-	void eval_cluster(sv &, vector<double> &, vector<double> &, vector<Gaussian2> &, double &, double &);
-
-	int classify_del(vector<double>&, vector<int>&, vector< vector<int> >&, vector<int>&, int&,vector<Gaussian>&, bool);
-	int classify_cnv(vector<double>&, vector<int>&, vector<int>&, int&, vector<Gaussian>&);
-
-	void EM(vector<double>&, vector<Gaussian>&, bool);
 	void EM(vector<double>&, vector<Gaussian>&);
 	void fit(vector<double>&, vector<Gaussian>&);
-	void EM2(vector<double>&, vector<double> &, vector<Gaussian2>&);
+//	void EM2(vector<double>&, vector<double> &, vector<Gaussian2>&);
 
 	int assign(double, vector<Gaussian> &);
 	void copyComps(vector<Gaussian> &, vector<Gaussian> &);
-	void call_del(sv&, vector<double>&, vector<double>&, vector<int>&, outvcf&, vector<double>&);
-	void call_cnv(sv&, vector<double>&, vector<double>&, vector<int>&, outvcf&, vector<double>&);
-	void format_output(sv &, string &);
-	gtype();
+//	void call_del(sv&, vector<double>&, vector<double>&, vector<int>&, outvcf&, vector<double>&);
+//	void call_cnv(sv&, vector<double>&, vector<double>&, vector<int>&, outvcf&, vector<double>&);
 };
 
 

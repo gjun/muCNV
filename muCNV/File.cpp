@@ -73,7 +73,7 @@ void read_index(string index_file, vector<string> &sample_ids, vector<string> &v
 	
 }
 
-int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, vector<double> &avg_depths, vector<double> &avg_isizes, const char* reg)
+int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, vector<double> &avg_depths, vector<double> &avg_isizes, string &region)
 {
 	int n_vcf = (int)vcf_files.size();
 	
@@ -130,7 +130,7 @@ int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, ve
 					// read sample ids
 					vector<string> tokens;
 					split(str.s, " \t\n", tokens);
-					for(int j=9; j<tokens.size(); ++j)
+					for(int j=9; j<(int)tokens.size(); ++j)
 					{
 						num_id[i]++;
 						sample_ids.push_back(tokens[j]);
@@ -168,13 +168,16 @@ int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, ve
 			}
 			tbx_itr_destroy(itr);
 			
-			itr = tbx_itr_querys(tbs[i], reg);
-			if (!itr)
+			if (region != "")
 			{
-				cerr << "Cannot parse region " << reg <<  " from " << vcf_files[i] << endl;
-				exit(1);
+				itr = tbx_itr_querys(tbs[i], region.c_str());
+				if (!itr)
+				{
+					cerr << "Cannot parse region " << region <<  " from " << vcf_files[i] << endl;
+					exit(1);
+				}
+				m_itr.push_back(itr);
 			}
-			m_itr.push_back(itr);
 			
 			free(str.s);
 		}
@@ -281,25 +284,41 @@ void invcfs::get_value_pair(string &t, int &n, double &x)
 	}
 }
 
-int invcfs::read_interval_multi(sv& interval, svdata& dt, const char *region)
+int invcfs::read_interval_multi(sv& interval, svdata& dt, string &region)
 {
 	int idx = 0;
-	
 	kstring_t str = {0,0,0};
+	bool bTabix = (region!="");
+	int startpos = 0;
+	int endpos = INT_MAX;
 
-	vector<string> tks;
-	split(region, ":-", tks);
-	if (tks.size() != 3)
+
+	if (bTabix)
 	{
-		cerr << "Cannot parse region " << region << endl;
-		exit(1);
+		vector<string> tks;
+		split(region.c_str(), ":-", tks);
+		if (tks.size() != 3)
+		{
+			cerr << "Cannot parse region " << region << endl;
+			exit(1);
+		}
+		startpos = atoi(tks[1].c_str());
+		endpos = atoi(tks[2].c_str());
 	}
-	int startpos = atoi(tks[1].c_str());
-	int endpos = atoi(tks[2].c_str());
-	
+		
 	for(int i=0;i<(int)vfs.size(); ++i)
 	{
-		if (tbx_itr_next(vfs[i], tbs[i], m_itr[i], &str) >=0)
+		int ret = 0;
+		
+		if (bTabix)
+		{
+			ret = tbx_itr_next(vfs[i], tbs[i], m_itr[i], &str);
+		}
+		else
+		{
+			ret = hts_getline(vfs[i], KS_SEP_LINE, &str);
+		}
+		if (ret>=0)
 		{
 			// Read per-sample depth, insert size info
 			vector<string> tokens;
@@ -332,7 +351,6 @@ int invcfs::read_interval_multi(sv& interval, svdata& dt, const char *region)
 			return -1;
 		}
 	}
-
 	free(str.s);
 	
 	if (interval.pos < startpos || interval.pos > endpos)
