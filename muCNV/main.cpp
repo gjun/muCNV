@@ -156,7 +156,6 @@ int main(int argc, char** argv)
 		svgeno G;
 		
 		D.set_size(n);
-		G.initilize(n);
 
 		int val;
 		while((val = V_list.read_interval_multi(S, D, region))>=0)
@@ -164,7 +163,8 @@ int main(int argc, char** argv)
 			if (val>0)
 			{
 				gtype T;
-				svgeno G; 
+				
+				G.initialize(n);
 
 				D.normalize(S, avg_depths, avg_isizes);
 				string ln;
@@ -191,6 +191,7 @@ int main(int argc, char** argv)
 				else if (S.svtype == "INV")
 				{
 					T.call_inv(S, D, G);
+					G.print(S, D, ln);
 					if (ln != "")
 					{
 						vfile.print(ln);

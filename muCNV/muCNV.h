@@ -309,9 +309,11 @@ public:
 
 class svgeno 
 {
+public:
 	bool b_biallelic;
 	bool b_pass;
-
+	bool b_dump;
+	
 	bool dp_flag;
 	bool pos_flag;
 	bool neg_flag;
@@ -336,11 +338,16 @@ class svgeno
 	{
 		n_sample = N;
 		Comps.clear();
+		
+		ns = 0;
+		ac = 0;
 
-		gt.resize(n_sample);
-		cn.resize(n_sample);
+		gt.resize(n_sample, -1);
+		cn.resize(n_sample, -1);
+		
 		b_biallelic = false;
 		b_pass = false;
+		b_dump = true;
 
 		dp_flag = false;
 		pos_flag = false;
@@ -350,16 +357,6 @@ class svgeno
 		cnv_neg_flag = false;
 		inv_pos_flag = false;
 		inv_neg_flag = false;
-
-
-		for(int i=0;i<n_sample;++i)
-		{
-			gt[i] = -1;
-		}
-		for(int i=0;i<n_sample;++i)
-		{
-			cn[i] = -1;
-		}
 	};
 	void print (sv &, svdata &, string &);
 };

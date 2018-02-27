@@ -19,7 +19,7 @@
 
 extern double BE_THRESHOLD;
 extern double P_THRESHOLD;
-
+/*
 bool ordered(vector<Gaussian> &C)
 {
 	for(unsigned i=0; i<C.size()-1;++i)
@@ -573,18 +573,18 @@ void gtype::EM2(vector<double>& x, vector<double> &y, vector<Gaussian2>& C)
 		}
 		
 		// Add pseudo-count values
-		/*
-		 for(unsigned m=0; m<n_comp; ++m)
-		 {
-		 sum_x[m] += p_val[m][0] * p_count;
-		 sum_y[m] += p_val[m][1] * p_count;
+ 
+		// for(unsigned m=0; m<n_comp; ++m)
+		// {
+		// sum_x[m] += p_val[m][0] * p_count;
+		// sum_y[m] += p_val[m][1] * p_count;
 		 
-		 sum_e_xx[m] += (p_val[m][0] - C[m].Mean[0])*(p_val[m][0] - C[m].Mean[0]) * p_count;
-		 sum_e_xy[m] += (p_val[m][0] - C[m].Mean[0])*(p_val[m][1] - C[m].Mean[1]) * p_count;
-		 sum_e_yy[m] += (p_val[m][1] - C[m].Mean[1])*(p_val[m][1] - C[m].Mean[1]) * p_count;
-		 sum_pr[m] += p_count;
-		 }
-		 */
+		// sum_e_xx[m] += (p_val[m][0] - C[m].Mean[0])*(p_val[m][0] - C[m].Mean[0]) * p_count;
+		 //sum_e_xy[m] += (p_val[m][0] - C[m].Mean[0])*(p_val[m][1] - C[m].Mean[1]) * p_count;
+		// sum_e_yy[m] += (p_val[m][1] - C[m].Mean[1])*(p_val[m][1] - C[m].Mean[1]) * p_count;
+		// sum_pr[m] += p_count;
+		// }
+ 
 		for(unsigned m=0;m<n_comp;++m)
 		{
 			C[m].Mean[0] = sum_x[m]/sum_pr[m];
@@ -692,4 +692,4 @@ void gtype::EM(vector<double>& x, vector<Gaussian>& C, bool bFlip)
 		}
 	}
 }
-
+*/

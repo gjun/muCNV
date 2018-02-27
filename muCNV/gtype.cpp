@@ -68,109 +68,109 @@ void svgeno::print(sv &S, svdata &D, string &ln)
 	ln = S.chr;
 	ln += "\t" + to_string(S.pos) + "\t" + S.svtype + "_" + S.chr + ":" + to_string(S.pos) + "-" + to_string(S.end) + "\t.\t<" + S.svtype + ">\t.\t";
 
-	string info = "SVTYPE=" + S.svtype + ";END=" + to_string(S.end) + ";SVLEN=" + to_string(S.len) + ";NCLUS=" + to_string(C.size()) + ";P_OVERLAP=" + to_string(BE_dp);
-
-
+	if (b_pass)
+	{
+		ln += "PASS\t";
+	}
+	else if (b_dump)
+	{
+		ln += "FAIL;DUMP\t";
+	}
+	else
+	{
+		ln += "FAIL\t";
+	}
+	
+	ln += "SVTYPE=" + S.svtype + ";END=" + to_string(S.end) + ";SVLEN=" + to_string(S.len) + ";AC=" + to_string(ac) + ";NS=" + to_string(ns) + ";AF=";
+	if (ns>0)
+		ln+=to_string((double)ac/(double)(2.0*ns));
+	else
+		ln+="0";
+	
 	if (S.svtype == "INV")
 	{
 		if (cnv_pos_flag)
-		{
-			info += ";RF_POS";
-		}
+			ln += ";RF_POS";
 		if (cnv_neg_flag)
-		{
-			info += ";RF_NEG";
-		}
+			ln += ";RF_NEG";
 		if (inv_pos_flag)
-		{
-			info += ";FF";
-		}
+			ln += ";FF";
 		if (inv_neg_flag)
-		{
-			info += ";RR";
-		}
+			ln += ";RR";
+		ln += "\tGT:NR:DP:FP:FN:IP:IN";
 	}
 	else
 	{
+		ln+= ";NCLUS=" + to_string(Comps.size()) + ";P_OVERLAP=" + to_string(p_overlap);
+
 		if (dp_flag)
-		{
-			info += ";DP";
-		}
+			ln += ";DP";
 		if (pos_flag)
-		{
-			info += ";POS";
-		}
+			ln += ";POS";
 		if (neg_flag)
-		{
-			info += ";NEG";
-		}
-		info += ";MEAN=" + to_string(Comps[0].Mean);
+			ln += ";NEG";
+		ln += ";MEAN=" + to_string(Comps[0].Mean);
 		for(unsigned i=1;i<Comps.size(); ++i)
 		{
-			info += "," + to_string(Comps[i].Mean);
+			ln += "," + to_string(Comps[i].Mean);
 		}
 
-		info += ";STDEV=" + to_string(Comps[0].Stdev);
+		ln += ";STDEV=" + to_string(Comps[0].Stdev);
 		for(unsigned i=1;i<Comps.size(); ++i)
 		{
-			info += "," + to_string(Comps[i].Stdev);
+			ln += "," + to_string(Comps[i].Stdev);
 		}
 
-		info += ";FRAC=" + to_string(Comps[0].Alpha);
+		ln += ";FRAC=" + to_string(Comps[0].Alpha);
 		for(unsigned i=1;i<Comps.size(); ++i)
 		{
-			info += "," + to_string(Comps[i].Alpha);
+			ln += "," + to_string(Comps[i].Alpha);
 		}
-	}
-
-	info +=";AC=" + to_string(ac) + ";NS=" + to_string(ns) + ";AF=" + to_string((double)ac/(double)(2.0*ns));   
-	
-	if (b_biallelic)
-	{
-		if (S.svtype == "INV")
+		if (b_biallelic)
 		{
-			info += "\tGT:PR:DP:FP:FN:IP:IN";
+			ln += "\tGT:CN:ND:DP:FP:FN";
 		}
 		else
 		{
-			info += "\tGT:CN:ND:DP:FP:FN";
+			ln += "\tCN:ND:DP:FP:FN";
 		}
-	}
-
-	string filt = "FAIL";
-	if (dp_flag || pos_flag || neg_flag)
-	{
-		if ((ac>0 &&  ac < (2*n_sample) && ns>(n_sample *0.5)) && ((dp_flag && p_overlap<0.2) ||  (p_overlap < 0.3 && (neg_flag || pos_flag)) || (p_overlap < 0.4 && neg_flag && pos_flag)))
-		{
-			b_pass = true;
-			filt = "PASS";
-		}
-	}
-	else
-	{
-		filt = "FAIL;DUMP;
 	}
 	
-	ln += filt + "\t" + info;
-	
-	for(int i=0;i<n_sample;++i)
+	for (int i=0; i<n_sample; ++i)
 	{
-		switch(gt[i])
+		if (b_biallelic)
 		{
-			case 0:
-				ln += "\t0/0:2";
-				break;
-			case 1:
-				ln += "\t0/1:1";
-				break;
-			case 2:
-				ln += "\t1/1:0";
-				break;
-			default:
-				ln += "\t.:.";
-				break;
+			switch(gt[i])
+			{
+				case 0:
+					ln += "\t0/0:";
+					break;
+				case 1:
+					ln += "\t0/1:";
+					break;
+				case 2:
+					ln += "\t1/1:";
+					break;
+				default:
+					ln += "\t.:";
+					break;
+			}
 		}
-		ln += ":" + to_string(D.norm_dp[i]).substr(0,4) + ":" + to_string((int)D.dp[i]) + ":" + to_string((int)D.n_cnv_pos[i]) + "," + to_string((int)D.cnv_pos[i]) + ":" + to_string((int)D.n_cnv_neg[i]) + "," + to_string((int)D.cnv_neg[i]);
+		else
+		{
+			ln += "\t";
+		}
+		if (S.svtype == "INV")
+		{
+			ln += to_string(D.norm_readcount[i]).substr(0,4) + ":" + to_string((int)D.dp[i]) + ":" + to_string(D.n_cnv_pos[i]) + "," + to_string((int)D.cnv_pos[i]) + ":" + to_string(D.n_cnv_neg[i]) + "," + to_string((int)D.cnv_neg[i]) + ":" +  to_string(D.n_inv_pos[i]) + "," + to_string((int)D.inv_pos[i]) + ":" + to_string(D.n_inv_neg[i]) + "," + to_string((int)D.inv_neg[i]);
+		}
+		else
+		{
+			for(int i=0;i<n_sample;++i)
+			{
+				ln += to_string(cn[i]) + ":" + to_string(D.norm_dp[i]).substr(0,4) + ":" + to_string((int)D.dp[i]) + ":" + to_string((int)D.n_cnv_pos[i]) + "," + to_string((int)D.cnv_pos[i]) + ":" + to_string((int)D.n_cnv_neg[i]) + "," + to_string((int)D.cnv_neg[i]);
+			}
+		}
 	}
 }
 
@@ -186,10 +186,10 @@ void gtype::copyComps(vector<Gaussian> &C, vector<Gaussian> &C0)
 }
 
 
-void gtype::call_del(sv &S, svdata& dt, svgeno &G)
+void gtype::call_del(sv &S, svdata& D, svgeno &G)
 {
-	int n_sample=dt.n;
-	double bic1, bic2, bic2_rev, bic3;
+	int n_sample=D.n;
+	double bic1, bic2, bic3;
 
 	vector<Gaussian> C1(1); // 1-component model
 	vector<Gaussian> C2(2); // 2-component model
@@ -198,17 +198,17 @@ void gtype::call_del(sv &S, svdata& dt, svgeno &G)
 	
 	// For each candidate region, run EM
 	// Fit Gaussian mixture models with 1, 2, and 3 components, compare BIC
-	C1[0].estimate(dt.norm_dp);
+	C1[0].estimate(D.norm_dp);
 	C1[0].Alpha = 1;
 	
 	double min_bic = DBL_MAX;
 
 	// P_Overlap
-	G.P_overlap = 1;
+	G.p_overlap = 1;
 	G.b_biallelic = true; //deletions 
 	
 	// One-component model
-	bic1 = BIC(dt.norm_dp, C1);
+	bic1 = BIC(D.norm_dp, C1);
 	min_bic = bic1;
 	copyComps(G.Comps, C1);
 	
@@ -216,15 +216,15 @@ void gtype::call_del(sv &S, svdata& dt, svgeno &G)
 	C2[0].set(1, 0.1);
 	C2[1].set(0.5, 0.1);
 	C2[0].Alpha = C2[1].Alpha = 0.5;
-	EM(dt.norm_dp, C2);
-	bic2 = BIC(dt.norm_dp, C2);
+	EM(D.norm_dp, C2);
+	bic2 = BIC(D.norm_dp, C2);
 
 //	if (bic2 < min_bic && C2[0].Mean > C2[1].Mean && C2[0].Mean > 0.75 && C2[1].Mean > 0.3 && C2[1].Mean < 0.75)
 	if (bic2 < min_bic) // now we do not compare mean
 	{
 		min_bic = bic2;
-		dp_flag = true;
-		BE_dp = BayesError(C2);
+		G.dp_flag = true;
+		G.p_overlap = BayesError(C2);
 		copyComps(G.Comps, C2);
 	}
 
@@ -233,15 +233,15 @@ void gtype::call_del(sv &S, svdata& dt, svgeno &G)
 	C3[1].set(0.5, 0.1);
 	C3[2].set(0, 0.1);
 	C3[0].Alpha = C3[1].Alpha = C3[2].Alpha = 1.0/3.0;
-	EM(dt.norm_dp, C3);
-	bic3 = BIC(dt.norm_dp, C3);
+	EM(D.norm_dp, C3);
+	bic3 = BIC(D.norm_dp, C3);
 
 //	if (bic3 < min_bic &&  C3[0].Mean > 0.75 && C3[0].Mean > (C3[1].Mean+0.35) && C3[1].Mean > (C3[2].Mean+0.35))
 	if (bic3 < min_bic)
 	{
 		min_bic = bic3;
-		dp_flag = true;
-		BE_dp = BayesError(C3);
+		G.dp_flag = true;
+		G.p_overlap = BayesError(C3);
 		copyComps(G.Comps, C3);
 	}
 
@@ -252,103 +252,108 @@ void gtype::call_del(sv &S, svdata& dt, svgeno &G)
 	{
 		for(int i=0;i<n_sample;++i)
 		{
-			if (dt.norm_cnv_pos[i] > 0.5 && dt.norm_cnv_pos[i] < 2 && dt.n_cnv_pos[i] > 2)
+			if (D.norm_cnv_pos[i] > 0.5 && D.norm_cnv_pos[i] < 2 && D.n_cnv_pos[i] > 2)
 			{
 				pos_gt[i] = 1;
 				G.pos_flag = true;
 			}
-			if (dt.norm_cnv_neg[i] > 0.5 && dt.norm_cnv_neg[i] < 2 && dt.n_cnv_neg[i] > 2)
+			if (D.norm_cnv_neg[i] > 0.5 && D.norm_cnv_neg[i] < 2 && D.n_cnv_neg[i] > 2)
 			{
 				neg_gt[i] = 1;
 				G.neg_flag = true;
 			}
 		}
 	}
-		
-//	if (G.dp_flag || G.pos_flag || G.neg_flag)
+
+	if (!G.dp_flag)
 	{
-		if (!G.dp_flag)
+		// Depth-based clustering failed, force 2 or 3 component model
+		if (bic2 < bic3)
+			copyComps(G.Comps, C2);
+		else
+			copyComps(G.Comps, C3);
+		G.p_overlap = BayesError(G.Comps);
+	}
+
+	for(int i=0;i<n_sample;++i)
+	{
+		G.cn[i] = assign(D.norm_dp[i], G.Comps);
+		
+		// To prevent high depth ones are classified as double deletion due to long tail
+		if ((D.norm_dp[i]*2 - G.cn[i]) > 1 || (D.norm_dp[i]*2 - G.cn[i]) < -1)
 		{
-			// Depth-based clustering failed, force 2 or 3 component model
-			if (bic2 < bic3)
-			{
-				copyComps(G.Comps, C2);
-			}
-			else
-			{
-				copyComps(G.Comps, C3);
-			}
-			G.p_overlap = BayesError(C);
+			G.cn[i] = -1;
 		}
-
-		for(int i=0;i<n_sample;++i)
+		switch(G.cn[i])
 		{
-			G.cn[i] = assign(X[i], C);
-
-			// To prevent high depth ones are classified as double deletion due to long tail
-			if ((dt.norm_dp[i]*2 - cn) > 1 || (dt.norm_dp[i]*2 - cn) < -1)
-			{
-				G.cn[i] = -1;
-			}
-			switch(G.cn[i])
-			{
-				case -1:
-					if (pos_gt[i] && neg_gt[i])
+			case -1:
+				if (pos_gt[i] && neg_gt[i])
+				{
+					if ( 0.2 <= D.norm_dp[i] && D.norm_dp[i]< 1)
 					{
-						if ( 0.2 <= dt.norm_dp[i] && dt.norm_dp[i]< 1)
-						{
-							G.gt[i] = 1;
-							G.cn[i] = 1;
-						}
-						else if (dt.norm_dp[i] < 0.2)
-						{
-							G.gt[i] = 2;
-							G.cn[i] = 0;
-						}
+						G.gt[i] = 1;
+						G.cn[i] = 1;
 					}
-					else if (pos_gt[i] || neg_gt[i])
+					else if (D.norm_dp[i] < 0.2)
 					{
-						if ( 0.3 <= dt.norm_dp[i] && dt.norm_dp[i] <= 0.7)
-						{
-							G.gt[i] = 1;
-							G.cn[i] = 1;
-						}
-						else if (dt.norm_dp[i] < 0.2)
-						{
-							G.gt[i] = 2;
-							G.cn[i] = 0;
-						}
+						G.gt[i] = 2;
+						G.cn[i] = 0;
 					}
-					break;
-				case 0:
-					G.gt[i] = 2;
-					G.cn[i] = 0;
-					break;
-				case 1:
+				}
+				else if (pos_gt[i] || neg_gt[i])
+				{
+					if ( 0.3 <= D.norm_dp[i] && D.norm_dp[i] <= 0.7)
+					{
+						G.gt[i] = 1;
+						G.cn[i] = 1;
+					}
+					else if (D.norm_dp[i] < 0.2)
+					{
+						G.gt[i] = 2;
+						G.cn[i] = 0;
+					}
+				}
+				break;
+			case 0:
+				G.gt[i] = 2;
+				G.cn[i] = 0;
+				break;
+			case 1:
+				G.gt[i] = 1;
+				G.cn[i] = 1;
+				break;
+			case 2:
+				G.gt[i] = 0;
+				G.cn[i] = 2;
+				if (pos_gt[i] && neg_gt[i] && D.norm_dp[i] < 1)
+				{
 					G.gt[i] = 1;
 					G.cn[i] = 1;
-					break;
-				case 2:
-					G.gt[i] = 0;
-					G.cn[i] = 2;
-					if (pos_gt[i] && neg_gt[i] && dt.norm_dp[i] < 1)
-					{
-						G.gt[i] = 1;
-						G.cn[i] = 1;
-					}
-					else if ((pos_gt[i] || neg_gt[i]) && dt.norm_dp[i] <=0.7 )
-					{
-						G.gt[i] = 1;
-						G.cn[i] = 1;
-					}
-					break;
-			}
-			if (gt[i] >=0 )
-			{
-				G.ac += gt[i];
-				G.ns += 1;
-			}
+				}
+				else if ((pos_gt[i] || neg_gt[i]) && D.norm_dp[i] <=0.7 )
+				{
+					G.gt[i] = 1;
+					G.cn[i] = 1;
+				}
+				break;
 		}
+		if (G.gt[i] >=0 )
+		{
+			G.ac += G.gt[i];
+			G.ns += 1;
+		}
+	}
+	if (G.dp_flag || G.pos_flag || G.neg_flag)
+	{
+		G.b_dump = false;
+		if ((G.ac>0 &&  G.ac < (2*n_sample) && G.ns>(n_sample *0.5)) && ((G.dp_flag && G.p_overlap<0.2) ||  (G.p_overlap < 0.3 && (G.neg_flag || G.pos_flag)) || (G.p_overlap < 0.4 && G.neg_flag && G.pos_flag)))
+		{
+			G.b_pass = true;
+		}
+	}
+	else
+	{
+		G.b_dump = true;
 	}
 }
 
@@ -402,18 +407,22 @@ void gtype::call_cnv(sv &S, svdata& D, svgeno& G)
 	}
 	G.p_overlap = BayesError(G.Comps);
 
+	
+	vector<int> pos_gt(n_sample, 0);
+	vector<int> neg_gt(n_sample, 0);
+
 	if (S.len > 50) // 100?
 	{
 		for(int i=0;i<n_sample;++i)
 		{
 			if (round(D.norm_dp[i]*2.0) != 2 && D.n_cnv_pos[i] > 2)
 			{
-				G.pos_gt[i] = 1;
+				pos_gt[i] = 1;
 				G.pos_flag = true;
 			}
 			if (round(D.norm_dp[i]*2.0) != 2 && D.n_cnv_neg[i] > 2)
 			{
-				G.neg_gt[i] = 1;
+				neg_gt[i] = 1;
 				G.neg_flag = true;
 			}
 		}
@@ -429,9 +438,9 @@ void gtype::call_cnv(sv &S, svdata& D, svgeno& G)
 
 			if (G.cn[i] == -1)
 			{
-				if ((G.pos_gt[i] && G.neg_gt[i]) || (G.pos_gt[i] && D.n_cnv_pos[i]>4) || (G.neg_gt[i] && D.n_cnv_neg[i]>4))
+				if ((pos_gt[i] && neg_gt[i]) || (pos_gt[i] && D.n_cnv_pos[i]>4) || (neg_gt[i] && D.n_cnv_neg[i]>4))
 				{
-					cn[i] = round(D.norm_dp[i]*2.0);
+					G.cn[i] = round(D.norm_dp[i]*2.0);
 				}
 			}
 		}
@@ -452,6 +461,18 @@ void gtype::call_cnv(sv &S, svdata& D, svgeno& G)
 				}
 			}
 		}
+	}
+	if (G.dp_flag || G.pos_flag || G.neg_flag)
+	{
+		G.b_dump = false;
+		if ((G.ac>0 &&  G.ac < (2*n_sample) && G.ns>(n_sample *0.5)) && ((G.dp_flag && G.p_overlap<0.2) ||  (G.p_overlap < 0.3 && (G.neg_flag || G.pos_flag)) || (G.p_overlap < 0.4 && G.neg_flag && G.pos_flag)))
+		{
+			G.b_pass = true;
+		}
+	}
+	else
+	{
+		G.b_dump = true;
 	}
 }
 
@@ -505,74 +526,63 @@ void gtype::call_inv(sv &S, svdata& D, svgeno& G)
 	}
 	
 	// if any of three clustering meets criteria
-	if (cnv_pos_flag || cnv_neg_flag || inv_pos_flag || inv_neg_flag)
+	if (G.cnv_pos_flag || G.cnv_neg_flag || G.inv_pos_flag || G.inv_neg_flag)
 	{
 		vector<int> support(n_sample, 0);
 		
-		format_output(s, ln);
-		
-		string filt = "FAIL";
-		string info = "SVTYPE=" + s.svtype + ";END=" + to_string(s.end) + ";SVLEN=" + to_string(s.len) ;
-	
 		for(int i=0;i<n_sample;++i)
 		{
 			int cnt = 0;
-			if (cnv_pos_flag && dt.norm_cnv_pos[i] > 0.5)
+			if (G.cnv_pos_flag && D.norm_cnv_pos[i] > 0.5)
 			{
 				cnt++;
 			}
-			if (cnv_neg_flag && dt.norm_cnv_neg[i] > 0.5)
+			if (G.cnv_neg_flag && D.norm_cnv_neg[i] > 0.5)
 			{
 				cnt++;
 			}
-			if (inv_pos_flag)
+			if (G.inv_pos_flag)
 			{
 				cnt++;
 			}
-			if (inv_neg_flag)
+			if (G.inv_neg_flag)
 			{
 				cnt++;
 			}
-			j
-			if (cnt>0 && (inv_pos_flag||inv_neg_flag) && dt.norm_readcount[i] < 0.5)
+			if (cnt>1 && (G.inv_pos_flag||G.inv_neg_flag) && D.norm_readcount[i] < 0.4)
 			{
 				// 1/1
-				gt += "\t1/1";
-				ns ++;
-				ac +=2;
+				G.gt[i] = 2;
+				G.ns ++;
+				G.ac +=2;
 			}
-			else if (cnt >0 && (inv_pos_flag||inv_neg_flag))
+			else if (cnt > 1 && (G.inv_pos_flag || G.inv_neg_flag))
 			{
-				gt += "\t0/1";
-				ns ++;
-				ac +=1;
+				G.gt[i] = 1;
+				G.ns ++;
+				G.ac +=1;
 			}
-			else if ((inv_pos_flag || inv_neg_flag) || cnt>1)
+			else if ((G.inv_pos_flag || G.inv_neg_flag) || cnt>1)
 			{
-				gt += "\t./.";
+				G.gt[i] = 0;
 			}
 			else
 			{
-				gt += "\t0/0";
-				ns ++;
-				ac +=0;
+				G.gt[i] = 0;
+				G.ns ++;
+				G.ac +=0;
 			}
-			gt += ":" + to_string(dt.norm_readcount[i]).substr(0,4) + ":" + to_string((int)dt.dp[i]) + ":" + to_string((int)dt.cnv_pos[i]) + ":" + to_string((int)dt.cnv_neg[i]) + ":" + to_string((int)dt.inv_pos[i]) + ":" + to_string((int)dt.inv_neg[i]);
-
 		}
 		
-		info +=";AC=" + to_string(ac) + ";NS=" + to_string(ns) + ";AF=" + to_string((double)ac/(double)(2.0*ns))  + "\tGT:PR:DP:FP:FN:IP:IN";
-
-		if (ac>0)
+		if (G.ac>0)
 		{
-			filt = "PASS";
+			G.b_pass = true;
 		}
-		
-		ln += filt + "\t" + info + "\t" + gt;
+		G.b_dump = false;
 	}
 	else
 	{
-		ln = "";
+		G.b_dump = true;
 	}
 }
 
