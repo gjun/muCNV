@@ -136,10 +136,11 @@ int main(int argc, char** argv)
 		
 		vector<double> avg_depths;
 		vector<double> avg_isizes;
+		vector<double> std_isizes;
 		
 		invcfs V_list;
 		read_vcf_list(index_file, vcfs);
-		V_list.initialize(vcfs, sample_ids, avg_depths, avg_isizes, region);
+		V_list.initialize(vcfs, sample_ids, avg_depths, avg_isizes, std_isizes, region);
 
 		n = (int)sample_ids.size();
 		cerr << "Genotyping index loaded." << endl;
@@ -158,45 +159,34 @@ int main(int argc, char** argv)
 		D.set_size(n);
 
 		int val;
+
 		while((val = V_list.read_interval_multi(S, D, region))>=0)
 		{
 			if (val>0)
 			{
 				gtype T;
-				
 				G.initialize(n);
-
 				D.normalize(S, avg_depths, avg_isizes);
-				string ln;
-				
 				if (S.svtype == "DEL")
 				{
-					T.call_del(S, D, G);
-					G.print(S, D, ln);
-
-					if (ln != "")
-					{
-						vfile.print(ln);
-					}
+					T.call_del(S, D, G, avg_isizes, std_isizes);
 				}
 				else if (S.svtype == "CNV" || S.svtype == "DUP")
 				{
-					T.call_cnv(S, D, G);
-					G.print(S, D, ln);
-					if (ln != "")
-					{
-						vfile.print(ln);
-					}
+					T.call_cnv(S, D, G, avg_isizes, std_isizes);
 				}
 				else if (S.svtype == "INV")
 				{
-					T.call_inv(S, D, G);
-					G.print(S, D, ln);
-					if (ln != "")
-					{
-						vfile.print(ln);
-					}
+					T.call_inv(S, D, G, avg_isizes, std_isizes);
 				}
+				if (G.b_pass)
+				{
+					string ln;
+					ln.reserve(n*30);
+					G.print(S, D, ln);
+					vfile.print(ln);
+				}
+
 			}
 			
 		}

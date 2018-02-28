@@ -73,7 +73,7 @@ void read_index(string index_file, vector<string> &sample_ids, vector<string> &v
 	
 }
 
-int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, vector<double> &avg_depths, vector<double> &avg_isizes, string &region)
+int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, vector<double> &avg_depths, vector<double> &avg_isizes, vector<double> &std_isizes, string &region)
 {
 	int n_vcf = (int)vcf_files.size();
 	
@@ -164,6 +164,7 @@ int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, ve
 
 					avg_depths.push_back(atof(fields[0].c_str()));
 					avg_isizes.push_back(atof(fields[1].c_str()));
+					std_isizes.push_back(atof(fields[2].c_str()));
 				}
 			}
 			tbx_itr_destroy(itr);

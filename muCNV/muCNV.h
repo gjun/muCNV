@@ -11,6 +11,7 @@
 #include <float.h>
 #include <math.h>
 #include <vector>
+#include <algorithm>
 // #include "pFile.h"
 
 #include "hts.h"
@@ -31,6 +32,20 @@ using namespace std;
 typedef pair<uint64_t, uint64_t> interval_t;
 
 void split(const char*, const char*, std::vector<std::string>&);
+
+template <typename T>
+vector<size_t> sort_indexes(const vector<T> &v) {
+
+	// initialize original index locations
+	vector<size_t> idx(v.size());
+	iota(idx.begin(), idx.end(), 0);
+
+	// sort indexes based on comparing values in v
+	sort(idx.begin(), idx.end(),
+			[&v](size_t i1, size_t i2) {return v[i1] > v[i2];});
+
+	return idx;
+}
 
 class sv
 {
@@ -73,11 +88,13 @@ public:
 	vector<int> n_inv_neg;
 	
 	vector<double> norm_dp;
+	vector<double> norm_readcount;
+	/*
 	vector<double> norm_cnv_pos;
 	vector<double> norm_cnv_neg;
 	vector<double> norm_inv_pos;
 	vector<double> norm_inv_neg;
-	vector<double> norm_readcount;
+	*/
 	
 	void set_size(int num)
 	{
@@ -97,10 +114,12 @@ public:
 		n_inv_neg.resize(n);
 		
 		norm_dp.resize(n);
+		/*
 		norm_cnv_pos.resize(n);
 		norm_cnv_neg.resize(n);
 		norm_inv_pos.resize(n);
 		norm_inv_neg.resize(n);
+		*/
 		norm_readcount.resize(n);
 	};
 	
@@ -115,6 +134,7 @@ public:
 			norm_inv_pos[i] = (inv_pos[i] - isz[i]) / interval.len;
 			norm_inv_neg[i] = (inv_neg[i] - isz[i]) / interval.len;
 			 */
+			 /*
 			if (interval.svtype == "DEL")
 			{
 				norm_cnv_pos[i] = (cnv_pos[i] - avg_isize[i] ) / interval.len;
@@ -136,19 +156,14 @@ public:
 				norm_inv_pos[i] = (inv_pos[i] ) / interval.len;
 				norm_inv_neg[i] = (inv_neg[i] ) / interval.len;
 			}
+			*/
 			// READLEN fixed to 150 : later!!
-			norm_readcount[i] = (double)n_isz[i] * 150.0 / interval.len / avg_depth[i];
+			norm_readcount[i] = (double)n_isz[i] * 150.0 / (interval.len + 600) / avg_depth[i];
 		}
 	};
 	
 	void print(sv &interval)
 	{
-		fprintf(stderr, "Inversion, %d:%d-%d, length %d\n", interval.chrnum, interval.pos, interval.end, interval.len);
-		for(int j=0;j<n;++j)
-		{
-			fprintf(stderr, "%f\t%d,%f\t%d,%f\t%d,%f\t%d,%f\t%d,%f\n", norm_dp[j], n_cnv_pos[j],  norm_cnv_pos[j], n_cnv_neg[j], norm_cnv_neg[j],
-				   n_inv_pos[j], norm_inv_pos[j], n_inv_neg[j], norm_inv_neg[j], n_isz[j], isz[j]);
-		}
 	}
 	
 };
@@ -245,7 +260,7 @@ public:
 	void parse_sv(vector<string> &, sv &);
 	double get_second_value(string &);
 	void get_value_pair(string &, int &, double &);
-	int initialize(vector<string> &, vector<string> &, vector<double> &, vector<double> &, string &);
+	int initialize(vector<string> &, vector<string> &, vector<double> &, vector<double> &, vector<double> &, string &);
 	int read_interval_multi(sv& , svdata &, string &);	
 };
 
@@ -365,9 +380,9 @@ public:
 class gtype
 {
 public:
-	void call_del(sv &, svdata &, svgeno &);
-	void call_cnv(sv &, svdata &, svgeno &);
-	void call_inv(sv &, svdata &, svgeno &);
+	void call_del(sv &, svdata &, svgeno &, vector<double> &, vector<double> &);
+	void call_cnv(sv &, svdata &, svgeno &, vector<double> &, vector<double> &);
+	void call_inv(sv &, svdata &, svgeno &, vector<double> &, vector<double> &);
 
 	void EM(vector<double>&, vector<Gaussian>&);
 	void fit(vector<double>&, vector<Gaussian>&);

@@ -32,7 +32,7 @@ double Gaussian::pdf(const double& x)
 {
 	double z = (x-Mean)/Stdev;
 	double val =  (invsqrt2pi * exp(-0.5*z*z) /Stdev);
-	if (isnan(val))
+	if (std::isnan(val))
 	{
 		return 0;
 	}
@@ -142,7 +142,7 @@ double normpdf(double x, Gaussian& C)
 {
 	double z = (x-C.Mean)/C.Stdev;
 	double val =  (invsqrt2pi * exp(-0.5*z*z) /C.Stdev);
-	if (isnan(val))
+	if (std::isnan(val))
 	{
 		return 0;
 	}
