@@ -1,5 +1,6 @@
 muCNV: Multi-sample SV caller for large-scale WGS data
 
+Feb. 28, 2018
 (c) Goo Jun
 
 muCNV has two-stage model for multi-sample SV calling: 1) From candiate list
@@ -32,12 +33,12 @@ Required parameters:
 
 2. Multi-sample genotyping
 
-$ mucnv -g -i <input.index> -o <output prefix>
+$ mucnv -g -i <input.index> -o <output prefix> -r <region>
 
 Required parameters:
 
    -i <string>,  --index <string>
-     List file containing list of sample-level VCF files 
+     List file containing list of sample-level VCF files, should be bgzipped/tabixed
 
    -g,  --genotype
      Switch argument to generate multi-sample genotype
@@ -45,6 +46,8 @@ Required parameters:
    -o <string>,  --out <string>
      Prefix for output VCF file
 
+   -r <string> --region <string>
+     Genomic region to genotype, chr:start-end (inclusive)
 
 For full list of options:
 $ ./muCNV -h 
