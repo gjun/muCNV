@@ -26,6 +26,49 @@
 
 using namespace std;
 
+bool in_centrome(sv &S)
+{
+	int centro[24][2] = {
+		{122026460,125184587},
+		{92188146,94090557},
+		{90772459,93655574},
+		{49708101,51743951},
+		{46485901,50059807},
+		{58553889,59829934},
+		{58169654,60828234},
+		{44033745,45877265},
+		{43236168,45518558},
+		{39686683,41593521},
+		{51078349,54425074},
+		{34769408,37185252},
+		{16000001,18051248},
+		{16000001,18173523},
+		{17000001,19725254},
+		{36311159,38280682},
+		{22813680,26885980},
+		{15460900,20861206},
+		{24498981,27190874},
+		{26436233,30038348},
+		{10864561,12915808},
+		{12954789,15054318},
+		{58605580,62412542},
+		{10316945,10544039}
+	};
+	int hetero[2] = {51078349, 54425074};
+
+	if (S.pos >= centro[S.chrnum-1][0]-300000 && S.pos <= centro[S.chrnum-1][1]+300000)
+//	if (S.pos >= centro[S.chrnum-1][0] && S.pos <= centro[S.chrnum-1][1])
+		return true;
+	if (S.end >= centro[S.chrnum-1][0]-300000 && S.end <= centro[S.chrnum-1][1]+300000)
+		return true;
+	if (S.chrnum == 7  && S.pos >= hetero[0] && S.pos <= hetero[1]+1000000)
+		return true;
+	if (S.chrnum == 7  && S.end >= hetero[0] && S.end <= hetero[1])
+		return true;
+	return false;
+}
+
+
 bool bUseGL;
 double P_THRESHOLD;
 double BE_THRESHOLD;
@@ -33,11 +76,13 @@ double RO_THRESHOLD;
 
 int main(int argc, char** argv)
 {
-	cerr << "muCNV 0.8 -- Multi-sample CNV genotyper" << endl;
+	cerr << "muCNV 0.9 -- Multi-sample CNV genotyper" << endl;
 	cerr << "(c) 2018 Goo Jun" << endl << endl;
 	cerr.setf(ios::showpoint);
 
 	bool bGenotype = false;
+	bool bNoHeader = false;
+	bool bFail = false;
 	string index_file;
 	string vcf_file;
 	string out_filename;
@@ -69,6 +114,8 @@ int main(int argc, char** argv)
 //		TCLAP::ValueArg<double> argBE("e","error","Threshold for BayesError",false,0.1,"double");
 //		TCLAP::ValueArg<double> argR("r","ratio","Threshold for likelihood ratio",false,5,"double");
 		TCLAP::ValueArg<string> argRegion("r", "region", "Genomic region (chr:start-end)", false, "", "string" );
+		TCLAP::SwitchArg switchFail("a", "all", "Print filter failed variants", cmd, false);
+		TCLAP::SwitchArg switchNoHeader("n", "noheader", "Do not print header in genoptyed VCF", cmd, false);
 		TCLAP::SwitchArg switchGenotype("g","genotype","Generate Genotype from intermediate pileups", cmd, false);
 		
 
@@ -91,13 +138,15 @@ int main(int argc, char** argv)
 		vcf_file = argVcf.getValue();
 		gc_file = argGcfile.getValue();
 		bGenotype = switchGenotype.getValue();
+		bNoHeader = switchNoHeader.getValue();
+		bFail = switchFail.getValue();
 		region = argRegion.getValue();
 		
 		//BE_THRESHOLD = argBE.getValue();
 		//P_THRESHOLD = 1.0/ argR.getValue();
 		
 		BE_THRESHOLD = 0.1;
-		P_THRESHOLD = 0.2;
+		P_THRESHOLD = 0.25;
 		
 		if (bGenotype && index_file == "")
 		{
@@ -150,7 +199,10 @@ int main(int argc, char** argv)
 
 		vfile.open(out_filename);
 		
-		vfile.write_header(sample_ids);
+		if (!bNoHeader)
+		{
+			vfile.write_header(sample_ids);
+		}
 		
 		sv S;
 		svdata D;
@@ -162,7 +214,7 @@ int main(int argc, char** argv)
 
 		while((val = V_list.read_interval_multi(S, D, region))>=0)
 		{
-			if (val>0)
+			if (val>0 && !in_centrome(S) )
 			{
 				gtype T;
 				G.initialize(n);
@@ -177,9 +229,9 @@ int main(int argc, char** argv)
 				}
 				else if (S.svtype == "INV")
 				{
-					T.call_inv(S, D, G, avg_isizes, std_isizes);
+					//T.call_inv(S, D, G, avg_isizes, std_isizes);
 				}
-				if (G.b_pass)
+				if (S.svtype != "INV" && (G.b_pass || (bFail && !G.b_dump)) && G.ac > 0) 
 				{
 					string ln;
 					ln.reserve(n*30);

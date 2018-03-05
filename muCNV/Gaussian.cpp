@@ -169,8 +169,8 @@ double BayesError(vector<Gaussian>& Comps)
 	{
 		for(unsigned j=i+1; j<n_comp; ++j)
 		{
-			double s = (Comps[i].Stdev + Comps[j].Stdev)/2.0;
-			double d = (Comps[i].Mean-Comps[j].Mean)*(Comps[i].Mean-Comps[j].Mean)/(8.0*s*s) + 0.5*log( s / sqrt(Comps[i].Stdev*Comps[j].Stdev));
+			double s = (Comps[i].Stdev*Comps[i].Stdev + Comps[j].Stdev*Comps[j].Stdev); // sigma_p^2 + sigma_q^2
+			double d = (Comps[i].Mean-Comps[j].Mean)*(Comps[i].Mean-Comps[j].Mean)/(4.0*s) + 0.5*log( 0.5 * s / (Comps[i].Stdev*Comps[j].Stdev));
 			if (d<min_d)
 			{
 				min_d = d;

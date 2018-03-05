@@ -26,7 +26,6 @@ const double PI=3.14159265358979;
 const double sqPI=1.77245385090552;
 const double invsqrt2pi= 0.398942280401433;
 const double log2pi = 0.7981798684;
-
 using namespace std;
 
 typedef pair<uint64_t, uint64_t> interval_t;
@@ -343,6 +342,7 @@ public:
 
 	int ac;
 	int ns;
+	vector<double> bic;
 
 	vector<Gaussian> Comps;
 
@@ -359,6 +359,7 @@ public:
 
 		gt.resize(n_sample, -1);
 		cn.resize(n_sample, -1);
+		bic.resize(20, 0);
 		
 		b_biallelic = false;
 		b_pass = false;
