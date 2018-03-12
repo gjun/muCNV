@@ -23,48 +23,81 @@
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
 
-
 using namespace std;
+
+int find_overlap_sv(sv &S , vector<sv>& dels)
+{
+	int idx = 0;
+	double max_RO = 0;
+	double max_idx = 0;
+
+	if (S.pos > 5000000)
+	{
+		idx = find_start(dels, S.pos - 5000000);
+	}
+	while(dels[idx].pos < S.end && idx<(int)dels.size())
+	{
+		if (dels[idx].end > S.pos)
+		{
+			double r = RO(dels[idx], S);
+			if (r>max_RO)
+			{
+				max_RO = r;
+				max_idx = idx;
+			}
+		}
+		idx++;
+	}
+	if (max_RO>0.6)
+	{
+		return max_idx;
+	}
+	else
+	{
+		return -1;
+	}
+}
 
 bool in_centrome(sv &S)
 {
+	// GRCh38 Centromere coordinates , hardcoded
 	int centro[24][2] = {
-		{122026460,125184587},
-		{92188146,94090557},
-		{90772459,93655574},
-		{49708101,51743951},
-		{46485901,50059807},
-		{58553889,59829934},
-		{58169654,60828234},
-		{44033745,45877265},
-		{43236168,45518558},
-		{39686683,41593521},
-		{51078349,54425074},
-		{34769408,37185252},
-		{16000001,18051248},
-		{16000001,18173523},
-		{17000001,19725254},
-		{36311159,38280682},
-		{22813680,26885980},
-		{15460900,20861206},
-		{24498981,27190874},
-		{26436233,30038348},
-		{10864561,12915808},
-		{12954789,15054318},
-		{58605580,62412542},
-		{10316945,10544039}
+		{121700000, 125100000},
+		{91800000, 96000000},
+		{87800000, 94000000},
+		{48200000, 51800000},
+		{46100000, 51400000},
+		{58500000, 62600000},
+		{58100000, 62100000},
+		{43200000, 47200000},
+		{42200000, 45500000},
+		{38000000, 41600000},
+		{51000000, 55800000},
+		{33200000, 37800000},
+		{16500000, 18900000},
+		{16100000, 18200000},
+		{17500000, 20500000},
+		{35300000, 38400000},
+		{22700000, 27400000},
+		{15400000, 21500000},
+		{24200000, 28100000},
+		{25700000, 30400000},
+		{10900000, 13000000},
+		{13700000, 17400000},
+		{58100000, 63800000},
+		{10300000, 10600000}
 	};
-	int hetero[2] = {51078349, 54425074};
+//	int hetero[2] = {51078349, 54425074};
 
-	if (S.pos >= centro[S.chrnum-1][0]-300000 && S.pos <= centro[S.chrnum-1][1]+300000)
-//	if (S.pos >= centro[S.chrnum-1][0] && S.pos <= centro[S.chrnum-1][1])
+//	if (S.pos >= centro[S.chrnum-1][0]-300000 && S.pos <= centro[S.chrnum-1][1]+300000)
+	if (S.pos >= centro[S.chrnum-1][0] && S.pos <= centro[S.chrnum-1][1])
 		return true;
-	if (S.end >= centro[S.chrnum-1][0]-300000 && S.end <= centro[S.chrnum-1][1]+300000)
+	if (S.end >= centro[S.chrnum-1][0] && S.end <= centro[S.chrnum-1][1])
 		return true;
-	if (S.chrnum == 7  && S.pos >= hetero[0] && S.pos <= hetero[1]+1000000)
-		return true;
-	if (S.chrnum == 7  && S.end >= hetero[0] && S.end <= hetero[1])
-		return true;
+//	if (S.chrnum == 7  && S.pos >= hetero[0] && S.pos <= hetero[1]+1000000)
+//		return true;
+//	if (S.chrnum == 7  && S.end >= hetero[0] && S.end <= hetero[1])
+//		return true;
 	return false;
 }
 
@@ -81,10 +114,14 @@ int main(int argc, char** argv)
 	cerr.setf(ios::showpoint);
 
 	bool bGenotype = false;
+	bool bFilter = false;
 	bool bNoHeader = false;
 	bool bFail = false;
+	bool bMerge = false;
 	string index_file;
 	string vcf_file;
+	string supp_file;
+	string supp_id_file;
 	string out_filename;
 	string bam_file;
 	string sChr;
@@ -108,6 +145,8 @@ int main(int argc, char** argv)
 		TCLAP::ValueArg<string> argBam("b","bam","Input BAM/CRAM file name",false,"","string");
 		TCLAP::ValueArg<string> argOut("o","out","Output filename",false,"muCNV.vcf","string");
 		TCLAP::ValueArg<string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
+		TCLAP::ValueArg<string> argSupp("S","Support","Support VCF file containing suppporting info",false,"","string");
+		TCLAP::ValueArg<string> argSuppID("I","IDinSupport","Sample ID list for support vectors",false,"","string");
 		TCLAP::ValueArg<string> argSampleID("s","sample","Sample ID",false,"","string");
 		TCLAP::ValueArg<string> argIndex("i","index","List file containing list of intermediate pileups. Required with genotype option",false,"","string");
 		TCLAP::ValueArg<string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "string");
@@ -115,6 +154,8 @@ int main(int argc, char** argv)
 //		TCLAP::ValueArg<double> argR("r","ratio","Threshold for likelihood ratio",false,5,"double");
 		TCLAP::ValueArg<string> argRegion("r", "region", "Genomic region (chr:start-end)", false, "", "string" );
 		TCLAP::SwitchArg switchFail("a", "all", "Print filter failed variants", cmd, false);
+		TCLAP::SwitchArg switchMerge("m", "merge", "Merge overlapping SVs in the input VCF", cmd, false);
+		TCLAP::SwitchArg switchFilter("t", "filter", "Filter candidate discovery set using supporting VCF", cmd, false);
 		TCLAP::SwitchArg switchNoHeader("n", "noheader", "Do not print header in genoptyed VCF", cmd, false);
 		TCLAP::SwitchArg switchGenotype("g","genotype","Generate Genotype from intermediate pileups", cmd, false);
 		
@@ -125,6 +166,8 @@ int main(int argc, char** argv)
 		cmd.add(argGcfile);
 		cmd.add(argIndex);
 		cmd.add(argSampleID);
+		cmd.add(argSuppID);
+		cmd.add(argSupp);
 		//cmd.add(argBE);
 		//cmd.add(argR);
 		cmd.add(argRegion);
@@ -136,24 +179,34 @@ int main(int argc, char** argv)
 		out_filename = argOut.getValue();
 		sampID = argSampleID.getValue();
 		vcf_file = argVcf.getValue();
+		supp_file = argSupp.getValue();
+		supp_id_file = argSuppID.getValue();
 		gc_file = argGcfile.getValue();
 		bGenotype = switchGenotype.getValue();
 		bNoHeader = switchNoHeader.getValue();
 		bFail = switchFail.getValue();
+		bMerge = switchMerge.getValue();
+		bFilter = switchFilter.getValue();
 		region = argRegion.getValue();
+
+		if (bMerge && bGenotype)
+		{
+			cerr << "Error: --genotype and --merge cannot be set together" << endl;
+			exit(1);
+		}
 		
 		//BE_THRESHOLD = argBE.getValue();
 		//P_THRESHOLD = 1.0/ argR.getValue();
 		
 		BE_THRESHOLD = 0.1;
-		P_THRESHOLD = 0.25;
+		P_THRESHOLD = 0.2;
 		
 		if (bGenotype && index_file == "")
 		{
 			cerr << "Error: list file is required for genotyping" << endl;
 			exit(1);
 		}
-		else if (bGenotype == false)
+		else if (bGenotype == false && bMerge == false && bFilter == false)
 		{
 			if (bam_file == "")
 			{
@@ -178,7 +231,7 @@ int main(int argc, char** argv)
 		abort();
 	}
 	
-	int n = 0;
+	int n_sample = 0;
 	if (bGenotype)
 	{
 		// Multi-sample genotyping from summary VCFs
@@ -187,14 +240,66 @@ int main(int argc, char** argv)
 		vector<double> avg_isizes;
 		vector<double> std_isizes;
 		
+		std::map<string, int> id_to_idx;
+
+
 		invcfs V_list;
 		read_vcf_list(index_file, vcfs);
 		V_list.initialize(vcfs, sample_ids, avg_depths, avg_isizes, std_isizes, region);
 
-		n = (int)sample_ids.size();
+		n_sample = (int)sample_ids.size();
+
+		for(int i=0;i<n_sample; ++i)
+		{
+			id_to_idx[sample_ids[i]] = i;
+		}
+
 		cerr << "Genotyping index loaded." << endl;
-		cerr << n << " samples identified." << endl;
+		cerr << n_sample << " samples identified." << endl;
+
+		ifstream sfile;
+		vector<int> id_map(n_sample, 0);
+
+		if (supp_file != "")
+		{
+			if (supp_id_file != "")
+			{
+				cerr << "Supporting vector file and ID file provided." <<endl;
+			}
+			else
+			{
+				cerr << "Error. Supporting ID file is needed for supporting vector file." << endl;
+				exit(1);
+			}
+
+			ifstream idfile(supp_id_file.c_str(), ios::in);
+			for(int i=0;i<n_sample;++i)
+			{
+				string ln;
+				getline(idfile, ln);
+				if (id_to_idx.find(ln)!=id_to_idx.end())
+				{
+					id_map[i]  = id_to_idx[ln] ;
+				}
+				else
+				{
+					cerr << "Cannot find " << ln << " in ID" << endl;
+					exit(1);
+				}
+			}
+			idfile.close();
+		}
 	
+		sfile.open(supp_file.c_str(), ios::in);
+
+/*
+			sv S;
+			string suppvec;
+			int idx = -1;
+
+			if (read_candidate_vcf(vfile, S, suppvec)>0)
+				*/
+
 		outvcf vfile;
 
 		vfile.open(out_filename);
@@ -208,33 +313,115 @@ int main(int argc, char** argv)
 		svdata D;
 		svgeno G;
 		
-		D.set_size(n);
+		D.set_size(n_sample);
 
 		int val;
 
+		vector<sv> supp_list;
+		vector<string> suppvec_list;
+
 		while((val = V_list.read_interval_multi(S, D, region))>=0)
 		{
+			
+			sv suppS;
+			string suppvec;
+			bool bMatch = false;
+			
+
+			if (!supp_list.empty())
+			{
+				if (supp_list[0].pos < S.pos)
+				{
+					supp_list.clear();
+					suppvec_list.clear();
+				}
+				else
+				{
+					for(int i=0;i<(int)supp_list.size(); ++i)
+					{
+						if (supp_list[i].pos == S.pos && supp_list[i].end == S.end && supp_list[i].svtype == S.svtype)
+						{
+							bMatch = true;
+							suppS = supp_list[i];
+							suppvec = suppvec_list[i];
+							break;
+						}
+					}
+				}
+			}
+			if (!bMatch)
+			{
+				while(read_candidate_vcf(sfile, suppS, suppvec)>0)
+				{
+					if (suppS.pos == S.pos && !(suppS.svtype == S.svtype && suppS.end == S.end) )
+					{
+						supp_list.push_back(suppS);
+						suppvec_list.push_back(suppvec);
+					}
+					else if (suppS.pos == S.pos && suppS.end == S.end && suppS.svtype == S.svtype)
+					{
+						break;
+					}
+					else if (suppS.pos > S.pos) // this should never happen
+					{
+						cerr << "Something wrong" <<endl;
+						cerr << "Curren position is " << S.pos << "-" << S.end << " while supporting vector has passed " << suppS.pos << endl;
+						exit(1);
+					}
+				}
+			}
+			vector<double> wt(n_sample, 1);
+			double add_wt = 0;
+
+			if (suppS.supp > 1 )
+			{
+				switch(suppS.supp)
+				{
+					case 2:
+						add_wt = 1;
+						break;
+					case 3:
+						add_wt = 5;
+						break;
+					case 4:
+						add_wt = 10;
+						break;
+					case 5:
+						add_wt = 20;
+						break;
+				}
+				for(int i=0;i<n_sample; ++i)
+				{
+					if (suppvec[i] == '1')
+					{
+						// Give additional weights to samples found in supp_vec
+						wt[id_map[i]] += add_wt;
+					}
+				}
+			}
+
 			if (val>0 && !in_centrome(S) )
 			{
 				gtype T;
-				G.initialize(n);
+				G.initialize(n_sample);
 				D.normalize(S, avg_depths, avg_isizes);
 				if (S.svtype == "DEL")
 				{
-					T.call_del(S, D, G, avg_isizes, std_isizes);
+					T.call_del(S, D, G, avg_isizes, std_isizes, wt);
 				}
 				else if (S.svtype == "CNV" || S.svtype == "DUP")
 				{
-					T.call_cnv(S, D, G, avg_isizes, std_isizes);
+					T.call_cnv(S, D, G, avg_isizes, std_isizes, wt);
 				}
 				else if (S.svtype == "INV")
 				{
 					//T.call_inv(S, D, G, avg_isizes, std_isizes);
 				}
-				if (S.svtype != "INV" && (G.b_pass || (bFail && !G.b_dump)) && G.ac > 0) 
+//				if (S.svtype != "INV" && (G.b_pass || (bFail && !G.b_dump)) && G.ac > 0) 
+				if (S.svtype != "INV"  && (bFail || G.b_pass))
 				{
 					string ln;
-					ln.reserve(n*30);
+					ln.reserve(n_sample*30);
 					G.print(S, D, ln);
 					vfile.print(ln);
 				}
@@ -244,11 +431,212 @@ int main(int argc, char** argv)
 		}
  		vfile.close();
 	}
+	else if (bMerge)
+	{
+		RO_THRESHOLD = 0.8; 
+
+		vector<sv> dels;
+		vector<sv> dups;
+		vector<sv> invs;
+		vector<sv> all;
+
+		vcfs.push_back(vcf_file);
+
+		read_intervals_from_vcf(sample_ids, vcfs, all);
+		for(int i=0;i<(int)all.size();++i)
+		{
+			if (all[i].svtype == "DEL")
+			{
+				dels.push_back(all[i]);
+			}
+			else if (all[i].svtype == "DUP")
+			{
+				dups.push_back(all[i]);
+			}
+			else if (all[i].svtype == "INV")
+			{
+				invs.push_back(all[i]);
+			}
+		}
+		all.clear();
+
+		sort(dels.begin(), dels.end());
+
+		vector<sv> merged_candidates;
+		merged_candidates.push_back(dels[0]);
+		for(int i=1; i<(int)dels.size(); ++i)
+		{
+			if (RO(dels[i], merged_candidates.back() ) > RO_THRESHOLD)
+			{
+				merged_candidates.push_back(dels[i]);
+			}
+			else
+			{
+				sv best_sv;
+				pick_sv_from_merged(best_sv, merged_candidates);
+				all.push_back(best_sv);
+
+				merged_candidates.clear();
+				merged_candidates.push_back(dels[i]);
+
+			}
+		}
+		if (merged_candidates.size() > 0)
+		{
+			sv best_sv;
+			pick_sv_from_merged(best_sv, merged_candidates);
+			all.push_back(best_sv);
+		}
+		merged_candidates.clear();
+
+		merged_candidates.push_back(dups[0]);
+		for(int i=1; i<(int)dups.size(); ++i)
+		{
+			if (RO(dups[i], merged_candidates.back() ) > RO_THRESHOLD)
+			{
+				merged_candidates.push_back(dups[i]);
+			}
+			else
+			{
+				sv best_sv;
+				pick_sv_from_merged(best_sv, merged_candidates);
+				all.push_back(best_sv);
+
+				merged_candidates.clear();
+				merged_candidates.push_back(dups[i]);
+
+			}
+		}
+		if (merged_candidates.size() > 0)
+		{
+			sv best_sv;
+			pick_sv_from_merged(best_sv, merged_candidates);
+			all.push_back(best_sv);
+		}
+		merged_candidates.clear();
+
+		merged_candidates.push_back(invs[0]);
+		for(int i=1; i<(int)invs.size(); ++i)
+		{
+			if (RO(invs[i], merged_candidates.back() ) > RO_THRESHOLD)
+			{
+				merged_candidates.push_back(invs[i]);
+			}
+			else
+			{
+				sv best_sv;
+				pick_sv_from_merged(best_sv, merged_candidates);
+				all.push_back(best_sv);
+
+				merged_candidates.clear();
+				merged_candidates.push_back(invs[i]);
+
+			}
+		}
+		if (merged_candidates.size() > 0)
+		{
+			sv best_sv;
+			pick_sv_from_merged(best_sv, merged_candidates);
+			all.push_back(best_sv);
+		}
+		merged_candidates.clear();
+
+		std::sort(all.begin(), all.end());
+
+		// Write to output file
+		FILE *fp = fopen(out_filename.c_str(), "w");
+		fprintf(fp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
+		for(int i=0; i<(int)all.size(); ++i)
+		{
+			fprintf(fp, "%d\t%d\tSV%d\t.\t<%s>\t.\tPASS\tSUPP=%d;SVTYPE=%s;END=%d\n", all[i].chrnum, all[i].pos, i+1, all[i].svtype.c_str(), all[i].supp, all[i].svtype.c_str(), all[i].end);
+		}
+		fclose(fp);
+	}
+	else if (bFilter)
+	{
+		vector<sv> dels;
+		vector<sv> dups;
+		vector<sv> invs;
+		vector<sv> all;
+
+		vcfs.push_back(supp_file);
+		read_intervals_from_vcf(sample_ids, vcfs, all);
+		FILE *fp = fopen(out_filename.c_str(), "w");
+
+		fprintf(fp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
+
+		for(int i=0;i<(int)all.size();++i)
+		{
+			if (all[i].svtype == "DEL")
+			{
+				dels.push_back(all[i]);
+			}
+			else if (all[i].svtype == "DUP")
+			{
+				dups.push_back(all[i]);
+			}
+			else if (all[i].svtype == "INV")
+			{
+				invs.push_back(all[i]);
+			}
+		}
+		all.clear();
+
+		ifstream vfile(vcf_file.c_str(), ios::in);
+		int cnt = 1;
+
+		while(vfile.good())
+		{
+			sv S;
+			string suppvec;
+			int idx = -1;
+
+			if (read_candidate_vcf(vfile, S, suppvec)>0)
+			{
+				sv o_S;
+
+				if (S.svtype == "DEL")
+				{
+					idx = find_overlap_sv(S, dels);
+					if (idx >=0)
+					{
+						o_S = dels[idx];
+					}
+				}
+				else if (S.svtype == "DUP" || S.svtype=="CNV")
+				{
+					idx = find_overlap_sv(S, dups);
+					if (idx >=0)
+					{
+						o_S = dups[idx];
+					}
+				}
+				else if (S.svtype == "INV")
+				{
+					idx = find_overlap_sv(S, invs);
+					if (idx >=0)
+					{
+						o_S = invs[idx];
+					}
+				}
+				//print record
+				if (idx>=0)
+				{
+					fprintf(fp, "%s\t%d\tSV%d\t.\t<%s>\t.\tPASS\tSVTYPE=%s;OVERLAP=%s:%d-%d;SUPP=%d;N=%d;END=%d;SUPP_VEC=%s\n", S.chr.c_str(), S.pos, cnt++, S.svtype.c_str(), S.svtype.c_str(), o_S.chr.c_str(), o_S.pos, o_S.end, o_S.supp, S.supp, S.end, suppvec.c_str());
+				}
+				else
+				{
+					fprintf(fp, "%s\t%d\tSV%d\t.\t<%s>\t.\tPASS\tSVTYPE=%s;SUPP=1;N=%d;END=%d;SUPP_VEC=%s\n", S.chr.c_str(), S.pos, cnt++, S.svtype.c_str(), S.svtype.c_str(), S.supp, S.end, suppvec.c_str());
+				}
+			}
+		}
+		fclose(fp);
+		vfile.close();
+	}
 	else
 	{
 		// Generate summary VCF from BAM/CRAM
-
-		n = 1;
+		n_sample = 1;
 		cerr << "Processing individual BAM/CRAM file to genearte summary VCF." << endl;
 
 		gcContent GC;
@@ -261,10 +649,6 @@ int main(int argc, char** argv)
 		cerr<< candidates.size() << " intervals identified from the VCF file." << endl;
 		vector<int> idxs;
 
-		// Here we assume overlapping SVs are already clustered into a single event, so do simple merging without clustering
-		// - For large sample size, procesing merging by a separate task reduces sample-by-sample runtime
-		// - For small sample size, probably genotyping every candidate event would yield better
-		
 		merge_svs(candidates, idxs);
 
 		bFile b(GC);
@@ -279,7 +663,7 @@ int main(int argc, char** argv)
 		for(int i=0; i<(int)idxs.size(); ++i)
 		{
 			int last_idx;
-			if (i<idxs.size()-1)
+			if (i<(int)idxs.size()-1)
 			{
 				last_idx = idxs[i+1];
 			}

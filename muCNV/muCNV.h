@@ -56,6 +56,7 @@ class sv
 	int pos;
 	int end;
 	int len;
+	int supp;
 //	pair<int,int> ci_pos;
 //	pair<int,int> ci_end;
 	void get_len()
@@ -88,12 +89,10 @@ public:
 	
 	vector<double> norm_dp;
 	vector<double> norm_readcount;
-	/*
 	vector<double> norm_cnv_pos;
 	vector<double> norm_cnv_neg;
 	vector<double> norm_inv_pos;
 	vector<double> norm_inv_neg;
-	*/
 	
 	void set_size(int num)
 	{
@@ -113,12 +112,10 @@ public:
 		n_inv_neg.resize(n);
 		
 		norm_dp.resize(n);
-		/*
 		norm_cnv_pos.resize(n);
 		norm_cnv_neg.resize(n);
 		norm_inv_pos.resize(n);
 		norm_inv_neg.resize(n);
-		*/
 		norm_readcount.resize(n);
 	};
 	
@@ -127,13 +124,6 @@ public:
 		for(int i=0;i<n;++i)
 		{
 			norm_dp[i] = dp[i] / avg_depth[i];
-			/*
-			norm_cnv_pos[i] = (cnv_pos[i] - isz[i]) / interval.len;
-			norm_cnv_neg[i] = (cnv_neg[i] - isz[i]) / interval.len;
-			norm_inv_pos[i] = (inv_pos[i] - isz[i]) / interval.len;
-			norm_inv_neg[i] = (inv_neg[i] - isz[i]) / interval.len;
-			 */
-			 /*
 			if (interval.svtype == "DEL")
 			{
 				norm_cnv_pos[i] = (cnv_pos[i] - avg_isize[i] ) / interval.len;
@@ -143,11 +133,12 @@ public:
 			}
 			else if (interval.svtype == "DUP" || interval.svtype == "CNV")
 			{
-				norm_cnv_pos[i] = (cnv_pos[i] ) / avg_isize[i];
-				norm_cnv_neg[i] = (cnv_neg[i] ) / avg_isize[i];
+				norm_cnv_pos[i] = (cnv_pos[i] ) / interval.len;
+				norm_cnv_neg[i] = (cnv_neg[i] ) / interval.len;
 				norm_inv_pos[i] = (inv_pos[i] ) / interval.len;
 				norm_inv_neg[i] = (inv_neg[i] ) / interval.len;
 			}
+			/*
 			else if (interval.svtype == "INV" )
 			{
 				norm_cnv_pos[i] = (cnv_pos[i] ) / avg_isize[i];
@@ -157,7 +148,7 @@ public:
 			}
 			*/
 			// READLEN fixed to 150 : later!!
-			norm_readcount[i] = (double)n_isz[i] * 150.0 / (interval.len + 600) / avg_depth[i];
+			norm_readcount[i] = (double)n_isz[i] * 150.0 / (interval.len + 2.0*(avg_isize[i]-75)) / avg_depth[i];
 		}
 	};
 	
@@ -185,7 +176,7 @@ public:
 	breakpoint();
 };
 
-void pick_sv_from_merged(vector<sv> &, vector<sv> &);
+void pick_sv_from_merged(sv &, vector<sv> &);
 
 class SampleList
 {
@@ -302,7 +293,6 @@ public:
 	void get_avg_depth();
 	void initialize(string &);
 
-	int median(vector<int> &);
 	
 	bFile (gcContent &x) : GC(x) {};
 
@@ -338,6 +328,7 @@ public:
 	bool inv_neg_flag;
 
 	double p_overlap;
+	string info;
 	int n_sample;
 
 	int ac;
@@ -361,6 +352,16 @@ public:
 		cn.resize(n_sample, -1);
 		bic.resize(20, 0);
 		
+		for(int i=0;i<n_sample; ++i)
+		{
+			gt[i] = -1;
+			cn[i] = -1;
+		}
+		for(int i=0;i<20;++i)
+		{
+			bic[i] = 0;
+		}
+
 		b_biallelic = false;
 		b_pass = false;
 		b_dump = true;
@@ -373,6 +374,8 @@ public:
 		cnv_neg_flag = false;
 		inv_pos_flag = false;
 		inv_neg_flag = false;
+		info = "";
+
 	};
 	void print (sv &, svdata &, string &);
 };
@@ -381,11 +384,12 @@ public:
 class gtype
 {
 public:
-	void call_del(sv &, svdata &, svgeno &, vector<double> &, vector<double> &);
-	void call_cnv(sv &, svdata &, svgeno &, vector<double> &, vector<double> &);
+	void call_del(sv &, svdata &, svgeno &, vector<double> &, vector<double> &, vector<double> &);
+	void call_cnv(sv &, svdata &, svgeno &, vector<double> &, vector<double> &, vector<double> &);
 	void call_inv(sv &, svdata &, svgeno &, vector<double> &, vector<double> &);
 
 	void EM(vector<double>&, vector<Gaussian>&);
+	void EM(vector<double>&, vector<double>&, vector<Gaussian>&);
 	void fit(vector<double>&, vector<Gaussian>&);
 //	void EM2(vector<double>&, vector<double> &, vector<Gaussian2>&);
 
@@ -404,10 +408,12 @@ double normpdf(double, Gaussian&);
 double mean(vector<double>&);
 double stdev(vector<double>&, double);
 
+int find_start(vector<sv> &, int );
+
 void read_intervals_from_vcf(vector<string> &, vector<string> &, vector<sv> &);
+int read_candidate_vcf(ifstream &, sv&, string& );
 
-
-double RO(interval_t, interval_t);
+double RO(sv &, sv &);
 void merge_svs(vector<sv> &, vector<int> &);
 void cluster_svs(vector<sv>&, vector< vector<sv> > &);
 
@@ -418,7 +424,9 @@ double BIC(vector<double>&, vector<Gaussian>&);
 double BIC(vector<double>&, vector<double>&, vector<Gaussian2>&);
 double det(double*);
 
-bool ordered(vector<Gaussian>&);
+int median(vector<int> &);
+
+bool ordered(vector<Gaussian> &);
 
 void read_vcf_list(string &, vector<string>&);
 void read_index(string, vector<string>&, vector<string>&, vector<string>&, vector<double>&);

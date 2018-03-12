@@ -28,6 +28,33 @@ bool sv::operator < (const sv& s) const
 	}
 }
 
+int find_start(vector<sv> &L, int pos)
+{
+	// Assume list is sorted according to pos
+	int left = 0;
+	int right = L.size();
+	int idx = (left+right)/2;
+
+	while(right > left)
+	{
+		if (L[idx].pos > pos)
+		{
+			right = idx;
+		}
+		else if (L[idx].pos < pos)
+		{
+			left = idx+1;
+		}
+		else if (L[idx].pos == pos)
+		{
+			while(idx>0 && L[--idx].pos == pos);
+			return idx;
+		}
+		idx = (left+right)/2;
+	}
+	return idx;
+}
+
 sv::sv()
 {
 	svtype = "";
@@ -46,59 +73,54 @@ bool sv::operator == (const sv& s) const
 	return (chrnum == s.chrnum && pos == s.pos && end==s.end && svtype == s.svtype);
 }
 
-void pick_sv_from_merged(vector<sv> &sv_list, vector<sv> &merged)
+void pick_sv_from_merged(sv &picked, vector<sv> &merged)
 {
+
 	if (merged.size() == 1) // trivial case
 	{
-		sv_list.push_back(merged[0]);
+		picked = merged[0];
 		return;
 	}
 	
-	// let's do the position only
-	
-	vector<double> pos, end;
-
-	string svtype = "DEL";
-	sv new_sv;
-	
-	for(int i=0;i<(int)merged.size();++i)
+	int max_supp = 0;
+	// find ones with best supp
+	for(int i=0;i<(int)merged.size(); ++i)
 	{
-		pos.push_back(merged[i].pos);
-		end.push_back(merged[i].end);
-		if (merged[i].svtype != svtype)
+		if (merged[i].supp > max_supp)
+			max_supp = merged[i].supp;
+	}
+
+	vector<sv> max_svs;
+	vector<int> starts;
+	vector<int> ends;
+	for(int i=0;i<(int)merged.size(); ++i)
+	{
+		if (merged[i].supp == max_supp)
 		{
-			svtype = "CNV";
+			max_svs.push_back(merged[i]);
+			starts.push_back(merged[i].pos);
+			ends.push_back(merged[i].end);
 		}
 	}
-	sort(pos.begin(), pos.end());
-	sort(end.begin(), end.end());
-	
+	int med_start = median(starts);
+	int med_end = median(ends);
 
-	new_sv.svtype = svtype;
-	new_sv.chr = merged[0].chr;
-	new_sv.chrnum = merged[0].chrnum;
-	if (pos.size()%2)
-	{
-		int idx =  floor(pos.size()/2.0);
-		new_sv.pos = pos[idx];
-		new_sv.end = end[idx];
-	}
-	else
-	{
-		int idx =  floor(pos.size()/2.0);
-		new_sv.pos = floor((pos[idx]+pos[idx-1])/2.0);
-		new_sv.end =  floor((end[idx]+end[idx-1])/2.0);
+	int best_idx = 0;
+	double best_dist = DBL_MAX;
 
-	}
-	if (new_sv.pos >= new_sv.end)
+	for(int i=0; i<(int)max_svs.size(); ++i)
 	{
-		new_sv.pos = pos[0];
-		new_sv.end = end[end.size()-1];
+		double D = (med_start-max_svs[i].pos)*(med_start-max_svs[i].pos) + (med_end-max_svs[i].end)*(med_end-max_svs[i].end);
+		if (D<best_dist)
+		{
+			best_idx = i;
+			best_dist = D;
+		}
 	}
+	picked = max_svs[best_idx];
+
 //	new_sv.ci_pos.first = pos[0] - new_sv.pos;
 //	new_sv.ci_pos.second = pos[pos.size()-1] - new_sv.pos;
 //	new_sv.ci_end.first = end[0] - new_sv.end;
 //	new_sv.ci_end.second = end[pos.size()-1] - new_sv.end;
-	
-	sv_list.push_back(new_sv);
 }

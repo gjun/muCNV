@@ -545,29 +545,6 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 	}
 }
 
-
-int bFile::median(vector<int> &L)
-{
-
-	int med=0;
-	if (L.size() > 0)
-	{
-		sort(L.begin(), L.end());
-
-		if (L.size()%2)
-		{
-			int m = (int) (L.size()-1)/2;
-			med = L[m];
-		}
-		else
-		{
-			int m = (int) L.size()/2;
-			med = (int)(L[m-1] + L[m])/2;
-		}
-	}
-	return med;
-}
-
 //void bFile::process_readpair(sv &currsv, vector<int> &isz_list, vector<int> &pos_list, string &txt)
 void bFile::process_readpair(sv &currsv, vector<int> &isz_list, string &txt)
 {

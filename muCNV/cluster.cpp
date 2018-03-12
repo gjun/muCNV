@@ -20,7 +20,7 @@
 
 extern double RO_THRESHOLD;
 
-double RO(sv x, sv y)
+double RO(sv &x, sv &y)
 {
 	double l = 0;
 	double L = 0;
@@ -89,34 +89,26 @@ void cluster_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidate
 
 	// 1. sort intervals
 	std::sort(candidates.begin(), candidates.end());
+	// 1.1. delete identical elements
 	candidates.erase( std::unique( candidates.begin(), candidates.end() ), candidates.end() );
 
 	// find a block of sv intervals with overlap
 	while(curr<(int)candidates.size())
 	{
-		//		cerr << "curr : " << curr<< endl;
 		int block_end = candidates[curr].end;
-
-		//		cerr << "block_end : " << block_end << endl;
 		int last_idx = curr;
 
 		while(++last_idx < (int)candidates.size() && candidates[last_idx].chr == candidates[curr].chr &&  candidates[last_idx].pos < block_end)
 		{
-			//			cerr<< "pos : " << candidates[last_idx].pos  << ", end : " << candidates[last_idx].end << endl;
-			if (block_end<candidates[last_idx].end)
+			if (block_end < candidates[last_idx].end)
 			{
 				block_end = candidates[last_idx].end;
-
-				//				cerr << "block_end : " << block_end << endl;
 			}
 		}
-
-		///		cerr << "last_idx : " << last_idx << endl; // TEMP : code reached up to here
-
 		int n = last_idx - curr;
 		if (n>2)
 		{
-			vector< vector <double> >  D; // This might be problematic with dense intervals -- change it to malloc or std::vector
+			vector< vector <double> > D;
 			D.resize(n);
 			for(int i=0;i<n;++i)
 			{
@@ -150,8 +142,8 @@ void cluster_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidate
 
 			while(max_RO>RO_THRESHOLD)
 			{
-				// Merge clusters
 				clusters[max_j] = clusters[max_i];
+
 				// Update distances
 				for(int i=0;i<n;++i)
 				{
@@ -195,8 +187,6 @@ void cluster_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidate
 				if (t.size()>0)
 				{
 					merged_candidates.push_back(t); // Maybe not the best way with unnecessary copies
-					// TODO:: Do not store all candidate intervals, just hold the median one
-					//     :: Maybe should be processed by a preprocessor -- not to deal with it here
 				}
 			}
 

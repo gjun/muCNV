@@ -46,6 +46,28 @@ void split(const char* s, const char* delims, std::vector<std::string>& tokens)
 	}
 }
 
+int median(vector<int> &L)
+{
+
+	int med=0;
+	if (L.size() > 0)
+	{
+		sort(L.begin(), L.end());
+
+		if (L.size()%2)
+		{
+			int m = (int) (L.size()-1)/2;
+			med = L[m];
+		}
+		else
+		{
+			int m = (int) L.size()/2;
+			med = (int)(L[m-1] + L[m])/2;
+		}
+	}
+	return med;
+}
+
 template <class T>
 	void vprint(vector<T> x)
 {
@@ -106,7 +128,7 @@ double stdev(vector<double>& x, double M)
 	double sumsq = 0;
 	for(unsigned j=0; j<x.size(); ++j)
 	{
-		sumsq += x[j]*x[j];
+		sumsq += (x[j]-M) *(x[j]-M);
 	}
-	return sqrt(sumsq / x.size() - M*M);
+	return sqrt(sumsq / x.size());
 }
