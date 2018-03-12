@@ -30,6 +30,17 @@ bool ordered(vector<Gaussian> &C)
 	return true;
 }
 
+bool r_ordered(vector<Gaussian> &C)
+{
+	for(unsigned i=0; i<C.size()-1;++i)
+	{
+		if (C[i].Mean>=C[i+1].Mean)
+			return false;
+	}
+	return true;
+}
+
+
 int gtype::assign(double x, vector<Gaussian> &C)
 {
 	int n_comp = (int) C.size();
@@ -454,7 +465,7 @@ void gtype::call_del(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 
 	vector<int> dp_gt(n_sample, -1);
 
-	if ((G.dp_flag && G.p_overlap<0.2) || (G.dp_flag && (G.pos_flag||G.neg_flag) && G.p_overlap < 0.3 ) || (G.dp_flag && G.pos_flag && G.neg_flag && G.p_overlap<0.4))
+	if ((G.dp_flag && G.p_overlap<0.25) || (G.dp_flag && (G.pos_flag||G.neg_flag) && G.p_overlap < 0.3 ) || (G.dp_flag && G.pos_flag && G.neg_flag && G.p_overlap<0.4))
 	{
 		for(int i=0;i<n_sample;++i)
 		{
@@ -475,7 +486,7 @@ void gtype::call_del(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 	
 	for(int i=0;i<n_sample;++i)
 	{
-		if (dp_gt[i] == 2)
+		if (dp_gt[i] == 2 || (posneg_gt[i] == 1 && D.norm_dp[i]<0.2))
 		{
 			G.gt[i] = 2;
 			G.cn[i] = 0;
@@ -506,7 +517,7 @@ void gtype::call_del(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 			// This is unlikely. If HET is highly common, there should be HOMALT.
 			G.b_pass = false;
 		}
-		if ( (G.ac>0) &&  (G.ac < (2*G.ns)) && (G.ns>(n_sample*0.5)))
+		else if ( (G.ac>0) &&  (G.ac < (2*G.ns)) && (G.ns>(n_sample*0.5)))
 		{
 			G.b_pass = true;
 		}
@@ -521,6 +532,184 @@ void gtype::call_cnv(sv &S, svdata& D, svgeno& G, vector<double> &avg_isz, vecto
 {
 	int n_sample = D.n;
 
+	vector<Gaussian> P1(1);
+	vector<Gaussian> P2(2);
+	
+	vector<Gaussian> N1(1);
+	vector<Gaussian> N2(2);
+	
+	vector<int> posneg_gt(n_sample, -1);
+
+	if (S.len > 300)
+	{
+		vector<int> pos_i(n_sample, 0);
+		vector<int> neg_i(n_sample, 0);;
+		
+		double sum_pos0 = 0, sum_pos1 = 0;
+		double sum_neg0 = 0, sum_neg1 = 0;
+		double sumsq_pos0 = 0, sumsq_pos1 = 0;
+		double sumsq_neg0 = 0, sumsq_neg1 = 0;
+		
+		int n_pos0 = 0, n_pos1 = 0;
+		int n_neg0 = 0, n_neg1 = 0;;
+		
+		for(int i=0;i<n_sample; ++i)
+		{
+			double max_err = S.len / 7.0 ;
+			if (max_err > 1000)
+			{
+				max_err = 1000;
+			}
+			else if (max_err < 75)
+			{
+				max_err = 75;
+			}
+			
+			double isz_min = S.len - (avg_isz[i] - 300) - max_err;
+			double isz_max = S.len - (avg_isz[i] - 300) + max_err;
+			
+			if (D.n_cnv_pos[i] > 2 && D.cnv_pos[i] > isz_min && D.cnv_pos[i] < isz_max && D.norm_dp[i]>1.25)
+			{
+				pos_i[i] = 1;
+				sum_pos1 += D.n_cnv_pos[i] * D.cnv_pos[i];
+				n_pos1 += D.n_cnv_pos[i];
+			}
+			else
+			{
+				pos_i[i] = 0;
+				sum_pos0 += D.cnv_pos[i];
+				n_pos0 ++;
+			}
+			if (D.n_cnv_neg[i] > 2 && D.cnv_neg[i] > isz_min && D.cnv_neg[i] < isz_max && D.norm_dp[i]>1.25)
+			{
+				sum_neg1 += D.n_cnv_neg[i] * D.cnv_neg[i];
+				neg_i[i] = 1;
+				n_neg1 += D.n_cnv_neg[i];
+			}
+			else
+			{
+				sum_neg0 += D.cnv_neg[i];
+				neg_i[i] = 0;
+				n_neg0 ++;
+			}
+			if (pos_i[i] && neg_i[i])
+			{
+				wt[i] += (D.n_cnv_pos[i] + D.n_cnv_neg[i]) / 2.0;
+			}
+		}
+		if (n_pos1 > 0)
+		{
+			P1[0].estimate(D.cnv_pos);
+			P1[0].Alpha = 1;
+			
+			double m0 = sum_pos0 / n_pos0;
+			
+			// pseudocount;
+			sum_pos1 += S.len + S.len - 200;
+			n_pos1 +=2;
+			double m1 = sum_pos1 / n_pos1;
+			
+			for(int i=0; i<n_sample; ++i)
+			{
+				if (pos_i[i])
+				{
+					sumsq_pos1 += D.n_cnv_pos[i] * (D.cnv_pos[i]-m1) * (D.cnv_pos[i]-m1) ;
+				}
+				else
+				{
+					sumsq_pos0 += (D.cnv_pos[i] -m0 ) * (D.cnv_pos[i] - m0);
+				}
+			}
+			sumsq_pos1 += (S.len-200 - m1)*(S.len-200 -m1) + (S.len-m1)*(S.len-m1);
+			
+			double stdev0 = sqrt(sumsq_pos0 / n_pos0);
+			double stdev1 = sqrt(sumsq_pos1 / n_pos1);
+			
+			P2[0].set(m0 , stdev0) ;
+			P2[0].Alpha = (double)n_pos0 / (double)(n_pos0 + n_pos1) ;
+			
+			P2[1].set(m1 , stdev1) ;
+			P2[1].Alpha = (double)n_pos1 / (double)(n_pos0 + n_pos1) ;
+			
+			G.info += ";POS=" + to_string(P2[0].Mean) + "(" + to_string(P2[0].Stdev) + ")"  + "," + to_string(P2[1].Mean) + "(" + to_string(P2[1].Stdev) + ")";
+			
+			/*
+			 double bic_p1 = BIC(D.cnv_pos, P1);
+			 double bic_p2 = BIC(D.cnv_pos, P2);
+			 double be_p1 = BayesError(P2);
+			 if (bic_p1 > bic_p2)
+			 */
+			{
+				G.pos_flag = true;
+			}
+			//			G.info += ";BIC_P=" + to_string(bic_p1) +  "," + to_string(bic_p2);
+			//			G.info += ";BE_P=" + to_string(be_p1);
+		}
+		if (n_neg1 > 0)
+		{
+			N1[0].estimate(D.cnv_neg);
+			N1[0].Alpha = 1;
+			
+			double m0 = sum_neg0 / n_neg0;
+			
+			// pseudocount;
+			sum_neg1 += S.len + S.len - 200;
+			n_neg1 +=2;
+			double m1 = sum_neg1 / n_neg1;
+			
+			for(int i=0; i<n_sample; ++i)
+			{
+				if (neg_i[i])
+				{
+					sumsq_neg1 += D.n_cnv_neg[i] * (D.cnv_neg[i]-m1) * (D.cnv_neg[i]-m1) ;
+				}
+				else
+				{
+					sumsq_neg0 += (D.cnv_neg[i] -m0 ) * (D.cnv_neg[i] - m0);
+				}
+			}
+			sumsq_neg1 += (S.len-200 - m1)*(S.len-200 -m1) + (S.len-m1)*(S.len-m1);
+			double stdev0 = sqrt(sumsq_neg0 / n_neg0);
+			double stdev1 = sqrt(sumsq_neg1 / n_neg1);
+			
+			N2[0].set(m0 , stdev0) ;
+			N2[0].Alpha = (double)n_neg0 / (double)(n_neg0 + n_neg1) ;
+			
+			N2[1].set(m1 , stdev1) ;
+			N2[1].Alpha = (double)n_neg1 / (double)(n_neg0 + n_neg1) ;
+			
+			G.info += ";NEG=" + to_string(N2[0].Mean) + "(" + to_string(N2[0].Stdev) + ")"  + "," + to_string(N2[1].Mean) + "(" + to_string(N2[1].Stdev) + ")";
+			
+			/*
+			 if (BIC(D.cnv_neg, N1) > BIC(D.cnv_neg, N2))*/
+			{
+				G.neg_flag = true;
+			}
+		}
+		
+		if (G.pos_flag && G.neg_flag)
+		{
+			for(int i=0; i<n_sample; ++i)
+			{
+				double p0 = P2[0].pdf(D.cnv_pos[i]);
+				double p1 = P2[1].pdf(D.cnv_pos[i]);
+				
+				double n0 = N2[0].pdf(D.cnv_neg[i]);
+				double n1 = N2[1].pdf(D.cnv_neg[i]);
+				
+				if ((p1 > 2*p0 && D.n_cnv_pos[i]>1) || (n1 > 2*n0 && D.n_cnv_neg[i] >1))
+				{
+					posneg_gt[i] = 1;
+				}
+				else if (p0 >p1 && n0 >n1)
+				{
+					posneg_gt[i] = 0;
+					// default : missing
+				}
+			}
+		}
+	} //S.len > 150
+
 	vector<Gaussian> C(1);
 	double min_BIC = DBL_MAX;
 
@@ -532,106 +721,8 @@ void gtype::call_cnv(sv &S, svdata& D, svgeno& G, vector<double> &avg_isz, vecto
 	min_BIC = G.bic[0];
 	copyComps(G.Comps, C);
 
-/*
-	vector<int> cnt(20,0);
-	// Count CN for each bin
-	for(int i=0;i<n_sample;++i)
-	{
-		int k = round(D.norm_dp[i]*2.0);
-		if (k>4) 
-		{
-			if (k>10) k=10;
-			cnt[k]++;
-		}
-	}
-
-	vector<size_t> idx = sort_indexes(cnt);
-	for (int i=1; i<=2 ; ++i)
-	{
-		Gaussian *pG = new Gaussian;
-		C.push_back(*pG);
-		for(int j=0;j<=i;++j)
-		{
-			C[j].Mean = 1.0 + j*0.5;
-			C[j].Stdev = 0.1;
-			C[j].Alpha = 1.0/(i+1);
-		}
-		EM(D.norm_dp, C);
-		double bic = BIC(D.norm_dp, C);
-		G.bic[i] = bic;
-
-		bool mean_flag = false;
-		for(int j=0;j<=i; ++j)
-		{
-			if (abs(C[j].Mean  - (1.0 + j*0.5)) > 0.2)
-			{
-				mean_flag = true;
-			}
-		}
-
-		if (bic < min_BIC && BayesError(C)<max_overlap && !mean_flag)
-		{
-			n_comp = i+1;
-			min_BIC = bic;
-			copyComps(G.Comps, C);
-			G.dp_flag = true;
-		}
-	}
-
-	if (n_comp == 3)
-	{
-		for(int i=0; i<10 && cnt[idx[i]]>0; ++i)
-		{
-			Gaussian *pG = new Gaussian;
-			C.push_back(*pG);
-
-			for(unsigned j=0;j<3; ++j)
-			{
-				C[j].Mean = 1.0 + j*0.5;
-				C[j].Stdev = 0.1;
-				C[j].Alpha = 1.0/(i+4);
-			}
-			for(unsigned j=0; j<=i; ++j)
-			{
-				C[j+3].Mean = (double)idx[j]*0.5;
-				C[j+3].Stdev = 0.1;
-				C[j+3].Alpha = 1.0/(i+4);
-			}
-			EM(D.norm_dp, C);
-
-			double bic = BIC(D.norm_dp, C); 
-			G.bic[i+3] = bic;
-
-			bool mean_flag = false;
-			for(int j=0;j<3; ++j)
-			{
-				if (abs(C[j].Mean  - (1.0 + j*0.5)) > 0.2)
-				{
-					mean_flag = true;
-				}
-			}
-
-			for(int j=0;j<=i; ++j)
-			{
-				if (abs(C[j+3].Mean  - idx[j]*0.5 ) > 0.2)
-				{
-					mean_flag = true;
-				}
-			}
-
-
-			if (bic < min_BIC && BayesError(C)<max_overlap && !mean_flag) // More stringent for higher copy numbers
-			{
-				n_comp = i+4;
-				min_BIC = bic;
-				copyComps(G.Comps, C);
-				G.dp_flag = true;
-			}
-		}
-	}
-	*/
-
 	bool keep_going = true;
+	double prev_be = 1;
 	for(int i=1;i<10 && keep_going; ++i)
 	{
 		Gaussian *pG = new Gaussian;
@@ -643,132 +734,92 @@ void gtype::call_cnv(sv &S, svdata& D, svgeno& G, vector<double> &avg_isz, vecto
 			C[j].Stdev = 0.05;
 			C[j].Alpha = 1.0/(i+1);
 		}
-
-		EM(D.norm_dp, C);
+		C[0].Stdev = 0.1; // More variance in CN2 only
+		
+		EM(D.norm_dp, wt, C);
 		//fit(D.norm_dp, C);
 
 		G.bic[i] = BIC(D.norm_dp, C);
+		double be = BayesError(C);
+		
 		keep_going = false;
-		if (G.bic[i] < min_BIC && C[i].Alpha > 0.5/(double)n_sample) // not significantly increase Bayes error
+		if (G.bic[i] < min_BIC && C[i].Alpha > 0.5/(double)n_sample && r_ordered(C) && be < 0.4 && be < prev_be+0.2) // not significantly increase Bayes error
 		{
 			n_comp = i+1;
-
 			min_BIC = G.bic[i];
 			copyComps(G.Comps, C);
 			G.dp_flag = true;
 			keep_going = true;
+			G.p_overlap = be;
+			prev_be = be;
 		}
 	}
 
-	G.p_overlap = BayesError(G.Comps);
-
-	vector<int> pos_gt(n_sample, 0);
-	vector<int> neg_gt(n_sample, 0);
-
-	if (S.len >500)// 100?
+	vector<int> dp_cn(n_sample, -1);
+	
+	if ((G.dp_flag && G.p_overlap<0.25) || (G.dp_flag && (G.pos_flag||G.neg_flag) && G.p_overlap < 0.3 ) || (G.dp_flag && G.pos_flag && G.neg_flag && G.p_overlap<0.4))
 	{
 		for(int i=0;i<n_sample;++i)
 		{
-			double min_isz = S.len - avg_isz[i] - (std_isz[i]*2);
-			double max_isz = S.len + (std_isz[i]*2);
-
-			if (D.n_cnv_pos[i]>1 && D.n_cnv_neg[i]>1 && D.cnv_pos[i] > min_isz && D.cnv_pos[i] < max_isz && D.cnv_neg[i] < max_isz && D.cnv_neg[i] > min_isz)
-			{
-				pos_gt[i] = 1;
-				neg_gt[i] = 1;
-				G.pos_flag = true;
-				G.neg_flag = true;
-			}
-
-			if (D.n_cnv_pos[i]>2 && D.cnv_pos[i] > min_isz && D.cnv_pos[i] < max_isz)
-			{
-				pos_gt[i] = 1;
-				G.pos_flag = true;
-			}
-			if (D.n_cnv_neg[i]>2 && D.cnv_neg[i] > min_isz && D.cnv_neg[i] < max_isz)
-			{
-				neg_gt[i] = 1;
-				G.neg_flag = true;
-			}
+			dp_cn[i] = assign(D.norm_dp[i], G.Comps);
 		}
 	}
 
-	// if any of three clustering meets criteria
-//	if (dp_flag || pos_flag || neg_flag)
-	{
-		for(int i=0;i<n_sample;++i)
-		{
-			G.gt[i] = -1;
-			G.cn[i] = assign(D.norm_dp[i], G.Comps);
+	G.b_biallelic = (n_comp < 4);
 
-/*
-			if (G.cn[i] == -1  && D.norm_dp[i]>1.25)
-			{
-				//if ((pos_gt[i] && neg_gt[i]) || (pos_gt[i] && D.n_cnv_pos[i]>3) || (neg_gt[i] && D.n_cnv_neg[i]>3))
-				if ((pos_gt[i] && neg_gt[i]))
-				{
-					G.cn[i] = round(D.norm_dp[i]*2.0);
-				}
-			}
-			if (G.cn[i] == 2 && D.norm_dp[i] > 1.25) 
-			{
-				//if ((pos_gt[i] && neg_gt[i]) || (pos_gt[i] && D.n_cnv_pos[i]>3) || (neg_gt[i] && D.n_cnv_neg[i]>3))
-				if ((pos_gt[i] && neg_gt[i]))
-				{
-					G.cn[i] = round(D.norm_dp[i]*2.0);
-				//	G.cn[i] = 3;  // guess there's a duplication
-				}
-			}
-			*/
-		}
-		
-		G.b_biallelic = (n_comp < 4);
-		for(int i=0;i<n_sample;++i)
+	for(int i=0;i<n_sample;++i)
+	{
+		if (G.b_biallelic)
 		{
-			if( G.b_biallelic)
+			if (dp_cn[i] == 4 || (posneg_gt[i] == 1 && D.norm_dp[i]>1.8))
 			{
-				switch(G.cn[i])
-				{
-				case 2:
-					G.gt[i] = 0;
-					G.ns ++;
-					break;
-				case 3:
-					G.gt[i] = 1;
-					G.ns ++;
-					G.ac += 1;
-					break;
-				case 4:
-					G.gt[i] = 2;
-					G.ns ++;
-					G.ac += 2;
-					break;
-				}
+				G.gt[i] = 2;
+				G.cn[i] = 4;
+				G.ac +=2;
+				G.ns +=1;
+			}
+			else if (dp_cn[i] == 3 || posneg_gt[i] == 1)
+			{
+				G.gt[i] = 1;
+				G.cn[i] = 3;
+				G.ac += 1;
+				G.ns +=1;
+			}
+			else if (dp_cn[i] == 2 || posneg_gt[i] == 0)
+			{
+				G.gt[i] = 0;
+				G.cn[i] = 2;
+				G.ns += 1;
 			}
 			else
 			{
-				if (G.cn[i]>=0)
+				G.gt[i] = -1;
+				G.cn[i] = -1;
+			}
+		}
+		else
+		{
+			if (G.cn[i]>=0)
+			{
+				G.ns++;
+				if (G.cn[i] >  2)
 				{
-					G.ns++;
-					if (G.cn[i] >  2)
-					{
-						G.ac++;
-					}
+					G.ac++;
 				}
 			}
-
 		}
 	}
+
 	if (G.dp_flag || G.pos_flag || G.neg_flag)
 	{
 		G.b_dump = false;
-		//if ((G.ac>0 &&  G.ac < (2*n_sample) && G.ns>(n_sample *0.5)) && ((G.dp_flag && G.p_overlap<0.25) ||  (G.p_overlap < 0.35 && (G.neg_flag || G.pos_flag)) || (G.p_overlap < 0.45 && G.neg_flag && G.pos_flag)))
-		if (n_comp ==2 && G.Comps[1].Alpha > 0.9)
+
+		if (n_comp ==2 && G.Comps[1].Alpha > 0.8)
 		{
 			// This is unlikely
 			G.b_pass = false;
 		}
-		else if ((G.ac>0 &&  G.ac < (2*n_sample) && G.ns>(n_sample *0.5)) && (n_comp>1) && ((G.dp_flag && G.p_overlap<0.2) || (G.p_overlap<0.3 && G.dp_flag && G.neg_flag && G.pos_flag)))
+		else if ( (G.ac>0) &&  (G.ac < (2*G.ns)) && (G.ns>(n_sample*0.5)))
 		{
 			G.b_pass = true;
 		}
