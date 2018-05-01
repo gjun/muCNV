@@ -125,10 +125,18 @@ double mean(vector<double>& x)
 
 double stdev(vector<double>& x, double M)
 {
-	double sumsq = 0;
-	for(unsigned j=0; j<x.size(); ++j)
+
+	if (x.size()>1)
 	{
-		sumsq += (x[j]-M) *(x[j]-M);
+		double sumsq = 0;
+		for(unsigned j=0; j<x.size(); ++j)
+		{
+			sumsq += (x[j]-M) *(x[j]-M);
+		}
+		return sqrt(sumsq / x.size());
 	}
-	return sqrt(sumsq / x.size());
+	else
+	{
+		return 0.01;
+	}
 }

@@ -315,7 +315,7 @@ int main(int argc, char** argv)
 		
 		D.set_size(n_sample);
 
-		int val;
+		int val = 0;
 
 		vector<sv> supp_list;
 		vector<string> suppvec_list;
@@ -378,7 +378,7 @@ int main(int argc, char** argv)
 				switch(suppS.supp)
 				{
 					case 2:
-						add_wt = 1;
+						add_wt = 2;
 						break;
 					case 3:
 						add_wt = 5;
@@ -400,11 +400,13 @@ int main(int argc, char** argv)
 				}
 			}
 
-			if (val>0 && !in_centrome(S) )
+			if (val>0  && !in_centrome(S) )
 			{
 				gtype T;
 				G.initialize(n_sample);
 				D.normalize(S, avg_depths, avg_isizes);
+				G.b_pass = false;
+
 				if (S.svtype == "DEL")
 				{
 					T.call_del(S, D, G, avg_isizes, std_isizes, wt);
@@ -413,16 +415,20 @@ int main(int argc, char** argv)
 				{
 					T.call_cnv(S, D, G, avg_isizes, std_isizes, wt);
 				}
+				/*
 				else if (S.svtype == "INV")
 				{
-					//T.call_inv(S, D, G, avg_isizes, std_isizes);
+					T.call_tmp(S, D, G, avg_isizes, std_isizes, wt);
 				}
+				*/
 //				if (S.svtype != "INV" && (G.b_pass || (bFail && !G.b_dump)) && G.ac > 0) 
 				if (S.svtype != "INV"  && (bFail || G.b_pass))
+//				if (G.b_pass || bFail)
 				{
 					string ln;
+					G.info += ";SUPP=" + to_string(suppS.supp);
 					ln.reserve(n_sample*30);
-					G.print(S, D, ln);
+					G.print(S, D, ln, wt);
 					vfile.print(ln);
 				}
 

@@ -473,13 +473,11 @@ int invcfs::read_interval_multi(sv& interval, svdata& dt, string &region)
 	}
 	free(str.s);
 	
-	/*
 	if (interval.pos < startpos || interval.pos > endpos)
 	{
 		return 0;
 	}
 	else
-		*/
 	{
 		return 1;
 	}

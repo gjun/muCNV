@@ -153,6 +153,21 @@ double normpdf(double x, Gaussian& C)
 }
 
 
+double lognormpdf(double x, Gaussian& C)
+{
+	double z = (x-C.Mean)/C.Stdev;
+	if (C.Stdev>0)
+	{
+		return (-0.9189385332 -0.5*z*z - log(C.Stdev));
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+
+
 double BayesError(vector<Gaussian>& Comps)
 {
 	// Returns maximum Bhattacharyya coefficient (== exp(-D) ) between components
@@ -272,6 +287,32 @@ double BIC(vector<double>& x, vector<Gaussian> &C)
 	
 	ret = -2.0 * llk +  2*n_comp*log(n_sample);
 	
+	return ret;
+}
+
+
+double BIC(vector<double>& x, vector<Gaussian> &C, vector<double> &wt)
+{
+	int n_sample = (int)x.size();
+	int n_comp = (int)C.size();
+	double llk = 0;
+	double ret = 0;
+	
+	for(int j=0; j<n_sample; ++j)
+	{
+		double l = 0;
+		for(int m=0; m<n_comp; ++m)
+		{
+			l += C[m].Alpha * normpdf(x[j], C[m]);
+		}
+		l *= wt[j];
+		if (l>0)
+		{
+			llk += log(l);
+		}
+	}
+	
+	ret = -2.0 * llk +  2*n_comp*log(n_sample);
 	return ret;
 }
 

@@ -133,12 +133,11 @@ public:
 			}
 			else if (interval.svtype == "DUP" || interval.svtype == "CNV")
 			{
-				norm_cnv_pos[i] = (cnv_pos[i] ) / interval.len;
-				norm_cnv_neg[i] = (cnv_neg[i] ) / interval.len;
-				norm_inv_pos[i] = (inv_pos[i] ) / interval.len;
-				norm_inv_neg[i] = (inv_neg[i] ) / interval.len;
+				norm_cnv_pos[i] = (cnv_pos[i] + avg_isize[i]) / interval.len;
+				norm_cnv_neg[i] = (cnv_neg[i] + avg_isize[i]) / interval.len;
+				norm_inv_pos[i] = (inv_pos[i] + avg_isize[i]) / interval.len;
+				norm_inv_neg[i] = (inv_neg[i] + avg_isize[i]) / interval.len;
 			}
-			/*
 			else if (interval.svtype == "INV" )
 			{
 				norm_cnv_pos[i] = (cnv_pos[i] ) / avg_isize[i];
@@ -146,7 +145,6 @@ public:
 				norm_inv_pos[i] = (inv_pos[i] ) / interval.len;
 				norm_inv_neg[i] = (inv_neg[i] ) / interval.len;
 			}
-			*/
 			// READLEN fixed to 150 : later!!
 			norm_readcount[i] = (double)n_isz[i] * 150.0 / (interval.len + 2.0*(avg_isize[i]-75)) / avg_depth[i];
 		}
@@ -347,6 +345,7 @@ public:
 		
 		ns = 0;
 		ac = 0;
+		p_overlap = 1;
 
 		gt.resize(n_sample, -1);
 		cn.resize(n_sample, -1);
@@ -377,13 +376,16 @@ public:
 		info = "";
 
 	};
-	void print (sv &, svdata &, string &);
+	void print (sv &, svdata &, string &, vector<double> &);
 };
 
 
 class gtype
 {
 public:
+	void call_tmp(sv &, svdata &, svgeno &, vector<double> &, vector<double> &, vector<double> &);
+	void call_del_tmp(sv &, svdata &, svgeno &, vector<double> &, vector<double> &, vector<double> &);
+	void call_dup_tmp(sv &, svdata &, svgeno &, vector<double> &, vector<double> &, vector<double> &);
 	void call_del(sv &, svdata &, svgeno &, vector<double> &, vector<double> &, vector<double> &);
 	void call_cnv(sv &, svdata &, svgeno &, vector<double> &, vector<double> &, vector<double> &);
 	void call_inv(sv &, svdata &, svgeno &, vector<double> &, vector<double> &);
@@ -421,6 +423,7 @@ double BayesError(vector<Gaussian>&);
 double BayesError(vector<Gaussian2>&);
 
 double BIC(vector<double>&, vector<Gaussian>&);
+double BIC(vector<double>&, vector<Gaussian>&, vector<double> &);
 double BIC(vector<double>&, vector<double>&, vector<Gaussian2>&);
 double det(double*);
 
