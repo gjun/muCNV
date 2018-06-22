@@ -367,6 +367,7 @@
 		F138FD811CAD744A00CD5539 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
 				HEADER_SEARCH_PATHS = (
 					"tclap-1.2.1/include",
 					tabix,
@@ -385,6 +386,7 @@
 		F138FD821CAD744A00CD5539 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
 				HEADER_SEARCH_PATHS = (
 					"tclap-1.2.1/include",
 					tabix,

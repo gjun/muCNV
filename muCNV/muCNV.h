@@ -12,6 +12,7 @@
 #include <math.h>
 #include <vector>
 #include <algorithm>
+#include <numeric>
 // #include "pFile.h"
 
 #include "hts.h"

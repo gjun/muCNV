@@ -7,7 +7,8 @@
 //
 
 #include "muCNV.h"
-#include <math.h>
+//#include <math.h>
+#include <cmath>
 
 Gaussian::Gaussian()
 {
