@@ -8,20 +8,17 @@
 
 /* Begin PBXBuildFile section */
 		F114FEA7203B7D5100DE1FBC /* gtype_old.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F114FEA5203B7D5100DE1FBC /* gtype_old.cpp */; };
-		F129E1101EF901CA007793FB /* liblzma.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = F129E10F1EF901CA007793FB /* liblzma.tbd */; };
-		F129E1121EF901D2007793FB /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = F129E1111EF901D2007793FB /* libcurl.tbd */; };
-		F129E1131EF901E1007793FB /* libhts.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F129E10D1EF90129007793FB /* libhts.a */; };
 		F13828731FCF36CC003ADE67 /* bamcram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F13828721FCF36CC003ADE67 /* bamcram.cpp */; };
 		F138FD7D1CAD744A00CD5539 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD7C1CAD744A00CD5539 /* main.cpp */; };
 		F138FD8B1CAD74EE00CD5539 /* cluster.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD831CAD74EE00CD5539 /* cluster.cpp */; };
 		F138FD8C1CAD74EE00CD5539 /* common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD841CAD74EE00CD5539 /* common.cpp */; };
 		F138FD8F1CAD74EE00CD5539 /* Error.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD871CAD74EE00CD5539 /* Error.cpp */; };
 		F138FD901CAD74EE00CD5539 /* File.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD891CAD74EE00CD5539 /* File.cpp */; };
-		F138FDC31CAD7FB900CD5539 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = F138FDC21CAD7FB900CD5539 /* libz.tbd */; };
 		F194ED351F25A41400489E0C /* gtype.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED341F25A41400489E0C /* gtype.cpp */; };
 		F194ED371F25B3C900489E0C /* sv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED361F25B3C900489E0C /* sv.cpp */; };
 		F194ED391F2623BB00489E0C /* vcf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED381F2623BB00489E0C /* vcf.cpp */; };
 		F194ED3B1F2708CC00489E0C /* Gaussian.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED3A1F2708CC00489E0C /* Gaussian.cpp */; };
+		F1A713E9212CCA15007421B1 /* libhts.1.9-20-ge1650a9.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F1A713E8212CCA15007421B1 /* libhts.1.9-20-ge1650a9.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -83,6 +80,7 @@
 		F194ED361F25B3C900489E0C /* sv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sv.cpp; sourceTree = "<group>"; };
 		F194ED381F2623BB00489E0C /* vcf.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = vcf.cpp; sourceTree = "<group>"; };
 		F194ED3A1F2708CC00489E0C /* Gaussian.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Gaussian.cpp; sourceTree = "<group>"; };
+		F1A713E8212CCA15007421B1 /* libhts.1.9-20-ge1650a9.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libhts.1.9-20-ge1650a9.dylib"; path = "../../../../usr/local/lib/libhts.1.9-20-ge1650a9.dylib"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -90,10 +88,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F129E1131EF901E1007793FB /* libhts.a in Frameworks */,
-				F129E1121EF901D2007793FB /* libcurl.tbd in Frameworks */,
-				F129E1101EF901CA007793FB /* liblzma.tbd in Frameworks */,
-				F138FDC31CAD7FB900CD5539 /* libz.tbd in Frameworks */,
+				F1A713E9212CCA15007421B1 /* libhts.1.9-20-ge1650a9.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -103,6 +98,7 @@
 		F129E10C1EF90129007793FB /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				F1A713E8212CCA15007421B1 /* libhts.1.9-20-ge1650a9.dylib */,
 				F129E1111EF901D2007793FB /* libcurl.tbd */,
 				F129E10F1EF901CA007793FB /* liblzma.tbd */,
 				F129E10D1EF90129007793FB /* libhts.a */,
