@@ -98,8 +98,8 @@ int gtype::assign(double x, vector<Gaussian> &C)
 
 void svgeno::print(sv &S, svdata &D, string &ln, vector<double>& wt)
 {
-	ln = S.chr;
-	ln += "\t" + to_string(S.pos) + "\t" + S.svtype + "_" + S.chr + ":" + to_string(S.pos) + "-" + to_string(S.end) + "\t.\t<" + S.svtype + ">\t.\t";
+	ln = to_string(S.chrnum);
+	ln += "\t" + to_string(S.pos) + "\t" + svTypeName(S.svtype) + "_" + to_string(S.chrnum) + ":" + to_string(S.pos) + "-" + to_string(S.end) + "\t.\t<" + svTypeName(S.svtype) + ">\t.\t";
 
 	if (b_pass)
 	{
@@ -114,7 +114,7 @@ void svgeno::print(sv &S, svdata &D, string &ln, vector<double>& wt)
 		ln += "FAIL\t";
 	}
 	
-	ln += "SVTYPE=" + S.svtype + ";END=" + to_string(S.end) + ";SVLEN=" + to_string(S.len) + ";AC=" + to_string(ac) + ";NS=" + to_string(ns) + ";AF=";
+	ln += "SVTYPE=" + string(svTypeName(S.svtype)) + ";END=" + to_string(S.end) + ";SVLEN=" + to_string(S.len) + ";AC=" + to_string(ac) + ";NS=" + to_string(ns) + ";AF=";
 	if (ns>0)
 		ln+=to_string((double)ac/(double)(2.0*ns));
 	else
@@ -197,7 +197,7 @@ void svgeno::print(sv &S, svdata &D, string &ln, vector<double>& wt)
 			ln += "\t";
 		}
 
-		if (S.svtype == "INV")
+		if (S.svtype == INV)
 		{
 			if (cn[i]<0)
 			{
@@ -267,7 +267,7 @@ void gtype::call_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 			G.gt[i] = 1;
 			n_dp ++;
 
-			if (S.svtype == "INV")
+			if (S.svtype == INV)
 			{
 				sum_dp += D.norm_readcount[i];
 
@@ -301,7 +301,7 @@ void gtype::call_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 		else
 		{
 			G.gt[i] = 0;
-			if (S.svtype == "INV")
+			if (S.svtype == INV)
 			{
 				sum_other_pos += D.inv_pos[i];
 				sum_other_neg += D.inv_neg[i];
@@ -341,7 +341,7 @@ void gtype::call_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 			if (n_pos>0 && n_neg > 0 && S.len>300) 
 			{
 				double dpos1, dneg1, dpos2, dneg2;
-				if (S.svtype == "INV")
+				if (S.svtype == INV)
 				{
 					dpos1 = (D.inv_pos[i] - avg_var_pos);
 					dneg1 = (D.inv_neg[i] - avg_var_neg);
@@ -372,7 +372,7 @@ void gtype::call_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 				G.gt[i] = -1;
 			}
 			*/
-			else if (S.svtype != "INV" &&  abs(D.norm_dp[i]-avg_var_dp) < abs(D.norm_dp[i] - 1))
+			else if (S.svtype != INV &&  abs(D.norm_dp[i]-avg_var_dp) < abs(D.norm_dp[i] - 1))
 			{
 				G.gt[i] = -1;
 			}
@@ -383,17 +383,17 @@ void gtype::call_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 		}
 		else
 		{
-			if (S.svtype == "DEL" && D.norm_dp[i]<0.15)
+			if (S.svtype == DEL && D.norm_dp[i]<0.15)
 			{
 				G.gt[i] = 2;
 				G.ac += 2;
 			}
-			else if (S.svtype == "DUP" && D.norm_dp[i]>1.8)
+			else if (S.svtype == DUP && D.norm_dp[i]>1.8)
 			{
 				G.gt[i] = 2;
 				G.ac += 2;
 			}
-			else if (S.svtype == "INV" && D.norm_readcount[i] < 0.15)
+			else if (S.svtype == INV && D.norm_readcount[i] < 0.15)
 			{
 				G.gt[i] = 2;
 				G.ac += 2;
@@ -409,11 +409,11 @@ void gtype::call_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 	{
 		G.b_pass = false;
 	}
-	if (S.svtype == "DEL" && avg_var_dp > 1)
+	if (S.svtype == DEL && avg_var_dp > 1)
 	{
 		G.b_pass = false;
 	}
-	if (S.svtype == "DUP" && avg_var_dp < 1)
+	if (S.svtype == DUP && avg_var_dp < 1)
 	{
 		G.b_pass = false;
 	}

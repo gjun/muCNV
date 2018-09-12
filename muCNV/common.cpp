@@ -46,6 +46,12 @@ void split(const char* s, const char* delims, std::vector<std::string>& tokens)
 	}
 }
 
+string svTypeName(svType t)
+{
+    string S[6] = {"DEL", "DUP", "INV", "CNV", "INS", "BND"};
+    return S[t];
+}
+
 int median(vector<int> &L)
 {
 

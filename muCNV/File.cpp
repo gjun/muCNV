@@ -17,6 +17,21 @@
 #include "muCNV.h"
 #include <stdlib.h>
 
+svType get_svtype(string &s)
+{
+    if (s == "DEL")
+        return DEL;
+    else if (s == "DUP")
+        return DUP;
+    else if (s == "INV")
+        return INV;
+    else if (s == "CNV")
+        return CNV;
+    else if (s == "INS")
+        return INS;
+    else
+        return BND;
+}
 void read_vcf_list(string &index_file, vector<string> &vcf_files)
 {
 	ifstream inFile(index_file.c_str(), ios::in);
@@ -346,7 +361,7 @@ void invcfs::parse_sv(vector<string> &tokens, sv& interval)
 			
 		}
 	}
-	interval.chr = tokens[0]; // Dec 1, 2017
+	//interval.chr = tokens[0]; // Dec 1, 2017
 	interval.chrnum = chr;
 	interval.pos = atoi(tokens[1].c_str());
 
@@ -368,7 +383,7 @@ void invcfs::parse_sv(vector<string> &tokens, sv& interval)
 
 			else if (infofields[0] == "SVTYPE")
 			{
-				interval.svtype = infofields[1];
+                interval.svtype = get_svtype(infofields[1]);
 			}
 		}
 		
@@ -525,12 +540,12 @@ int read_candidate_vcf(ifstream &vfile, sv& new_interval, string& suppvec)
 			}
 			if (chr >=1 && chr <=24)  // include chrs 1-22, X, Y
 			{
-				new_interval.chr = tokens[0]; // Dec 1, 2017
+//				new_interval.chr = tokens[0]; // Dec 1, 2017
 				new_interval.chrnum = chr;
 				new_interval.pos = atoi(tokens[1].c_str());
 
 				string info = tokens[7];
-				string chr2 = new_interval.chr;
+				int chr2num = new_interval.chrnum;
 
 				vector<string> infotokens;
 				split(info.c_str(), ";", infotokens);
@@ -546,13 +561,13 @@ int read_candidate_vcf(ifstream &vfile, sv& new_interval, string& suppvec)
 						}
 						else if (infofields[0] == "SVTYPE")
 						{
-							new_interval.svtype = infofields[1];
+							new_interval.svtype = get_svtype(infofields[1]);
 
 							//cerr << "\tSVTYPE: " << new_interval.svtype << endl;
 						}
 						else if (infofields[0] == "CHR2")
 						{
-							chr2 = infofields[1];
+                            chr2num = atoi(infofields[1].c_str()); //TODO: make chr string to int function
 						}
 						else if (infofields[0] == "SUPP")
 						{
@@ -564,7 +579,7 @@ int read_candidate_vcf(ifstream &vfile, sv& new_interval, string& suppvec)
 						}
 					}
 				}
-				if (chr2 == new_interval.chr && new_interval.pos > 0 && new_interval.end > new_interval.pos && (new_interval.end - new_interval.pos)<=10000000 )  // TEMPORARY!! 10Mb Max!
+				if (chr2num == new_interval.chrnum && new_interval.pos > 0 && new_interval.end > new_interval.pos && (new_interval.end - new_interval.pos)<=10000000 )  // TEMPORARY!! 10Mb Max!
 				{
 					return 1;
 				}
@@ -576,6 +591,118 @@ int read_candidate_vcf(ifstream &vfile, sv& new_interval, string& suppvec)
 		}
 	}
 	return -1;
+}
+
+void read_svs_from_vcf(string &vcf_file, vector<breakpoint> &v_bp, vector<sv> &v_sv)
+{
+    ifstream vfile(vcf_file.c_str(), ios::in);
+    while(vfile.good())
+    {
+        string ln;
+        getline(vfile, ln);
+        
+        if (!ln.empty() && ln[0] != '#')
+        {
+            int chr;
+            vector<string> tokens;
+            split(ln.c_str(), " \t\n", tokens);
+            // Let's add error handling later (and factor this part out)
+            if (tokens[0].substr(0,3) == "chr" || tokens[0].substr(0,3) == "Chr" )
+            {
+                tokens[0] = tokens[0].substr(3,2);
+            }
+            if (tokens[0] == "X")
+            {
+                chr = 23;
+            }
+            else if (tokens[0] == "Y")
+            {
+                chr = 24;
+            }
+            else if (tokens[0] == "M" || tokens[0] == "MT")
+            {
+                chr = 25;
+            }
+            else
+            {
+                try
+                {
+                    chr = atoi(tokens[0].c_str());
+                }
+                catch(int e)
+                {
+                    chr = 0;
+                }
+            }
+            if (chr >=1 && chr <=24)  // include chrs 1-22, X, Y
+            {
+                sv new_interval;
+                new_interval.chrnum = chr;
+                new_interval.pos = atoi(tokens[1].c_str());
+                
+                string info = tokens[7];
+                
+                vector<string> infotokens;
+                split(info.c_str(), ";", infotokens);
+                for(int j=0;j<(int)infotokens.size();++j)
+                {
+                    vector<string> infofields;
+                    split(infotokens[j].c_str(), "=", infofields);
+                    if (infofields.size()>1)
+                    {
+                        if (infofields[0] == "END")
+                        {
+                            new_interval.end = atoi(infofields[1].c_str());
+                        }
+                        else if (infofields[0] == "SVTYPE")
+                        {
+                            new_interval.svtype = get_svtype(infofields[1]);
+                        }
+                    }
+                }
+                new_interval.get_len(); // Calculate length
+                
+                if (new_interval.chrnum > 0 && new_interval.pos > 0 && new_interval.len > 0 && new_interval.len <= 10000000 && !in_centrome(new_interval) )  // Max SV size:  10Mb
+                {
+                    // 6 breakpoints:
+                    // SV starting point - 500bp (or 1 if start pos < 500)
+                    // SV starting point
+                    // SV starting point + 500bp (or start + svlen/2 if svlen<1000)
+                    // SV end point - 500bp (or end - svlen/2 if svlen < 1000)
+                    // SV end point
+                    // SV end point + 500bp
+                    
+                    v_sv.push_back(new_interval);
+                    int sv_idx = (int) v_sv.size()-1;
+                    
+                    breakpoint bp[6];
+
+                    bp[0].pos = (new_interval.pos > 500) ? new_interval.pos-500 : 1;
+                    bp[1].pos = new_interval.pos;
+                    if (new_interval.len>1000)
+                    {
+                        bp[2].pos = new_interval.pos + 500;
+                        bp[3].pos = new_interval.end - 500;
+                    }
+                    else
+                    {
+                        bp[2].pos = new_interval.pos + new_interval.len/2;
+                        bp[3].pos = new_interval.end - new_interval.len/2;
+                    }
+                    bp[4].pos = new_interval.end;
+                    bp[5].pos = new_interval.end + 500;
+                    for(int k=0;k<6;++k)
+                    {
+                        bp[k].chrnum = new_interval.chrnum;
+                        bp[k].idx = sv_idx;
+                        bp[k].bptype = k;
+                        v_bp.push_back(bp[k]);
+                    }
+                }
+            } // if chr >= 1 && chr <= 22
+        }
+    }
+    vfile.close();
 }
 
 void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_files, vector<sv> &candidates)
@@ -633,8 +760,8 @@ void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_fil
 					if (chr >=1 && chr <=24)  // include chrs 1-22, X, Y
 					{
 						sv new_interval;
-						new_interval.chr = tokens[0]; // Dec 1, 2017
-						new_interval.chrnum = chr;
+//						new_interval.chr = tokens[0]; // Dec 1, 2017
+                        new_interval.chrnum = atoi(tokens[0].c_str()); // TODO: write a function
 						new_interval.pos = atoi(tokens[1].c_str());
 //						new_interval.ci_pos.first = -1;
 //						new_interval.ci_pos.second = -1;
@@ -644,7 +771,7 @@ void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_fil
 //						cerr << "pos : " << new_interval.pos << endl;
 
 						string info = tokens[7];
-						string chr2 = new_interval.chr;
+						int chr2num = new_interval.chrnum;
 						
 						//cerr << "info : " << info << endl;
 
@@ -683,13 +810,13 @@ void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_fil
 								*/
 								else if (infofields[0] == "SVTYPE")
 								{
-									new_interval.svtype = infofields[1];
+									new_interval.svtype = get_svtype(infofields[1]);
 
 									//cerr << "\tSVTYPE: " << new_interval.svtype << endl;
 								}
 								else if (infofields[0] == "CHR2")
 								{
-									chr2 = infofields[1];
+									chr2num = atoi(infofields[1].c_str()); // TODO
 								}
 								else if (infofields[0] == "SUPP")
 								{
@@ -698,7 +825,7 @@ void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_fil
 							}
 								
 						}
-						if (chr2 == new_interval.chr && new_interval.pos > 0 && new_interval.end > new_interval.pos && (new_interval.end - new_interval.pos)<=10000000 )  // TEMPORARY!! 10Mb Max!
+                        if (chr2num == new_interval.chrnum && new_interval.pos > 0 && new_interval.end > new_interval.pos && (new_interval.end - new_interval.pos)<=10000000 )  // Max SV size:  10Mb
 						{
 							candidates.push_back(new_interval);
 						}

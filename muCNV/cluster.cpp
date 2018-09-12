@@ -60,7 +60,7 @@ void merge_svs(vector<sv> &candidates , vector<int> &idxs)
 		idxs.push_back(curr);
 		
 		int cnt = 0;
-		while(++last_idx < (int)candidates.size() && candidates[last_idx].chr == candidates[curr].chr &&  candidates[last_idx].pos < block_end && cnt<500) // MAX candidates in a single interval: 200
+		while(++last_idx < (int)candidates.size() && candidates[last_idx].chrnum == candidates[curr].chrnum &&  candidates[last_idx].pos < block_end && cnt<500) // MAX candidates in a single interval: 200
 		{
 			if (block_end<candidates[last_idx].end)
 			{
@@ -98,7 +98,7 @@ void cluster_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidate
 		int block_end = candidates[curr].end;
 		int last_idx = curr;
 
-		while(++last_idx < (int)candidates.size() && candidates[last_idx].chr == candidates[curr].chr &&  candidates[last_idx].pos < block_end)
+		while(++last_idx < (int)candidates.size() && candidates[last_idx].chrnum == candidates[curr].chrnum &&  candidates[last_idx].pos < block_end)
 		{
 			if (block_end < candidates[last_idx].end)
 			{

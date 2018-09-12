@@ -118,6 +118,7 @@ int main(int argc, char** argv)
 	bool bNoHeader = false;
 	bool bFail = false;
 	bool bMerge = false;
+    bool bWriteSV = false;
 	string index_file;
 	string vcf_file;
 	string supp_file;
@@ -155,6 +156,7 @@ int main(int argc, char** argv)
 		TCLAP::ValueArg<string> argRegion("r", "region", "Genomic region (chr:start-end)", false, "", "string" );
 		TCLAP::SwitchArg switchFail("a", "all", "Print filter failed variants", cmd, false);
 		TCLAP::SwitchArg switchMerge("m", "merge", "Merge overlapping SVs in the input VCF", cmd, false);
+        TCLAP::SwitchArg switchWriteSV("w", "writevariant", "Write full list of SVs with pileup", cmd, false);
 		TCLAP::SwitchArg switchFilter("t", "filter", "Filter candidate discovery set using supporting VCF", cmd, false);
 		TCLAP::SwitchArg switchNoHeader("n", "noheader", "Do not print header in genoptyed VCF", cmd, false);
 		TCLAP::SwitchArg switchGenotype("g","genotype","Generate Genotype from intermediate pileups", cmd, false);
@@ -188,6 +190,7 @@ int main(int argc, char** argv)
 		bMerge = switchMerge.getValue();
 		bFilter = switchFilter.getValue();
 		region = argRegion.getValue();
+        bWriteSV = switchWriteSV.getValue();
 
 		if (bMerge && bGenotype)
 		{
@@ -407,11 +410,11 @@ int main(int argc, char** argv)
 				D.normalize(S, avg_depths, avg_isizes);
 				G.b_pass = false;
 
-				if (S.svtype == "DEL")
+				if (S.svtype == DEL)
 				{
 					T.call_del(S, D, G, avg_isizes, std_isizes, wt);
 				}
-				else if (S.svtype == "CNV" || S.svtype == "DUP")
+                else if (S.svtype == DUP || S.svtype == CNV)
 				{
 					T.call_cnv(S, D, G, avg_isizes, std_isizes, wt);
 				}
@@ -422,7 +425,7 @@ int main(int argc, char** argv)
 				}
 				*/
 //				if (S.svtype != "INV" && (G.b_pass || (bFail && !G.b_dump)) && G.ac > 0) 
-				if (S.svtype != "INV"  && (bFail || G.b_pass))
+				if (S.svtype != INV  && (bFail || G.b_pass))
 //				if (G.b_pass || bFail)
 				{
 					string ln;
@@ -451,15 +454,15 @@ int main(int argc, char** argv)
 		read_intervals_from_vcf(sample_ids, vcfs, all);
 		for(int i=0;i<(int)all.size();++i)
 		{
-			if (all[i].svtype == "DEL")
+			if (all[i].svtype == DEL)
 			{
 				dels.push_back(all[i]);
 			}
-			else if (all[i].svtype == "DUP")
+			else if (all[i].svtype == DUP)
 			{
 				dups.push_back(all[i]);
 			}
-			else if (all[i].svtype == "INV")
+			else if (all[i].svtype == INV)
 			{
 				invs.push_back(all[i]);
 			}
@@ -554,7 +557,7 @@ int main(int argc, char** argv)
 		fprintf(fp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
 		for(int i=0; i<(int)all.size(); ++i)
 		{
-			fprintf(fp, "%d\t%d\tSV%d\t.\t<%s>\t.\tPASS\tSUPP=%d;SVTYPE=%s;END=%d\n", all[i].chrnum, all[i].pos, i+1, all[i].svtype.c_str(), all[i].supp, all[i].svtype.c_str(), all[i].end);
+			fprintf(fp, "%d\t%d\tSV%d\t.\t<%s>\t.\tPASS\tSUPP=%d;SVTYPE=%s;END=%d\n", all[i].chrnum, all[i].pos, i+1, svTypeName(all[i].svtype).c_str(), all[i].supp, svTypeName(all[i].svtype).c_str(), all[i].end);
 		}
 		fclose(fp);
 	}
@@ -573,15 +576,15 @@ int main(int argc, char** argv)
 
 		for(int i=0;i<(int)all.size();++i)
 		{
-			if (all[i].svtype == "DEL")
+			if (all[i].svtype == DEL)
 			{
 				dels.push_back(all[i]);
 			}
-			else if (all[i].svtype == "DUP")
+			else if (all[i].svtype == DUP)
 			{
 				dups.push_back(all[i]);
 			}
-			else if (all[i].svtype == "INV")
+			else if (all[i].svtype == INV)
 			{
 				invs.push_back(all[i]);
 			}
@@ -601,7 +604,7 @@ int main(int argc, char** argv)
 			{
 				sv o_S;
 
-				if (S.svtype == "DEL")
+				if (S.svtype == DEL)
 				{
 					idx = find_overlap_sv(S, dels);
 					if (idx >=0)
@@ -609,7 +612,7 @@ int main(int argc, char** argv)
 						o_S = dels[idx];
 					}
 				}
-				else if (S.svtype == "DUP" || S.svtype=="CNV")
+				else if (S.svtype == DUP || S.svtype==CNV)
 				{
 					idx = find_overlap_sv(S, dups);
 					if (idx >=0)
@@ -617,7 +620,7 @@ int main(int argc, char** argv)
 						o_S = dups[idx];
 					}
 				}
-				else if (S.svtype == "INV")
+				else if (S.svtype == INV)
 				{
 					idx = find_overlap_sv(S, invs);
 					if (idx >=0)
@@ -628,11 +631,11 @@ int main(int argc, char** argv)
 				//print record
 				if (idx>=0)
 				{
-					fprintf(fp, "%s\t%d\tSV%d\t.\t<%s>\t.\tPASS\tSVTYPE=%s;OVERLAP=%s:%d-%d;SUPP=%d;N=%d;END=%d;SUPP_VEC=%s\n", S.chr.c_str(), S.pos, cnt++, S.svtype.c_str(), S.svtype.c_str(), o_S.chr.c_str(), o_S.pos, o_S.end, o_S.supp, S.supp, S.end, suppvec.c_str());
+					fprintf(fp, "%d\t%d\tSV%d\t.\t<%s>\t.\tPASS\tSVTYPE=%s;OVERLAP=%d:%d-%d;SUPP=%d;N=%d;END=%d;SUPP_VEC=%s\n", S.chrnum, S.pos, cnt++, svTypeName(S.svtype).c_str(), svTypeName(S.svtype).c_str(), o_S.chrnum, o_S.pos, o_S.end, o_S.supp, S.supp, S.end, suppvec.c_str());
 				}
 				else
 				{
-					fprintf(fp, "%s\t%d\tSV%d\t.\t<%s>\t.\tPASS\tSVTYPE=%s;SUPP=1;N=%d;END=%d;SUPP_VEC=%s\n", S.chr.c_str(), S.pos, cnt++, S.svtype.c_str(), S.svtype.c_str(), S.supp, S.end, suppvec.c_str());
+					fprintf(fp, "%d\t%d\tSV%d\t.\t<%s>\t.\tPASS\tSVTYPE=%s;SUPP=1;N=%d;END=%d;SUPP_VEC=%s\n", S.chrnum, S.pos, cnt++, svTypeName(S.svtype).c_str(), svTypeName(S.svtype).c_str(), S.supp, S.end, suppvec.c_str());
 				}
 			}
 		}
@@ -641,31 +644,50 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		// Generate summary VCF from BAM/CRAM
+		// Generate summary stats from BAM/CRAM
 		n_sample = 1;
 		cerr << "Processing individual BAM/CRAM file to genearte summary VCF." << endl;
 
 		gcContent GC;
 		GC.initialize(gc_file);
-		
-		vector<sv> candidates;
+
+        vector<sv> vec_sv;
+        vector<breakpoint> vec_bp;
 		vcfs.push_back(vcf_file);
-		read_intervals_from_vcf(sample_ids, vcfs, candidates);
-		
-		cerr<< candidates.size() << " intervals identified from the VCF file." << endl;
+		//read_intervals_from_vcf(sample_ids, vcfs, candidates);
+        read_svs_from_vcf(vcf_file, vec_bp, vec_sv);
+        
+		cerr<< vec_sv.size() << " svs and " << vec_bp.size() << " breakpoints identified from the VCF file." << endl;
 		vector<int> idxs;
 
-		merge_svs(candidates, idxs);
-
+        sort(vec_bp.begin(), vec_bp.end());
+        // No merging, 8/24/18
+		// merge_svs(candidates, idxs);
+        
 		bFile b(GC);
-		b.initialize(bam_file);
+        
+		b.initialize_sequential(bam_file);
 		cerr << "BAM/CRAM file initialized" << endl;
-		b.get_avg_depth();
+		//b.get_avg_depth();
+        //TODO: Process Average Depth and GC Correction AFTER reading all CRAM
 		
-		FILE *fp = fopen(out_filename.c_str(), "wt");
-		fprintf(fp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s\n", sampID.c_str());
-		fprintf(fp, "0\t0\t.\t.\t.\t.\t.\tAVGDP;AVG_ISIZE;STD_ISIZE;MED_ISIZE\tDP:AI:SI:MI\t%.1f:%.1f:%.1f:%.1f\n", b.avg_dp, b.avg_isize,b.std_isize,b.med_isize);
-
+		//FILE *fp = fopen(out_filename.c_str(), "wt");
+		//fprintf(fp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s\n", sampID.c_str());
+		// fprintf(fp, "0\t0\t.\t.\t.\t.\t.\tAVGDP;AVG_ISIZE;STD_ISIZE;MED_ISIZE\tDP:AI:SI:MI\t%.1f:%.1f:%.1f:%.1f\n", b.avg_dp, b.avg_isize,b.std_isize,b.med_isize);
+    
+        // Write out SV summary info if write_interval flag is set
+        
+        b.read_depth_sequential(vec_bp, vec_sv);
+        
+        b.postprocess_depth(vec_sv);
+        if (bWriteSV)
+        {
+            b.write_interval(sampID, vec_sv);
+        }
+        b.write_depth100(sampID);
+        b.write_pileup(sampID, vec_sv);
+        b.write_pileup_text(sampID, vec_sv);
+        /*
 		for(int i=0; i<(int)idxs.size(); ++i)
 		{
 			int last_idx;
@@ -691,7 +713,9 @@ int main(int argc, char** argv)
 			}
 
 		}
-		fclose(fp);
+         */
+        
+		//fclose(fp);
 		cerr << "Finished without an error" << endl;
 	}
 	return 0;

@@ -65,13 +65,13 @@ void outvcf::write_del(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 	// For Deletions
 	int n_comp=(int)C.size();
 	int chrnum = interval.chrnum;
-	string chr = interval.chr;
+	string chr = to_string(interval.chrnum);
 	int pos = interval.pos;
 	int svend = interval.end;
 	
 	fprintf(fp,"%s\t", chr.c_str());
 	fprintf(fp,"%d\t", pos);
-	if (interval.svtype == "DEL")
+	if (interval.svtype ==DEL)
 	{
 		fprintf(fp,"muCNV%d\t.\t<DEL>\t.\t", ++varcnt);
 	}
@@ -96,7 +96,7 @@ void outvcf::write_del(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 		af = 0.5*ac/ns;
 	}
 
-	if (interval.svtype == "DEL")
+	if (interval.svtype == DEL)
 	{
 		//fprintf(fp,"\tIMPRECISE;CIPOS=%d,%d;CIEND=%d,%d;VT=SV;END=%d;SVLEN=-%d;AC=%d;AF=%1.4f;AN=%d;NS=%d;P_OVERLAP=%1.8f;SVTYPE=DEL", interval.ci_pos.first, interval.ci_pos.second, interval.ci_end.first, interval.ci_end.second, svend, svend-pos, ac, af, ns*2, ns, be);
 		fprintf(fp,"\tIMPRECISE;VT=SV;END=%d;SVLEN=-%d;AC=%d;AF=%1.4f;AN=%d;NS=%d;P_OVERLAP=%1.8f;SVTYPE=DEL", svend, svend-pos, ac, af, ns*2, ns, be);
@@ -155,7 +155,7 @@ void outvcf::write_del(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 void outvcf::write_cnv(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, int ns, vector<double>& X, vector<double>& AvgDepth, vector<Gaussian>& C, double be, bool bFilter)
 {
 	int n_comp=(int)C.size();
-	string chr = interval.chr;
+	string chr = to_string(interval.chrnum);
 	int pos = interval.pos;
 	int svend = interval.end;
 	int alts[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};;

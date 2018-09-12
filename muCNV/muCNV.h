@@ -29,6 +29,10 @@ const double invsqrt2pi= 0.398942280401433;
 const double log2pi = 0.7981798684;
 using namespace std;
 
+
+enum svType {DEL=0, DUP=1, INV=2, CNV=3, INS=4, BND=5};
+string svTypeName(svType t);
+
 typedef pair<uint64_t, uint64_t> interval_t;
 
 void split(const char*, const char*, std::vector<std::string>&);
@@ -47,12 +51,30 @@ vector<size_t> sort_indexes(const vector<T> &v) {
 	return idx;
 }
 
+class readpair
+{
+public:
+    int32_t selfpos;
+    int32_t matepos;
+    bool selfstr;
+    bool matestr;
+};
+
+class splitread
+{
+public:
+    int32_t pos;
+    int32_t sapos;
+    int16_t firstclip; // soft clip position (+: left-side, -: right-side) in primary alignment
+    int16_t secondclip; // soft clip position (+: left-side, -: right-side) in secondary alignment
+};
+
 class sv
 {
 	public:
-	string svtype;
+	svType svtype;
 //	string source;
-	string chr;
+//	string chr;
 	int chrnum;
 	int pos;
 	int end;
@@ -66,9 +88,17 @@ class sv
 	};
 	bool operator < (const sv&) const;
 	bool operator == (const sv&) const;
-	
+
+    uint64_t dp_sum;
+    int n_dp;
+    uint8_t dp;
+    
+    vector<readpair> vec_pair;
+    vector<splitread> vec_split;
 	sv();
 };
+
+bool in_centrome(sv &);
 
 class svdata
 {
@@ -125,21 +155,21 @@ public:
 		for(int i=0;i<n;++i)
 		{
 			norm_dp[i] = dp[i] / avg_depth[i];
-			if (interval.svtype == "DEL")
+			if (interval.svtype == DEL)
 			{
 				norm_cnv_pos[i] = (cnv_pos[i] - avg_isize[i] ) / interval.len;
 				norm_cnv_neg[i] = (cnv_neg[i] - avg_isize[i] ) / interval.len;
 				norm_inv_pos[i] = (inv_pos[i] - avg_isize[i] ) / interval.len;
 				norm_inv_neg[i] = (inv_neg[i] - avg_isize[i] ) / interval.len;
 			}
-			else if (interval.svtype == "DUP" || interval.svtype == "CNV")
+			else if (interval.svtype == DUP || interval.svtype == CNV)
 			{
 				norm_cnv_pos[i] = (cnv_pos[i] + avg_isize[i]) / interval.len;
 				norm_cnv_neg[i] = (cnv_neg[i] + avg_isize[i]) / interval.len;
 				norm_inv_pos[i] = (inv_pos[i] + avg_isize[i]) / interval.len;
 				norm_inv_neg[i] = (inv_neg[i] + avg_isize[i]) / interval.len;
 			}
-			else if (interval.svtype == "INV" )
+			else if (interval.svtype == INV )
 			{
 				norm_cnv_pos[i] = (cnv_pos[i] ) / avg_isize[i];
 				norm_cnv_neg[i] = (cnv_neg[i] ) / avg_isize[i];
@@ -166,9 +196,11 @@ class gcint : public sv
 class breakpoint
 {
 public:
+    uint8_t chrnum;
+    int bptype; // 0 : pos-gap, 1: pos, 2: pos+gap, 3:end-gap, 4: end, 5: end+gap
+    
 	int pos;
-	int type; // 0 : insert start, 1: startpos, 2:endpos 3: insert end
-	int idx;
+	int idx; // SV_id
 	bool operator < (const breakpoint&) const;
 	bool operator == (const breakpoint&) const;
 	
@@ -193,15 +225,21 @@ typedef struct {     // auxiliary data structure
 	samFile *fp;     // the file handle
 	bam_hdr_t *hdr;  // the file header
 	hts_itr_t *iter; // NULL if a region not specified
-	set<int> *isz_set;
-	vector<double> *isz_sum;
-	vector<int> *isz_cnt;
+    set<int> *rp_set;
+    set<int> *sp_set;
+    vector<sv> *vec_sv;
+    uint64_t sum_isz;
+    uint64_t n_isz;
+
+    //    set<int> *isz_set;
 //	vector<double> *isz_sum;
 //	vector<int> *isz_cnt;
-	vector< vector <int> > *isz_list;
+//	vector<double> *isz_sum;
+//	vector<int> *isz_cnt;
+//	vector< vector <int> > *isz_list;
 //	vector< vector <int> > *pos_list;
 
-	vector< vector <int> > *rev_isz_list;
+//	vector< vector <int> > *rev_isz_list;
 //	vector< vector <int> > *rev_pos_list;
 	int min_mapQ, min_len; // mapQ filter; length filter
 } aux_t;
@@ -257,12 +295,11 @@ class gcContent
 {
 public:
 	void initialize(string &); // filename for GC content, populate all vectors
-
 	uint16_t num_bin; // Number of GC bin
 	uint8_t num_chr; //number of chrs
 	uint16_t binsize; // Size of GC bin (bp)
 	uint16_t total_bin; // Size of intervals per GC bin
-
+    vector<size_t> chrOffset;
 	vector<gcint> regions; // Double array to store list of regions for each GC bin -- non-overlapping, so let's just be it out-of-order
 	vector<double> gc_dist; // Array to store proportion of Ref genome for each GC content bin
 	vector<uint32_t> chrSize;
@@ -277,6 +314,7 @@ public:
 	hts_idx_t* idx;
 	gcContent& GC;
 	double avg_dp;
+    
 	double avg_isize;
 	double std_isize;
 	double med_isize;
@@ -286,13 +324,20 @@ public:
 
 	// Get GC corrected depth for chr / pos
 	double gcCorrected(double, int, int);
-	
-	void read_depth(vector<sv> &, vector<string> &);
-	void process_readpair(sv &, vector<int> &, string &);
-	void get_avg_depth();
-	void initialize(string &);
+    vector< uint8_t * > depth100; // to store depth for every 100bp interval
 
-	
+    
+//	void read_depth(vector<sv> &, vector<string> &);
+    void read_depth_sequential(vector<breakpoint> &, vector<sv> &);
+//	void process_readpair(sv &, vector<int> &, string &);
+//	void get_avg_depth();
+	void initialize(string &);
+    void initialize_sequential(string &);
+    void postprocess_depth(vector<sv> &);
+    void write_pileup(string &, vector<sv> &);
+    void write_pileup_text(string &, vector<sv> &);
+    void write_interval(string &, vector<sv> &);
+    void write_depth100(string &);
 	bFile (gcContent &x) : GC(x) {};
 
 };
@@ -413,6 +458,7 @@ double stdev(vector<double>&, double);
 
 int find_start(vector<sv> &, int );
 
+void read_svs_from_vcf(string &, vector<breakpoint> &, vector<sv> &);
 void read_intervals_from_vcf(vector<string> &, vector<string> &, vector<sv> &);
 int read_candidate_vcf(ifstream &, sv&, string& );
 

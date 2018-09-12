@@ -9,6 +9,25 @@
 #include "muCNV.h"
 #include <algorithm>
 
+breakpoint::breakpoint()
+{
+    chrnum = 0;
+    pos = 0;
+    bptype = 0;
+    idx = 0;
+}
+
+bool breakpoint::operator < (const breakpoint& b) const
+{
+    return (chrnum<b.chrnum || (chrnum == b.chrnum && pos<b.pos));
+}
+
+bool breakpoint::operator == (const breakpoint& b) const
+{
+    return (chrnum == b.chrnum && pos == b.pos);
+}
+
+
 bool sv::operator < (const sv& s) const
 {
 	if (chrnum==s.chrnum)
@@ -57,10 +76,14 @@ int find_start(vector<sv> &L, int pos)
 
 sv::sv()
 {
-	svtype = "";
-	chr = "";
+	svtype = DEL;
+	//chr = "";
 	chrnum = -1;
 	pos = -1;
+    supp=0;
+    n_dp = 0;
+    dp_sum = 0;
+    dp = 0;
 //	ci_pos.first = 0;
 //	ci_pos.second = 0;
 //	ci_end.first = 0;
