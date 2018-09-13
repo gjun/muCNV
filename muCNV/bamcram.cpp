@@ -582,7 +582,12 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     if (vec_bp[0].bptype > 0)
     {
         cerr << "Error: Merged interval's earliest position is SV-end, not SV-start." << endl;
+        for(int i=0;i<20;++i)
+        {
+            cerr << vec_bp[i].chrnum << "\t" << vec_bp[i].pos << "\t" << vec_bp[i].bptype << endl;
+        }
     }
+    
     int nxt = 0;
    
     uint64_t sum_dp = 0;
