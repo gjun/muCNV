@@ -229,6 +229,7 @@ typedef struct {     // auxiliary data structure
     set<int> *sp_set;
     vector<sv> *vec_sv;
     uint64_t sum_isz;
+    uint64_t sumsq_isz;
     uint64_t n_isz;
 
     //    set<int> *isz_set;
@@ -314,6 +315,7 @@ public:
 	hts_idx_t* idx;
 	gcContent& GC;
 	double avg_dp;
+    double std_dp;
     
 	double avg_isize;
 	double std_isize;
@@ -321,7 +323,9 @@ public:
 	double avg_rlen;
 	
 	vector<double> gc_factor;
-
+    vector<uint64_t> gc_sum;
+    vector<uint64_t> gc_cnt;
+    
 	// Get GC corrected depth for chr / pos
 	double gcCorrected(double, int, int);
     vector< uint8_t * > depth100; // to store depth for every 100bp interval

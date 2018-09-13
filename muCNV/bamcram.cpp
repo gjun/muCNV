@@ -145,7 +145,7 @@ int get_cigar_clippos(string &cigar_str)
         lclip = atoi(cigar_str.substr(0,j).c_str());
     }
     
-    j=cigar_str.length()-1;
+    j=(int)cigar_str.length()-1;
     
     if (cigar_str.back() == 'S')
     {
@@ -284,6 +284,13 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                     (*(aux->vec_sv))[*it].vec_pair.push_back(new_rp);
                 }
             }
+            else
+            {
+                // get average isize statistics only from properly paired pairs
+                aux->sum_isz += b->core.isize;
+                aux->sumsq_isz += (b->core.isize) * (b->core.isize);
+                aux->n_isz += 1;
+            }
             
             // split read flag & check whether sp_set is not empty
             if (!(*(aux->sp_set)).empty())
@@ -340,6 +347,10 @@ void bFile::initialize_sequential(string &bname)
     data = (aux_t**)calloc(1, sizeof(aux_t*));
     data[0] = (aux_t*)calloc(1, sizeof(aux_t));
     data[0]->fp = hts_open(bname.c_str(), "r");
+    
+    data[0]->sum_isz = 0;
+    data[0]->sumsq_isz = 0;
+    data[0]->n_isz = 0;
     
     //int rf = SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_SEQ | SAM_QUAL;
     int rf = SAM_FLAG |  SAM_MAPQ | SAM_QUAL| SAM_POS | SAM_SEQ | SAM_CIGAR| SAM_TLEN | SAM_RNEXT | SAM_PNEXT | SAM_AUX;
@@ -545,7 +556,7 @@ void bFile::get_avg_depth()
 
 double bFile::gcCorrected(double D, int chr, int pos)
 {
-	int p = pos / 200;
+    int p = pos*2 / GC.binsize;
 //	cerr << "pos " << pos << " p " << p << endl;
 	int bin = GC.gc_array[chr][p];
 
@@ -575,7 +586,17 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     int nxt = 0;
    
     uint64_t sum_dp = 0;
+    uint64_t sumsq_dp = 0;
     uint64_t n_dp = 0;
+    
+    gc_factor.resize(GC.num_bin);
+    gc_sum.resize(GC.num_bin);
+    gc_cnt.resize(GC.num_bin);
+    for(int i=0;i<GC.num_bin;++i)
+    {
+        gc_sum[i] = 0;
+        gc_cnt[i] = 0;
+    }
     
     // For average DP
     set<int> dp_set; // Initially empty
@@ -589,6 +610,9 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     data[0]->rp_set = &rp_set;
     data[0]->sp_set = &sp_set;
     data[0]->vec_sv = &vec_sv;
+    data[0]->sum_isz = 0;
+    data[0]->sumsq_isz = 0;
+    data[0]->n_isz = 0;
     
     int* n_plp = (int *) calloc(1, sizeof(int));;
     const bam_pileup1_t **plp = (const bam_pileup1_t **) calloc(1, sizeof(bam_pileup1_t*));
@@ -602,7 +626,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
         depth100[i] = (uint8_t *) calloc(N, sizeof(uint8_t));
     }
     
-    double sum100=0;
+    int sum100=0;
     int n100=0;
     
     int prev_chrnum = 1;
@@ -624,9 +648,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
             // Update 100-bp depth
             if (n100>0)
             {
-                double val = sum100 / n100;
-                sum_dp += sum100;
-                n_dp += n100;
+                int val = sum100 / n100;
                 if (val>255) val=255; // handle overflow, max avg depth = 255
                 depth100[prev_chrnum+1][prev_pos/100] = (uint8_t) val;
             }
@@ -700,13 +722,21 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
             if (p->is_del || p->is_refskip )
                 ++m;
         }
-        double dpval = n_plp[0]-m;
+        int dpval = n_plp[0]-m;
         // double gc_dpval = dpval;
         // gc_dpval = gcCorrected(dpval, chrnum, pos);
         
         //sum100 += gc_dpval;
         sum100 += dpval;
         n100 ++;
+        // for whole-genome average
+        sum_dp += dpval;
+        sumsq_dp += dpval * dpval;
+        n_dp += 1;
+        
+        int bin = GC.gc_array[tid+1][(int)pos*2 / GC.binsize];
+        gc_sum[bin] += dpval;
+        gc_cnt[bin] += 1;
         
         for(set<int>::iterator it=dp_set.begin(); it!=dp_set.end(); ++it)
         {
@@ -717,7 +747,21 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
         }
     }
     avg_dp = (double) sum_dp / n_dp;
-    
+    std_dp = sqrt(((double)sumsq_dp / n_dp - (avg_dp*avg_dp))*n_dp/(n_dp-1));
+
+    for(int i=0;i<GC.num_bin;++i)
+    {
+        if (gc_cnt[i]>20)
+        {
+            gc_factor[i] = ((double)gc_sum[i] / gc_cnt[i]) / avg_dp;
+        }
+        else
+        {
+            gc_factor[i] = 0;
+        }
+    }
+    avg_isize = data[0]->sum_isz / data[0]->n_isz;
+    std_isize = sqrt(((double)data[0]->sumsq_isz / data[0]->n_isz - (avg_isize*avg_isize))*(data[0]->n_isz)/(data[0]->n_isz-1));
     sam_itr_destroy(data[0]->iter);
     free(plp); free(n_plp);
     bam_mplp_destroy(mplp);
@@ -800,7 +844,7 @@ void gcContent::initialize(string &gcFile)
     
     // read size of GC-interval bin
     inFile.read(reinterpret_cast <char *> (&binsize), sizeof(uint16_t));
-    //    cerr << "Bin size: " << (int) binsize << endl;
+       cerr << "Bin size: " << (int) binsize << endl;
     
     // read number of GC bins
     inFile.read(reinterpret_cast <char *> (&num_bin), sizeof(uint16_t));
@@ -900,34 +944,57 @@ void bFile::postprocess_depth(vector<sv> &vec_sv)
 
 void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
 {
-    // TODO: add write GC curve
-    // TODO: write average 100-bp depth
-    string fname = sampID + ".pileup.txt";
+    string pileup_name = sampID + ".pileup";
+    string varfile_name = sampID + ".var";
     
-    ofstream outFile(fname.c_str(), std::ios::out | std::ios::binary);
+    ofstream pileupFile(pileup_name.c_str(), std::ios::out | std::ios::binary);
+
+    // Write depth and isize stats
+    pileupFile.write(reinterpret_cast<char*>(&avg_dp), sizeof(double));
+    pileupFile.write(reinterpret_cast<char*>(&std_dp), sizeof(double));
+    pileupFile.write(reinterpret_cast<char*>(&avg_isize), sizeof(double));
+    pileupFile.write(reinterpret_cast<char*>(&std_isize), sizeof(double));
+    
+    // Write GC curve
+    for(int i=0;i<GC.num_bin;++i)
+    {
+        pileupFile.write(reinterpret_cast<char*>(&(gc_factor[i])), sizeof(double));
+    }
+    // Write Index of var files (every chr offset, 1000-th variants)
+   
+    // Write DP100
+    for(int i=1; i<=GC.num_chr; ++i)
+    {
+        int N = ceil(GC.chrSize[i] / 100) ;
+        pileupFile.write(reinterpret_cast<char*>(depth100[i]), sizeof(uint8_t)*N);
+    }
+    
+    pileupFile.close();
+    ofstream varFile(varfile_name.c_str(), std::ios::out | std::ios::binary);
+    
     for(int i=0;i<vec_sv.size();++i)
     {
-        outFile.write(reinterpret_cast<char*>(&(vec_sv[i].dp)), sizeof(uint8_t));
+        varFile.write(reinterpret_cast<char*>(&(vec_sv[i].dp)), sizeof(uint8_t));
         uint16_t n_rp = (uint16_t) vec_sv[i].vec_pair.size();
         uint16_t n_sp = (uint16_t) vec_sv[i].vec_split.size();
-        outFile.write(reinterpret_cast<char*>(&n_rp), sizeof(uint16_t));
+        varFile.write(reinterpret_cast<char*>(&n_rp), sizeof(uint16_t));
         for(int j=0;j<vec_sv[i].vec_pair.size();++j)
         {
-            outFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_pair[j].selfpos)), sizeof(uint32_t));
-            outFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_pair[j].matepos)), sizeof(uint32_t));
-            outFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_pair[j].selfstr)), sizeof(bool));
-            outFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_pair[j].matestr)), sizeof(bool));
+            varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_pair[j].selfpos)), sizeof(uint32_t));
+            varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_pair[j].matepos)), sizeof(uint32_t));
+            varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_pair[j].selfstr)), sizeof(bool));
+            varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_pair[j].matestr)), sizeof(bool));
         }
-        outFile.write(reinterpret_cast<char*>(&n_sp), sizeof(uint16_t));
+        varFile.write(reinterpret_cast<char*>(&n_sp), sizeof(uint16_t));
         for(int j=0;j<vec_sv[i].vec_split.size();++j)
         {
-            outFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_split[j].pos)), sizeof(uint32_t));
-            outFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_split[j].sapos)), sizeof(uint32_t));
-            outFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_split[j].firstclip)), sizeof(uint16_t));
-            outFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_split[j].secondclip)), sizeof(uint16_t));
+            varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_split[j].pos)), sizeof(uint32_t));
+            varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_split[j].sapos)), sizeof(uint32_t));
+            varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_split[j].firstclip)), sizeof(uint16_t));
+            varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_split[j].secondclip)), sizeof(uint16_t));
         }
     }
-    outFile.close();
+    varFile.close();
 }
 
 void bFile::write_depth100(string &sampID)
@@ -947,6 +1014,10 @@ void bFile::write_pileup_text(string &sampID, vector<sv> &vec_sv)
     string fname = sampID + ".pileup.txt";
     FILE *fp = fopen(fname.c_str(), "w");
     
+    fclose(fp);
+    
+    fname = sampID + ".var.txt";
+    fp = fopen(fname.c_str(), "w");
     for(int i=0;i<vec_sv.size();++i)
     {
         uint16_t n_rp = (uint16_t) vec_sv[i].vec_pair.size();

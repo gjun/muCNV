@@ -686,7 +686,7 @@ int main(int argc, char** argv)
         }
         b.write_depth100(sampID);
         b.write_pileup(sampID, vec_sv);
-        b.write_pileup_text(sampID, vec_sv);
+        //b.write_pileup_text(sampID, vec_sv);
         /*
 		for(int i=0; i<(int)idxs.size(); ++i)
 		{
