@@ -27,6 +27,10 @@ bool breakpoint::operator == (const breakpoint& b) const
     return (chrnum == b.chrnum && pos == b.pos);
 }
 
+bool breakpoint::operator <= (const breakpoint& b) const
+{
+    return (*this <b || *this ==b);
+}
 
 bool sv::operator < (const sv& s) const
 {

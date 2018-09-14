@@ -677,7 +677,7 @@ void read_svs_from_vcf(string &vcf_file, vector<breakpoint> &v_bp, vector<sv> &v
                     
                     breakpoint bp[6];
 
-                    bp[0].pos = (new_interval.pos > 500) ? new_interval.pos-500 : 1;
+                    bp[0].pos = (new_interval.pos > 500) ? new_interval.pos-500 : 0;
                     bp[1].pos = new_interval.pos;
                     if (new_interval.len>1000)
                     {

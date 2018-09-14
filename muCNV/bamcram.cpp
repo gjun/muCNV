@@ -272,6 +272,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
         {
             if (! IS_PROPERLYPAIRED(b) && !(*(aux->rp_set)).empty() && !(b->core.flag & BAM_FMUNMAP))
             {
+                
                 // add to read pair set
                 readpair new_rp;
                 new_rp.selfpos = b->core.pos;
@@ -679,8 +680,12 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
         }
         
         prev_pos = pos; // maybe use array idx instead of pos ?
+        breakpoint curr_bp;
         
-        while (nxt < vec_bp.size() && pos>=vec_bp[nxt].pos)
+        curr_bp.chrnum = chrnum;
+        curr_bp.pos = pos;
+        
+        while (nxt < vec_bp.size() && vec_bp[nxt] <= curr_bp)
         {
             // Process set insert and remove
             switch(vec_bp[nxt].bptype)
@@ -696,8 +701,14 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
                     break;
                 case 2:
                     // Start position + buf
-                    rp_set.erase(vec_bp[nxt].idx);
-                    sp_set.erase(vec_bp[nxt].idx);
+                    if (rp_set.erase(vec_bp[nxt].idx) == 0 )
+                    {
+                        cerr << "Error, erasing non-existing RP" << endl;
+                    }
+                    if (sp_set.erase(vec_bp[nxt].idx) == 0)
+                    {
+                        cerr << "Error, erasing non-existing SP" << endl;
+                    }
                     break;
                 case 3:
                     // End position - buf
@@ -706,14 +717,22 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
                     break;
                 case 4:
                     // End position
-                    dp_set.erase(vec_bp[nxt].idx);
+                    if (dp_set.erase(vec_bp[nxt].idx) == 0)
+                    {
+                        cerr << "Error, erasing non-existing DP" << endl;
+                    }
                     // update depth stats
                     break;
                 case 5:
                     // End position + buf
-                    rp_set.erase(vec_bp[nxt].idx);
-                    sp_set.erase(vec_bp[nxt].idx);
-                    // We can write out SV stats here... to save memory
+                    if (rp_set.erase(vec_bp[nxt].idx) == 0 )
+                    {
+                        cerr << "Error, erasing non-existing RP" << endl;
+                    }
+                    if (sp_set.erase(vec_bp[nxt].idx) == 0)
+                    {
+                        cerr << "Error, erasing non-existing SP" << endl;
+                    }
                     break;
             }
             nxt++;

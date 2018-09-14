@@ -203,7 +203,8 @@ public:
 	int idx; // SV_id
 	bool operator < (const breakpoint&) const;
 	bool operator == (const breakpoint&) const;
-	
+    bool operator <= (const breakpoint&) const;
+
 	breakpoint();
 };
 
