@@ -704,10 +704,12 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
                     if (rp_set.erase(vec_bp[nxt].idx) == 0 )
                     {
                         cerr << "Error, erasing non-existing RP" << endl;
+                        exit(0);
                     }
                     if (sp_set.erase(vec_bp[nxt].idx) == 0)
                     {
                         cerr << "Error, erasing non-existing SP" << endl;
+                        exit(0);
                     }
                     break;
                 case 3:
@@ -720,6 +722,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
                     if (dp_set.erase(vec_bp[nxt].idx) == 0)
                     {
                         cerr << "Error, erasing non-existing DP" << endl;
+                        exit(0);
                     }
                     // update depth stats
                     break;
@@ -728,10 +731,12 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
                     if (rp_set.erase(vec_bp[nxt].idx) == 0 )
                     {
                         cerr << "Error, erasing non-existing RP" << endl;
+                        exit(0);
                     }
                     if (sp_set.erase(vec_bp[nxt].idx) == 0)
                     {
                         cerr << "Error, erasing non-existing SP" << endl;
+                        exit(0);
                     }
                     break;
             }
