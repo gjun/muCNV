@@ -662,7 +662,7 @@ void read_svs_from_vcf(string &vcf_file, vector<breakpoint> &v_bp, vector<sv> &v
                 }
                 new_interval.get_len(); // Calculate length
                 
-                if (new_interval.chrnum > 0 && new_interval.pos > 0 && new_interval.len > 0 && new_interval.len <= 10000000 && !in_centrome(new_interval) )  // Max SV size:  10Mb
+                if (new_interval.chrnum > 0 && new_interval.pos > 0 && new_interval.len > 10 && new_interval.len <= 10000000 && !in_centrome(new_interval) )  // Max SV size:  10Mb
                 {
                     // 6 breakpoints:
                     // SV starting point - 500bp (or 1 if start pos < 500)
@@ -679,15 +679,15 @@ void read_svs_from_vcf(string &vcf_file, vector<breakpoint> &v_bp, vector<sv> &v
 
                     bp[0].pos = (new_interval.pos > 500) ? new_interval.pos-500 : 0;
                     bp[1].pos = new_interval.pos;
-                    if (new_interval.len>1000)
+                    if (new_interval.len>1001)
                     {
                         bp[2].pos = new_interval.pos + 500;
                         bp[3].pos = new_interval.end - 500;
                     }
                     else
                     {
-                        bp[2].pos = new_interval.pos + new_interval.len/2;
-                        bp[3].pos = new_interval.end - new_interval.len/2;
+                        bp[2].pos = new_interval.pos + new_interval.len/2-1;
+                        bp[3].pos = new_interval.end - new_interval.len/2+1;
                     }
                     bp[4].pos = new_interval.end;
                     bp[5].pos = new_interval.end + 500;

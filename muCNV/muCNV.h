@@ -233,6 +233,9 @@ typedef struct {     // auxiliary data structure
     uint64_t sumsq_isz;
     uint64_t n_isz;
 
+	uint32_t n_rp;
+	uint32_t n_sp;
+
     //    set<int> *isz_set;
 //	vector<double> *isz_sum;
 //	vector<int> *isz_cnt;

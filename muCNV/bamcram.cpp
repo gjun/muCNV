@@ -31,6 +31,11 @@ void readmagic(ifstream &F)
 	}
 }
 
+void print_sv(sv &t)
+{
+	fprintf(stderr, "%d:%d-%d, %s \n", t.chrnum, t.pos, t.end, svTypeName(t.svtype).c_str());
+
+}
 /*
 static readpart which_readpart(const bam1_t *b)
 {
@@ -280,6 +285,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                 new_rp.selfstr = !(b->core.flag & BAM_FREVERSE);
                 new_rp.matestr = !(b->core.flag & BAM_FMREVERSE);
                 
+				aux->n_rp++;
                 for(set<int>::iterator it=(*(aux->rp_set)).begin(); it!=(*(aux->rp_set)).end(); ++it)
                 {
                     (*(aux->vec_sv))[*it].vec_pair.push_back(new_rp);
@@ -324,6 +330,8 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                             new_sp.firstclip = -rclip;
                         else if (lclip>rclip)
                             new_sp.firstclip = lclip;
+
+						aux->n_sp++;
             
                         // if the split read qualifies
                         for(set<int>::iterator it=(*(aux->sp_set)).begin(); it!=(*(aux->sp_set)).end(); ++it)
@@ -619,6 +627,9 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     data[0]->sum_isz = 0;
     data[0]->sumsq_isz = 0;
     data[0]->n_isz = 0;
+
+	data[0]->n_rp = 0;
+	data[0]->n_sp = 0;
     
     int* n_plp = (int *) calloc(1, sizeof(int));;
     const bam_pileup1_t **plp = (const bam_pileup1_t **) calloc(1, sizeof(bam_pileup1_t*));
@@ -638,7 +649,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     int prev_chrnum = 1;
     int prev_pos = 1;
     
-    while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0)
+    while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0 && tid < GC.num_chr)
     {
         // TODO: check whether tid has changed from previous iteration
         // if changed, empty / clear all statistics
@@ -650,13 +661,15 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
         if (chrnum>prev_chrnum)
         {
             // clear stats
+			cerr << "now processing chr " << chrnum << endl;
+			cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << endl;
             
             // Update 100-bp depth
             if (n100>0)
             {
                 int val = sum100 / n100;
                 if (val>255) val=255; // handle overflow, max avg depth = 255
-                depth100[prev_chrnum+1][prev_pos/100] = (uint8_t) val;
+                depth100[prev_chrnum][prev_pos/100] = (uint8_t) val;
             }
 
             sum100=0;
@@ -694,48 +707,59 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
                     // Start position - gap
                     rp_set.insert(vec_bp[nxt].idx);
                     sp_set.insert(vec_bp[nxt].idx);
+//					cerr << "Adding RP, SP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
                     break;
                 case 1:
                     // Start position
                     dp_set.insert(vec_bp[nxt].idx);
+//					cerr << "Adding DP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
                     break;
                 case 2:
                     // Start position + buf
+//					cerr << "Erasing RP,SP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
                     if (rp_set.erase(vec_bp[nxt].idx) == 0 )
                     {
                         cerr << "Error, erasing non-existing RP" << endl;
+						print_sv(vec_sv[vec_bp[nxt].idx]);
                         exit(0);
                     }
                     if (sp_set.erase(vec_bp[nxt].idx) == 0)
                     {
                         cerr << "Error, erasing non-existing SP" << endl;
+						print_sv(vec_sv[vec_bp[nxt].idx]);
                         exit(0);
                     }
                     break;
                 case 3:
+//					cerr << "Adding RP,SP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
                     // End position - buf
                     rp_set.insert(vec_bp[nxt].idx);
                     sp_set.insert(vec_bp[nxt].idx);
                     break;
                 case 4:
                     // End position
+//					cerr << "Erasing DP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
                     if (dp_set.erase(vec_bp[nxt].idx) == 0)
                     {
                         cerr << "Error, erasing non-existing DP" << endl;
+						print_sv(vec_sv[vec_bp[nxt].idx]);
                         exit(0);
                     }
                     // update depth stats
                     break;
                 case 5:
                     // End position + buf
+//					cerr << "Erasing RP, SP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
                     if (rp_set.erase(vec_bp[nxt].idx) == 0 )
                     {
                         cerr << "Error, erasing non-existing RP" << endl;
+						print_sv(vec_sv[vec_bp[nxt].idx]);
                         exit(0);
                     }
                     if (sp_set.erase(vec_bp[nxt].idx) == 0)
                     {
                         cerr << "Error, erasing non-existing SP" << endl;
+						print_sv(vec_sv[vec_bp[nxt].idx]);
                         exit(0);
                     }
                     break;
@@ -789,6 +813,8 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
             gc_factor[i] = 0;
         }
     }
+
+	cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << endl;
     avg_isize = data[0]->sum_isz / data[0]->n_isz;
     std_isize = sqrt(((double)data[0]->sumsq_isz / data[0]->n_isz - (avg_isize*avg_isize))*(data[0]->n_isz)/(data[0]->n_isz-1));
     sam_itr_destroy(data[0]->iter);
