@@ -275,7 +275,8 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
         
         if ((int)b->core.qual>0 && b->core.tid == b->core.mtid && b->core.isize !=0 && b->core.mpos > 0)
         {
-            if (! IS_PROPERLYPAIRED(b) && !(*(aux->rp_set)).empty() && !(b->core.flag & BAM_FMUNMAP))
+       //     if (! IS_PROPERLYPAIRED(b) && !(*(aux->rp_set)).empty())
+            if (! IS_PROPERLYPAIRED(b))
             {
                 
                 // add to read pair set
@@ -300,10 +301,11 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
             }
             
             // split read flag & check whether sp_set is not empty
-            if (!(*(aux->sp_set)).empty())
+//            if (!(*(aux->sp_set)).empty())
             {
                 uint8_t *aux_sa = bam_aux_get(b, "SA");
         
+
                 if (aux_sa && aux_sa[0] == 'Z')
                 {
                     splitread new_sp;
@@ -314,6 +316,9 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 
                     if (process_split(aux_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)))
                     {
+
+
+						aux->n_sp++;
                         int ncigar = b->core.n_cigar;
                         uint32_t *cigar  = bam_get_cigar(b);
                         int16_t lclip = 0;
@@ -331,7 +336,6 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                         else if (lclip>rclip)
                             new_sp.firstclip = lclip;
 
-						aux->n_sp++;
             
                         // if the split read qualifies
                         for(set<int>::iterator it=(*(aux->sp_set)).begin(); it!=(*(aux->sp_set)).end(); ++it)
