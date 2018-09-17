@@ -740,7 +740,7 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
             }
             
             // SP
-            while(sp_idx < vec_sp.size() && vec_sp[sp_idx].chrnum == i-1 && vec_sp[sp_idx].pos <= j*1000)
+            while(sp_idx < vec_sp.size() && vec_sp[sp_idx].chrnum == i-1 && vec_sp[sp_idx].pos <= j*10000)
             {
                 sp_idx ++;
             }
@@ -785,11 +785,6 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
     }
     varFile.close();
     idxFile.close();
-}
-
-void bFile::write_depth100(string &sampID)
-{
-
 }
 
 void bFile::write_interval(string &sampID, vector<sv> &vec_sv)

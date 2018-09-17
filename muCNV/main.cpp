@@ -684,7 +684,6 @@ int main(int argc, char** argv)
         {
             b.write_interval(sampID, vec_sv);
         }
-        b.write_depth100(sampID);
         b.write_pileup(sampID, vec_sv);
         //b.write_pileup_text(sampID, vec_sv);
         /*

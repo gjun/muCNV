@@ -350,7 +350,6 @@ public:
     void write_pileup(string &, vector<sv> &);
     void write_pileup_text(string &, vector<sv> &);
     void write_interval(string &, vector<sv> &);
-    void write_depth100(string &);
 	bFile (gcContent &x) : GC(x) {};
 
 };
