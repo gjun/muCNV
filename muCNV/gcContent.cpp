@@ -55,7 +55,7 @@ void gcContent::initialize(string &gcFile)
     
     // read size of GC-interval bin
     inFile.read(reinterpret_cast <char *> (&binsize), sizeof(uint16_t));
-    cerr << "Bin size: " << (int) binsize << endl;
+    //cerr << "Bin size: " << (int) binsize << endl;
     
     // read number of GC bins
     inFile.read(reinterpret_cast <char *> (&num_bin), sizeof(uint16_t));

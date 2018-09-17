@@ -237,8 +237,8 @@ typedef struct {     // auxiliary data structure
 
 	uint32_t n_rp;
 	uint32_t n_sp;
-    vector<readpair> *vec_rp;
-    vector<splitread> *vec_sp;
+    vector<readpair> *p_vec_rp;
+    vector<splitread> *p_vec_sp;
 
     //    set<int> *isz_set;
 //	vector<double> *isz_sum;

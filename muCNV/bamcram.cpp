@@ -190,7 +190,8 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                     (*(aux->vec_sv))[*it].vec_pair.push_back(new_rp);
                 }*/
 
-                (*(aux->vec_rp)).push_back(new_rp);
+                (*(aux->p_vec_rp)).push_back(new_rp);
+                
             }
             else
             {
@@ -235,7 +236,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                             new_sp.firstclip = lclip;
 
                         // Write out new_sp
-                        (*(aux->vec_sp)).push_back(new_sp);
+                        (*(aux->p_vec_sp)).push_back(new_sp);
 /*
                         // if the split read qualifies
                         for(set<int>::iterator it=(*(aux->sp_set)).begin(); it!=(*(aux->sp_set)).end(); ++it)
@@ -395,8 +396,8 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     vector<double> gc_dp_sum;
     vector<int> dp_cnt;
 
-    data[0]->vec_rp = &vec_rp;
-    data[0]->vec_sp = &vec_sp;
+    data[0]->p_vec_rp = &vec_rp;
+    data[0]->p_vec_sp = &vec_sp;
     
     /*
     data[0]->rp_set = &rp_set;
@@ -717,6 +718,9 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
     int prev_sp = 0;
     int prev_rp = 0;
     
+    int cnt_rp = 0;
+    int cnt_sp = 0;
+    
     for(int i=1;i<=GC.num_chr; ++i)
     {
         int N = ceil((double)GC.chrSize[i] / 10000.0) ;
@@ -739,6 +743,7 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
                 varFile.write(reinterpret_cast<char*>(&(vec_rp[k].matepos)), sizeof(uint32_t));
                 varFile.write(reinterpret_cast<char*>(&(vec_rp[k].pairstr)), sizeof(int8_t));
                 curr_pos += sizeof(int8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(int8_t);
+                cnt_rp ++;
             }
             prev_rp = rp_idx;
             // SP
@@ -758,11 +763,14 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
                 varFile.write(reinterpret_cast<char*>(&(vec_sp[k].firstclip)), sizeof(int16_t));
                 varFile.write(reinterpret_cast<char*>(&(vec_sp[k].secondclip)), sizeof(int16_t));
                 curr_pos += sizeof(int8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(int16_t) + sizeof(int16_t) + sizeof(int8_t);
+                cnt_sp ++;
+
             }
             prev_sp = sp_idx;
             idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // where each 10,000-bp interval ends;
-            fprintf(stderr, "\rChr %d, Pos %d, Index %dm, rp_idx %d, sp_idx %d", i, j*10000, curr_pos, rp_idx, sp_idx);
+            //fprintf(stderr, "\rChr %d, Pos %d, Index %dm, rp_idx %d, sp_idx %d", i, j*10000, curr_pos, rp_idx, sp_idx);
             //cerr << "CHR " << i << " POS " << j*10000 << " Index " << curr_pos;
+            fprintf(stderr, "\rChr %d, Pos %lu, Index %d, cnt_rp %d, cnt_sp %d\n", i, j*10000, curr_pos, cnt_rp, cnt_sp);
 
         }
         
