@@ -761,7 +761,8 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
             }
             prev_sp = sp_idx;
             idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // where each 10,000-bp interval ends;
-            //cerr << "CHR " << i << " POS " << j*10000 << " Index " << curr_pos << endl;
+            fprintf(stderr, "\rChr %d, Pos %d, Index %dm, rp_idx %d, sp_idx %d", i, j*10000, curr_pos, rp_idx, sp_idx);
+            //cerr << "CHR " << i << " POS " << j*10000 << " Index " << curr_pos;
 
         }
         
@@ -795,10 +796,7 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
     }
 }
 
-void bFile::write_interval(string &sampID, vector<sv> &vec_sv)
-{
-    
-}
+
 
 void bFile::write_pileup_text(string &sampID, vector<sv> &vec_sv)
 {

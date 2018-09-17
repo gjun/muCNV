@@ -52,6 +52,32 @@ string svTypeName(svType t)
     return S[t];
 }
 
+svType svTypeNum(int t)
+{
+    switch(t)
+    {
+        case 0:
+            return DEL;
+            break;
+        case 1:
+            return DUP;
+            break;
+        case 2:
+            return INV;
+            break;
+        case 3:
+            return CNV;
+            break;
+        case 4:
+            return INS;
+            break;
+        case 5:
+            return BND;
+            break;
+    }
+    return DEL;
+}
+
 int median(vector<int> &L)
 {
 

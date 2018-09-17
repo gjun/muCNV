@@ -593,6 +593,67 @@ int read_candidate_vcf(ifstream &vfile, sv& new_interval, string& suppvec)
 	return -1;
 }
 
+void write_interval(string &intFileName, vector<sv> &vec_sv)
+{
+    ofstream intFile(intFileName.c_str(), std::ios::out | std::ios::binary);
+    int n_var = (int)vec_sv.size();
+    
+    intFile.write(reinterpret_cast<char*>(&n_var), sizeof(int));
+    
+    for(int i=0;i<vec_sv.size();++i)
+    {
+        uint8_t t = (uint8_t)vec_sv[i].svtype;
+        intFile.write(reinterpret_cast<char*>(&t), sizeof(uint8_t));
+        intFile.write(reinterpret_cast<char*>(&i), sizeof(int));
+        intFile.write(reinterpret_cast<char*>(&(vec_sv[i].chrnum)), sizeof(int));
+        intFile.write(reinterpret_cast<char*>(&(vec_sv[i].pos)), sizeof(int));
+        intFile.write(reinterpret_cast<char*>(&(vec_sv[i].end)), sizeof(int));
+    }
+    intFile.close();
+}
+void read_svs_from_intfile(string &intFileName, vector<breakpoint> &vec_bp, vector<sv> &vec_sv)
+{
+    ifstream intFile(intFileName.c_str(), ios::in | ios::binary);
+    int n_var = 0;
+    
+    intFile.read(reinterpret_cast<char*>(&n_var), sizeof(int));
+    vec_sv.resize(n_var);
+    vec_bp.resize(n_var);
+    
+    for(int i=0;i<n_var;++i)
+    {
+        uint8_t t;
+        int idx;
+        intFile.read(reinterpret_cast<char*>(&t), sizeof(uint8_t));
+        vec_sv[i].svtype = svTypeNum(t);
+        
+        intFile.read(reinterpret_cast<char*>(&idx), sizeof(int));
+        // sanity check whether idx == i
+        
+        intFile.read(reinterpret_cast<char*>(&(vec_sv[i].chrnum)), sizeof(int));
+        intFile.read(reinterpret_cast<char*>(&(vec_sv[i].pos)), sizeof(int));
+        intFile.read(reinterpret_cast<char*>(&(vec_sv[i].end)), sizeof(int));
+        vec_sv[i].get_len();
+        vec_sv[i].dp_sum = 0;
+        vec_sv[i].n_dp = 0;
+        vec_sv[i].dp = 0;
+        
+        breakpoint bp[2];
+
+        vec_bp[i*2].pos = vec_sv[i].pos;
+        vec_bp[i*2+1].pos = vec_sv[i].end;
+        
+        for(int k=i*2;k<i*2+1;++k)
+        {
+            vec_bp[k].chrnum = vec_sv[i].chrnum;
+            vec_bp[k].idx = i;
+            vec_bp[k].bptype = k;
+        }
+    }
+    intFile.close();
+}
+
+
 void read_svs_from_vcf(string &vcf_file, vector<breakpoint> &v_bp, vector<sv> &v_sv)
 {
     ifstream vfile(vcf_file.c_str(), ios::in);

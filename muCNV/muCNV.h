@@ -31,7 +31,8 @@ using namespace std;
 
 
 enum svType {DEL=0, DUP=1, INV=2, CNV=3, INS=4, BND=5};
-string svTypeName(svType t);
+string svTypeName(svType);
+svType svTypeNum(int);
 
 typedef pair<uint64_t, uint64_t> interval_t;
 
@@ -349,7 +350,6 @@ public:
     void postprocess_depth(vector<sv> &);
     void write_pileup(string &, vector<sv> &);
     void write_pileup_text(string &, vector<sv> &);
-    void write_interval(string &, vector<sv> &);
 	bFile (gcContent &x) : GC(x) {};
 
 };
@@ -470,7 +470,10 @@ double stdev(vector<double>&, double);
 
 int find_start(vector<sv> &, int );
 
+void write_interval(string &, vector<sv> &);
+
 void read_svs_from_vcf(string &, vector<breakpoint> &, vector<sv> &);
+void read_svs_from_intfile(string &, vector<breakpoint> &, vector<sv> &);
 void read_intervals_from_vcf(vector<string> &, vector<string> &, vector<sv> &);
 int read_candidate_vcf(ifstream &, sv&, string& );
 

@@ -121,6 +121,7 @@ int main(int argc, char** argv)
     bool bWriteSV = false;
 	string index_file;
 	string vcf_file;
+    string interval_file;
 	string supp_file;
 	string supp_id_file;
 	string out_filename;
@@ -146,6 +147,7 @@ int main(int argc, char** argv)
 		TCLAP::ValueArg<string> argBam("b","bam","Input BAM/CRAM file name",false,"","string");
 		TCLAP::ValueArg<string> argOut("o","out","Output filename",false,"muCNV.vcf","string");
 		TCLAP::ValueArg<string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
+        TCLAP::ValueArg<string> argInterval("V","interVal", "Binary interval file containing candidate SVs", false, "", "string");
 		TCLAP::ValueArg<string> argSupp("S","Support","Support VCF file containing suppporting info",false,"","string");
 		TCLAP::ValueArg<string> argSuppID("I","IDinSupport","Sample ID list for support vectors",false,"","string");
 		TCLAP::ValueArg<string> argSampleID("s","sample","Sample ID",false,"","string");
@@ -165,6 +167,7 @@ int main(int argc, char** argv)
 		cmd.add(argBam);
 		cmd.add(argOut);
 		cmd.add(argVcf);
+        cmd.add(argInterval);
 		cmd.add(argGcfile);
 		cmd.add(argIndex);
 		cmd.add(argSampleID);
@@ -181,6 +184,7 @@ int main(int argc, char** argv)
 		out_filename = argOut.getValue();
 		sampID = argSampleID.getValue();
 		vcf_file = argVcf.getValue();
+        interval_file = argInterval.getValue();
 		supp_file = argSupp.getValue();
 		supp_id_file = argSuppID.getValue();
 		gc_file = argGcfile.getValue();
@@ -216,9 +220,9 @@ int main(int argc, char** argv)
 				cerr << "Error: BAM/CRAM file is required for individual processing mode." << endl;
 				exit(1);
 			}
-			if (vcf_file == "")
+			if (vcf_file == "" && interval_file == "")
 			{
-				cerr << "Error: VCF file with SV events is required for individual processing mode." << endl;
+				cerr << "Error: VCF file or Interval file with SV events is required for individual processing mode." << endl;
 				exit(1);
 			}
 			if (sampID == "")
@@ -654,8 +658,28 @@ int main(int argc, char** argv)
         vector<sv> vec_sv;
         vector<breakpoint> vec_bp;
 		vcfs.push_back(vcf_file);
-		//read_intervals_from_vcf(sample_ids, vcfs, candidates);
-        read_svs_from_vcf(vcf_file, vec_bp, vec_sv);
+        
+        if (vcf_file != "")
+        {
+            read_svs_from_vcf(vcf_file, vec_bp, vec_sv);
+        }
+        else if (interval_file != "")
+        {
+            read_svs_from_intfile(interval_file, vec_bp, vec_sv);
+        }
+        
+        if (bWriteSV)
+        {
+            if (interval_file != "")
+            {
+                write_interval(interval_file, vec_sv);
+            }
+            else
+            {
+                cerr << "Error, interval file name is missing" << endl;
+                exit(1);
+            }
+        }
         
 		cerr<< vec_sv.size() << " svs and " << vec_bp.size() << " breakpoints identified from the VCF file." << endl;
 		vector<int> idxs;
@@ -680,10 +704,7 @@ int main(int argc, char** argv)
         b.read_depth_sequential(vec_bp, vec_sv);
         
         b.postprocess_depth(vec_sv);
-        if (bWriteSV)
-        {
-            b.write_interval(sampID, vec_sv);
-        }
+
         b.write_pileup(sampID, vec_sv);
         //b.write_pileup_text(sampID, vec_sv);
         /*
