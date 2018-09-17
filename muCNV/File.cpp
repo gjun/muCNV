@@ -679,7 +679,7 @@ void read_svs_from_vcf(string &vcf_file, vector<breakpoint> &v_bp, vector<sv> &v
                     bp[0].pos = new_interval.pos;
                     bp[1].pos = new_interval.end;
 
-                    for(int k=0;k<1;++k)
+                    for(int k=0;k<2;++k)
                     {
                         bp[k].chrnum = new_interval.chrnum;
                         bp[k].idx = sv_idx;

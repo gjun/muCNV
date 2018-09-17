@@ -637,6 +637,18 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
     
     ofstream pileupFile(pileup_name.c_str(), std::ios::out | std::ios::binary);
 
+    int n_sample = 1;
+    char pad[256] = {0};
+
+    pileupFile.write(reinterpret_cast<char*>(&n_sample), sizeof(int));
+    // Sample ID (each with 256 bytes)
+    if (sampID.length() > 255)
+    {
+        cerr << "Error, sample ID " << sampID << " is too long." << endl;
+        exit(1);
+    }
+    pileupFile.write(sampID.c_str(), sampID.length());
+    pileupFile.write(pad, 256-sampID.length());
     // Write depth and isize stats
     pileupFile.write(reinterpret_cast<char*>(&avg_dp), sizeof(double));
     pileupFile.write(reinterpret_cast<char*>(&std_dp), sizeof(double));
@@ -663,7 +675,6 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
     size_t curr_pos = 0;
     
     // Number of samples in this varFile (can include multiple samples)
-    int n_sample = 1;
     varFile.write(reinterpret_cast<char*>(&n_sample), sizeof(int));
     curr_pos += sizeof(int);
     
@@ -679,7 +690,6 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
         exit(1);
     }
     varFile.write(sampID.c_str(), sampID.length());
-    char pad[256] = {0};
     varFile.write(pad, 256-sampID.length());
     curr_pos += 256;
     
