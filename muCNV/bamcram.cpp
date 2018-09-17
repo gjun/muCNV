@@ -489,8 +489,8 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
                 // dp_set.insert(vec_bp[nxt].idx);
             }
             else
-            {
-                dp_list.erase( find(dp_list.begin(), dp_list.end(), idx) );
+            {                
+                dp_list.erase( find(dp_list.begin(), dp_list.end(), vec_bp[nxt].idx) );
                // dp_set.erase(vec_bp[nxt].idx);
             }
             nxt++;
