@@ -762,7 +762,7 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
                 varFile.write(reinterpret_cast<char*>(&(vec_sp[k].sapos)), sizeof(uint32_t));
                 varFile.write(reinterpret_cast<char*>(&(vec_sp[k].firstclip)), sizeof(int16_t));
                 varFile.write(reinterpret_cast<char*>(&(vec_sp[k].secondclip)), sizeof(int16_t));
-                curr_pos += sizeof(int8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(int16_t) + sizeof(int16_t) + sizeof(int8_t);
+                curr_pos += sizeof(int8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(int16_t) + sizeof(int16_t);
                 cnt_sp ++;
 
             }
@@ -770,9 +770,10 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
             idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // where each 10,000-bp interval ends;
             //fprintf(stderr, "\rChr %d, Pos %d, Index %dm, rp_idx %d, sp_idx %d", i, j*10000, curr_pos, rp_idx, sp_idx);
             //cerr << "CHR " << i << " POS " << j*10000 << " Index " << curr_pos;
-            fprintf(stderr, "\rChr %d, Pos %lu, Index %d, cnt_rp %d, cnt_sp %d\n", i, j*10000, curr_pos, cnt_rp, cnt_sp);
 
         }
+        fprintf(stderr, "\rChr %d, Index %d, cnt_rp %d, cnt_sp %d\n", i, curr_pos, cnt_rp, cnt_sp);
+
         
         /*
         uint16_t n_rp = (uint16_t) vec_sv[i].vec_pair.size();
