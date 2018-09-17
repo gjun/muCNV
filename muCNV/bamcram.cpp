@@ -196,7 +196,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
             else
             {
                 // get average isize statistics only from properly paired pairs
-                aux->sum_isz += b->core.isize;
+                aux->sum_isz += (b->core.isize > 0) ? b->core.isize : -b->core.isize;
                 aux->sumsq_isz += (b->core.isize) * (b->core.isize);
                 aux->n_isz += 1;
             }
@@ -215,36 +215,38 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                     new_sp.firstclip = 0;
                     new_sp.secondclip = 0;
 
-                    if (process_split(aux_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)))
+                    if (!process_split(aux_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)))
                     {
-						aux->n_sp++;
-                        int ncigar = b->core.n_cigar;
-                        uint32_t *cigar  = bam_get_cigar(b);
-                        int16_t lclip = 0;
-                        int16_t rclip = 0;
-                        if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP)
-                        {
-                            lclip = bam_cigar_oplen(cigar[0]);
-                        }
-                        if (bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP)
-                        {
-                            rclip = bam_cigar_oplen(cigar[0]);
-                        }
-                        if (rclip > lclip)
-                            new_sp.firstclip = -rclip;
-                        else if (lclip>rclip)
-                            new_sp.firstclip = lclip;
-
-                        // Write out new_sp
-                        (*(aux->p_vec_sp)).push_back(new_sp);
-/*
-                        // if the split read qualifies
-                        for(set<int>::iterator it=(*(aux->sp_set)).begin(); it!=(*(aux->sp_set)).end(); ++it)
-                        {
-                            (*(aux->vec_sv))[*it].vec_split.push_back(new_sp);
-                        }
- */
+                        new_sp.sapos = 0;
+                        new_sp.secondclip = 0;
                     }
+                    aux->n_sp++;
+                    int ncigar = b->core.n_cigar;
+                    uint32_t *cigar  = bam_get_cigar(b);
+                    int16_t lclip = 0;
+                    int16_t rclip = 0;
+                    if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP)
+                    {
+                        lclip = bam_cigar_oplen(cigar[0]);
+                    }
+                    if (bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP)
+                    {
+                        rclip = bam_cigar_oplen(cigar[0]);
+                    }
+                    if (rclip > lclip)
+                        new_sp.firstclip = -rclip;
+                    else if (lclip>rclip)
+                        new_sp.firstclip = lclip;
+
+                    // Write out new_sp
+                    (*(aux->p_vec_sp)).push_back(new_sp);
+/*
+                    // if the split read qualifies
+                    for(set<int>::iterator it=(*(aux->sp_set)).begin(); it!=(*(aux->sp_set)).end(); ++it)
+                    {
+                        (*(aux->vec_sv))[*it].vec_split.push_back(new_sp);
+                    }
+ */
                 }
             }
 
@@ -386,7 +388,8 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     
     // For average DP
     // Consider using LIST
-    unordered_set<int> dp_set; // Initially empty
+    //unordered_set<int> dp_set; // Initially empty
+    vector<int> dp_list;
     /*
     set<int> rp_set;
     set<int> sp_set;
@@ -429,12 +432,8 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     int prev_chrnum = 1;
     int prev_pos = 1;
     
-    while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0 && tid < GC.num_chr)
+    while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0 && tid < GC.num_chr -2 )  // TEMPORARY, ONLY AUTOSOMES
     {
-        // TODO: check whether tid has changed from previous iteration
-        // if changed, empty / clear all statistics
-        // Make sure every set is empty
-        
         // TODO: Make sure this is right...
         int chrnum = tid+1;
         
@@ -478,81 +477,24 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
         curr_bp.chrnum = chrnum;
         curr_bp.pos = pos;
         
-        while (nxt < vec_bp.size() && vec_bp[nxt] <= curr_bp)
+        if (nxt>=vec_bp.size())
+            break;
+        
+        while (vec_bp[nxt] <= curr_bp)
         {
             // Process set insert and remove
-            switch(vec_bp[nxt].bptype)
+            if (vec_bp[nxt].bptype == 0)
             {
-                    /*
-                case 0:
-                    // Start position - gap
-                    rp_set.insert(vec_bp[nxt].idx);
-                    sp_set.insert(vec_bp[nxt].idx);
-//					cerr << "Adding RP, SP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
-                    break;
-                     */
-                case 0:
-                    // Start position
-                    dp_set.insert(vec_bp[nxt].idx);
-//					cerr << "Adding DP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
-                    break;
-                    /*
-                case 2:
-                    // Start position + buf
-//					cerr << "Erasing RP,SP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
-                    if (rp_set.erase(vec_bp[nxt].idx) == 0 )
-                    {
-                        cerr << "Error, erasing non-existing RP" << endl;
-						print_sv(vec_sv[vec_bp[nxt].idx]);
-                        exit(0);
-                    }
-                    if (sp_set.erase(vec_bp[nxt].idx) == 0)
-                    {
-                        cerr << "Error, erasing non-existing SP" << endl;
-						print_sv(vec_sv[vec_bp[nxt].idx]);
-                        exit(0);
-                    }
-                    break;
-                case 3:
-//					cerr << "Adding RP,SP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
-                    // End position - buf
-                    rp_set.insert(vec_bp[nxt].idx);
-                    sp_set.insert(vec_bp[nxt].idx);
-                    break;
-                     */
-                case 1:
-                    // End position
-//					cerr << "Erasing DP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
-                    if (dp_set.erase(vec_bp[nxt].idx) == 0)
-                    {
-                        cerr << "Error, erasing non-existing DP" << endl;
-						print_sv(vec_sv[vec_bp[nxt].idx]);
-                        exit(0);
-                    }
-                    // update depth stats
-                    break;
-                    /*
-                case 5:
-                    // End position + buf
-//					cerr << "Erasing RP, SP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
-                    if (rp_set.erase(vec_bp[nxt].idx) == 0 )
-                    {
-                        cerr << "Error, erasing non-existing RP" << endl;
-						print_sv(vec_sv[vec_bp[nxt].idx]);
-                        exit(0);
-                    }
-                    if (sp_set.erase(vec_bp[nxt].idx) == 0)
-                    {
-                        cerr << "Error, erasing non-existing SP" << endl;
-						print_sv(vec_sv[vec_bp[nxt].idx]);
-                        exit(0);
-                    }
-                    break;
-                     */
+                dp_list.push_back(vec_bp[nxt].idx);
+                // dp_set.insert(vec_bp[nxt].idx);
+            }
+            else
+            {
+                dp_list.erase( find(dp_list.begin(), dp_list.end(), idx) );
+               // dp_set.erase(vec_bp[nxt].idx);
             }
             nxt++;
         }
-
         
         int m=0;
         for(int j=0;j<n_plp[0];++j)
@@ -577,11 +519,10 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
         gc_sum[bin] += dpval;
         gc_cnt[bin] += 1;
         
-        for(unordered_set<int>::iterator it=dp_set.begin(); it!=dp_set.end(); ++it)
+        //for(unordered_set<int>::iterator it=dp_set.begin(); it!=dp_set.end(); ++it)
+        for(vector<int>::iterator it=dp_list.begin(); it!=dp_list.end(); ++it)
         {
-            //            cerr<< "dpval for pos " << pos << " is " << dpval << endl;
             vec_sv[*it].dp_sum += dpval;
-            // gc_dp_sum[*it] += gc_dpval;
             vec_sv[*it].n_dp += 1;
         }
     }
@@ -603,7 +544,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
 
 	cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << endl;
     avg_isize = data[0]->sum_isz / data[0]->n_isz;
-    std_isize = sqrt(((double)data[0]->sumsq_isz / data[0]->n_isz - (avg_isize*avg_isize))*(data[0]->n_isz)/(data[0]->n_isz-1));
+    std_isize = sqrt(((double)data[0]->sumsq_isz / ((double)data[0]->n_isz-1) - ((double)avg_isize*avg_isize))*((double)data[0]->n_isz)/(data[0]->n_isz-1));
     sam_itr_destroy(data[0]->iter);
     free(plp); free(n_plp);
     bam_mplp_destroy(mplp);
