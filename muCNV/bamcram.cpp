@@ -738,7 +738,7 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
                 varFile.write(reinterpret_cast<char*>(&(vec_rp[k].pairstr)), sizeof(int8_t));
                 curr_pos += sizeof(int8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(int8_t);
             }
-            
+            prev_rp = rp_idx;
             // SP
             while(sp_idx < vec_sp.size() && vec_sp[sp_idx].chrnum == i-1 && vec_sp[sp_idx].pos <= j*10000)
             {
@@ -757,8 +757,9 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
                 varFile.write(reinterpret_cast<char*>(&(vec_sp[k].secondclip)), sizeof(int16_t));
                 curr_pos += sizeof(int8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(int16_t) + sizeof(int16_t) + sizeof(int8_t);
             }
+            prev_sp = sp_idx;
             idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // where each 10,000-bp interval ends;
-            cerr << "CHR " << i << " POS " << j*10000 << " Index " << curr_pos << endl;
+            //cerr << "CHR " << i << " POS " << j*10000 << " Index " << curr_pos << endl;
 
         }
         
