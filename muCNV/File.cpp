@@ -674,7 +674,19 @@ void read_svs_from_vcf(string &vcf_file, vector<breakpoint> &v_bp, vector<sv> &v
                     
                     v_sv.push_back(new_interval);
                     int sv_idx = (int) v_sv.size()-1;
+                    breakpoint bp[2];
                     
+                    bp[0].pos = new_interval.pos;
+                    bp[1].pos = new_interval.end;
+
+                    for(int k=0;k<1;++k)
+                    {
+                        bp[k].chrnum = new_interval.chrnum;
+                        bp[k].idx = sv_idx;
+                        bp[k].bptype = k;
+                        v_bp.push_back(bp[k]);
+                    }
+                    /*
                     breakpoint bp[6];
 
                     bp[0].pos = (new_interval.pos > 500) ? new_interval.pos-500 : 0;
@@ -698,6 +710,7 @@ void read_svs_from_vcf(string &vcf_file, vector<breakpoint> &v_bp, vector<sv> &v
                         bp[k].bptype = k;
                         v_bp.push_back(bp[k]);
                     }
+                     */
                 }
             } // if chr >= 1 && chr <= 22
         }

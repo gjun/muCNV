@@ -54,15 +54,16 @@ vector<size_t> sort_indexes(const vector<T> &v) {
 class readpair
 {
 public:
+    int8_t chrnum;
     int32_t selfpos;
     int32_t matepos;
-    bool selfstr;
-    bool matestr;
+    int8_t pairstr;
 };
 
 class splitread
 {
 public:
+    int8_t chrnum;
     int32_t pos;
     int32_t sapos;
     int16_t firstclip; // soft clip position (+: left-side, -: right-side) in primary alignment
@@ -93,8 +94,8 @@ class sv
     int n_dp;
     uint8_t dp;
     
-    vector<readpair> vec_pair;
-    vector<splitread> vec_split;
+//    vector<readpair> vec_pair;
+//    vector<splitread> vec_split;
 	sv();
 };
 
@@ -226,15 +227,17 @@ typedef struct {     // auxiliary data structure
 	samFile *fp;     // the file handle
 	bam_hdr_t *hdr;  // the file header
 	hts_itr_t *iter; // NULL if a region not specified
-    set<int> *rp_set;
-    set<int> *sp_set;
-    vector<sv> *vec_sv;
+//    set<int> *rp_set;
+ //   set<int> *sp_set;
+//    vector<sv> *vec_sv;
     uint64_t sum_isz;
     uint64_t sumsq_isz;
     uint64_t n_isz;
 
 	uint32_t n_rp;
 	uint32_t n_sp;
+    vector<readpair> *vec_rp;
+    vector<splitread> *vec_sp;
 
     //    set<int> *isz_set;
 //	vector<double> *isz_sum;
@@ -334,6 +337,8 @@ public:
 	double gcCorrected(double, int, int);
     vector< uint8_t * > depth100; // to store depth for every 100bp interval
 
+    vector<readpair> vec_rp;
+    vector<splitread> vec_sp;
     
 //	void read_depth(vector<sv> &, vector<string> &);
     void read_depth_sequential(vector<breakpoint> &, vector<sv> &);

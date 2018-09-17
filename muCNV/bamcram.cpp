@@ -19,120 +19,11 @@
 
 typedef enum { READ_UNKNOWN = 0, READ_1 = 1, READ_2 = 2 } readpart;
 
-void readmagic(ifstream &F)
-{
-	char buf[100];
-	F.read(reinterpret_cast<char *>(buf), 7);
-	buf[7] = '\0';
-	if (strcmp(buf, "mCNVMGC"))
-	{
-		cerr << "Error: GC content file is corrupted." << endl;
-		exit(1);
-	}
-}
-
 void print_sv(sv &t)
 {
 	fprintf(stderr, "%d:%d-%d, %s \n", t.chrnum, t.pos, t.end, svTypeName(t.svtype).c_str());
 
 }
-/*
-static readpart which_readpart(const bam1_t *b)
-{
-	if ((b->core.flag & BAM_FREAD1) && !(b->core.flag & BAM_FREAD2)) {
-		return READ_1;
-	} else if ((b->core.flag & BAM_FREAD2) && !(b->core.flag & BAM_FREAD1)) {
-		return READ_2;
-	} else {
-		return READ_UNKNOWN;
-	}
-}
-*/
-
-// This function reads a BAM alignment from one BAM file.
-/*
-static int read_bam_basic(void *data, bam1_t *b) // read level filters better go here to avoid pileup
-{
-	aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
-	int ret;
-
-	while (1)
-	{
-		ret = aux->iter ? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->hdr, b);
-
-		if ( ret<0 ) break;
-		if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
-		if ( (int)b->core.qual < aux->min_mapQ ) continue;
-		// Nov 29, 2017, commented out
-		//if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
-		//		cerr << bam_get_qname(b) << "/" << which_readpart(b) << " insert size : " << b->core.isize << endl;
-		if (IS_PROPERLYPAIRED(b) && (b->core.qual > 20) && (b->core.tid == b->core.mtid) && b->core.mpos>0 )
-		{
-			if (b->core.isize < 10000 && b->core.isize>-10000)
-			(*(aux->isz_list))[0].push_back(abs(b->core.isize));
-		}
-		break;
-	}
-	return ret;
-}
-*/
-/*
-// This function reads a BAM alignment from one BAM file.
-static int read_bam(void *data, bam1_t *b) // read level filters better go here to avoid pileup
-{
-	aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
-	int ret;
-
-	while (1)
-	{
-		ret = aux->iter ? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->hdr, b);
-
-		if ( ret<0 ) break;
-		if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
-		if ( (int)b->core.qual < aux->min_mapQ ) continue;
-		// Nov 29, 2017, commented out
-		//if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
-        // Filters: MQ>0, mate mapped to the same chr, isize>0, pos>0
-        
-		if ((int)b->core.qual>0 && b->core.tid == b->core.mtid && b->core.isize !=0 && b->core.mpos > 0)
-		{			
-			if (((b->core.flag & BAM_FREVERSE) == BAM_FREVERSE) == ((b->core.flag & BAM_FMREVERSE) == BAM_FMREVERSE))
-			{
-	//			cerr << "REVERSED tid " << b->core.tid << " pos " << b->core.pos << " qual " <<(int)b->core.qual << " insert size " << b->core.isize << " mtid " << b->core.mtid <<  " mpos " << b->core.mpos << endl;
-
-				for(set<int>::iterator it=(*(aux->isz_set)).begin(); it!=(*(aux->isz_set)).end(); ++it)
-				{
-					(*(aux->rev_isz_list))[*it].push_back(b->core.isize);
-//					(*(aux->rev_pos_list))[*it].push_back(b->core.pos);
-				}
-			}
-			else 
-			{
-				if (! IS_PROPERLYPAIRED(b) )
-				{
-		//			cerr << "NOTPROPER tid " << b->core.tid << " pos " << b->core.pos << " qual " <<(int)b->core.qual << " insert size " << b->core.isize << " mtid " << b->core.mtid <<  " mpos " << b->core.mpos << endl;
-					for(set<int>::iterator it=(*(aux->isz_set)).begin(); it!=(*(aux->isz_set)).end(); ++it)
-					{
-						(*(aux->isz_list))[*it].push_back(b->core.isize);
-	//					(*(aux->pos_list))[*it].push_back(b->core.pos);
-					}
-				}
-				else
-				{
-					for(set<int>::iterator it=(*(aux->isz_set)).begin(); it!=(*(aux->isz_set)).end(); ++it)
-					{
-						(*(aux->isz_sum))[*it] += abs(b->core.isize);
-						(*(aux->isz_cnt))[*it] += 1;
-					}
-
-				}
-			}
-		}
-		break;
-	}
-	return ret;
-}
-*/ // this version is commented out in Sep. 2018.
 
 int get_cigar_clippos(string &cigar_str)
 {
@@ -177,6 +68,7 @@ int get_cigar_clippos(string &cigar_str)
     }
     return 0;
 }
+
 bool process_split(uint8_t *t, splitread &new_sp, int32_t tid, bool strand)
 {
     int i=1;
@@ -273,24 +165,31 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
         //if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
         // Filters: MQ>0, mate mapped to the same chr, isize!=0, pos>0
         
-        if ((int)b->core.qual>0 && b->core.tid == b->core.mtid && b->core.isize !=0 && b->core.mpos > 0)
+//        if ((int)b->core.qual>0 && b->core.tid == b->core.mtid && b->core.isize !=0 && b->core.mpos > 0)
         {
+            
        //     if (! IS_PROPERLYPAIRED(b) && !(*(aux->rp_set)).empty())
-            if (! IS_PROPERLYPAIRED(b))
+            
+            // CURRENTLY HANDLES READS MAPPED TO THE SAME CHRS ONLY
+            if (! IS_PROPERLYPAIRED(b) && b->core.tid == b->core.mtid)
             {
-                
                 // add to read pair set
                 readpair new_rp;
+                new_rp.chrnum = b->core.tid+1;
                 new_rp.selfpos = b->core.pos;
                 new_rp.matepos = b->core.mpos;
-                new_rp.selfstr = !(b->core.flag & BAM_FREVERSE);
-                new_rp.matestr = !(b->core.flag & BAM_FMREVERSE);
+                new_rp.pairstr = 0;
+                new_rp.pairstr += (b->core.flag & BAM_FREVERSE) ? 2 : 0;
+                new_rp.pairstr += (b->core.flag & BAM_FMREVERSE) ? 1 : 0;
                 
 				aux->n_rp++;
+                /*
                 for(set<int>::iterator it=(*(aux->rp_set)).begin(); it!=(*(aux->rp_set)).end(); ++it)
                 {
                     (*(aux->vec_sv))[*it].vec_pair.push_back(new_rp);
-                }
+                }*/
+
+                (*(aux->vec_rp)).push_back(new_rp);
             }
             else
             {
@@ -304,11 +203,11 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 //            if (!(*(aux->sp_set)).empty())
             {
                 uint8_t *aux_sa = bam_aux_get(b, "SA");
-        
 
                 if (aux_sa && aux_sa[0] == 'Z')
                 {
                     splitread new_sp;
+                    new_sp.chrnum = b->core.tid + 1;
                     new_sp.pos = b->core.pos;
                     
                     new_sp.firstclip = 0;
@@ -316,8 +215,6 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 
                     if (process_split(aux_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)))
                     {
-
-
 						aux->n_sp++;
                         int ncigar = b->core.n_cigar;
                         uint32_t *cigar  = bam_get_cigar(b);
@@ -336,15 +233,17 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                         else if (lclip>rclip)
                             new_sp.firstclip = lclip;
 
-            
+                        // Write out new_sp
+                        (*(aux->vec_sp)).push_back(new_sp);
+/*
                         // if the split read qualifies
                         for(set<int>::iterator it=(*(aux->sp_set)).begin(); it!=(*(aux->sp_set)).end(); ++it)
                         {
                             (*(aux->vec_sv))[*it].vec_split.push_back(new_sp);
                         }
+ */
                     }
                 }
-                
             }
 
         }
@@ -356,7 +255,6 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 
 void bFile::initialize_sequential(string &bname)
 {
-    //    data = (aux_t*)calloc(1, sizeof(aux_t));
     data = (aux_t**)calloc(1, sizeof(aux_t*));
     data[0] = (aux_t*)calloc(1, sizeof(aux_t));
     data[0]->fp = hts_open(bname.c_str(), "r");
@@ -377,9 +275,6 @@ void bFile::initialize_sequential(string &bname)
         fprintf(stderr, "Failed to set CRAM_OPT_DECODE_MD value\n");
         exit(1);
     }
-    //    data->min_mapQ = 1; //filter out by MQ10
-    //    data->min_len = 0; // does not set minimum length
-    //    data->hdr = sam_hdr_read(data->fp);
     
     data[0]->min_mapQ = 1;
     data[0]->min_len = 0;
@@ -390,14 +285,7 @@ void bFile::initialize_sequential(string &bname)
         cerr << "Cannot open CRAM/BAM header" << endl;
         exit(1);
     }
-    /*
-    hts_idx_t* tmp_idx = sam_index_load(data[0]->fp, bname.c_str());
-    if (tmp_idx == NULL)
-    {
-        cerr << "Cannot open CRAM/BAM index" << endl;
-        exit(1);
-    }
-    idx = tmp_idx;*/
+
     idx = NULL;
 }
 
@@ -444,128 +332,6 @@ void bFile::initialize(string &bname)
 	}
 	idx = tmp_idx;
 }
-/*
-void bFile::get_avg_depth()
-{
-	vector<double> sums (GC.num_bin, 0);
-	vector<double> cnts (GC.num_bin, 0);
-
-	// For average Insert Size
-	vector< vector<int> > i_list;
-
-	i_list.resize(1);
-
-	data[0]->isz_list = &i_list;
-
-	vector< vector <double> > GCdata;
-	GCdata.resize(GC.num_bin);
-
-	for(int i=0; i<(int)GC.regions.size();++i)
-	{
-	//	while(rpos<chrlen[c])
-		{
-			char reg[100];
-			sprintf(reg, "chr%d:%d-%d",GC.regions[i].chrnum, GC.regions[i].pos, GC.regions[i].end);
-
-			data[0]->iter = sam_itr_querys(idx, data[0]->hdr, reg);
-				if (data[0]->iter == NULL)
-			{
-				cerr << reg << endl;
-				cerr << "Can't parse region" << endl;
-				exit(1);
-			}
-
-//			bam_plp_t plp = bam_plp_init(read_bam_basic, (void*) data);
-			bam_mplp_t mplp = bam_mplp_init(1, read_bam_basic, (void**)data);
-
-			//const bam_pileup1_t *p;
-			const bam_pileup1_t **plp;
-			
-			int tid, pos;
-//			int n_plp;
-			int *n_plp = (int *) calloc (1, sizeof(int));
-			plp = (const bam_pileup1_t**) calloc(1, sizeof(bam_pileup1_t*));
-			
-//			while((p = bam_plp_auto(plp, &tid, &pos, &n_plp))!=0)
-			while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0)
-			{
-				//			cerr << "tid " << tid << " pos " << pos << endl;
-				if (pos<GC.regions[i].pos || pos >GC.regions[i].end) continue;
-				sums[GC.regions[i].gcbin] += n_plp[0];
-				cnts[GC.regions[i].gcbin] += 1;
-				GCdata[GC.regions[i].gcbin].push_back(n_plp[0]);
-			}
-			free(n_plp); free(plp);
-			sam_itr_destroy(data[0]->iter);
-			bam_mplp_destroy(mplp);
-		}
-
-	}
-
-	double avg = 0;
-	vector<double> meds (GC.num_bin,0);
-
-	for(int i=0; i<GC.num_bin; ++i)
-	{
-		if (cnts[i] > 0)
-		{
-			avg += (sums[i]/cnts[i]) * GC.gc_dist[i];
-	//		cerr << "Avg DP for GC bin " << i << " is " << sums[i]/cnts[i] << ", median is " ;
-			sort(GCdata[i].begin(), GCdata[i].end());
-			int m = (int)(GCdata[i].size()/2) -1;
-			meds[i] = (GCdata[i][m] + GCdata[i][m+1]) /2.0;
-			//cerr << meds[i] << endl;
-		}
-	}
-
-	cerr << "Average Depth: " << avg << endl;
-
-	med_isize = median(i_list[0]);
-
-	double sum_is = 0, sumsq_is = 0;
-	int cnt_is = 0;
-	for(int i=0;i<(int)i_list[0].size();++i)
-	{
-		sum_is += i_list[0][i];
-		sumsq_is += i_list[0][i] * i_list[0][i];
-		cnt_is += 1;
-	}
-//	cerr << "sum " << sum_is << " sumsq " << sumsq_is << " cnt " << cnt_is << endl;
-
-	if (cnt_is>0)
-	{
-		avg_isize = sum_is / cnt_is;
-		std_isize = sqrt( (sumsq_is / (double)cnt_is) - (avg_isize * avg_isize) );
-	}
-	else
-	{
-		avg_isize = 0;
-		std_isize = 0;
-	}
-
-	gc_factor.resize(GC.num_bin); 
-
-	cerr << "Median Insert Size : " << med_isize << endl;
-	cerr << "Average Insert Size : " << avg_isize << " (+/- " << std_isize << ")" << endl;
-
-//	cerr << "gc factor size : " << gc_factor.size() << endl;
-	
-	for(int i=0; i<GC.num_bin; ++i)
-	{
-//		cerr << "meds[" << i << "]=" << meds[i]<< " avg=" << avg << " factor " << meds[i]/avg <<endl;
-		gc_factor[i] = meds[i]/avg; 
-
-//		cerr << "bin " << i << " factor " << gc_factor[i] << endl;
-	}
-
-	// TEMPORARY - HARD CODING for 20 BINS
-	gc_factor[18] = gc_factor[17];
-	gc_factor[19] = gc_factor[17];
-
-	avg_dp = avg;
-	avg_rlen = 150; //TEMPORARY - FIX!
-}
-*/
 
 double bFile::gcCorrected(double D, int chr, int pos)
 {
@@ -618,16 +384,23 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     
     // For average DP
     set<int> dp_set; // Initially empty
+    /*
     set<int> rp_set;
     set<int> sp_set;
+     */
     
     vector<double> dp_sum; // One interval (start-end) will add one entry on these
     vector<double> gc_dp_sum;
     vector<int> dp_cnt;
+
+    data[0]->vec_rp = &vec_rp;
+    data[0]->vec_sp = &vec_sp;
     
+    /*
     data[0]->rp_set = &rp_set;
     data[0]->sp_set = &sp_set;
     data[0]->vec_sv = &vec_sv;
+     */
     data[0]->sum_isz = 0;
     data[0]->sumsq_isz = 0;
     data[0]->n_isz = 0;
@@ -643,7 +416,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     
     for(int i=1; i<=GC.num_chr; ++i)
     {
-        int N = ceil(GC.chrSize[i] / 100) ;
+        int N = ceil((double)GC.chrSize[i] / 100.0) ;
         depth100[i] = (uint8_t *) calloc(N, sizeof(uint8_t));
     }
     
@@ -707,17 +480,20 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
             // Process set insert and remove
             switch(vec_bp[nxt].bptype)
             {
+                    /*
                 case 0:
                     // Start position - gap
                     rp_set.insert(vec_bp[nxt].idx);
                     sp_set.insert(vec_bp[nxt].idx);
 //					cerr << "Adding RP, SP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
                     break;
-                case 1:
+                     */
+                case 0:
                     // Start position
                     dp_set.insert(vec_bp[nxt].idx);
 //					cerr << "Adding DP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
                     break;
+                    /*
                 case 2:
                     // Start position + buf
 //					cerr << "Erasing RP,SP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
@@ -740,7 +516,8 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
                     rp_set.insert(vec_bp[nxt].idx);
                     sp_set.insert(vec_bp[nxt].idx);
                     break;
-                case 4:
+                     */
+                case 1:
                     // End position
 //					cerr << "Erasing DP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
                     if (dp_set.erase(vec_bp[nxt].idx) == 0)
@@ -751,6 +528,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
                     }
                     // update depth stats
                     break;
+                    /*
                 case 5:
                     // End position + buf
 //					cerr << "Erasing RP, SP " << vec_bp[nxt].idx << " type " << vec_bp[nxt].bptype << endl;
@@ -767,6 +545,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
                         exit(0);
                     }
                     break;
+                     */
             }
             nxt++;
         }
@@ -805,12 +584,13 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     }
     avg_dp = (double) sum_dp / n_dp;
     std_dp = sqrt(((double)sumsq_dp / n_dp - (avg_dp*avg_dp))*n_dp/(n_dp-1));
-
+    
+    // Calculate GC-curve and save it with original DP to maximize information preservation instead of storing GC-corrected depths only
     for(int i=0;i<GC.num_bin;++i)
     {
         if (gc_cnt[i]>20)
         {
-            gc_factor[i] = ((double)gc_sum[i] / gc_cnt[i]) / avg_dp;
+            gc_factor[i] = avg_dp / ((double)gc_sum[i] / gc_cnt[i]) ; // multiplication factor
         }
         else
         {
@@ -825,178 +605,25 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     free(plp); free(n_plp);
     bam_mplp_destroy(mplp);
 }
-//void bFile::process_readpair(sv &currsv, vector<int> &isz_list, vector<int> &pos_list, string &txt)
-/*
-void bFile::process_readpair(sv &currsv, vector<int> &isz_list, string &txt)
-{
-    
-    vector<int> P_isz;
-    vector<int> N_isz;
-    //    vector<int> P_pos;
-    //    vector<int> N_pos;
-    for(int i=0;i<(int)isz_list.size();++i)
-    {
-        if (isz_list[i]>0 && isz_list[i] < 10*currsv.len )
-        {
-            P_isz.push_back(isz_list[i]);
-            //            P_pos.push_back(pos_list[i]);
-        }
-        else if (isz_list[i] > -10 * currsv.len)
-        {
-            N_isz.push_back(isz_list[i]);
-            //            N_pos.push_back(pos_list[i]);
-        }
-    }
-    
-    if (P_isz.size() > 0)
-    {
-        //txt += to_string(P_isz.size()) + "," + to_string(median(P_isz)) + "," + to_string(median(P_pos)+1 - currsv.pos );
-        txt += to_string(P_isz.size()) + "," + to_string(median(P_isz)) ;
-    }
-    else
-    {
-        txt += ".";
-    }
-    txt += ":";
-    
-    if (N_isz.size() > 0)
-    {
-        txt += to_string(N_isz.size()) + "," + to_string(median(N_isz));
-    }
-    else
-    {
-        txt += ".";
-    }
-}
- */
 
-
-void gcContent::initialize(string &gcFile)
-{// filename for GC content, populate all vectors
-    ifstream inFile(gcFile.c_str(), std::ios::in | std::ios::binary);
-    if (!inFile.good())
-    {
-        cerr << "Error: cannot open GC file."<< endl;
-        exit(1);
-    }
-    
-    readmagic(inFile);
-    // read number of chrs
-    inFile.read(reinterpret_cast <char *> (&num_chr), sizeof(uint8_t));
-    
-    //    cerr << (int)num_chr << " chromosomes in GC content file." << endl;
-    
-    // read size of chrs
-    chrSize.resize(num_chr+1);
-    chrSize[0] = 0;
-    chrOffset.resize(num_chr+1);
-    chrOffset[0] = 0;
-    
-   // gc_array[0] = NULL;
-    
-    for(int i=1;i<=num_chr;++i)
-    {
-        inFile.read(reinterpret_cast <char *> (&chrSize[i]), sizeof(uint32_t));
-        chrOffset[i] = chrOffset[i-1] + chrSize[i-1];
-        //cerr << "Chr " << i << " size: " << chrSize[i] <<  "offset: " << chrOffset[i] << endl;
-    }
-    
-    // read size of GC-interval bin
-    inFile.read(reinterpret_cast <char *> (&binsize), sizeof(uint16_t));
-       cerr << "Bin size: " << (int) binsize << endl;
-    
-    // read number of GC bins
-    inFile.read(reinterpret_cast <char *> (&num_bin), sizeof(uint16_t));
-    //    cerr << "Num_bin : " << num_bin << endl;
-    
-    // read number of total intervals
-    inFile.read(reinterpret_cast <char *> (&total_bin), sizeof(uint16_t));
-    //    cerr << "Total bin : " << total_bin << endl;
-    
-    regions.resize(total_bin);
-    
-    readmagic(inFile);
-    
-    gc_array.resize(num_chr+1);
-    
-    // read 'sampled' intervals (chr, start, end)
-    for(int i=0; i<total_bin; ++i)
-    {
-        uint8_t c;
-        uint32_t pos1, pos2;
-        uint8_t gc;
-        inFile.read(reinterpret_cast<char *>(&c), sizeof(uint8_t));
-        inFile.read(reinterpret_cast<char *>(&pos1), sizeof(uint32_t));
-        inFile.read(reinterpret_cast<char *>(&pos2), sizeof(uint32_t));
-        inFile.read(reinterpret_cast<char *>(&gc), sizeof(uint8_t));
-        
-        regions[i].chrnum = c;
-//        regions[i].chr = "chr" + to_string(c);
-        regions[i].pos = pos1;
-        regions[i].end = pos2;
-        regions[i].gcbin = gc;
-    }
-    
-    readmagic(inFile);
-    // read GC content for each (bin size)-bp interval for each chromosome
-    // Current : 400-bp with 200bp overlap
-    // cerr << "Currnet position : " << inFile.tellg() << endl;
-    for(int i=1; i<=num_chr; ++i)
-    {
-        int N = ceil((chrSize[i] / (double)binsize)*2.0) ;
-        gc_array[i] = (uint8_t *) calloc(N, sizeof(uint8_t));
-        inFile.read(reinterpret_cast<char *>(gc_array[i]), sizeof(uint8_t)*N);
-        readmagic(inFile);
-        
-        if (!inFile.good())
-        {
-            cerr << "Cannot finish reading GC content file." <<endl;
-            exit(1);
-        }
-        //        cerr << "Chr " << i << " GC content array loaded for "<<  N << " segments. " <<  endl;
-    }
-    //    cerr << "Currnet position : " << inFile.tellg() << endl;
-    
-    for(int i=0;i<num_bin;++i)
-    {
-        if (!inFile.good())
-        {
-            cerr << "Cannot finish reading GC content file." <<endl;
-            exit(1);
-        }
-        double v;
-        inFile.read(reinterpret_cast<char *>(&v), sizeof(double));
-        //        cerr << "Bin " << i << " GC content proportion: "<< v << endl;
-        gc_dist.push_back(v);
-    }
-    readmagic(inFile);
-    inFile.close();
-}
 
 void bFile::postprocess_depth(vector<sv> &vec_sv)
 {
-    // Calculate GC-curve and save it with original DP to maximize information preservation instead of storing GC-corrected depths only
-    
-    // Calculate GC-curve
-    // Calculate average dp
 
-
-    // TODO
-    // Calculate average insert size
-
+    // Update average depth of each SV
     for(int i=0;i<vec_sv.size(); ++i)
     {
         if (vec_sv[i].n_dp>0)
         {
-            uint64_t val = (vec_sv[i].dp_sum / vec_sv[i].n_dp);
-            if (val>255)
-            {
+            uint64_t val = vec_sv[i].dp_sum / vec_sv[i].n_dp;
+            if (val<255)
                 vec_sv[i].dp = 255;
-            }
             else
-            {
                 vec_sv[i].dp = (uint8_t) val;
-            }
+        }
+        else
+        {
+            vec_sv[i].dp = 0;
         }
     }
 }
@@ -1005,6 +632,8 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
 {
     string pileup_name = sampID + ".pileup";
     string varfile_name = sampID + ".var";
+    string idxfile_name = sampID + ".idx";
+
     
     ofstream pileupFile(pileup_name.c_str(), std::ios::out | std::ios::binary);
 
@@ -1019,21 +648,111 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
     {
         pileupFile.write(reinterpret_cast<char*>(&(gc_factor[i])), sizeof(double));
     }
-    // Write Index of var files (every chr offset, 1000-th variants)
-   
+    
     // Write DP100
     for(int i=1; i<=GC.num_chr; ++i)
     {
-        int N = ceil(GC.chrSize[i] / 100) ;
+        int N = ceil((double)GC.chrSize[i] / 100.0) ;
         pileupFile.write(reinterpret_cast<char*>(depth100[i]), sizeof(uint8_t)*N);
     }
-    
     pileupFile.close();
-    ofstream varFile(varfile_name.c_str(), std::ios::out | std::ios::binary);
     
+    ofstream varFile(varfile_name.c_str(), std::ios::out | std::ios::binary);
+    ofstream idxFile(idxfile_name.c_str(), std::ios::out | std::ios::binary);
+
+    size_t curr_pos = 0;
+    
+    // Number of samples in this varFile (can include multiple samples)
+    int n_sample = 1;
+    varFile.write(reinterpret_cast<char*>(&n_sample), sizeof(int));
+    curr_pos += sizeof(int);
+    
+    // Number of SVs in this varFile (can include multiple samples)
+    int n_var = (int)vec_sv.size();
+    varFile.write(reinterpret_cast<char*>(&n_var), sizeof(int));
+    curr_pos += sizeof(int);
+
+    // Sample ID (each with 256 bytes)
+    if (sampID.length() > 255)
+    {
+        cerr << "Error, sample ID " << sampID << " is too long." << endl;
+        exit(1);
+    }
+    varFile.write(sampID.c_str(), sampID.length());
+    char pad[256] = {0};
+    varFile.write(pad, 256-sampID.length());
+    curr_pos += 256;
+    
+    // Write Index of var files (every chr offset, 1000-th variants)
+    
+    cerr << n_var << " variants in sample " << sampID << ", header length " << curr_pos << endl;
+
+    idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // where SV DP starts
+    cerr << "DP start pos " << curr_pos << endl;
     for(int i=0;i<vec_sv.size();++i)
     {
         varFile.write(reinterpret_cast<char*>(&(vec_sv[i].dp)), sizeof(uint8_t));
+        curr_pos += sizeof(uint8_t);
+    }
+    cerr << "variant depth written, curr_pos at " << curr_pos << endl;
+    cerr << "DP end pos " << curr_pos << endl;
+
+
+    idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // where DP ends and RP/SP starts
+    
+    int sp_idx = 0;
+    int rp_idx = 0;
+    int prev_sp = 0;
+    int prev_rp = 0;
+    
+    for(int i=1;i<=GC.num_chr; ++i)
+    {
+        int N = ceil((double)GC.chrSize[i] / 10000.0) ;
+
+        for(int j=1;j<=N;++j)
+        {
+            // RP
+            while(rp_idx < vec_rp.size() && vec_rp[rp_idx].chrnum == i-1 && vec_rp[rp_idx].selfpos <= j*10000)
+            {
+                rp_idx ++;
+            }
+            uint16_t n_rp = (uint16_t) rp_idx - prev_rp;
+            varFile.write(reinterpret_cast<char*>(&n_rp), sizeof(uint16_t));
+            curr_pos += sizeof(uint16_t);
+            
+            for(int k=prev_rp; k<rp_idx; ++k)
+            {
+                varFile.write(reinterpret_cast<char*>(&(vec_rp[k].chrnum)), sizeof(int8_t));
+                varFile.write(reinterpret_cast<char*>(&(vec_rp[k].selfpos)), sizeof(uint32_t));
+                varFile.write(reinterpret_cast<char*>(&(vec_rp[k].matepos)), sizeof(uint32_t));
+                varFile.write(reinterpret_cast<char*>(&(vec_rp[k].pairstr)), sizeof(int8_t));
+                curr_pos += sizeof(int8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(int8_t);
+            }
+            
+            // SP
+            while(sp_idx < vec_sp.size() && vec_sp[sp_idx].chrnum == i-1 && vec_sp[sp_idx].pos <= j*1000)
+            {
+                sp_idx ++;
+            }
+            uint16_t n_sp = (uint16_t) sp_idx - prev_sp;
+            varFile.write(reinterpret_cast<char*>(&n_sp), sizeof(uint16_t));
+            curr_pos += sizeof(uint16_t);
+            
+            for(int k=prev_sp; k<sp_idx; ++k)
+            {
+                varFile.write(reinterpret_cast<char*>(&(vec_sp[k].chrnum)), sizeof(int8_t));
+                varFile.write(reinterpret_cast<char*>(&(vec_sp[k].pos)), sizeof(uint32_t));
+                varFile.write(reinterpret_cast<char*>(&(vec_sp[k].sapos)), sizeof(uint32_t));
+                varFile.write(reinterpret_cast<char*>(&(vec_sp[k].firstclip)), sizeof(int16_t));
+                varFile.write(reinterpret_cast<char*>(&(vec_sp[k].secondclip)), sizeof(int16_t));
+                curr_pos += sizeof(int8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(int16_t) + sizeof(int16_t) + sizeof(int8_t);
+            }
+            idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // where each 10,000-bp interval ends;
+            cerr << "CHR " << i << " POS " << j*10000 << " Index " << curr_pos << endl;
+
+        }
+        
+        /*
         uint16_t n_rp = (uint16_t) vec_sv[i].vec_pair.size();
         uint16_t n_sp = (uint16_t) vec_sv[i].vec_split.size();
         varFile.write(reinterpret_cast<char*>(&n_rp), sizeof(uint16_t));
@@ -1052,8 +771,10 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
             varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_split[j].firstclip)), sizeof(uint16_t));
             varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_split[j].secondclip)), sizeof(uint16_t));
         }
+         */
     }
     varFile.close();
+    idxFile.close();
 }
 
 void bFile::write_depth100(string &sampID)
@@ -1079,10 +800,12 @@ void bFile::write_pileup_text(string &sampID, vector<sv> &vec_sv)
     fp = fopen(fname.c_str(), "w");
     for(int i=0;i<vec_sv.size();++i)
     {
+        /*
         uint16_t n_rp = (uint16_t) vec_sv[i].vec_pair.size();
         uint16_t n_sp = (uint16_t) vec_sv[i].vec_split.size();
-        
+        */
         fprintf(fp, "%d", vec_sv[i].dp);
+        /*
         fprintf(fp, "\t%d\t%d\t", n_rp, n_sp);
 
         for(int j=0;j<vec_sv[i].vec_pair.size();++j)
@@ -1094,10 +817,110 @@ void bFile::write_pileup_text(string &sampID, vector<sv> &vec_sv)
         {
             fprintf(fp, "%d,%d,%d,%d;", vec_sv[i].vec_split[j].pos, vec_sv[i].vec_split[j].sapos, vec_sv[i].vec_split[j].firstclip, vec_sv[i].vec_split[j].secondclip);
         }
+         */
         fprintf(fp, "\n");
+         
     }
     fclose(fp);
 }
+
+/*
+ static readpart which_readpart(const bam1_t *b)
+ {
+ if ((b->core.flag & BAM_FREAD1) && !(b->core.flag & BAM_FREAD2)) {
+ return READ_1;
+ } else if ((b->core.flag & BAM_FREAD2) && !(b->core.flag & BAM_FREAD1)) {
+ return READ_2;
+ } else {
+ return READ_UNKNOWN;
+ }
+ }
+ */
+
+// This function reads a BAM alignment from one BAM file.
+/*
+ static int read_bam_basic(void *data, bam1_t *b) // read level filters better go here to avoid pileup
+ {
+ aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
+ int ret;
+ 
+ while (1)
+ {
+ ret = aux->iter ? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->hdr, b);
+ 
+ if ( ret<0 ) break;
+ if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
+ if ( (int)b->core.qual < aux->min_mapQ ) continue;
+ // Nov 29, 2017, commented out
+ //if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
+ //        cerr << bam_get_qname(b) << "/" << which_readpart(b) << " insert size : " << b->core.isize << endl;
+ if (IS_PROPERLYPAIRED(b) && (b->core.qual > 20) && (b->core.tid == b->core.mtid) && b->core.mpos>0 )
+ {
+ if (b->core.isize < 10000 && b->core.isize>-10000)
+ (*(aux->isz_list))[0].push_back(abs(b->core.isize));
+ }
+ break;
+ }
+ return ret;
+ }
+ */
+/*
+ // This function reads a BAM alignment from one BAM file.
+ static int read_bam(void *data, bam1_t *b) // read level filters better go here to avoid pileup
+ {
+ aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
+ int ret;
+ 
+ while (1)
+ {
+ ret = aux->iter ? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->hdr, b);
+ 
+ if ( ret<0 ) break;
+ if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
+ if ( (int)b->core.qual < aux->min_mapQ ) continue;
+ // Nov 29, 2017, commented out
+ //if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
+ // Filters: MQ>0, mate mapped to the same chr, isize>0, pos>0
+ 
+ if ((int)b->core.qual>0 && b->core.tid == b->core.mtid && b->core.isize !=0 && b->core.mpos > 0)
+ {
+ if (((b->core.flag & BAM_FREVERSE) == BAM_FREVERSE) == ((b->core.flag & BAM_FMREVERSE) == BAM_FMREVERSE))
+ {
+ //            cerr << "REVERSED tid " << b->core.tid << " pos " << b->core.pos << " qual " <<(int)b->core.qual << " insert size " << b->core.isize << " mtid " << b->core.mtid <<  " mpos " << b->core.mpos << endl;
+ 
+ for(set<int>::iterator it=(*(aux->isz_set)).begin(); it!=(*(aux->isz_set)).end(); ++it)
+ {
+ (*(aux->rev_isz_list))[*it].push_back(b->core.isize);
+ //                    (*(aux->rev_pos_list))[*it].push_back(b->core.pos);
+ }
+ }
+ else
+ {
+ if (! IS_PROPERLYPAIRED(b) )
+ {
+ //            cerr << "NOTPROPER tid " << b->core.tid << " pos " << b->core.pos << " qual " <<(int)b->core.qual << " insert size " << b->core.isize << " mtid " << b->core.mtid <<  " mpos " << b->core.mpos << endl;
+ for(set<int>::iterator it=(*(aux->isz_set)).begin(); it!=(*(aux->isz_set)).end(); ++it)
+ {
+ (*(aux->isz_list))[*it].push_back(b->core.isize);
+ //                    (*(aux->pos_list))[*it].push_back(b->core.pos);
+ }
+ }
+ else
+ {
+ for(set<int>::iterator it=(*(aux->isz_set)).begin(); it!=(*(aux->isz_set)).end(); ++it)
+ {
+ (*(aux->isz_sum))[*it] += abs(b->core.isize);
+ (*(aux->isz_cnt))[*it] += 1;
+ }
+ 
+ }
+ }
+ }
+ break;
+ }
+ return ret;
+ }
+ */ // this version is commented out in Sep. 2018.
 
 /*
 // Get (overlapping) list of SV intervals, return average depth and GC-corrected average depth on intervals
@@ -1315,4 +1138,171 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 	}
 }*/
 
+/*
+ void bFile::get_avg_depth()
+ {
+ vector<double> sums (GC.num_bin, 0);
+ vector<double> cnts (GC.num_bin, 0);
+ 
+ // For average Insert Size
+ vector< vector<int> > i_list;
+ 
+ i_list.resize(1);
+ 
+ data[0]->isz_list = &i_list;
+ 
+ vector< vector <double> > GCdata;
+ GCdata.resize(GC.num_bin);
+ 
+ for(int i=0; i<(int)GC.regions.size();++i)
+ {
+ //    while(rpos<chrlen[c])
+ {
+ char reg[100];
+ sprintf(reg, "chr%d:%d-%d",GC.regions[i].chrnum, GC.regions[i].pos, GC.regions[i].end);
+ 
+ data[0]->iter = sam_itr_querys(idx, data[0]->hdr, reg);
+ if (data[0]->iter == NULL)
+ {
+ cerr << reg << endl;
+ cerr << "Can't parse region" << endl;
+ exit(1);
+ }
+ 
+ //            bam_plp_t plp = bam_plp_init(read_bam_basic, (void*) data);
+ bam_mplp_t mplp = bam_mplp_init(1, read_bam_basic, (void**)data);
+ 
+ //const bam_pileup1_t *p;
+ const bam_pileup1_t **plp;
+ 
+ int tid, pos;
+ //            int n_plp;
+ int *n_plp = (int *) calloc (1, sizeof(int));
+ plp = (const bam_pileup1_t**) calloc(1, sizeof(bam_pileup1_t*));
+ 
+ //            while((p = bam_plp_auto(plp, &tid, &pos, &n_plp))!=0)
+ while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0)
+ {
+ //            cerr << "tid " << tid << " pos " << pos << endl;
+ if (pos<GC.regions[i].pos || pos >GC.regions[i].end) continue;
+ sums[GC.regions[i].gcbin] += n_plp[0];
+ cnts[GC.regions[i].gcbin] += 1;
+ GCdata[GC.regions[i].gcbin].push_back(n_plp[0]);
+ }
+ free(n_plp); free(plp);
+ sam_itr_destroy(data[0]->iter);
+ bam_mplp_destroy(mplp);
+ }
+ 
+ }
+ 
+ double avg = 0;
+ vector<double> meds (GC.num_bin,0);
+ 
+ for(int i=0; i<GC.num_bin; ++i)
+ {
+ if (cnts[i] > 0)
+ {
+ avg += (sums[i]/cnts[i]) * GC.gc_dist[i];
+ //        cerr << "Avg DP for GC bin " << i << " is " << sums[i]/cnts[i] << ", median is " ;
+ sort(GCdata[i].begin(), GCdata[i].end());
+ int m = (int)(GCdata[i].size()/2) -1;
+ meds[i] = (GCdata[i][m] + GCdata[i][m+1]) /2.0;
+ //cerr << meds[i] << endl;
+ }
+ }
+ 
+ cerr << "Average Depth: " << avg << endl;
+ 
+ med_isize = median(i_list[0]);
+ 
+ double sum_is = 0, sumsq_is = 0;
+ int cnt_is = 0;
+ for(int i=0;i<(int)i_list[0].size();++i)
+ {
+ sum_is += i_list[0][i];
+ sumsq_is += i_list[0][i] * i_list[0][i];
+ cnt_is += 1;
+ }
+ //    cerr << "sum " << sum_is << " sumsq " << sumsq_is << " cnt " << cnt_is << endl;
+ 
+ if (cnt_is>0)
+ {
+ avg_isize = sum_is / cnt_is;
+ std_isize = sqrt( (sumsq_is / (double)cnt_is) - (avg_isize * avg_isize) );
+ }
+ else
+ {
+ avg_isize = 0;
+ std_isize = 0;
+ }
+ 
+ gc_factor.resize(GC.num_bin);
+ 
+ cerr << "Median Insert Size : " << med_isize << endl;
+ cerr << "Average Insert Size : " << avg_isize << " (+/- " << std_isize << ")" << endl;
+ 
+ //    cerr << "gc factor size : " << gc_factor.size() << endl;
+ 
+ for(int i=0; i<GC.num_bin; ++i)
+ {
+ //        cerr << "meds[" << i << "]=" << meds[i]<< " avg=" << avg << " factor " << meds[i]/avg <<endl;
+ gc_factor[i] = meds[i]/avg;
+ 
+ //        cerr << "bin " << i << " factor " << gc_factor[i] << endl;
+ }
+ 
+ // TEMPORARY - HARD CODING for 20 BINS
+ gc_factor[18] = gc_factor[17];
+ gc_factor[19] = gc_factor[17];
+ 
+ avg_dp = avg;
+ avg_rlen = 150; //TEMPORARY - FIX!
+ }
+ */
 
+
+//void bFile::process_readpair(sv &currsv, vector<int> &isz_list, vector<int> &pos_list, string &txt)
+/*
+ void bFile::process_readpair(sv &currsv, vector<int> &isz_list, string &txt)
+ {
+ 
+ vector<int> P_isz;
+ vector<int> N_isz;
+ //    vector<int> P_pos;
+ //    vector<int> N_pos;
+ for(int i=0;i<(int)isz_list.size();++i)
+ {
+ if (isz_list[i]>0 && isz_list[i] < 10*currsv.len )
+ {
+ P_isz.push_back(isz_list[i]);
+ //            P_pos.push_back(pos_list[i]);
+ }
+ else if (isz_list[i] > -10 * currsv.len)
+ {
+ N_isz.push_back(isz_list[i]);
+ //            N_pos.push_back(pos_list[i]);
+ }
+ }
+ 
+ if (P_isz.size() > 0)
+ {
+ //txt += to_string(P_isz.size()) + "," + to_string(median(P_isz)) + "," + to_string(median(P_pos)+1 - currsv.pos );
+ txt += to_string(P_isz.size()) + "," + to_string(median(P_isz)) ;
+ }
+ else
+ {
+ txt += ".";
+ }
+ txt += ":";
+ 
+ if (N_isz.size() > 0)
+ {
+ txt += to_string(N_isz.size()) + "," + to_string(median(N_isz));
+ }
+ else
+ {
+ txt += ".";
+ }
+ }
+ */

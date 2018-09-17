@@ -19,6 +19,7 @@
 		F194ED391F2623BB00489E0C /* vcf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED381F2623BB00489E0C /* vcf.cpp */; };
 		F194ED3B1F2708CC00489E0C /* Gaussian.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED3A1F2708CC00489E0C /* Gaussian.cpp */; };
 		F1A713E9212CCA15007421B1 /* libhts.1.9-20-ge1650a9.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F1A713E8212CCA15007421B1 /* libhts.1.9-20-ge1650a9.dylib */; };
+		F1FE1D90214F710F005673D3 /* gcContent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FE1D8F214F710F005673D3 /* gcContent.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -81,6 +82,7 @@
 		F194ED381F2623BB00489E0C /* vcf.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = vcf.cpp; sourceTree = "<group>"; };
 		F194ED3A1F2708CC00489E0C /* Gaussian.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Gaussian.cpp; sourceTree = "<group>"; };
 		F1A713E8212CCA15007421B1 /* libhts.1.9-20-ge1650a9.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libhts.1.9-20-ge1650a9.dylib"; path = "../../../../usr/local/lib/libhts.1.9-20-ge1650a9.dylib"; sourceTree = "<group>"; };
+		F1FE1D8F214F710F005673D3 /* gcContent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = gcContent.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -144,6 +146,7 @@
 				F194ED381F2623BB00489E0C /* vcf.cpp */,
 				F194ED3A1F2708CC00489E0C /* Gaussian.cpp */,
 				F13828721FCF36CC003ADE67 /* bamcram.cpp */,
+				F1FE1D8F214F710F005673D3 /* gcContent.cpp */,
 			);
 			path = muCNV;
 			sourceTree = "<group>";
@@ -247,6 +250,7 @@
 				F138FD7D1CAD744A00CD5539 /* main.cpp in Sources */,
 				F138FD901CAD74EE00CD5539 /* File.cpp in Sources */,
 				F194ED391F2623BB00489E0C /* vcf.cpp in Sources */,
+				F1FE1D90214F710F005673D3 /* gcContent.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
