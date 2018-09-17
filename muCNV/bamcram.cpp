@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <set>
+#include <unordered_set>
 #include "muCNV.h"
 #include <math.h>
 #include <algorithm>
@@ -383,7 +384,8 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     }
     
     // For average DP
-    set<int> dp_set; // Initially empty
+    // Consider using LIST
+    unordered_set<int> dp_set; // Initially empty
     /*
     set<int> rp_set;
     set<int> sp_set;
@@ -574,7 +576,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
         gc_sum[bin] += dpval;
         gc_cnt[bin] += 1;
         
-        for(set<int>::iterator it=dp_set.begin(); it!=dp_set.end(); ++it)
+        for(unordered_set<int>::iterator it=dp_set.begin(); it!=dp_set.end(); ++it)
         {
             //            cerr<< "dpval for pos " << pos << " is " << dpval << endl;
             vec_sv[*it].dp_sum += dpval;
@@ -722,7 +724,7 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
         for(int j=1;j<=N;++j)
         {
             // RP
-            while(rp_idx < vec_rp.size() && vec_rp[rp_idx].chrnum == i-1 && vec_rp[rp_idx].selfpos <= j*10000)
+            while(rp_idx < vec_rp.size() && vec_rp[rp_idx].chrnum == i && vec_rp[rp_idx].selfpos <= j*10000)
             {
                 rp_idx ++;
             }
@@ -740,7 +742,7 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
             }
             prev_rp = rp_idx;
             // SP
-            while(sp_idx < vec_sp.size() && vec_sp[sp_idx].chrnum == i-1 && vec_sp[sp_idx].pos <= j*10000)
+            while(sp_idx < vec_sp.size() && vec_sp[sp_idx].chrnum == i && vec_sp[sp_idx].pos <= j*10000)
             {
                 sp_idx ++;
             }
@@ -786,6 +788,11 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
     }
     varFile.close();
     idxFile.close();
+
+    for(int i=1; i<=GC.num_chr; ++i)
+    {
+        free(depth100[i]);
+    }
 }
 
 void bFile::write_interval(string &sampID, vector<sv> &vec_sv)
