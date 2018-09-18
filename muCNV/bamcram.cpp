@@ -158,25 +158,28 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
         if ( (int)b->core.qual < aux->min_mapQ ) continue;
 
         // CURRENTLY HANDLES READS MAPPED TO THE SAME CHRS ONLY
-        if (! IS_PROPERLYPAIRED(b) && b->core.tid == b->core.mtid)
+        if (b->core.tid == b->core.mtid)
         {
-            // add to read pair set
-            readpair new_rp;
-            new_rp.chrnum = b->core.tid+1;
-            new_rp.selfpos = b->core.pos;
-            new_rp.matepos = b->core.mpos;
-            new_rp.pairstr = 0;
-            new_rp.pairstr += (b->core.flag & BAM_FREVERSE) ? 2 : 0;
-            new_rp.pairstr += (b->core.flag & BAM_FMREVERSE) ? 1 : 0;
-            aux->n_rp++;
-            (*(aux->p_vec_rp)).push_back(new_rp);
-        }
-        else
-        {
-            // get average isize statistics only from properly paired pairs
-            aux->sum_isz += (b->core.isize > 0) ? b->core.isize : -b->core.isize;
-            aux->sumsq_isz += (b->core.isize) * (b->core.isize);
-            aux->n_isz += 1;
+            if (!IS_PROPERLYPAIRED(b))
+            {
+                // add to read pair set
+                readpair new_rp;
+                new_rp.chrnum = b->core.tid+1;
+                new_rp.selfpos = b->core.pos;
+                new_rp.matepos = b->core.mpos;
+                new_rp.pairstr = 0;
+                new_rp.pairstr += (b->core.flag & BAM_FREVERSE) ? 2 : 0;
+                new_rp.pairstr += (b->core.flag & BAM_FMREVERSE) ? 1 : 0;
+                aux->n_rp++;
+                (*(aux->p_vec_rp)).push_back(new_rp);
+            }
+            else
+            {
+                // get average isize statistics only from properly paired pairs
+                aux->sum_isz += (b->core.isize > 0) ? b->core.isize : -b->core.isize;
+                aux->sumsq_isz += (b->core.isize) * (b->core.isize);
+                aux->n_isz += 1;
+            }
         }
         
         uint8_t *aux_sa = bam_aux_get(b, "SA");
@@ -426,8 +429,6 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
             if (n100>0)
             {
                 double val = sum100 / n100;
-                sum_dp += sum100;
-                n_dp += n100;
                 if (val>255) val=255; // handle overflow, max avg depth = 255
                 depth100[chrnum][pos/100] = (uint8_t) val;
             }
@@ -492,7 +493,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
         }
     }
     avg_dp = (double) sum_dp / n_dp;
-    std_dp = sqrt(((double)sumsq_dp / n_dp - (avg_dp*avg_dp))*n_dp/(n_dp-1));
+    std_dp = sqrt(((double)sumsq_dp / n_dp - (avg_dp*avg_dp)));
     
     // Calculate GC-curve and save it with original DP to maximize information preservation instead of storing GC-corrected depths only
     for(int i=0;i<GC.num_bin;++i)
@@ -509,7 +510,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
 
 	cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << endl;
     avg_isize = data[0]->sum_isz / data[0]->n_isz;
-    std_isize = sqrt(((double)data[0]->sumsq_isz / ((double)data[0]->n_isz-1) - ((double)avg_isize*avg_isize))*((double)data[0]->n_isz)/(data[0]->n_isz-1));
+    std_isize = sqrt((double)data[0]->sumsq_isz /(double)data[0]->n_isz - ((double)avg_isize*avg_isize));
     sam_itr_destroy(data[0]->iter);
     free(plp); free(n_plp);
     bam_mplp_destroy(mplp);
