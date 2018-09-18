@@ -711,6 +711,9 @@ int main(int argc, char** argv)
         varFile.read(reinterpret_cast<char*>(&n_sample), sizeof(int));
         varFile.read(reinterpret_cast<char*>(&n_var), sizeof(int));
         
+        pileupFile.read(reinterpret_cast<char *>(buf), 256);
+        printf("sample ID(pileup) : %s\n", buf);
+        
         for(int i=0;i<n_var;++i)
         {
             uint8_t dp;
