@@ -88,15 +88,14 @@ class sv
 	{
 		len = end - pos + 1;
 	};
+    void print(void);
 	bool operator < (const sv&) const;
 	bool operator == (const sv&) const;
 
     uint64_t dp_sum;
     int n_dp;
     uint8_t dp;
-    
-//    vector<readpair> vec_pair;
-//    vector<splitread> vec_split;
+
 	sv();
 };
 

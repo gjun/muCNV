@@ -100,6 +100,12 @@ bool sv::operator == (const sv& s) const
 	return (chrnum == s.chrnum && pos == s.pos && end==s.end && svtype == s.svtype);
 }
 
+void sv::print(void)
+{
+    printf("%d:%d-%d, %s\n", chrnum, pos, end, svTypeName(svtype).c_str());
+}
+
+
 void pick_sv_from_merged(sv &picked, vector<sv> &merged)
 {
 

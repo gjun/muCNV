@@ -119,6 +119,7 @@ int main(int argc, char** argv)
 	bool bFail = false;
 	bool bMerge = false;
     bool bWriteSV = false;
+    bool bPrint = false;
 	string index_file;
 	string vcf_file;
     string interval_file;
@@ -156,7 +157,8 @@ int main(int argc, char** argv)
 //		TCLAP::ValueArg<double> argBE("e","error","Threshold for BayesError",false,0.1,"double");
 //		TCLAP::ValueArg<double> argR("r","ratio","Threshold for likelihood ratio",false,5,"double");
 		TCLAP::ValueArg<string> argRegion("r", "region", "Genomic region (chr:start-end)", false, "", "string" );
-		TCLAP::SwitchArg switchFail("a", "all", "Print filter failed variants", cmd, false);
+		TCLAP::SwitchArg switchFail("a", "all", "Report filter failed variants", cmd, false);
+        TCLAP::SwitchArg switchPrint("p", "print", "Print out pileup info", cmd, false);
 		TCLAP::SwitchArg switchMerge("m", "merge", "Merge overlapping SVs in the input VCF", cmd, false);
         TCLAP::SwitchArg switchWriteSV("w", "writevariant", "Write full list of SVs with pileup", cmd, false);
 		TCLAP::SwitchArg switchFilter("t", "filter", "Filter candidate discovery set using supporting VCF", cmd, false);
@@ -195,6 +197,7 @@ int main(int argc, char** argv)
 		bFilter = switchFilter.getValue();
 		region = argRegion.getValue();
         bWriteSV = switchWriteSV.getValue();
+        bPrint = switchPrint.getValue();
 
 		if (bMerge && bGenotype)
 		{
@@ -219,15 +222,15 @@ int main(int argc, char** argv)
 			{
 				cerr << "Error: BAM/CRAM file is required for individual processing mode." << endl;
 				exit(1);
-			}
-			if (vcf_file == "" && interval_file == "")
-			{
-				cerr << "Error: VCF file or Interval file with SV events is required for individual processing mode." << endl;
-				exit(1);
-			}
-			if (sampID == "")
-			{
-				cerr << "Error: Sample ID should be supplied with -s option." << endl;
+            }
+            if (vcf_file == "" && interval_file == "")
+            {
+                cerr << "Error: VCF file or Interval file with SV events is required for individual processing mode." << endl;
+                exit(1);
+            }
+            if (sampID == "")
+            {
+                cerr << "Error: Sample ID should be supplied with -s option." << endl;
 				exit(1);
 			}
 		}
@@ -646,6 +649,101 @@ int main(int argc, char** argv)
 		fclose(fp);
 		vfile.close();
 	}
+    else if (bPrint)
+    {
+        vector<sv> vec_sv;
+        vector<breakpoint> vec_bp;
+        string pileup_name = sampID + ".pileup";
+        string varfile_name = sampID + ".var";
+        string idxfile_name = sampID + ".idx";
+        
+        // read out and print pileup info
+        read_svs_from_intfile(interval_file, vec_bp, vec_sv);
+        
+        ifstream pileupFile(pileup_name.c_str(), ios::in | ios::binary);
+        ifstream varFile(varfile_name.c_str(), ios::in | ios::binary);
+        
+        char buf[256];
+        
+        pileupFile.read(reinterpret_cast<char*>(&n_sample), sizeof(int));
+        printf("n_sample(pileup) : %d \n", n_sample);
+        // TODO: read N-sample IDs
+        pileupFile.read(reinterpret_cast<char *>(buf), 256);
+        printf("sample ID(pileup) : %s\n", buf);
+        double avg_dp, std_dp, avg_isize, std_isize;
+        pileupFile.read(reinterpret_cast<char*>(&avg_dp), sizeof(double));
+        pileupFile.read(reinterpret_cast<char*>(&std_dp), sizeof(double));
+        pileupFile.read(reinterpret_cast<char*>(&avg_isize), sizeof(double));
+        pileupFile.read(reinterpret_cast<char*>(&std_isize), sizeof(double));
+        
+        printf("AVG DP: %f, STdev: %f, AVG ISIZE: %f, STdev: %f \n", avg_dp, std_dp, avg_isize, std_isize);
+
+        gcContent GC;
+        GC.initialize(gc_file);
+        
+        vector<double> gc_factor (GC.num_bin);
+        
+        for(int i=0;i<GC.num_bin;++i)
+        {
+            double factor;
+            pileupFile.read(reinterpret_cast<char*>(&(gc_factor[i])), sizeof(double));
+            printf("GC-bin %d: %f\n", i, gc_factor[i]);
+        }
+        int n_var = 0;
+        varFile.read(reinterpret_cast<char*>(&n_sample), sizeof(int));
+        varFile.read(reinterpret_cast<char*>(&n_var), sizeof(int));
+        
+        for(int i=0;i<n_var;++i)
+        {
+            uint8_t dp;
+            vec_sv[i].print();
+            printf("\t");
+            varFile.read(reinterpret_cast<char*>(&dp), sizeof(uint8_t));
+            printf("%d\n",dp);
+        }
+        while(varFile.good())
+        {
+            uint16_t n_rp = 0;
+            uint16_t n_sp = 0;
+            varFile.read(reinterpret_cast<char*>(&n_rp), sizeof(uint16_t));
+            printf("%d readpairs\n", n_rp);
+            for(int k=0; k<n_rp; ++k)
+            {
+                int8_t chrnum, pairstr;
+                uint32_t selfpos, matepos;
+                varFile.read(reinterpret_cast<char*>(&(chrnum)), sizeof(int8_t));
+                varFile.read(reinterpret_cast<char*>(&(selfpos)), sizeof(uint32_t));
+                varFile.read(reinterpret_cast<char*>(&(matepos)), sizeof(uint32_t));
+                varFile.read(reinterpret_cast<char*>(&(pairstr)), sizeof(int8_t));
+                printf("\t%d\t%d\t%d\t%d\n", chrnum, selfpos, matepos, pairstr);
+            }
+            
+            varFile.read(reinterpret_cast<char*>(&n_sp), sizeof(uint16_t));
+            printf("%d split reads\n", n_sp);
+            for(int k=0; k<n_sp; ++k)
+            {
+                int8_t chrnum;
+                uint32_t pos, sapos;
+                uint16_t firstclip, secondclip;
+                varFile.read(reinterpret_cast<char*>(&(chrnum)), sizeof(int8_t));
+                varFile.read(reinterpret_cast<char*>(&(pos)), sizeof(uint32_t));
+                varFile.read(reinterpret_cast<char*>(&(sapos)), sizeof(uint32_t));
+                varFile.read(reinterpret_cast<char*>(&(firstclip)), sizeof(int16_t));
+                varFile.read(reinterpret_cast<char*>(&(secondclip)), sizeof(int16_t));
+                printf("\t%d\t%d\t%d\t%d\t%d\n", chrnum, pos, sapos, firstclip,secondclip);
+            }
+            
+            printf("depth100\n");
+            for(int k=0;k>100;++k)
+            {
+                uint8_t dp100;
+                pileupFile.read(reinterpret_cast<char*>(&dp100), sizeof(uint8_t));
+                printf(",%d", dp100);
+            }
+            printf("\n");
+        }
+
+    }
 	else
 	{
 		// Generate summary stats from BAM/CRAM
@@ -685,57 +783,17 @@ int main(int argc, char** argv)
 		vector<int> idxs;
 
         sort(vec_bp.begin(), vec_bp.end());
-        // No merging, 8/24/18
-		// merge_svs(candidates, idxs);
         
 		bFile b(GC);
         
 		b.initialize_sequential(bam_file);
 		cerr << "BAM/CRAM file initialized" << endl;
-		//b.get_avg_depth();
-        //TODO: Process Average Depth and GC Correction AFTER reading all CRAM
-		
-		//FILE *fp = fopen(out_filename.c_str(), "wt");
-		//fprintf(fp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s\n", sampID.c_str());
-		// fprintf(fp, "0\t0\t.\t.\t.\t.\t.\tAVGDP;AVG_ISIZE;STD_ISIZE;MED_ISIZE\tDP:AI:SI:MI\t%.1f:%.1f:%.1f:%.1f\n", b.avg_dp, b.avg_isize,b.std_isize,b.med_isize);
-    
-        // Write out SV summary info if write_interval flag is set
         
         b.read_depth_sequential(vec_bp, vec_sv);
         
         b.postprocess_depth(vec_sv);
-
         b.write_pileup(sampID, vec_sv);
-        //b.write_pileup_text(sampID, vec_sv);
-        /*
-		for(int i=0; i<(int)idxs.size(); ++i)
-		{
-			int last_idx;
-			if (i<(int)idxs.size()-1)
-			{
-				last_idx = idxs[i+1];
-			}
-			else
-			{
-				last_idx = (int)candidates.size();
-			}
-			vector<sv> svlist(candidates.begin()+idxs[i], candidates.begin() + last_idx)  ;
 
-			int m = (int)svlist.size();
-
-			vector<string> G (m, "");
-			b.read_depth(svlist, G);
-			
-			for(int j=0;j<m;++j)
-			{
-				fprintf(fp, "%s\t%d\t.\t.\t.\t.\t.\tEND=%d;SVTYPE=%s\t.", svlist[j].chr.c_str(), svlist[j].pos,svlist[j].end,svlist[j].svtype.c_str());
-				fprintf(fp, "\t%s\n", G[j].c_str());
-			}
-
-		}
-         */
-        
-		//fclose(fp);
 		cerr << "Finished without an error" << endl;
 	}
 	return 0;

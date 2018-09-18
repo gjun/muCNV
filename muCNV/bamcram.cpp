@@ -20,12 +20,6 @@
 
 typedef enum { READ_UNKNOWN = 0, READ_1 = 1, READ_2 = 2 } readpart;
 
-void print_sv(sv &t)
-{
-	fprintf(stderr, "%d:%d-%d, %s \n", t.chrnum, t.pos, t.end, svTypeName(t.svtype).c_str());
-
-}
-
 int get_cigar_clippos(string &cigar_str)
 {
     int lclip = 0;
@@ -162,94 +156,65 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
         if ( ret<0 ) break;
         if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
         if ( (int)b->core.qual < aux->min_mapQ ) continue;
-        // Nov 29, 2017, commented out
-        //if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
-        // Filters: MQ>0, mate mapped to the same chr, isize!=0, pos>0
-        
-//        if ((int)b->core.qual>0 && b->core.tid == b->core.mtid && b->core.isize !=0 && b->core.mpos > 0)
+
+        // CURRENTLY HANDLES READS MAPPED TO THE SAME CHRS ONLY
+        if (! IS_PROPERLYPAIRED(b) && b->core.tid == b->core.mtid)
         {
-            
-       //     if (! IS_PROPERLYPAIRED(b) && !(*(aux->rp_set)).empty())
-            
-            // CURRENTLY HANDLES READS MAPPED TO THE SAME CHRS ONLY
-            if (! IS_PROPERLYPAIRED(b) && b->core.tid == b->core.mtid)
-            {
-                // add to read pair set
-                readpair new_rp;
-                new_rp.chrnum = b->core.tid+1;
-                new_rp.selfpos = b->core.pos;
-                new_rp.matepos = b->core.mpos;
-                new_rp.pairstr = 0;
-                new_rp.pairstr += (b->core.flag & BAM_FREVERSE) ? 2 : 0;
-                new_rp.pairstr += (b->core.flag & BAM_FMREVERSE) ? 1 : 0;
-                
-				aux->n_rp++;
-                /*
-                for(set<int>::iterator it=(*(aux->rp_set)).begin(); it!=(*(aux->rp_set)).end(); ++it)
-                {
-                    (*(aux->vec_sv))[*it].vec_pair.push_back(new_rp);
-                }*/
+            // add to read pair set
+            readpair new_rp;
+            new_rp.chrnum = b->core.tid+1;
+            new_rp.selfpos = b->core.pos;
+            new_rp.matepos = b->core.mpos;
+            new_rp.pairstr = 0;
+            new_rp.pairstr += (b->core.flag & BAM_FREVERSE) ? 2 : 0;
+            new_rp.pairstr += (b->core.flag & BAM_FMREVERSE) ? 1 : 0;
+            aux->n_rp++;
+            (*(aux->p_vec_rp)).push_back(new_rp);
+        }
+        else
+        {
+            // get average isize statistics only from properly paired pairs
+            aux->sum_isz += (b->core.isize > 0) ? b->core.isize : -b->core.isize;
+            aux->sumsq_isz += (b->core.isize) * (b->core.isize);
+            aux->n_isz += 1;
+        }
+        
+        uint8_t *aux_sa = bam_aux_get(b, "SA");
+        if (aux_sa && aux_sa[0] == 'Z')
+        {
+            splitread new_sp;
+            new_sp.chrnum = b->core.tid + 1;
+            new_sp.pos = b->core.pos;
+            new_sp.firstclip = 0;
+            new_sp.secondclip = 0;
 
-                (*(aux->p_vec_rp)).push_back(new_rp);
-                
-            }
-            else
+            int ncigar = b->core.n_cigar;
+            uint32_t *cigar  = bam_get_cigar(b);
+            int16_t lclip = 0;
+            int16_t rclip = 0;
+            if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP)
             {
-                // get average isize statistics only from properly paired pairs
-                aux->sum_isz += (b->core.isize > 0) ? b->core.isize : -b->core.isize;
-                aux->sumsq_isz += (b->core.isize) * (b->core.isize);
-                aux->n_isz += 1;
+                lclip = bam_cigar_oplen(cigar[0]);
             }
+            if (bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP)
+            {
+                rclip = bam_cigar_oplen(cigar[0]);
+            }
+            if (rclip > lclip && rclip > 15) // arbitrary cutoff, 15
+                new_sp.firstclip = -rclip;
+            else if (lclip>rclip && lclip > 15)
+                new_sp.firstclip = lclip;
             
-            // split read flag & check whether sp_set is not empty
-//            if (!(*(aux->sp_set)).empty())
+            if (new_sp.firstclip != 0) // Process split read only if the read has soft-clipped ends
             {
-                uint8_t *aux_sa = bam_aux_get(b, "SA");
-
-                if (aux_sa && aux_sa[0] == 'Z')
+                if (!process_split(aux_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)))
                 {
-                    splitread new_sp;
-                    new_sp.chrnum = b->core.tid + 1;
-                    new_sp.pos = b->core.pos;
-                    
-                    new_sp.firstclip = 0;
+                    new_sp.sapos = 0;
                     new_sp.secondclip = 0;
-
-                    if (!process_split(aux_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)))
-                    {
-                        new_sp.sapos = 0;
-                        new_sp.secondclip = 0;
-                    }
-                    aux->n_sp++;
-                    int ncigar = b->core.n_cigar;
-                    uint32_t *cigar  = bam_get_cigar(b);
-                    int16_t lclip = 0;
-                    int16_t rclip = 0;
-                    if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP)
-                    {
-                        lclip = bam_cigar_oplen(cigar[0]);
-                    }
-                    if (bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP)
-                    {
-                        rclip = bam_cigar_oplen(cigar[0]);
-                    }
-                    if (rclip > lclip)
-                        new_sp.firstclip = -rclip;
-                    else if (lclip>rclip)
-                        new_sp.firstclip = lclip;
-
-                    // Write out new_sp
-                    (*(aux->p_vec_sp)).push_back(new_sp);
-/*
-                    // if the split read qualifies
-                    for(set<int>::iterator it=(*(aux->sp_set)).begin(); it!=(*(aux->sp_set)).end(); ++it)
-                    {
-                        (*(aux->vec_sv))[*it].vec_split.push_back(new_sp);
-                    }
- */
                 }
+                aux->n_sp++;
+                (*(aux->p_vec_sp)).push_back(new_sp);
             }
-
         }
         break;
     }
