@@ -618,7 +618,7 @@ void read_svs_from_intfile(string &intFileName, vector<breakpoint> &vec_bp, vect
     
     intFile.read(reinterpret_cast<char*>(&n_var), sizeof(int));
     vec_sv.resize(n_var);
-    vec_bp.resize(n_var);
+    vec_bp.resize(n_var*2);
     
     for(int i=0;i<n_var;++i)
     {
@@ -643,7 +643,7 @@ void read_svs_from_intfile(string &intFileName, vector<breakpoint> &vec_bp, vect
         vec_bp[i*2].pos = vec_sv[i].pos;
         vec_bp[i*2+1].pos = vec_sv[i].end;
         
-        for(int k=i*2;k<i*2+1;++k)
+        for(int k=i*2;k<=i*2+1;++k)
         {
             vec_bp[k].chrnum = vec_sv[i].chrnum;
             vec_bp[k].idx = i;

@@ -688,7 +688,25 @@ int main(int argc, char** argv)
             pileupFile.read(reinterpret_cast<char*>(&(gc_factor[i])), sizeof(double));
             printf("GC-bin %d: %f\n", i, gc_factor[i]);
         }
-
+        
+        uint64_t dpsum = 0;
+        uint64_t n_dp = 0;
+        
+        for(int i=1; i<=GC.num_chr; ++i)
+        {
+            int N = ceil((double)GC.chrSize[i] / 100.0) ;
+            uint8_t dp100;
+            for(int j=0;j<N;++j)
+            {
+                pileupFile.read(reinterpret_cast<char*>(&dp100), sizeof(uint8_t));
+                dpsum += dp100;
+                n_dp+=1;
+            }
+        }
+        printf("Average DP100: %d\n", (int)dpsum/n_dp);
+        
+        pileupFile.close();
+        
         int n_var = 0;
         varFile.read(reinterpret_cast<char*>(&n_sample), sizeof(int));
         varFile.read(reinterpret_cast<char*>(&n_var), sizeof(int));
@@ -735,23 +753,6 @@ int main(int argc, char** argv)
             
         }
         
-        printf("depth100\n");
-        
-        for(int i=1; i<=GC.num_chr; ++i)
-        {
-            int N = ceil((double)GC.chrSize[i] / 100.0) ;
-            uint8_t dp100;
-            for(int j=0;j<N;++j)
-            {
-                pileupFile.read(reinterpret_cast<char*>(&dp100), sizeof(uint8_t));
-                printf("%d\n", dp100);
-            }
-        }
-        pileupFile.close();
-        
-        
-        
-        pileupFile.close();
         varFile.close();
 
     }
