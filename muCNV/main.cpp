@@ -685,10 +685,10 @@ int main(int argc, char** argv)
         
         for(int i=0;i<GC.num_bin;++i)
         {
-            double factor;
             pileupFile.read(reinterpret_cast<char*>(&(gc_factor[i])), sizeof(double));
             printf("GC-bin %d: %f\n", i, gc_factor[i]);
         }
+
         int n_var = 0;
         varFile.read(reinterpret_cast<char*>(&n_sample), sizeof(int));
         varFile.read(reinterpret_cast<char*>(&n_var), sizeof(int));
@@ -699,7 +699,7 @@ int main(int argc, char** argv)
             vec_sv[i].print();
             printf("\t");
             varFile.read(reinterpret_cast<char*>(&dp), sizeof(uint8_t));
-            printf("%d\n",dp);
+            printf("var %d: %d\n",i, dp);
         }
         while(varFile.good())
         {
@@ -733,15 +733,26 @@ int main(int argc, char** argv)
                 printf("\t%d\t%d\t%d\t%d\t%d\n", chrnum, pos, sapos, firstclip,secondclip);
             }
             
-            printf("depth100\n");
-            for(int k=0;k>100;++k)
-            {
-                uint8_t dp100;
-                pileupFile.read(reinterpret_cast<char*>(&dp100), sizeof(uint8_t));
-                printf(",%d", dp100);
-            }
-            printf("\n");
         }
+        
+        printf("depth100\n");
+        
+        for(int i=1; i<=GC.num_chr; ++i)
+        {
+            int N = ceil((double)GC.chrSize[i] / 100.0) ;
+            uint8_t dp100;
+            for(int j=0;j<N;++j)
+            {
+                pileupFile.read(reinterpret_cast<char*>(&dp100), sizeof(uint8_t));
+                printf("%d\n", dp100);
+            }
+        }
+        pileupFile.close();
+        
+        
+        
+        pileupFile.close();
+        varFile.close();
 
     }
 	else
