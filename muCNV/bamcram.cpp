@@ -25,9 +25,9 @@ int get_cigar_clippos(string &cigar_str)
     int lclip = 0;
     int rclip = 0;
     int j=0;
-    while(cigar_str[j] >= '0' && cigar_str[j] <='9' && j<cigar_str.length())
+    while(cigar_str[j] >= '0' && cigar_str[j] <='9' && j<(int)cigar_str.length())
         ++j;
-    if (j==0 || j==cigar_str.length())
+    if (j==0 || j==(int)cigar_str.length())
     {
         lclip = 0; //something wrong
     }
@@ -157,30 +157,38 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
         if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
         if ( (int)b->core.qual < aux->min_mapQ ) continue;
 
-        // CURRENTLY HANDLES READS MAPPED TO THE SAME CHRS ONLY
-        if (b->core.tid == b->core.mtid)
-        {
-            if (!IS_PROPERLYPAIRED(b))
-            {
-                // add to read pair set
-                readpair new_rp;
-                new_rp.chrnum = b->core.tid+1;
-                new_rp.selfpos = b->core.pos;
-                new_rp.matepos = b->core.mpos;
-                new_rp.pairstr = 0;
-                new_rp.pairstr += (b->core.flag & BAM_FREVERSE) ? 2 : 0;
-                new_rp.pairstr += (b->core.flag & BAM_FMREVERSE) ? 1 : 0;
-                aux->n_rp++;
-                (*(aux->p_vec_rp)).push_back(new_rp);
-            }
-            else
-            {
-                // get average isize statistics only from properly paired pairs
-                aux->sum_isz += (b->core.isize > 0) ? b->core.isize : -b->core.isize;
-                aux->sumsq_isz += (b->core.isize) * (b->core.isize);
-                aux->n_isz += 1;
-            }
-        }
+		if (IS_PROPERLYPAIRED(b))
+		{
+			// get average isize statistics only from properly paired pairs
+			aux->sum_isz += (b->core.isize > 0) ? b->core.isize : -b->core.isize;
+			aux->sumsq_isz += (b->core.isize) * (b->core.isize);
+			aux->n_isz += 1;
+		}
+		else
+		{
+			if (b->core.qual>=10)
+			{
+				// add to read pair set
+				readpair new_rp;
+				new_rp.chrnum = b->core.tid+1;
+				new_rp.selfpos = b->core.pos;
+				new_rp.pairstr = (b->core.flag & BAM_FREVERSE) ? 2 : 0;
+
+				if (b->core.tid == b->core.mtid)
+				{
+					new_rp.matepos = b->core.mpos;
+					new_rp.pairstr += (b->core.flag & BAM_FMREVERSE) ? 1 : 0;
+					aux->n_rp++;
+					(*(aux->p_vec_rp)).push_back(new_rp);
+				}
+				else if (b->core.flag & BAM_FMUNMAP) // mate is unmapped, but self has good MQ  - insertion or inversion
+				{
+					new_rp.matepos = -1;
+					aux->n_rp++;
+					(*(aux->p_vec_rp)).push_back(new_rp);
+				}
+			}
+		}
         
         uint8_t *aux_sa = bam_aux_get(b, "SA");
         if (aux_sa && aux_sa[0] == 'Z')
@@ -391,7 +399,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     for(int i=1; i<=GC.num_chr; ++i)
     {
         int N = ceil((double)GC.chrSize[i] / 100.0) ;
-        depth100[i] = (uint8_t *) calloc(N, sizeof(uint8_t));
+        depth100[i] = (uint16_t *) calloc(N, sizeof(uint16_t));
     }
     
     int sum100=0;
@@ -408,15 +416,15 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
         if (chrnum>prev_chrnum)
         {
             // clear stats
-			cerr << "now processing chr " << chrnum << endl;
-			cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << endl;
+//			cerr << "now processing chr " << chrnum << endl;
+//			cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << endl;
             
             // Update 100-bp depth
             if (n100>0)
             {
-                int val = sum100 / n100;
-                if (val>255) val=255; // handle overflow, max avg depth = 255
-                depth100[prev_chrnum][prev_pos/100] = (uint8_t) val;
+               	int val = round((double) (sum100 * 32) / n100); // Now Depth100 stores (depth*32) as value
+                if (val>65535) val=65535; // handle overflow, though unlikely
+                depth100[prev_chrnum][prev_pos/100] = (uint16_t) val;
             }
 
             sum100=0;
@@ -428,9 +436,9 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
             // Update 100-bp depth
             if (n100>0)
             {
-                double val = sum100 / n100;
-                if (val>255) val=255; // handle overflow, max avg depth = 255
-                depth100[chrnum][pos/100] = (uint8_t) val;
+                int val = round((double) (sum100 * 32) / n100);
+                if (val>65535) val=65535; // handle overflow
+                depth100[chrnum][pos/100] = (uint16_t) val;
             }
 
             sum100=0;
@@ -443,21 +451,19 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
         curr_bp.chrnum = chrnum;
         curr_bp.pos = pos;
         
-        if (nxt>=vec_bp.size())
+        if (nxt>=(int)vec_bp.size())
             break;
         
         while (vec_bp[nxt] <= curr_bp)
         {
-            // Process set insert and remove
             if (vec_bp[nxt].bptype == 0)
             {
                 dp_list.push_back(vec_bp[nxt].idx);
-                // dp_set.insert(vec_bp[nxt].idx);
             }
             else
             {                
-                dp_list.erase( find(dp_list.begin(), dp_list.end(), vec_bp[nxt].idx) );
-               // dp_set.erase(vec_bp[nxt].idx);
+                vector<int>::iterator it = find(dp_list.begin(), dp_list.end(), vec_bp[nxt].idx) ;
+                dp_list.erase( it );
             }
             nxt++;
         }
@@ -470,6 +476,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
                 ++m;
         }
         int dpval = n_plp[0]-m;
+
         // double gc_dpval = dpval;
         // gc_dpval = gcCorrected(dpval, chrnum, pos);
         
@@ -521,15 +528,15 @@ void bFile::postprocess_depth(vector<sv> &vec_sv)
 {
 
     // Update average depth of each SV
-    for(int i=0;i<vec_sv.size(); ++i)
+    for(int i=0;i<(int)vec_sv.size(); ++i)
     {
         if (vec_sv[i].n_dp>0)
         {
-            uint64_t val = vec_sv[i].dp_sum / vec_sv[i].n_dp;
-            if (val<255)
-                vec_sv[i].dp = 255;
+            int val = round((double)(vec_sv[i].dp_sum * 32)/vec_sv[i].n_dp);
+            if (val>65535)
+                vec_sv[i].dp = 65535;
             else
-                vec_sv[i].dp = (uint8_t) val;
+                vec_sv[i].dp = (uint16_t) val;
         }
         else
         {
@@ -544,13 +551,17 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
     string varfile_name = sampID + ".var";
     string idxfile_name = sampID + ".idx";
 
+    size_t curr_pos = 0;
     
     ofstream pileupFile(pileup_name.c_str(), std::ios::out | std::ios::binary);
+    ofstream idxFile(idxfile_name.c_str(), std::ios::out | std::ios::binary);
 
     int n_sample = 1;
     char pad[256] = {0};
 
     pileupFile.write(reinterpret_cast<char*>(&n_sample), sizeof(int));
+    curr_pos += sizeof(int);
+
     // Sample ID (each with 256 bytes)
     if (sampID.length() > 255)
     {
@@ -559,39 +570,107 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
     }
     pileupFile.write(sampID.c_str(), sampID.length());
     pileupFile.write(pad, 256-sampID.length());
+	curr_pos += 256;
+
     // Write depth and isize stats
     pileupFile.write(reinterpret_cast<char*>(&avg_dp), sizeof(double));
     pileupFile.write(reinterpret_cast<char*>(&std_dp), sizeof(double));
     pileupFile.write(reinterpret_cast<char*>(&avg_isize), sizeof(double));
     pileupFile.write(reinterpret_cast<char*>(&std_isize), sizeof(double));
+
+	curr_pos += sizeof(double) * 4;
     
     // Write GC curve
     for(int i=0;i<GC.num_bin;++i)
     {
         pileupFile.write(reinterpret_cast<char*>(&(gc_factor[i])), sizeof(double));
+		curr_pos += sizeof(double);
     }
+
+    // Write Index of var files (every chr offset, 1000-th variants)
+    cerr << "Sample " << sampID << ", header length " << curr_pos << endl;
     
+    idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // where SV DP starts
+
     // Write DP100
     for(int i=1; i<=GC.num_chr; ++i)
     {
         int N = ceil((double)GC.chrSize[i] / 100.0) ;
-        pileupFile.write(reinterpret_cast<char*>(depth100[i]), sizeof(uint8_t)*N);
+        pileupFile.write(reinterpret_cast<char*>(depth100[i]), sizeof(uint16_t)*N);
+		curr_pos += sizeof(uint16_t)*N;
+    }
+
+    cerr << "After DP100 written, curr_pos is at " << curr_pos << endl;
+
+    int sp_idx = 0;
+    int rp_idx = 0;
+    int prev_sp = 0;
+    int prev_rp = 0;
+    
+    int cnt_rp = 0;
+    int cnt_sp = 0;
+ 
+    for(int i=1;i<=GC.num_chr; ++i)
+    {
+        int N = ceil((double)GC.chrSize[i] / 10000.0) ;
+
+        for(int j=1;j<=N;++j)
+        {
+			idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // where each 10,000-bp interval starts;
+            // RP
+            while(rp_idx < (int)vec_rp.size() && vec_rp[rp_idx].chrnum == i && vec_rp[rp_idx].selfpos <= j*10000)
+            {
+                rp_idx ++;
+            }
+            uint16_t n_rp = (uint16_t) rp_idx - prev_rp;
+            pileupFile.write(reinterpret_cast<char*>(&n_rp), sizeof(uint16_t));
+            curr_pos += sizeof(uint16_t);
+            
+            for(int k=prev_rp; k<rp_idx; ++k)
+            {
+                pileupFile.write(reinterpret_cast<char*>(&(vec_rp[k].chrnum)), sizeof(int8_t));
+                pileupFile.write(reinterpret_cast<char*>(&(vec_rp[k].selfpos)), sizeof(int32_t));
+                pileupFile.write(reinterpret_cast<char*>(&(vec_rp[k].matepos)), sizeof(int32_t));
+                pileupFile.write(reinterpret_cast<char*>(&(vec_rp[k].pairstr)), sizeof(int8_t));
+                curr_pos += sizeof(int8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(int8_t);
+                cnt_rp ++;
+            }
+            prev_rp = rp_idx;
+            // SP
+            while(sp_idx < (int)vec_sp.size() && vec_sp[sp_idx].chrnum == i && vec_sp[sp_idx].pos <= j*10000)
+            {
+                sp_idx ++;
+            }
+            uint16_t n_sp = (uint16_t) sp_idx - prev_sp;
+            pileupFile.write(reinterpret_cast<char*>(&n_sp), sizeof(uint16_t));
+            curr_pos += sizeof(uint16_t);
+            
+            for(int k=prev_sp; k<sp_idx; ++k)
+            {
+                pileupFile.write(reinterpret_cast<char*>(&(vec_sp[k].chrnum)), sizeof(int8_t));
+                pileupFile.write(reinterpret_cast<char*>(&(vec_sp[k].pos)), sizeof(int32_t));
+                pileupFile.write(reinterpret_cast<char*>(&(vec_sp[k].sapos)), sizeof(int32_t));
+                pileupFile.write(reinterpret_cast<char*>(&(vec_sp[k].firstclip)), sizeof(int16_t));
+                pileupFile.write(reinterpret_cast<char*>(&(vec_sp[k].secondclip)), sizeof(int16_t));
+                curr_pos += sizeof(int8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(int16_t) + sizeof(int16_t);
+                cnt_sp ++;
+
+            }
+            prev_sp = sp_idx;
+        }
+       // fprintf(stderr, "\rChr %d, Index %d, cnt_rp %d, cnt_sp %d\n", i, (int)curr_pos, cnt_rp, cnt_sp);
     }
     pileupFile.close();
-    
-    ofstream varFile(varfile_name.c_str(), std::ios::out | std::ios::binary);
-    ofstream idxFile(idxfile_name.c_str(), std::ios::out | std::ios::binary);
+    idxFile.close();
 
-    size_t curr_pos = 0;
-    
+    ofstream varFile(varfile_name.c_str(), std::ios::out | std::ios::binary);
+
     // Number of samples in this varFile (can include multiple samples)
     varFile.write(reinterpret_cast<char*>(&n_sample), sizeof(int));
-    curr_pos += sizeof(int);
     
     // Number of SVs in this varFile (can include multiple samples)
     int n_var = (int)vec_sv.size();
     varFile.write(reinterpret_cast<char*>(&n_var), sizeof(int));
-    curr_pos += sizeof(int);
 
     // Sample ID (each with 256 bytes)
     if (sampID.length() > 255)
@@ -601,115 +680,12 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
     }
     varFile.write(sampID.c_str(), sampID.length());
     varFile.write(pad, 256-sampID.length());
-    curr_pos += 256;
     
-    // Write Index of var files (every chr offset, 1000-th variants)
-    
-    cerr << n_var << " variants in sample " << sampID << ", header length " << curr_pos << endl;
-
-    idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // where SV DP starts
-    cerr << "DP start pos " << curr_pos << endl;
-    for(int i=0;i<vec_sv.size();++i)
+    for(int i=0;i<(int)vec_sv.size();++i)
     {
-        varFile.write(reinterpret_cast<char*>(&(vec_sv[i].dp)), sizeof(uint8_t));
-        curr_pos += sizeof(uint8_t);
-    }
-    cerr << "variant depth written, curr_pos at " << curr_pos << endl;
-    cerr << "DP end pos " << curr_pos << endl;
-
-
-    idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // where DP ends and RP/SP starts
-    
-    int sp_idx = 0;
-    int rp_idx = 0;
-    int prev_sp = 0;
-    int prev_rp = 0;
-    
-    int cnt_rp = 0;
-    int cnt_sp = 0;
-    
-    for(int i=1;i<=GC.num_chr; ++i)
-    {
-        int N = ceil((double)GC.chrSize[i] / 10000.0) ;
-
-        for(int j=1;j<=N;++j)
-        {
-            // RP
-            while(rp_idx < vec_rp.size() && vec_rp[rp_idx].chrnum == i && vec_rp[rp_idx].selfpos <= j*10000)
-            {
-                rp_idx ++;
-            }
-            uint16_t n_rp = (uint16_t) rp_idx - prev_rp;
-            varFile.write(reinterpret_cast<char*>(&n_rp), sizeof(uint16_t));
-            curr_pos += sizeof(uint16_t);
-            
-            for(int k=prev_rp; k<rp_idx; ++k)
-            {
-                varFile.write(reinterpret_cast<char*>(&(vec_rp[k].chrnum)), sizeof(int8_t));
-                varFile.write(reinterpret_cast<char*>(&(vec_rp[k].selfpos)), sizeof(uint32_t));
-                varFile.write(reinterpret_cast<char*>(&(vec_rp[k].matepos)), sizeof(uint32_t));
-                varFile.write(reinterpret_cast<char*>(&(vec_rp[k].pairstr)), sizeof(int8_t));
-                curr_pos += sizeof(int8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(int8_t);
-                cnt_rp ++;
-            }
-            prev_rp = rp_idx;
-            // SP
-            while(sp_idx < vec_sp.size() && vec_sp[sp_idx].chrnum == i && vec_sp[sp_idx].pos <= j*10000)
-            {
-                sp_idx ++;
-            }
-            uint16_t n_sp = (uint16_t) sp_idx - prev_sp;
-            varFile.write(reinterpret_cast<char*>(&n_sp), sizeof(uint16_t));
-            curr_pos += sizeof(uint16_t);
-            
-            for(int k=prev_sp; k<sp_idx; ++k)
-            {
-                varFile.write(reinterpret_cast<char*>(&(vec_sp[k].chrnum)), sizeof(int8_t));
-                varFile.write(reinterpret_cast<char*>(&(vec_sp[k].pos)), sizeof(uint32_t));
-                varFile.write(reinterpret_cast<char*>(&(vec_sp[k].sapos)), sizeof(uint32_t));
-                varFile.write(reinterpret_cast<char*>(&(vec_sp[k].firstclip)), sizeof(int16_t));
-                varFile.write(reinterpret_cast<char*>(&(vec_sp[k].secondclip)), sizeof(int16_t));
-                curr_pos += sizeof(int8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(int16_t) + sizeof(int16_t);
-                cnt_sp ++;
-
-            }
-            prev_sp = sp_idx;
-            idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // where each 10,000-bp interval ends;
-            //fprintf(stderr, "\rChr %d, Pos %d, Index %dm, rp_idx %d, sp_idx %d", i, j*10000, curr_pos, rp_idx, sp_idx);
-            //cerr << "CHR " << i << " POS " << j*10000 << " Index " << curr_pos;
-
-        }
-        fprintf(stderr, "\rChr %d, Index %d, cnt_rp %d, cnt_sp %d\n", i, curr_pos, cnt_rp, cnt_sp);
-
-        
-        /*
-        uint16_t n_rp = (uint16_t) vec_sv[i].vec_pair.size();
-        uint16_t n_sp = (uint16_t) vec_sv[i].vec_split.size();
-        varFile.write(reinterpret_cast<char*>(&n_rp), sizeof(uint16_t));
-        for(int j=0;j<vec_sv[i].vec_pair.size();++j)
-        {
-            varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_pair[j].selfpos)), sizeof(uint32_t));
-            varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_pair[j].matepos)), sizeof(uint32_t));
-            varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_pair[j].selfstr)), sizeof(bool));
-            varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_pair[j].matestr)), sizeof(bool));
-        }
-        varFile.write(reinterpret_cast<char*>(&n_sp), sizeof(uint16_t));
-        for(int j=0;j<vec_sv[i].vec_split.size();++j)
-        {
-            varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_split[j].pos)), sizeof(uint32_t));
-            varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_split[j].sapos)), sizeof(uint32_t));
-            varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_split[j].firstclip)), sizeof(uint16_t));
-            varFile.write(reinterpret_cast<char*>(&(vec_sv[i].vec_split[j].secondclip)), sizeof(uint16_t));
-        }
-         */
+        varFile.write(reinterpret_cast<char*>(&(vec_sv[i].dp)), sizeof(uint16_t));
     }
     varFile.close();
-    idxFile.close();
-
-    for(int i=1; i<=GC.num_chr; ++i)
-    {
-        free(depth100[i]);
-    }
 }
 
 
@@ -725,7 +701,7 @@ void bFile::write_pileup_text(string &sampID, vector<sv> &vec_sv)
     
     fname = sampID + ".var.txt";
     fp = fopen(fname.c_str(), "w");
-    for(int i=0;i<vec_sv.size();++i)
+    for(int i=0;i<(int)vec_sv.size();++i)
     {
         /*
         uint16_t n_rp = (uint16_t) vec_sv[i].vec_pair.size();

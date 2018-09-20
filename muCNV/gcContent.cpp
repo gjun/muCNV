@@ -18,7 +18,7 @@ void readmagic(ifstream &F)
     buf[7] = '\0';
     if (strcmp(buf, "mCNVMGC"))
     {
-        cerr << "Error: GC content file is corrupted." << endl;
+        cerr << "Error: GC content file is corrupt." << endl;
         exit(1);
     }
 }

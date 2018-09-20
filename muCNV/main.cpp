@@ -662,7 +662,10 @@ int main(int argc, char** argv)
         
         ifstream pileupFile(pileup_name.c_str(), ios::in | ios::binary);
         ifstream varFile(varfile_name.c_str(), ios::in | ios::binary);
+        ifstream idxFile(idxfile_name.c_str(), ios::in | ios::binary);
         
+		size_t curr_idx = 0;
+
         char buf[256];
         
         pileupFile.read(reinterpret_cast<char*>(&n_sample), sizeof(int));
@@ -670,6 +673,7 @@ int main(int argc, char** argv)
         // TODO: read N-sample IDs
         pileupFile.read(reinterpret_cast<char *>(buf), 256);
         printf("sample ID(pileup) : %s\n", buf);
+
         double avg_dp, std_dp, avg_isize, std_isize;
         pileupFile.read(reinterpret_cast<char*>(&avg_dp), sizeof(double));
         pileupFile.read(reinterpret_cast<char*>(&std_dp), sizeof(double));
@@ -688,6 +692,8 @@ int main(int argc, char** argv)
             pileupFile.read(reinterpret_cast<char*>(&(gc_factor[i])), sizeof(double));
             printf("GC-bin %d: %f\n", i, gc_factor[i]);
         }
+		idxFile.read(reinterpret_cast<char*>(&curr_idx), sizeof(size_t));
+		printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pileupFile.tellg());
         
         uint64_t dpsum = 0;
         uint64_t n_dp = 0;
@@ -695,67 +701,68 @@ int main(int argc, char** argv)
         for(int i=1; i<=GC.num_chr; ++i)
         {
             int N = ceil((double)GC.chrSize[i] / 100.0) ;
-            uint8_t dp100;
+            uint16_t dp100;
             for(int j=0;j<N;++j)
             {
-                pileupFile.read(reinterpret_cast<char*>(&dp100), sizeof(uint8_t));
+                pileupFile.read(reinterpret_cast<char*>(&dp100), sizeof(uint16_t));
                 dpsum += dp100;
                 n_dp+=1;
             }
         }
-        printf("Average DP100: %d\n", (int)dpsum/n_dp);
+        printf("Average DP100: %d\n", (int)round((double)dpsum/n_dp/32.0));
         
+        while(pileupFile.good())
+        {
+            uint16_t n_rp = 0;
+            uint16_t n_sp = 0;
+
+			idxFile.read(reinterpret_cast<char*>(&curr_idx), sizeof(size_t));
+//			printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pileupFile.tellg());
+
+            pileupFile.read(reinterpret_cast<char*>(&n_rp), sizeof(uint16_t));
+//          	printf("%d readpairs\n", n_rp);
+            for(int k=0; k<n_rp; ++k)
+            {
+                int8_t chrnum, pairstr;
+                int32_t selfpos, matepos;
+                pileupFile.read(reinterpret_cast<char*>(&(chrnum)), sizeof(int8_t));
+                pileupFile.read(reinterpret_cast<char*>(&(selfpos)), sizeof(int32_t));
+                pileupFile.read(reinterpret_cast<char*>(&(matepos)), sizeof(int32_t));
+                pileupFile.read(reinterpret_cast<char*>(&(pairstr)), sizeof(int8_t));
+ //               printf("\t%d\t%d\t%d\t%d\n", chrnum, selfpos, matepos, pairstr);
+            }
+            
+            pileupFile.read(reinterpret_cast<char*>(&n_sp), sizeof(uint16_t));
+  //          printf("%d split reads\n", n_sp);
+            for(int k=0; k<n_sp; ++k)
+            {
+                int8_t chrnum;
+                int32_t pos, sapos;
+                int16_t firstclip, secondclip;
+                pileupFile.read(reinterpret_cast<char*>(&(chrnum)), sizeof(int8_t));
+                pileupFile.read(reinterpret_cast<char*>(&(pos)), sizeof(int32_t));
+                pileupFile.read(reinterpret_cast<char*>(&(sapos)), sizeof(int32_t));
+                pileupFile.read(reinterpret_cast<char*>(&(firstclip)), sizeof(int16_t));
+                pileupFile.read(reinterpret_cast<char*>(&(secondclip)), sizeof(int16_t));
+   //             printf("\t%d\t%d\t%d\t%d\t%d\n", chrnum, pos, sapos, firstclip,secondclip);
+            }
+        }
         pileupFile.close();
         
         int n_var = 0;
         varFile.read(reinterpret_cast<char*>(&n_sample), sizeof(int));
         varFile.read(reinterpret_cast<char*>(&n_var), sizeof(int));
         
-        pileupFile.read(reinterpret_cast<char *>(buf), 256);
-        printf("sample ID(pileup) : %s\n", buf);
+        varFile.read(reinterpret_cast<char *>(buf), 256);
+        printf("sample ID(var) : %s\n", buf);
         
         for(int i=0;i<n_var;++i)
         {
-            uint8_t dp;
+            uint16_t dp;
             vec_sv[i].print();
-            printf("\t");
-            varFile.read(reinterpret_cast<char*>(&dp), sizeof(uint8_t));
-            printf("var %d: %d\n",i, dp);
+            varFile.read(reinterpret_cast<char*>(&dp), sizeof(uint16_t));
+           	printf("var %d: %f\n",i, (dp/32.0));
         }
-        while(varFile.good())
-        {
-            uint16_t n_rp = 0;
-            uint16_t n_sp = 0;
-            varFile.read(reinterpret_cast<char*>(&n_rp), sizeof(uint16_t));
-            printf("%d readpairs\n", n_rp);
-            for(int k=0; k<n_rp; ++k)
-            {
-                int8_t chrnum, pairstr;
-                uint32_t selfpos, matepos;
-                varFile.read(reinterpret_cast<char*>(&(chrnum)), sizeof(int8_t));
-                varFile.read(reinterpret_cast<char*>(&(selfpos)), sizeof(uint32_t));
-                varFile.read(reinterpret_cast<char*>(&(matepos)), sizeof(uint32_t));
-                varFile.read(reinterpret_cast<char*>(&(pairstr)), sizeof(int8_t));
-                printf("\t%d\t%d\t%d\t%d\n", chrnum, selfpos, matepos, pairstr);
-            }
-            
-            varFile.read(reinterpret_cast<char*>(&n_sp), sizeof(uint16_t));
-            printf("%d split reads\n", n_sp);
-            for(int k=0; k<n_sp; ++k)
-            {
-                int8_t chrnum;
-                uint32_t pos, sapos;
-                uint16_t firstclip, secondclip;
-                varFile.read(reinterpret_cast<char*>(&(chrnum)), sizeof(int8_t));
-                varFile.read(reinterpret_cast<char*>(&(pos)), sizeof(uint32_t));
-                varFile.read(reinterpret_cast<char*>(&(sapos)), sizeof(uint32_t));
-                varFile.read(reinterpret_cast<char*>(&(firstclip)), sizeof(int16_t));
-                varFile.read(reinterpret_cast<char*>(&(secondclip)), sizeof(int16_t));
-                printf("\t%d\t%d\t%d\t%d\t%d\n", chrnum, pos, sapos, firstclip,secondclip);
-            }
-            
-        }
-        
         varFile.close();
 
     }
@@ -781,7 +788,7 @@ int main(int argc, char** argv)
             read_svs_from_intfile(interval_file, vec_bp, vec_sv);
         }
         
-        if (bWriteSV)
+        if (bWriteSV && vcf_file != "")
         {
             if (interval_file != "")
             {

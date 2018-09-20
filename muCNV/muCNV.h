@@ -94,7 +94,7 @@ class sv
 
     uint64_t dp_sum;
     int n_dp;
-    uint8_t dp;
+    uint16_t dp;
 
 	sv();
 };
@@ -335,7 +335,7 @@ public:
     
 	// Get GC corrected depth for chr / pos
 	double gcCorrected(double, int, int);
-    vector< uint8_t * > depth100; // to store depth for every 100bp interval
+    vector< uint16_t * > depth100; // to store depth for every 100bp interval
 
     vector<readpair> vec_rp;
     vector<splitread> vec_sp;

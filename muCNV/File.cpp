@@ -600,7 +600,7 @@ void write_interval(string &intFileName, vector<sv> &vec_sv)
     
     intFile.write(reinterpret_cast<char*>(&n_var), sizeof(int));
     
-    for(int i=0;i<vec_sv.size();++i)
+    for(int i=0;i<(int)vec_sv.size();++i)
     {
         uint8_t t = (uint8_t)vec_sv[i].svtype;
         intFile.write(reinterpret_cast<char*>(&t), sizeof(uint8_t));
@@ -638,17 +638,15 @@ void read_svs_from_intfile(string &intFileName, vector<breakpoint> &vec_bp, vect
         vec_sv[i].n_dp = 0;
         vec_sv[i].dp = 0;
         
-        breakpoint bp[2];
-
         vec_bp[i*2].pos = vec_sv[i].pos;
+        vec_bp[i*2].chrnum = vec_sv[i].chrnum;
+        vec_bp[i*2].idx = i;
+        vec_bp[i*2].bptype = 0;
+
         vec_bp[i*2+1].pos = vec_sv[i].end;
-        
-        for(int k=i*2;k<=i*2+1;++k)
-        {
-            vec_bp[k].chrnum = vec_sv[i].chrnum;
-            vec_bp[k].idx = i;
-            vec_bp[k].bptype = k;
-        }
+        vec_bp[i*2+1].chrnum = vec_sv[i].chrnum;
+        vec_bp[i*2+1].idx = i;
+        vec_bp[i*2+1].bptype = 1;
     }
     intFile.close();
 }

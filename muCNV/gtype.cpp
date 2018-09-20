@@ -783,7 +783,7 @@ void gtype::call_dup_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, v
 	// Fit 1 or 2 comp
 	G.bic[0] = BIC(D.norm_dp, C1);
 	G.bic[1] = BIC(D.norm_dp, C2);
-	double be2 = BayesError(C2);
+//	double be2 = BayesError(C2);
 
 	if (G.bic[1] < G.bic[0])
 	{
