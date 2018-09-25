@@ -408,7 +408,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     int prev_chrnum = 1;
     int prev_pos = 1;
     
-    while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0 && tid < GC.num_chr -2 )  // TEMPORARY, ONLY AUTOSOMES
+    while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0 && tid < GC.num_chr)  // TEMPORARY, ONLY AUTOSOMES
     {
         // TODO: Make sure this is right...
         int chrnum = tid+1;
@@ -588,7 +588,7 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
     }
 
     // Write Index of var files (every chr offset, 1000-th variants)
-    cerr << "Sample " << sampID << ", header length " << curr_pos << endl;
+//    cerr << "Sample " << sampID << ", header length " << curr_pos << endl;
     
     idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // where SV DP starts
 
@@ -600,7 +600,7 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
 		curr_pos += sizeof(uint16_t)*N;
     }
 
-    cerr << "After DP100 written, curr_pos is at " << curr_pos << endl;
+ //   cerr << "After DP100 written, curr_pos is at " << curr_pos << endl;
 
     int sp_idx = 0;
     int rp_idx = 0;
