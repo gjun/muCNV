@@ -752,6 +752,7 @@ int main(int argc, char** argv)
         int n_var = 0;
         varFile.read(reinterpret_cast<char*>(&n_sample), sizeof(int));
         varFile.read(reinterpret_cast<char*>(&n_var), sizeof(int));
+		printf("n_var : %d\n", n_var);
         
         varFile.read(reinterpret_cast<char *>(buf), 256);
         printf("sample ID(var) : %s\n", buf);
