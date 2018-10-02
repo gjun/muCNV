@@ -157,7 +157,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
         if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
         if ( (int)b->core.qual < aux->min_mapQ ) continue;
 
-		if (IS_PROPERLYPAIRED(b))
+		if (IS_PROPERLYPAIRED(b) && b->core.pos>0 && b->core.mtid == b->core.tid && b->core.isize!=0)
 		{
 			// get average isize statistics only from properly paired pairs
 			aux->sum_isz += (b->core.isize > 0) ? b->core.isize : -b->core.isize;
