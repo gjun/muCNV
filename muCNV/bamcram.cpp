@@ -157,38 +157,41 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
         if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
         if ( (int)b->core.qual < aux->min_mapQ ) continue;
 
-		if (IS_PROPERLYPAIRED(b) && b->core.pos>0 && b->core.mtid == b->core.tid && b->core.isize!=0)
-		{
-			// get average isize statistics only from properly paired pairs
-			aux->sum_isz += (b->core.isize > 0) ? b->core.isize : -b->core.isize;
-			aux->sumsq_isz += (b->core.isize) * (b->core.isize);
-			aux->n_isz += 1;
-		}
-		else
-		{
-			if (b->core.qual>=10)
-			{
-				// add to read pair set
-				readpair new_rp;
-				new_rp.chrnum = b->core.tid+1;
-				new_rp.selfpos = b->core.pos;
-				new_rp.pairstr = (b->core.flag & BAM_FREVERSE) ? 2 : 0;
+        if ((b->core.flag & BAM_FPAIRED ) && !(b->core.flag & BAM_FSUPPLEMENTARY) )
+        {
+            if (IS_PROPERLYPAIRED(b) && b->core.pos>0 && b->core.mtid == b->core.tid && b->core.isize!=0)
+            {
+                // get average isize statistics only from properly paired pairs
+                aux->sum_isz += (b->core.isize > 0) ? b->core.isize : -b->core.isize;
+                aux->sumsq_isz += (b->core.isize) * (b->core.isize);
+                aux->n_isz += 1;
+            }
+            else
+            {
+                if (b->core.qual>=10)
+                {
+                    // add to read pair set
+                    readpair new_rp;
+                    new_rp.chrnum = b->core.tid+1;
+                    new_rp.selfpos = b->core.pos;
+                    new_rp.pairstr = (b->core.flag & BAM_FREVERSE) ? 2 : 0;
 
-				if (b->core.tid == b->core.mtid)
-				{
-					new_rp.matepos = b->core.mpos;
-					new_rp.pairstr += (b->core.flag & BAM_FMREVERSE) ? 1 : 0;
-					aux->n_rp++;
-					(*(aux->p_vec_rp)).push_back(new_rp);
-				}
-				else if (b->core.flag & BAM_FMUNMAP) // mate is unmapped, but self has good MQ  - insertion or inversion
-				{
-					new_rp.matepos = -1;
-					aux->n_rp++;
-					(*(aux->p_vec_rp)).push_back(new_rp);
-				}
-			}
-		}
+                    if (b->core.tid == b->core.mtid)
+                    {
+                        new_rp.matepos = b->core.mpos;
+                        new_rp.pairstr += (b->core.flag & BAM_FMREVERSE) ? 1 : 0;
+                        aux->n_rp++;
+                        (*(aux->p_vec_rp)).push_back(new_rp);
+                    }
+                    else if (b->core.flag & BAM_FMUNMAP) // mate is unmapped, but self has good MQ  - insertion or inversion
+                    {
+                        new_rp.matepos = -1;
+                        aux->n_rp++;
+                        (*(aux->p_vec_rp)).push_back(new_rp);
+                    }
+                }
+            }
+        }
         
         uint8_t *aux_sa = bam_aux_get(b, "SA");
         if (aux_sa && aux_sa[0] == 'Z')
