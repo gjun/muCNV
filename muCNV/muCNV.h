@@ -305,7 +305,7 @@ public:
 	void initialize(string &); // filename for GC content, populate all vectors
 	uint16_t num_bin; // Number of GC bin
 	uint8_t num_chr; //number of chrs
-	uint16_t binsize; // Size of GC bin (bp)
+	uint16_t binsize; // Size of GC intervals (bp)
 	uint16_t total_bin; // Size of intervals per GC bin
     vector<size_t> chrOffset;
 	vector<gcint> regions; // Double array to store list of regions for each GC bin -- non-overlapping, so let's just be it out-of-order
