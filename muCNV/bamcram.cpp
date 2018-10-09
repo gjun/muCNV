@@ -161,12 +161,20 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
         {
             if (IS_PROPERLYPAIRED(b) && b->core.pos>0 && b->core.mtid == b->core.tid && b->core.isize!=0)
             {
+				/*
+				if (abs(b->core.isize) > 1000)
+				{
+					cerr << "isize " << b->core.isize << endl;
+				}
+				*/
                 // get average isize statistics only from properly paired pairs
                 aux->sum_isz += (b->core.isize > 0) ? b->core.isize : -b->core.isize;
                 aux->sumsq_isz += (b->core.isize) * (b->core.isize);
                 aux->n_isz += 1;
+
+//				cerr << "n_isz : " << aux->n_isz << ", sum_isz : " << aux->sum_isz << ", sumsq_isz : " << aux->sumsq_isz << endl;
             }
-            else
+            else 
             {
                 if (b->core.qual>=10)
                 {
@@ -193,43 +201,46 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
             }
         }
         
-        uint8_t *aux_sa = bam_aux_get(b, "SA");
-        if (aux_sa && aux_sa[0] == 'Z')
-        {
-            splitread new_sp;
-            new_sp.chrnum = b->core.tid + 1;
-            new_sp.pos = b->core.pos;
-            new_sp.firstclip = 0;
-            new_sp.secondclip = 0;
+		if (b->core.flag & BAM_FSUPPLEMENTARY)
+		{
+			uint8_t *aux_sa = bam_aux_get(b, "SA");
+			if (aux_sa && aux_sa[0] == 'Z')
+			{
+				splitread new_sp;
+				new_sp.chrnum = b->core.tid + 1;
+				new_sp.pos = b->core.pos;
+				new_sp.firstclip = 0;
+				new_sp.secondclip = 0;
 
-            int ncigar = b->core.n_cigar;
-            uint32_t *cigar  = bam_get_cigar(b);
-            int16_t lclip = 0;
-            int16_t rclip = 0;
-            if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP)
-            {
-                lclip = bam_cigar_oplen(cigar[0]);
-            }
-            if (bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP)
-            {
-                rclip = bam_cigar_oplen(cigar[0]);
-            }
-            if (rclip > lclip && rclip > 15) // arbitrary cutoff, 15
-                new_sp.firstclip = -rclip;
-            else if (lclip>rclip && lclip > 15)
-                new_sp.firstclip = lclip;
-            
-            if (new_sp.firstclip != 0) // Process split read only if the read has soft-clipped ends
-            {
-                if (!process_split(aux_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)))
-                {
-                    new_sp.sapos = 0;
-                    new_sp.secondclip = 0;
-                }
-                aux->n_sp++;
-                (*(aux->p_vec_sp)).push_back(new_sp);
-            }
-        }
+				int ncigar = b->core.n_cigar;
+				uint32_t *cigar  = bam_get_cigar(b);
+				int16_t lclip = 0;
+				int16_t rclip = 0;
+				if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP)
+				{
+					lclip = bam_cigar_oplen(cigar[0]);
+				}
+				if (bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP)
+				{
+					rclip = bam_cigar_oplen(cigar[0]);
+				}
+				if (rclip > lclip && rclip > 15) // arbitrary cutoff, 15
+					new_sp.firstclip = -rclip;
+				else if (lclip>rclip && lclip > 15)
+					new_sp.firstclip = lclip;
+				
+				if (new_sp.firstclip != 0) // Process split read only if the read has soft-clipped ends
+				{
+					if (!process_split(aux_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)))
+					{
+						new_sp.sapos = 0;
+						new_sp.secondclip = 0;
+					}
+					aux->n_sp++;
+					(*(aux->p_vec_sp)).push_back(new_sp);
+				}
+			}
+		}
         break;
     }
     return ret;
@@ -411,7 +422,8 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     int prev_chrnum = 1;
     int prev_pos = 1;
     
-    while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0 && tid < GC.num_chr)  // TEMPORARY, ONLY AUTOSOMES
+	"processing chr 1" << endl;
+    while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0 && tid < GC.num_chr) 
     {
         // TODO: Make sure this is right...
         int chrnum = tid+1;
@@ -419,8 +431,8 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
         if (chrnum>prev_chrnum)
         {
             // clear stats
-//			cerr << "now processing chr " << chrnum << endl;
-//			cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << endl;
+			cerr << "now processing chr " << chrnum << endl;
+			cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << endl;
             
             // Update 100-bp depth
             if (n100>0)
@@ -429,6 +441,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
                 if (val>65535) val=65535; // handle overflow, though unlikely
                 depth100[prev_chrnum][prev_pos/100] = (uint16_t) val;
             }
+			cerr << "n_isz : " << data[0]->n_isz << ", sum_isz : " << data[0]->sum_isz << ", sumsq_isz : " << data[0]->sumsq_isz << endl;
 
             sum100=0;
             n100=0;
@@ -446,6 +459,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
 
             sum100=0;
             n100=0;
+
         }
         
         prev_pos = pos; // maybe use array idx instead of pos ?
@@ -519,8 +533,12 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     }
 
 	cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << endl;
-    avg_isize = data[0]->sum_isz / data[0]->n_isz;
+    avg_isize = data[0]->sum_isz / (double)data[0]->n_isz;
     std_isize = sqrt((double)data[0]->sumsq_isz /(double)data[0]->n_isz - ((double)avg_isize*avg_isize));
+
+	cerr << "n_isz : " << data[0]->n_isz << ", sum_isz : " << data[0]->sum_isz << ", sumsq_isz : " << data[0]->sumsq_isz << endl;
+	cerr << "avg_isz : " << avg_isize << ", std_isize : " << std_isize << endl;
+
     sam_itr_destroy(data[0]->iter);
     free(plp); free(n_plp);
     bam_mplp_destroy(mplp);
