@@ -422,7 +422,11 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     int prev_chrnum = 1;
     int prev_pos = 1;
     
+<<<<<<< HEAD
 	cerr << "processing chr 1" << endl;
+=======
+	cerr<< "processing chr 1" << endl;
+>>>>>>> 457b3af6746e893db660b3c7ac9bff32879630d1
     while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0 && tid < GC.num_chr) 
     {
         // TODO: Make sure this is right...
