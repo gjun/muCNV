@@ -58,6 +58,7 @@ public:
     int8_t chrnum;
     int32_t selfpos;
     int32_t matepos;
+    uint8_t matequal;
     int8_t pairstr;
 };
 

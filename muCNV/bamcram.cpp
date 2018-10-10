@@ -186,6 +186,15 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 
                     if (b->core.tid == b->core.mtid)
                     {
+                        uint8_t *aux_mq;
+                        if ((aux_mq= bam_aux_get(b, "MQ")) != NULL)
+                        {
+                            new_rp.matequal = bam_aux2i(aux_mq);
+                        }
+                        else
+                        {
+                            new_rp.matequal = 0;
+                        }
                         new_rp.matepos = b->core.mpos;
                         new_rp.pairstr += (b->core.flag & BAM_FMREVERSE) ? 1 : 0;
                         aux->n_rp++;
@@ -193,6 +202,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                     }
                     else if (b->core.flag & BAM_FMUNMAP) // mate is unmapped, but self has good MQ  - insertion or inversion
                     {
+                        new_rp.matequal =
                         new_rp.matepos = -1;
                         aux->n_rp++;
                         (*(aux->p_vec_rp)).push_back(new_rp);
