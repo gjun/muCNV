@@ -20,7 +20,7 @@ DEPS := $(OBJS:%.o=%.d)
 all: $(TARGET) 
 
 $(TARGET) : $(OBJS)
-	$(CXX) $^ -static -lm -lz -lhts -o $@ 
+	$(CXX) $^ -lm -lz -lhts -o $@ 
 
 -include $(DEPS)
 
