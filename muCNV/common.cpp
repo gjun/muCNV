@@ -16,7 +16,7 @@
  */
 #include "muCNV.h"
 
-void split(const char* s, const char* delims, std::vector<std::string>& tokens)
+void split(const char* s, const char* delims, std::vector<string>& tokens)
 {
 	const char* p = s;
 	const char* c = p;
@@ -34,7 +34,7 @@ void split(const char* s, const char* delims, std::vector<std::string>& tokens)
 		}
 		if ( i != ndelims ) { // delimiter found
 			if ( c < p )  { // unless delimiter is consencutive
-							//std::string s1(c,p-c);
+							//string s1(c,p-c);
 				tokens.push_back(std::string(c,p-c));
 			}
 			c = p+1;
@@ -78,13 +78,13 @@ svType svTypeNum(int t)
     return DEL;
 }
 
-int median(vector<int> &L)
+int median(std::vector<int> &L)
 {
 
 	int med=0;
 	if (L.size() > 0)
 	{
-		sort(L.begin(), L.end());
+		std::sort(L.begin(), L.end());
 
 		if (L.size()%2)
 		{
@@ -101,18 +101,18 @@ int median(vector<int> &L)
 }
 
 template <class T>
-	void vprint(vector<T> x)
+	void vprint(std::vector<T> x)
 {
-	cerr << "(";
+	std::cerr << "(";
 	for(unsigned i=0; i<x.size()-1; ++i)
 	{
-		cerr << x[i] << " ";
+		std::cerr << x[i] << " ";
 	}
-	cerr << x.back() << ")" << endl;
+	std::cerr << x.back() << ")" << std::endl;
 }
 
 
-double MAX(vector<double>& x)
+double MAX(std::vector<double>& x)
 {
 	double ret = -1.0*DBL_MAX;
 	for(unsigned i=0;i<x.size();++i)
@@ -125,7 +125,7 @@ double MAX(vector<double>& x)
 	return ret;
 }
 
-double MIN(vector<double>& x)
+double MIN(std::vector<double>& x)
 {
 	double ret = DBL_MAX;
 	for(unsigned i=0;i<x.size();++i)
@@ -145,7 +145,7 @@ double det(double* M)
 }
 
 
-double mean(vector<double>& x)
+double mean(std::vector<double>& x)
 {
 	double sum = 0;
 	for(unsigned j=0; j<x.size(); ++j)
@@ -155,7 +155,7 @@ double mean(vector<double>& x)
 	return sum/x.size();
 }
 
-double stdev(vector<double>& x, double M)
+double stdev(std::vector<double>& x, double M)
 {
 
 	if (x.size()>1)

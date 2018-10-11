@@ -9,70 +9,68 @@
 #include <stdio.h>
 #include "muCNV.h"
 
-
-
-void readmagic(ifstream &F)
+void readmagic(std::ifstream &F)
 {
     char buf[100];
     F.read(reinterpret_cast<char *>(buf), 7);
     buf[7] = '\0';
     if (strcmp(buf, "mCNVMGC"))
     {
-        cerr << "Error: GC content file is corrupt." << endl;
+        std::cerr << "Error: GC content file is corrupt." << std::endl;
         exit(1);
     }
 }
 
 void gcContent::initialize(string &gcFile)
-{// filename for GC content, populate all vectors
-    ifstream inFile(gcFile.c_str(), std::ios::in | std::ios::binary);
+{
+	// gcFile: filename for GC content file
+
+    std::ifstream inFile(gcFile.c_str(), std::ios::in | std::ios::binary);
     if (!inFile.good())
     {
-        cerr << "Error: cannot open GC file."<< endl;
+        std::cerr << "Error: cannot open GC file."<< std::endl;
         exit(1);
     }
     
     readmagic(inFile);
+
     // read number of chrs
     inFile.read(reinterpret_cast <char *> (&num_chr), sizeof(uint8_t));
     
-    //    cerr << (int)num_chr << " chromosomes in GC content file." << endl;
+    DMSG((int)num_chr << " chromosomes in GC content file.");
     
-    // read size of chrs
+    // read size of chrs 
     chrSize.resize(num_chr+1);
     chrSize[0] = 0;
     chrOffset.resize(num_chr+1);
     chrOffset[0] = 0;
     
-    // gc_array[0] = NULL;
     
     for(int i=1;i<=num_chr;++i)
     {
         inFile.read(reinterpret_cast <char *> (&chrSize[i]), sizeof(uint32_t));
         chrOffset[i] = chrOffset[i-1] + chrSize[i-1];
-        //cerr << "Chr " << i << " size: " << chrSize[i] <<  "offset: " << chrOffset[i] << endl;
+        DMSG("Chr " << i << " size: " << chrSize[i] <<  "offset: " << chrOffset[i]);
     }
     
     // read size of GC-interval bin
     inFile.read(reinterpret_cast <char *> (&binsize), sizeof(uint16_t));
-    //cerr << "Bin size: " << (int) binsize << endl;
+    DMSG( "Bin size: " << (int) binsize);
     
     // read number of GC bins
     inFile.read(reinterpret_cast <char *> (&num_bin), sizeof(uint16_t));
-    //    cerr << "Num_bin : " << num_bin << endl;
+    DMSG( "Num_bin : " << num_bin );
     
-    // read number of total intervals
-    inFile.read(reinterpret_cast <char *> (&total_bin), sizeof(uint16_t));
-    //    cerr << "Total bin : " << total_bin << endl;
+    // read number of total sampled intervals
+    inFile.read(reinterpret_cast <char *> (&num_interval), sizeof(uint16_t));
+    DMSG( "Num_interval : " << num_interval);
     
-    regions.resize(total_bin);
+    regions.resize(num_interval);
     
     readmagic(inFile);
     
-    gc_array.resize(num_chr+1);
-    
     // read 'sampled' intervals (chr, start, end)
-    for(int i=0; i<total_bin; ++i)
+    for(int i=0; i<num_interval; ++i)
     {
         uint8_t c;
         uint32_t pos1, pos2;
@@ -83,42 +81,53 @@ void gcContent::initialize(string &gcFile)
         inFile.read(reinterpret_cast<char *>(&gc), sizeof(uint8_t));
         
         regions[i].chrnum = c;
-        //        regions[i].chr = "chr" + to_string(c);
         regions[i].pos = pos1;
         regions[i].end = pos2;
         regions[i].gcbin = gc;
     }
     
+	DMSG("Sampled intervals read"); 
     readmagic(inFile);
+
     // read GC content for each (bin size)-bp interval for each chromosome
     // Current : 400-bp with 200bp overlap
-    // cerr << "Currnet position : " << inFile.tellg() << endl;
+    // std::cerr << "Currnet position : " << inFile.tellg() << std::endl;
+
+    gc_array.resize(num_chr+1);
+    gc_array[0] = NULL;
+
     for(int i=1; i<=num_chr; ++i)
     {
-        int N = ceil((chrSize[i] / (double)binsize)*2.0) ;
-        gc_array[i] = (uint8_t *) calloc(N, sizeof(uint8_t));
+		// Fixed binsize
+        int N = ceil(chrSize[i] / 200.0);
+
+        gc_array[i] = (uint8_t *) calloc(N+1, sizeof(uint8_t));
+		DMSG("GC array " << i << " is allocated");
+
         inFile.read(reinterpret_cast<char *>(gc_array[i]), sizeof(uint8_t)*N);
+		// TEMPORARY
+		gc_array[i][N] = 0;
         readmagic(inFile);
         
         if (!inFile.good())
         {
-            cerr << "Cannot finish reading GC content file." <<endl;
+            std::cerr << "Cannot finish reading GC content file." <<std::endl;
             exit(1);
         }
-        //        cerr << "Chr " << i << " GC content array loaded for "<<  N << " segments. " <<  endl;
+        DMSG("Chr " << i << " GC content array loaded for "<<  N << " segments. ");
     }
-    //    cerr << "Currnet position : " << inFile.tellg() << endl;
+    //    std::cerr << "Currnet position : " << inFile.tellg() << std::endl;
     
     for(int i=0;i<num_bin;++i)
     {
         if (!inFile.good())
         {
-            cerr << "Cannot finish reading GC content file." <<endl;
+            std::cerr << "Cannot finish reading GC content file." <<std::endl;
             exit(1);
         }
         double v;
         inFile.read(reinterpret_cast<char *>(&v), sizeof(double));
-        //        cerr << "Bin " << i << " GC content proportion: "<< v << endl;
+        DMSG("Bin " << i << " GC content proportion: "<< v);
         gc_dist.push_back(v);
     }
     readmagic(inFile);

@@ -22,7 +22,7 @@ void Gaussian::set(const double &m, const double &s)
 	Stdev = s;
 }
 
-void Gaussian::estimate(vector<double> &x)
+void Gaussian::estimate(std::vector<double> &x)
 {
 	Mean = mean(x);
 	Stdev = stdev(x, Mean);
@@ -88,7 +88,7 @@ void Gaussian2::update()
 	}
 }
 
-void Gaussian2::estimate(vector<double> &x, vector<double> &y)
+void Gaussian2::estimate(std::vector<double> &x, std::vector<double> &y)
 {
 	int n = (int)x.size();
 	double sum_x=0;
@@ -169,7 +169,7 @@ double lognormpdf(double x, Gaussian& C)
 
 
 
-double BayesError(vector<Gaussian>& Comps)
+double BayesError(std::vector<Gaussian>& Comps)
 {
 	// Returns maximum Bhattacharyya coefficient (== exp(-D) ) between components
 	unsigned n_comp = (unsigned) Comps.size();
@@ -196,7 +196,7 @@ double BayesError(vector<Gaussian>& Comps)
 	return exp(-1.0*min_d);
 }
 
-double BayesError(vector<Gaussian2>& Comps)
+double BayesError(std::vector<Gaussian2>& Comps)
 {
 	int n_comp = (int) Comps.size();
 	double min_d = DBL_MAX;
@@ -240,7 +240,7 @@ double BayesError(vector<Gaussian2>& Comps)
 }
 
 
-double BIC(vector<double>& x, vector<double>& y, vector<Gaussian2> &C)
+double BIC(std::vector<double>& x, std::vector<double>& y, std::vector<Gaussian2> &C)
 {
 	int n_sample = (int)x.size();
 	int n_comp = (int)C.size();
@@ -266,7 +266,7 @@ double BIC(vector<double>& x, vector<double>& y, vector<Gaussian2> &C)
 	return ret;
 }
 
-double BIC(vector<double>& x, vector<Gaussian> &C)
+double BIC(std::vector<double>& x, std::vector<Gaussian> &C)
 {
 	int n_sample = (int)x.size();
 	int n_comp = (int)C.size();
@@ -292,7 +292,7 @@ double BIC(vector<double>& x, vector<Gaussian> &C)
 }
 
 
-double BIC(vector<double>& x, vector<Gaussian> &C, vector<double> &wt)
+double BIC(std::vector<double>& x, std::vector<Gaussian> &C, std::vector<double> &wt)
 {
 	int n_sample = (int)x.size();
 	int n_comp = (int)C.size();
@@ -317,13 +317,13 @@ double BIC(vector<double>& x, vector<Gaussian> &C, vector<double> &wt)
 	return ret;
 }
 
-void printCluster(vector<Gaussian> &C)
+void printCluster(std::vector<Gaussian> &C)
 {
-	cerr << C.size() << " comps: ";
+	std::cerr << C.size() << " comps: ";
 	for(unsigned i=0;i<C.size();++i)
 	{
-		cerr << "(" << C[i].Mean << ", " << C[i].Stdev << ") " ;
+		std::cerr << "(" << C[i].Mean << ", " << C[i].Stdev << ") " ;
 	}
-	cerr << endl;
+	std::cerr << std::endl;
 }
 

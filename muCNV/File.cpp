@@ -15,6 +15,7 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "muCNV.h"
+#include <map>
 #include <stdlib.h>
 
 svType get_svtype(string &s)
@@ -32,9 +33,10 @@ svType get_svtype(string &s)
     else
         return BND;
 }
-void read_vcf_list(string &index_file, vector<string> &vcf_files)
+
+void read_vcf_list(string &index_file, std::vector<string> &vcf_files)
 {
-	ifstream inFile(index_file.c_str(), ios::in);
+	std::ifstream inFile(index_file.c_str(), std::ios::in);
 	
 	while(inFile.good())
 	{
@@ -45,12 +47,12 @@ void read_vcf_list(string &index_file, vector<string> &vcf_files)
 			vcf_files.push_back(ln);
 		}
 	}
-	cerr<< vcf_files.size() << " VCF files exist in the index file." << endl;
+	std::cerr << vcf_files.size() << " VCF files exist in the index file." << std::endl;
 }
 	
-void read_index(string index_file, vector<string> &sample_ids, vector<string> &vcf_files, vector<string> &bam_files, vector<double> &avg_depths)
+void read_index(string index_file, std::vector<string> &sample_ids, std::vector<string> &vcf_files, std::vector<string> &bam_files, std::vector<double> &avg_depths)
 {
-	ifstream inFile(index_file.c_str(), ios::in);
+	std::ifstream inFile(index_file.c_str(), std::ios::in);
 	
 	while(inFile.good())
 	{
@@ -58,25 +60,25 @@ void read_index(string index_file, vector<string> &sample_ids, vector<string> &v
 		getline(inFile,ln);
 		if (!ln.empty())
 		{
-			vector<string> tokens;
+			std::vector<string> tokens;
 			split(ln.c_str(), " \t\n", tokens);
 			
 			if (tokens[0].empty())
 			{
-				cerr << "Error loading index: empty sample ID"<< endl;
+				std::cerr << "Error loading index: empty sample ID"<< std::endl;
 				exit(1);
 			}
 			else if (tokens[1].empty())
 			{
-				cerr << "Error loading index: cannot find vcf files" << endl;
+				std::cerr << "Error loading index: cannot find vcf files" << std::endl;
 			}
 			else if (tokens[2].empty())
 			{
-				cerr << "Error loading index: cannot find BAM/CRAM files" << endl;
+				std::cerr << "Error loading index: cannot find BAM/CRAM files" << std::endl;
 			}
 			else if (tokens[3].empty())
 			{
-				cerr << "Error loading index: cannot find average depth info" << endl;
+				std::cerr << "Error loading index: cannot find average depth info" << std::endl;
 			}
 			sample_ids.push_back(tokens[0]);
 			vcf_files.push_back(tokens[1]);
@@ -88,14 +90,14 @@ void read_index(string index_file, vector<string> &sample_ids, vector<string> &v
 	
 }
 /*
-int suppvcf::initialize(const char* filename, vector<string> &sample_ids, string &region)
+int suppvcf::initialize(const char* filename, std::vector<string> &sample_ids, string &region)
 {
 
 	htsFile *fp = hts_open(filename, "r");
 	
 	if (!fp)
 	{
-		cerr << "Cannot open " << vcf_files[i] << endl;
+		std::cerr << "Cannot open " << vcf_files[i] << std::endl;
 		exit(1);
 	}
 
@@ -108,7 +110,7 @@ int suppvcf::initialize(const char* filename, vector<string> &sample_ids, string
 		tbx_t *tbx = tbx_index_load(vcf_files[i].c_str());
 		if (!tbx)
 		{
-			cerr << "Cannot load tabix index " + vcf_files[i] + ".tbi" << endl;
+			std::cerr << "Cannot load tabix index " + vcf_files[i] + ".tbi" << std::endl;
 			exit(1);
 		}
 		tbs.push_back(tbx);
@@ -138,7 +140,7 @@ int suppvcf::initialize(const char* filename, vector<string> &sample_ids, string
 				if (str.s[0] == '#' && str.s[1] == 'C' && str.s[2] == 'H' && str.s[3] == 'R')
 				{
 					// read sample ids
-					vector<string> tokens;
+					std::vector<string> tokens;
 					split(str.s, " \t\n", tokens);
 					for(int j=9; j<(int)tokens.size(); ++j)
 					{
@@ -155,7 +157,7 @@ int suppvcf::initialize(const char* filename, vector<string> &sample_ids, string
 			hts_itr_t *itr = tbx_itr_querys(tbs[i], "0:0");
 			if (!itr)
 			{
-				cerr << "Cannot read averaged depth info from " << vcf_files[i] << endl;
+				std::cerr << "Cannot read averaged depth info from " << vcf_files[i] << std::endl;
 				exit(1);
 			}
 			while (tbx_itr_next(vfs[i], tbs[i], itr, &str) >= 0)
@@ -165,11 +167,11 @@ int suppvcf::initialize(const char* filename, vector<string> &sample_ids, string
 
 				// Read avg depth
 				flag = false;
-				vector<string> tokens;
+				std::vector<string> tokens;
 				split(str.s, " \t\n", tokens);
 				for(int j=9;j<tokens.size();++j)
 				{
-					vector<string> fields;
+					std::vector<string> fields;
 					split(tokens[j].c_str(), ":", fields);
 
 					avg_depths.push_back(atof(fields[0].c_str()));
@@ -184,7 +186,7 @@ int suppvcf::initialize(const char* filename, vector<string> &sample_ids, string
 				itr = tbx_itr_querys(tbs[i], region.c_str());
 				if (!itr)
 				{
-					cerr << "Cannot parse region " << region <<  " from " << vcf_files[i] << endl;
+					std::cerr << "Cannot parse region " << region <<  " from " << vcf_files[i] << std::endl;
 					exit(1);
 				}
 				m_itr.push_back(itr);
@@ -194,20 +196,20 @@ int suppvcf::initialize(const char* filename, vector<string> &sample_ids, string
 		}
 		if (sample_ids.size() != avg_depths.size() || avg_depths.size() != avg_isizes.size())
 		{
-			cerr << "Error: number of fields for avegerage depth does not match" << endl;
-			cerr << "sample ids has " << sample_ids.size() << " and average depths has " << avg_depths.size() << endl;
+			std::cerr << "Error: number of fields for avegerage depth does not match" << std::endl;
+			std::cerr << "sample ids has " << sample_ids.size() << " and average depths has " << avg_depths.size() << std::endl;
 			return -1;
 		}
 	}
 	
-	cerr << "Input VCF files initialized" <<endl;
+	std::cerr << "Input VCF files initialized" <<std::endl;
 	return 0;
 }
 
 */
 
 
-int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, vector<double> &avg_depths, vector<double> &avg_isizes, vector<double> &std_isizes, string &region)
+int invcfs::initialize(std::vector<string> &vcf_files, std::vector<string> &sample_ids, std::vector<double> &avg_depths, std::vector<double> &avg_isizes, std::vector<double> &std_isizes, string &region)
 {
 	int n_vcf = (int)vcf_files.size();
 	
@@ -217,7 +219,7 @@ int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, ve
 		
 		if (!fp)
 		{
-			cerr << "Cannot open " << vcf_files[i] << endl;
+			std::cerr << "Cannot open " << vcf_files[i] << std::endl;
 			exit(1);
 		}
 
@@ -232,7 +234,7 @@ int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, ve
 		tbx_t *tbx = tbx_index_load(vcf_files[i].c_str());
 		if (!tbx)
 		{
-			cerr << "Cannot load tabix index " + vcf_files[i] + ".tbi" << endl;
+			std::cerr << "Cannot load tabix index " + vcf_files[i] + ".tbi" << std::endl;
 			exit(1);
 		}
 		tbs.push_back(tbx);
@@ -262,7 +264,7 @@ int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, ve
 				if (str.s[0] == '#' && str.s[1] == 'C' && str.s[2] == 'H' && str.s[3] == 'R')
 				{
 					// read sample ids
-					vector<string> tokens;
+					std::vector<string> tokens;
 					split(str.s, " \t\n", tokens);
 					for(int j=9; j<(int)tokens.size(); ++j)
 					{
@@ -279,7 +281,7 @@ int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, ve
 			hts_itr_t *itr = tbx_itr_querys(tbs[i], "0:0");
 			if (!itr)
 			{
-				cerr << "Cannot read averaged depth info from " << vcf_files[i] << endl;
+				std::cerr << "Cannot read averaged depth info from " << vcf_files[i] << std::endl;
 				exit(1);
 			}
 			while (tbx_itr_next(vfs[i], tbs[i], itr, &str) >= 0)
@@ -289,11 +291,11 @@ int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, ve
 
 				// Read avg depth
 				flag = false;
-				vector<string> tokens;
+				std::vector<string> tokens;
 				split(str.s, " \t\n", tokens);
 				for(int j=9;j<(int)tokens.size();++j)
 				{
-					vector<string> fields;
+					std::vector<string> fields;
 					split(tokens[j].c_str(), ":", fields);
 
 					avg_depths.push_back(atof(fields[0].c_str()));
@@ -308,7 +310,7 @@ int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, ve
 				itr = tbx_itr_querys(tbs[i], region.c_str());
 				if (!itr)
 				{
-					cerr << "Cannot parse region " << region <<  " from " << vcf_files[i] << endl;
+					std::cerr << "Cannot parse region " << region <<  " from " << vcf_files[i] << std::endl;
 					exit(1);
 				}
 				m_itr.push_back(itr);
@@ -318,18 +320,18 @@ int invcfs::initialize(vector<string> &vcf_files, vector<string> &sample_ids, ve
 		}
 		if (sample_ids.size() != avg_depths.size() || avg_depths.size() != avg_isizes.size())
 		{
-			cerr << "Error: number of fields for avegerage depth does not match" << endl;
-			cerr << "sample ids has " << sample_ids.size() << " and average depths has " << avg_depths.size() << endl;
+			std::cerr << "Error: number of fields for avegerage depth does not match" << std::endl;
+			std::cerr << "sample ids has " << sample_ids.size() << " and average depths has " << avg_depths.size() << std::endl;
 			return -1;
 		}
 	}
 	
-	cerr << "Input VCF files initialized" <<endl;
+	std::cerr << "Input VCF files initialized" <<std::endl;
 	return 0;
 }
 
 
-void invcfs::parse_sv(vector<string> &tokens, sv& interval)
+void invcfs::parse_sv(std::vector<string> &tokens, sv& interval)
 {
 	int chr;
 
@@ -367,12 +369,12 @@ void invcfs::parse_sv(vector<string> &tokens, sv& interval)
 
 	string info = tokens[7];
 
-	vector<string> infotokens;
+	std::vector<string> infotokens;
 
 	split(info.c_str(), ";", infotokens);
 	for(int j=0;j<(int)infotokens.size();++j)
 	{
-		vector<string> infofields;
+		std::vector<string> infofields;
 		split(infotokens[j].c_str(), "=", infofields);
 		if (infofields.size()>1)
 		{
@@ -430,11 +432,11 @@ int invcfs::read_interval_multi(sv& interval, svdata& dt, string &region)
 
 	if (bTabix)
 	{
-		vector<string> tks;
+		std::vector<string> tks;
 		split(region.c_str(), ":-", tks);
 		if (tks.size() != 3)
 		{
-			cerr << "Cannot parse region " << region << endl;
+			std::cerr << "Cannot parse region " << region << std::endl;
 			exit(1);
 		}
 		startpos = atoi(tks[1].c_str());
@@ -456,7 +458,7 @@ int invcfs::read_interval_multi(sv& interval, svdata& dt, string &region)
 		if (ret>=0)
 		{
 			// Read per-sample depth, insert size info
-			vector<string> tokens;
+			std::vector<string> tokens;
 			split(str.s, " \t\n", tokens);
 			
 			// Read interval information
@@ -467,7 +469,7 @@ int invcfs::read_interval_multi(sv& interval, svdata& dt, string &region)
 			}
 			for(int j=9;j<(int)tokens.size();++j) // Parse genotype fields
 			{
-				vector<string> fields;
+				std::vector<string> fields;
 				split(tokens[j].c_str(), ":", fields);
 				
 				// GC corrected depth
@@ -498,7 +500,7 @@ int invcfs::read_interval_multi(sv& interval, svdata& dt, string &region)
 	}
 }
 
-int read_candidate_vcf(ifstream &vfile, sv& new_interval, string& suppvec)
+int read_candidate_vcf(std::ifstream &vfile, sv& new_interval, string& suppvec)
 {
 	string ln;
 	getline(vfile, ln);
@@ -508,7 +510,7 @@ int read_candidate_vcf(ifstream &vfile, sv& new_interval, string& suppvec)
 		if (ln[0] != '#')
 		{
 			int chr;
-			vector<string> tokens;
+			std::vector<string> tokens;
 			split(ln.c_str(), " \t\n", tokens);
 			if (tokens[0].substr(0,3) == "chr" || tokens[0].substr(0,3) == "Chr" )
 			{
@@ -547,11 +549,11 @@ int read_candidate_vcf(ifstream &vfile, sv& new_interval, string& suppvec)
 				string info = tokens[7];
 				int chr2num = new_interval.chrnum;
 
-				vector<string> infotokens;
+				std::vector<string> infotokens;
 				split(info.c_str(), ";", infotokens);
 				for(int j=0;j<(int)infotokens.size();++j)
 				{
-					vector<string> infofields;
+					std::vector<string> infofields;
 					split(infotokens[j].c_str(), "=", infofields);
 					if (infofields.size()>1)
 					{
@@ -563,7 +565,7 @@ int read_candidate_vcf(ifstream &vfile, sv& new_interval, string& suppvec)
 						{
 							new_interval.svtype = get_svtype(infofields[1]);
 
-							//cerr << "\tSVTYPE: " << new_interval.svtype << endl;
+							//std::cerr << "\tSVTYPE: " << new_interval.svtype << std::endl;
 						}
 						else if (infofields[0] == "CHR2")
 						{
@@ -593,9 +595,9 @@ int read_candidate_vcf(ifstream &vfile, sv& new_interval, string& suppvec)
 	return -1;
 }
 
-void write_interval(string &intFileName, vector<sv> &vec_sv)
+void write_interval(string &intFileName, std::vector<sv> &vec_sv)
 {
-    ofstream intFile(intFileName.c_str(), std::ios::out | std::ios::binary);
+    std::ofstream intFile(intFileName.c_str(), std::ios::out | std::ios::binary);
     int n_var = (int)vec_sv.size();
     
     intFile.write(reinterpret_cast<char*>(&n_var), sizeof(int));
@@ -611,9 +613,9 @@ void write_interval(string &intFileName, vector<sv> &vec_sv)
     }
     intFile.close();
 }
-void read_svs_from_intfile(string &intFileName, vector<breakpoint> &vec_bp, vector<sv> &vec_sv)
+void read_svs_from_intfile(string &intFileName, std::vector<breakpoint> &vec_bp, std::vector<sv> &vec_sv)
 {
-    ifstream intFile(intFileName.c_str(), ios::in | ios::binary);
+    std::ifstream intFile(intFileName.c_str(), std::ios::in | std::ios::binary);
     int n_var = 0;
     
     intFile.read(reinterpret_cast<char*>(&n_var), sizeof(int));
@@ -652,9 +654,9 @@ void read_svs_from_intfile(string &intFileName, vector<breakpoint> &vec_bp, vect
 }
 
 
-void read_svs_from_vcf(string &vcf_file, vector<breakpoint> &v_bp, vector<sv> &v_sv)
+void read_svs_from_vcf(string &vcf_file, std::vector<breakpoint> &v_bp, std::vector<sv> &v_sv)
 {
-    ifstream vfile(vcf_file.c_str(), ios::in);
+    std::ifstream vfile(vcf_file.c_str(), std::ios::in);
     while(vfile.good())
     {
         string ln;
@@ -663,7 +665,7 @@ void read_svs_from_vcf(string &vcf_file, vector<breakpoint> &v_bp, vector<sv> &v
         if (!ln.empty() && ln[0] != '#')
         {
             int chr;
-            vector<string> tokens;
+            std::vector<string> tokens;
             split(ln.c_str(), " \t\n", tokens);
             // Let's add error handling later (and factor this part out)
             if (tokens[0].substr(0,3) == "chr" || tokens[0].substr(0,3) == "Chr" )
@@ -701,11 +703,11 @@ void read_svs_from_vcf(string &vcf_file, vector<breakpoint> &v_bp, vector<sv> &v
                 
                 string info = tokens[7];
                 
-                vector<string> infotokens;
+                std::vector<string> infotokens;
                 split(info.c_str(), ";", infotokens);
                 for(int j=0;j<(int)infotokens.size();++j)
                 {
-                    vector<string> infofields;
+                    std::vector<string> infofields;
                     split(infotokens[j].c_str(), "=", infofields);
                     if (infofields.size()>1)
                     {
@@ -777,12 +779,12 @@ void read_svs_from_vcf(string &vcf_file, vector<breakpoint> &v_bp, vector<sv> &v
     vfile.close();
 }
 
-void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_files, vector<sv> &candidates)
+void read_intervals_from_vcf(std::vector<string> &sample_ids, std::vector<string> &vcf_files, std::vector<sv> &candidates)
 {
 //	for(int i=0;i<(int)sample_ids.size();++i)
 	int i=0; // TEMPORARY, READ SINGLE VCF FILE
 	{
-		ifstream vfile(vcf_files[i].c_str(), ios::in);
+		std::ifstream vfile(vcf_files[i].c_str(), std::ios::in);
 		while(vfile.good())
 		{
 			string ln;
@@ -794,10 +796,10 @@ void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_fil
 				if (ln[0] != '#')
 				{
 
-				//	cerr << ln << endl;
+				//	std::cerr << ln << std::endl;
 
 					int chr;
-					vector<string> tokens;
+					std::vector<string> tokens;
 					split(ln.c_str(), " \t\n", tokens);
 					// Let's add error handling later
 					if (tokens[0].substr(0,3) == "chr" || tokens[0].substr(0,3) == "Chr" )
@@ -828,7 +830,7 @@ void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_fil
 					
 						}
 					}
-//					cerr << "chr : " << chr << endl;
+//					std::cerr << "chr : " << chr << std::endl;
 					if (chr >=1 && chr <=24)  // include chrs 1-22, X, Y
 					{
 						sv new_interval;
@@ -840,51 +842,51 @@ void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_fil
 //						new_interval.ci_end.first = -1;
 //						new_interval.ci_end.second = -1;
 
-//						cerr << "pos : " << new_interval.pos << endl;
+//						std::cerr << "pos : " << new_interval.pos << std::endl;
 
 						string info = tokens[7];
 						int chr2num = new_interval.chrnum;
 						
-						//cerr << "info : " << info << endl;
+						// std::cerr << "info : " << info << std::endl;
 
-						vector<string> infotokens;
+						std::vector<string> infotokens;
 						split(info.c_str(), ";", infotokens);
 						for(int j=0;j<(int)infotokens.size();++j)
 						{
-							vector<string> infofields;
-							//cerr << infotokens[j] << endl;
+							std::vector<string> infofields;
+							//std::cerr << infotokens[j] << std::endl;
 							split(infotokens[j].c_str(), "=", infofields);
 							if (infofields.size()>1)
 							{
 								if (infofields[0] == "END")
 								{
 									new_interval.end = atoi(infofields[1].c_str());
-									//cerr << "\tEND: " << new_interval.end << endl;
+									//std::cerr << "\tEND: " << new_interval.end << std::endl;
 								}
 								/*
 								else if (infofields[0] == "CIPOS")
 								{
-									vector<string> ci;
+									std::vector<string> ci;
 									split(infofields[1].c_str(), ",", ci);
 									new_interval.ci_pos.first = atoi(ci[0].c_str());
 									new_interval.ci_pos.second = atoi(ci[1].c_str());
-									//cerr << "\tCIPOS: " << new_interval.ci_pos.first << " , " << new_interval.ci_pos.second << endl;
+									// std::cerr << "\tCIPOS: " << new_interval.ci_pos.first << " , " << new_interval.ci_pos.second << std::endl;
 
 								}
 								else if (infofields[0] == "CIEND")
 								{
-									vector<string> ci;
+									std::vector<string> ci;
 									split(infofields[1].c_str(), ",", ci);
 									new_interval.ci_end.first = atoi(ci[0].c_str());
 									new_interval.ci_end.second = atoi(ci[1].c_str());
-									//cerr << "\tCIEND: " << new_interval.ci_end.first << " , " << new_interval.ci_end.second << endl;
+									//std::cerr << "\tCIEND: " << new_interval.ci_end.first << " , " << new_interval.ci_end.second << std::endl;
 								}
 								*/
 								else if (infofields[0] == "SVTYPE")
 								{
 									new_interval.svtype = get_svtype(infofields[1]);
 
-									//cerr << "\tSVTYPE: " << new_interval.svtype << endl;
+									//std::cerr << "\tSVTYPE: " << new_interval.svtype << std::endl;
 								}
 								else if (infofields[0] == "CHR2")
 								{
@@ -911,9 +913,9 @@ void read_intervals_from_vcf(vector<string> &sample_ids, vector<string> &vcf_fil
 } //read_intervals_from_vcf
 
 
-void readFam(string sFamFile, map<string, unsigned> &hIdSex)
+void readFam(string sFamFile, std::map<string, unsigned> &hIdSex)
 {
-	ifstream inFile(sFamFile.c_str(), ios::in);
+	std::ifstream inFile(sFamFile.c_str(), std::ios::in);
 
 	while(inFile.good())
 	{
@@ -921,17 +923,17 @@ void readFam(string sFamFile, map<string, unsigned> &hIdSex)
 		getline(inFile,ln);
 		if (!ln.empty())
 		{
-			vector<string> tokens;
+			std::vector<string> tokens;
 			split(ln.c_str(), " \t\n", tokens);
 
 			if (tokens[1].empty())
 			{
-				cerr << "Error: empty sample ID"<< endl;
+				std::cerr << "Error: empty sample ID"<< std::endl;
 				abort();
 			}
 			else if (tokens[4].empty())
 			{
-				cerr << "Error: empty sample SEX" << endl;
+				std::cerr << "Error: empty sample SEX" << std::endl;
 			}
 
 			if (tokens[4] == "1" || tokens[4] == "2")

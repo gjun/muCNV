@@ -42,8 +42,8 @@ double RO(sv &x, sv &y)
 	return (l/L);
 }
 
-//void merge_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidates)
-void merge_svs(vector<sv> &candidates , vector<int> &idxs)
+//void merge_svs(std::vector<sv> &candidates , std::vector< std::vector<sv> > &merged_candidates)
+void merge_svs(std::vector<sv> &candidates , std::vector<int> &idxs)
 {
 	
 	int curr = 0;
@@ -70,7 +70,7 @@ void merge_svs(vector<sv> &candidates , vector<int> &idxs)
 		}
 		
 		/*
-		vector<sv> t;
+		std::vector<sv> t;
 		for(int i=curr; i<last_idx; ++i)
 		{
 			t.push_back(candidates[i]);
@@ -82,7 +82,7 @@ void merge_svs(vector<sv> &candidates , vector<int> &idxs)
 	}
 }
 
-void cluster_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidates)
+void cluster_svs(std::vector<sv> &candidates , std::vector< std::vector<sv> > &merged_candidates)
 {
 
 	int curr = 0;
@@ -108,7 +108,7 @@ void cluster_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidate
 		int n = last_idx - curr;
 		if (n>2)
 		{
-			vector< vector <double> > D;
+			std::vector< std::vector <double> > D;
 			D.resize(n);
 			for(int i=0;i<n;++i)
 			{
@@ -176,7 +176,7 @@ void cluster_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidate
 
 			for(int i=0;i<n;++i)
 			{
-				vector<sv> t;
+				std::vector<sv> t;
 				for(int j=0; j<n; ++j)
 				{
 					if (clusters[j] == i)
@@ -193,7 +193,7 @@ void cluster_svs(vector<sv> &candidates , vector< vector<sv> > &merged_candidate
 		}
 		else
 		{
-			vector<sv> t;
+			std::vector<sv> t;
 			t.push_back(candidates[curr]);
 
 			merged_candidates.push_back(t);

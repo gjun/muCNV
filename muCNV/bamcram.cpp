@@ -64,37 +64,38 @@ int get_cigar_clippos(string &cigar_str)
     return 0;
 }
 
-bool process_split(uint8_t *t, splitread &new_sp, int32_t tid, bool strand)
+bool process_split(string &t, splitread &new_sp, int32_t tid, bool strand)
 {
     int i=1;
     
     int32_t chr = 0;
     string cigar_str;
     string pos_str;
-    if (t[1] == 'c' && t[2] == 'h' && t[3] == 'r')
+
+    if (t.substr(0,3) == "chr")
     {
-        if (t[4]>='0' && t[4] <= '9')
+        if (t[3]>='1' && t[3] <= '9')
         {
-            if (t[5] == ',')
+            if (t[4] == ',')
             {
-                chr = t[4]-'0';
+                chr = t[3]-'0';
+                i=5;
+            }
+            else if (t[4]>='0' && t[4]<='9' && t[5]==',')
+            {
+                chr = (t[3]-'0')*10 + (t[5]-'0');
                 i=6;
             }
-            if (t[5]>='0' && t[5]<='9' && t[6]==',')
-            {
-                chr = (t[4]-'0')*10 + (t[5]-'0');
-                i=7;
-            }
         }
-        else if (t[4] == 'X' && t[5] == ',')
+        else if (t[3] == 'X' && t[4] == ',')
         {
             chr = 23;
-            i=6;
+            i=5;
         }
-        else if (t[4] == 'Y' && t[5] == ',')
+        else if (t[3] == 'Y' && t[4] == ',')
         {
             chr = 24;
-            i=6;
+            i=5;
         }
         else
         {
@@ -106,13 +107,16 @@ bool process_split(uint8_t *t, splitread &new_sp, int32_t tid, bool strand)
             return false;
         }
         
+		/*
         string s;
         int c = i;
         
         //fprintf(stderr,"s = '%s', strlen(s) = %d, delims = '%s'\n",s,(int)strlen(s), delims);
         for(;t[i]!=',' && t[i]!=';' && t[i]!='\0';++i);
+
         if (t[i] ==';' || t[i] == '\0')
             return false;
+
         pos_str = std::string((char*)t+c, i-c);
         if (t[i+1] == '+')
         {
@@ -136,12 +140,44 @@ bool process_split(uint8_t *t, splitread &new_sp, int32_t tid, bool strand)
         for(;t[i]!=',' && t[i]!=';' && t[i]!='\0';++i);
         if (t[i] ==';' || t[i] == '\0')
             return false;
-        cigar_str = std::string((char*)t+c, i-c);
+		*/
+
+		std::string::size_type c;
+		std::string::size_type d;
+
+		new_sp.sapos = stoi(t.substr(i), &c);
+	//	DMSG("POS_STR: " << t.substr(i) << " SAPOS:" <<new_sp.sapos);
+		if (new_sp.sapos < 1) return false;
+
+		c=c+i+1;
+		if (t[c] == '+')
+		{
+			if (!strand)
+				return false;
+		}
+		else if (t[c] == '-')
+		{
+			if (strand)
+				return false;
+		}
+		// DMSG("STRAND : " << t[c]);
+		c+=2;
+
+		d = t.find(',', c);
+		if (d == string::npos) return false;
+		cigar_str = t.substr(c,d-c);
+	//	DMSG("CIGAR: " << cigar_str);
+		if (cigar_str.length() == 0 ) return false;
+        // cigar_str = std::string((char*)t+c, i-c);
         // process pos and cigar here
-        new_sp.sapos = atoi(pos_str.c_str());
+//        new_sp.sapos = atoi(pos_str.c_str());
         new_sp.secondclip = get_cigar_clippos(cigar_str);
+	    return true;
     }
-    return true;
+	else
+	{
+		return false;
+	}
 }
 
 static int read_bam(void *data, bam1_t *b) // read level filters better go here to avoid pileup
@@ -164,7 +200,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 				/*
 				if (abs(b->core.isize) > 1000)
 				{
-					cerr << "isize " << b->core.isize << endl;
+					std::cerr << "isize " << b->core.isize << std::endl;
 				}
 				*/
                 // get average isize statistics only from properly paired pairs
@@ -172,7 +208,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                 aux->sumsq_isz += (b->core.isize) * (b->core.isize);
                 aux->n_isz += 1;
 
-//				cerr << "n_isz : " << aux->n_isz << ", sum_isz : " << aux->sum_isz << ", sumsq_isz : " << aux->sumsq_isz << endl;
+//				std::cerr << "n_isz : " << aux->n_isz << ", sum_isz : " << aux->sum_isz << ", sumsq_isz : " << aux->sumsq_isz << std::endl;
             }
             else 
             {
@@ -214,8 +250,11 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 		if (b->core.flag & BAM_FSUPPLEMENTARY)
 		{
 			uint8_t *aux_sa = bam_aux_get(b, "SA");
-			if (aux_sa && aux_sa[0] == 'Z')
+			char* p_sa;
+			if (aux_sa && (p_sa = bam_aux2Z(aux_sa)))
 			{
+				string str_sa = string(p_sa);
+
 				splitread new_sp;
 				new_sp.chrnum = b->core.tid + 1;
 				new_sp.pos = b->core.pos;
@@ -241,7 +280,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 				
 				if (new_sp.firstclip != 0) // Process split read only if the read has soft-clipped ends
 				{
-					if (!process_split(aux_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)))
+					if (!process_split(str_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)))
 					{
 						new_sp.sapos = 0;
 						new_sp.secondclip = 0;
@@ -271,7 +310,7 @@ void bFile::initialize_sequential(string &bname)
     int rf = SAM_FLAG |  SAM_MAPQ | SAM_QUAL| SAM_POS | SAM_SEQ | SAM_CIGAR| SAM_TLEN | SAM_RNEXT | SAM_PNEXT | SAM_AUX;
     if (hts_set_opt(data[0]->fp, CRAM_OPT_REQUIRED_FIELDS, rf))
     {
-        cerr << "Failed to set CRAM_OPT_REQUIRED_FIELDS value" << endl;
+        std::cerr << "Failed to set CRAM_OPT_REQUIRED_FIELDS value" << std::endl;
         exit(1);
     }
     if (hts_set_opt(data[0]->fp, CRAM_OPT_DECODE_MD, 0))
@@ -286,7 +325,7 @@ void bFile::initialize_sequential(string &bname)
     
     if (data[0]->hdr == NULL)
     {
-        cerr << "Cannot open CRAM/BAM header" << endl;
+        std::cerr << "Cannot open CRAM/BAM header" << std::endl;
         exit(1);
     }
 
@@ -306,7 +345,7 @@ void bFile::initialize(string &bname)
 	int rf = SAM_FLAG |  SAM_MAPQ | SAM_QUAL| SAM_POS | SAM_SEQ | SAM_CIGAR| SAM_TLEN | SAM_RNEXT | SAM_PNEXT;
 	if (hts_set_opt(data[0]->fp, CRAM_OPT_REQUIRED_FIELDS, rf))
 	{
-		cerr << "Failed to set CRAM_OPT_REQUIRED_FIELDS value" << endl;
+		std::cerr << "Failed to set CRAM_OPT_REQUIRED_FIELDS value" << std::endl;
 		exit(1);
 	}
 	if (hts_set_opt(data[0]->fp, CRAM_OPT_DECODE_MD, 0))
@@ -324,14 +363,14 @@ void bFile::initialize(string &bname)
 
 	if (data[0]->hdr == NULL)
 	{
-		cerr << "Cannot open CRAM/BAM header" << endl;
+		std::cerr << "Cannot open CRAM/BAM header" << std::endl;
 		exit(1);
 	}
 	
 	hts_idx_t* tmp_idx = sam_index_load(data[0]->fp, bname.c_str());
 	if (tmp_idx == NULL)
 	{
-		cerr << "Cannot open CRAM/BAM index" << endl;
+		std::cerr << "Cannot open CRAM/BAM index" << std::endl;
 		exit(1);
 	}
 	idx = tmp_idx;
@@ -340,12 +379,12 @@ void bFile::initialize(string &bname)
 double bFile::gcCorrected(double D, int chr, int pos)
 {
     int p = pos*2 / GC.binsize;
-//	cerr << "pos " << pos << " p " << p << endl;
+//	std::cerr << "pos " << pos << " p " << p << std::endl;
 	int bin = GC.gc_array[chr][p];
 
 	if (bin<20 && gc_factor[bin]>0.0001)
 	{
-//		cerr << D << " at " << chr << ":" << pos << " is adjusted to " << D/gc_factor[bin] << " by gc Factor "<< gc_factor[bin] << endl;
+//		std::cerr << D << " at " << chr << ":" << pos << " is adjusted to " << D/gc_factor[bin] << " by gc Factor "<< gc_factor[bin] << std::endl;
 		return D / gc_factor[bin];
 	}
 	else
@@ -357,17 +396,17 @@ double bFile::gcCorrected(double D, int chr, int pos)
 
 
 // Get (overlapping) list of SV intervals, return average depth and GC-corrected average depth on intervals
-void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv)
+void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<sv> &vec_sv)
 {
     // vec_bp should have been sorted beforehand
     int tid = -1, pos = -1;
     
     if (vec_bp[0].bptype > 0)
     {
-        cerr << "Error: Merged interval's earliest position is SV-end, not SV-start." << endl;
+        std::cerr << "Error: Merged interval's earliest position is SV-end, not SV-start." << std::endl;
         for(int i=0;i<20;++i)
         {
-            cerr << vec_bp[i].chrnum << "\t" << vec_bp[i].pos << "\t" << vec_bp[i].bptype << endl;
+            std::cerr << vec_bp[i].chrnum << "\t" << vec_bp[i].pos << "\t" << vec_bp[i].bptype << std::endl;
         }
     }
     
@@ -385,28 +424,15 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
         gc_sum[i] = 0;
         gc_cnt[i] = 0;
     }
+    std::vector<int> dp_list;
     
-    // For average DP
-    // Consider using LIST
-    //unordered_set<int> dp_set; // Initially empty
-    vector<int> dp_list;
-    /*
-    set<int> rp_set;
-    set<int> sp_set;
-     */
-    
-    vector<double> dp_sum; // One interval (start-end) will add one entry on these
-    vector<double> gc_dp_sum;
-    vector<int> dp_cnt;
+    std::vector<double> dp_sum; // One interval (start-end) will add one entry on these
+    std::vector<double> gc_dp_sum;
+    std::vector<int> dp_cnt;
 
     data[0]->p_vec_rp = &vec_rp;
     data[0]->p_vec_sp = &vec_sp;
     
-    /*
-    data[0]->rp_set = &rp_set;
-    data[0]->sp_set = &sp_set;
-    data[0]->vec_sv = &vec_sv;
-     */
     data[0]->sum_isz = 0;
     data[0]->sumsq_isz = 0;
     data[0]->n_isz = 0;
@@ -419,11 +445,13 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     bam_mplp_t mplp = bam_mplp_init(1, read_bam, (void**) data);
     
     depth100.resize(GC.num_chr + 1);
+	nbin_100.resize(GC.num_chr + 1);
+	nbin_100[0] = 0;
     
     for(int i=1; i<=GC.num_chr; ++i)
     {
-        int N = ceil((double)GC.chrSize[i] / 100.0) ;
-        depth100[i] = (uint16_t *) calloc(N, sizeof(uint16_t));
+        nbin_100[i] = ceil((double)GC.chrSize[i] / 100.0) + 1 ;
+        depth100[i] = (uint16_t *) calloc(nbin_100[i], sizeof(uint16_t));
     }
     
     int sum100=0;
@@ -433,18 +461,17 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
     int prev_pos = 1;
     
 
-	cerr << "processing chr 1" << endl;
+	std::cerr << "processing chr 1" << std::endl;
     
     while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0 && tid < GC.num_chr)
     {
-        // TODO: Make sure this is right...
         int chrnum = tid+1;
         
         if (chrnum>prev_chrnum)
         {
             // clear stats
-			cerr << "now processing chr " << chrnum << endl;
-			cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << endl;
+			std::cerr << "now processing chr " << chrnum << std::endl;
+			std::cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << std::endl;
             
             // Update 100-bp depth
             if (n100>0)
@@ -453,7 +480,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
                 if (val>65535) val=65535; // handle overflow, though unlikely
                 depth100[prev_chrnum][prev_pos/100] = (uint16_t) val;
             }
-			cerr << "n_isz : " << data[0]->n_isz << ", sum_isz : " << data[0]->sum_isz << ", sumsq_isz : " << data[0]->sumsq_isz << endl;
+			std::cerr << "n_isz : " << data[0]->n_isz << ", sum_isz : " << data[0]->sum_isz << ", sumsq_isz : " << data[0]->sumsq_isz << std::endl;
 
             sum100=0;
             n100=0;
@@ -471,7 +498,6 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
 
             sum100=0;
             n100=0;
-
         }
         
         prev_pos = pos; // maybe use array idx instead of pos ?
@@ -491,7 +517,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
             }
             else
             {                
-                vector<int>::iterator it = find(dp_list.begin(), dp_list.end(), vec_bp[nxt].idx) ;
+                std::vector<int>::iterator it = find(dp_list.begin(), dp_list.end(), vec_bp[nxt].idx) ;
                 dp_list.erase( it );
             }
             nxt++;
@@ -522,7 +548,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
         gc_cnt[bin] += 1;
         
         //for(unordered_set<int>::iterator it=dp_set.begin(); it!=dp_set.end(); ++it)
-        for(vector<int>::iterator it=dp_list.begin(); it!=dp_list.end(); ++it)
+        for(std::vector<int>::iterator it=dp_list.begin(); it!=dp_list.end(); ++it)
         {
             vec_sv[*it].dp_sum += dpval;
             vec_sv[*it].n_dp += 1;
@@ -544,12 +570,12 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
         }
     }
 
-	cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << endl;
+	std::cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << std::endl;
     avg_isize = data[0]->sum_isz / (double)data[0]->n_isz;
     std_isize = sqrt((double)data[0]->sumsq_isz /(double)data[0]->n_isz - ((double)avg_isize*avg_isize));
 
-	cerr << "n_isz : " << data[0]->n_isz << ", sum_isz : " << data[0]->sum_isz << ", sumsq_isz : " << data[0]->sumsq_isz << endl;
-	cerr << "avg_isz : " << avg_isize << ", std_isize : " << std_isize << endl;
+	std::cerr << "n_isz : " << data[0]->n_isz << ", sum_isz : " << data[0]->sum_isz << ", sumsq_isz : " << data[0]->sumsq_isz << std::endl;
+	std::cerr << "avg_isz : " << avg_isize << ", std_isize : " << std_isize << std::endl;
 
     sam_itr_destroy(data[0]->iter);
     free(plp); free(n_plp);
@@ -557,7 +583,7 @@ void bFile::read_depth_sequential(vector<breakpoint> &vec_bp, vector<sv> &vec_sv
 }
 
 
-void bFile::postprocess_depth(vector<sv> &vec_sv)
+void bFile::postprocess_depth(std::vector<sv> &vec_sv)
 {
 
     // Update average depth of each SV
@@ -578,7 +604,7 @@ void bFile::postprocess_depth(vector<sv> &vec_sv)
     }
 }
 
-void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
+void bFile::write_pileup(string &sampID, std::vector<sv> &vec_sv)
 {
     string pileup_name = sampID + ".pileup";
     string varfile_name = sampID + ".var";
@@ -586,8 +612,8 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
 
     size_t curr_pos = 0;
     
-    ofstream pileupFile(pileup_name.c_str(), std::ios::out | std::ios::binary);
-    ofstream idxFile(idxfile_name.c_str(), std::ios::out | std::ios::binary);
+    std::ofstream pileupFile(pileup_name.c_str(), std::ios::out | std::ios::binary);
+    std::ofstream idxFile(idxfile_name.c_str(), std::ios::out | std::ios::binary);
 
     int n_sample = 1;
     char pad[256] = {0};
@@ -598,7 +624,7 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
     // Sample ID (each with 256 bytes)
     if (sampID.length() > 255)
     {
-        cerr << "Error, sample ID " << sampID << " is too long." << endl;
+        std::cerr << "Error, sample ID " << sampID << " is too long." << std::endl;
         exit(1);
     }
     pileupFile.write(sampID.c_str(), sampID.length());
@@ -621,19 +647,18 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
     }
 
     // Write Index of var files (every chr offset, 1000-th variants)
-//    cerr << "Sample " << sampID << ", header length " << curr_pos << endl;
+//    std::cerr << "Sample " << sampID << ", header length " << curr_pos << std::endl;
     
     idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // where SV DP starts
 
     // Write DP100
     for(int i=1; i<=GC.num_chr; ++i)
     {
-        int N = ceil((double)GC.chrSize[i] / 100.0) ;
-        pileupFile.write(reinterpret_cast<char*>(depth100[i]), sizeof(uint16_t)*N);
-		curr_pos += sizeof(uint16_t)*N;
+        pileupFile.write(reinterpret_cast<char*>(depth100[i]), sizeof(uint16_t)*(nbin_100[i]));
+		curr_pos += sizeof(uint16_t)*nbin_100[i];
     }
 
- //   cerr << "After DP100 written, curr_pos is at " << curr_pos << endl;
+ //   std::cerr << "After DP100 written, curr_pos is at " << curr_pos << std::endl;
 
     int sp_idx = 0;
     int rp_idx = 0;
@@ -664,8 +689,9 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
                 pileupFile.write(reinterpret_cast<char*>(&(vec_rp[k].chrnum)), sizeof(int8_t));
                 pileupFile.write(reinterpret_cast<char*>(&(vec_rp[k].selfpos)), sizeof(int32_t));
                 pileupFile.write(reinterpret_cast<char*>(&(vec_rp[k].matepos)), sizeof(int32_t));
+                pileupFile.write(reinterpret_cast<char*>(&(vec_rp[k].matequal)), sizeof(uint8_t));
                 pileupFile.write(reinterpret_cast<char*>(&(vec_rp[k].pairstr)), sizeof(int8_t));
-                curr_pos += sizeof(int8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(int8_t);
+                curr_pos += sizeof(int8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(int8_t);
                 cnt_rp ++;
             }
             prev_rp = rp_idx;
@@ -696,7 +722,7 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
     pileupFile.close();
     idxFile.close();
 
-    ofstream varFile(varfile_name.c_str(), std::ios::out | std::ios::binary);
+    std::ofstream varFile(varfile_name.c_str(), std::ios::out | std::ios::binary);
 
     // Number of samples in this varFile (can include multiple samples)
     varFile.write(reinterpret_cast<char*>(&n_sample), sizeof(int));
@@ -708,7 +734,7 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
     // Sample ID (each with 256 bytes)
     if (sampID.length() > 255)
     {
-        cerr << "Error, sample ID " << sampID << " is too long." << endl;
+        std::cerr << "Error, sample ID " << sampID << " is too long." << std::endl;
         exit(1);
     }
     varFile.write(sampID.c_str(), sampID.length());
@@ -723,7 +749,7 @@ void bFile::write_pileup(string &sampID, vector<sv> &vec_sv)
 
 
 
-void bFile::write_pileup_text(string &sampID, vector<sv> &vec_sv)
+void bFile::write_pileup_text(string &sampID, std::vector<sv> &vec_sv)
 {
     // TODO: add write GC curve
     // TODO: write average 100-bp depth
@@ -789,7 +815,7 @@ void bFile::write_pileup_text(string &sampID, vector<sv> &vec_sv)
  if ( (int)b->core.qual < aux->min_mapQ ) continue;
  // Nov 29, 2017, commented out
  //if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
- //        cerr << bam_get_qname(b) << "/" << which_readpart(b) << " insert size : " << b->core.isize << endl;
+ //        std::cerr << bam_get_qname(b) << "/" << which_readpart(b) << " insert size : " << b->core.isize << std::endl;
  if (IS_PROPERLYPAIRED(b) && (b->core.qual > 20) && (b->core.tid == b->core.mtid) && b->core.mpos>0 )
  {
  if (b->core.isize < 10000 && b->core.isize>-10000)
@@ -822,7 +848,7 @@ void bFile::write_pileup_text(string &sampID, vector<sv> &vec_sv)
  {
  if (((b->core.flag & BAM_FREVERSE) == BAM_FREVERSE) == ((b->core.flag & BAM_FMREVERSE) == BAM_FMREVERSE))
  {
- //            cerr << "REVERSED tid " << b->core.tid << " pos " << b->core.pos << " qual " <<(int)b->core.qual << " insert size " << b->core.isize << " mtid " << b->core.mtid <<  " mpos " << b->core.mpos << endl;
+ //            std::cerr << "REVERSED tid " << b->core.tid << " pos " << b->core.pos << " qual " <<(int)b->core.qual << " insert size " << b->core.isize << " mtid " << b->core.mtid <<  " mpos " << b->core.mpos << std::endl;
  
  for(set<int>::iterator it=(*(aux->isz_set)).begin(); it!=(*(aux->isz_set)).end(); ++it)
  {
@@ -834,7 +860,7 @@ void bFile::write_pileup_text(string &sampID, vector<sv> &vec_sv)
  {
  if (! IS_PROPERLYPAIRED(b) )
  {
- //            cerr << "NOTPROPER tid " << b->core.tid << " pos " << b->core.pos << " qual " <<(int)b->core.qual << " insert size " << b->core.isize << " mtid " << b->core.mtid <<  " mpos " << b->core.mpos << endl;
+ //            std::cerr << "NOTPROPER tid " << b->core.tid << " pos " << b->core.pos << " qual " <<(int)b->core.qual << " insert size " << b->core.isize << " mtid " << b->core.mtid <<  " mpos " << b->core.mpos << std::endl;
  for(set<int>::iterator it=(*(aux->isz_set)).begin(); it!=(*(aux->isz_set)).end(); ++it)
  {
  (*(aux->isz_list))[*it].push_back(b->core.isize);
@@ -860,7 +886,7 @@ void bFile::write_pileup_text(string &sampID, vector<sv> &vec_sv)
 
 /*
 // Get (overlapping) list of SV intervals, return average depth and GC-corrected average depth on intervals
-void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
+void bFile::read_depth(std::vector<sv> &m_interval, std::vector<string> &G )
 {
 	char reg[100];
 	
@@ -870,7 +896,7 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 	int endpos = m_interval[0].end;
 	int n = (int) m_interval.size();
 	int gap = med_isize-(avg_rlen/2);
-	vector<breakpoint> bp;
+	std::vector<breakpoint> bp;
 	bp.resize(n*4);  // 4 checkpoints per interval
 
 	for(int i=0; i<n; ++i)
@@ -897,7 +923,7 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 		
 		if (m_interval[i].end <= m_interval[i].pos )
 		{
-			cerr << "Error! interval end point " << m_interval[i].end << " is before start point " << m_interval[i].pos << endl;
+			std::cerr << "Error! interval end point " << m_interval[i].end << " is before start point " << m_interval[i].pos << std::endl;
 		}
 		
 		if (m_interval[i].end + gap > endpos)
@@ -917,8 +943,8 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 	data[0]->iter = sam_itr_querys(idx, data[0]->hdr, reg);
 	if (data[0]->iter == NULL)
 	{
-		cerr << reg << endl;
-		cerr << "Can't parse region " << reg << endl;
+		std::cerr << reg << std::endl;
+		std::cerr << "Can't parse region " << reg << std::endl;
 		exit(1);
 	}
 
@@ -926,32 +952,32 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 	
 	if (bp[0].idx != 0)
 	{
-		cerr << "Error: Merged interval's first element is not the earliest." << endl;
-		cerr << "first " << bp[0].idx  << " pos " << bp[0].pos << " second " << bp[1].idx << " pos " << bp[1].pos << endl;
+		std::cerr << "Error: Merged interval's first element is not the earliest." << std::endl;
+		std::cerr << "first " << bp[0].idx  << " pos " << bp[0].pos << " second " << bp[1].idx << " pos " << bp[1].pos << std::endl;
 	}
 	if (bp[0].type > 1)
 	{
-		cerr << "Error: Merged interval's earliest position is SV-end, not SV-start." << endl;
+		std::cerr << "Error: Merged interval's earliest position is SV-end, not SV-start." << std::endl;
 	}
 	int nxt = 1;
 	
 	// For average DP
 	set<int> dp_set;
-	vector<double> dp_sum (n,0);
-	vector<double> gc_dp_sum (n,0);
-	vector<int> dp_cnt (n,0);
+	std::vector<double> dp_sum (n,0);
+	std::vector<double> gc_dp_sum (n,0);
+	std::vector<int> dp_cnt (n,0);
 	
 	// For average Insert Size
 	set<int> isz_set;
 
-	vector< vector<int> > isz_list;
-//	vector< vector<int> > pos_list;
+	std::vector< std::vector<int> > isz_list;
+//	std::vector< std::vector<int> > pos_list;
 
-	vector< vector<int> > rev_isz_list;
-//	vector< vector<int> > rev_pos_list;
+	std::vector< std::vector<int> > rev_isz_list;
+//	std::vector< std::vector<int> > rev_pos_list;
 
-	vector<double> isz_sum(n,0);
-	vector<int> isz_cnt(n,0);
+	std::vector<double> isz_sum(n,0);
+	std::vector<int> isz_cnt(n,0);
 
 	isz_list.resize(n);
 //	pos_list.resize(n);
@@ -988,13 +1014,13 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 				case 1:
 					//Pre-gap end, interval start
 					dp_set.insert(bp[nxt].idx);
-//					cerr << "interval " << bp[nxt].idx << " : "  << m_interval[bp[nxt].idx].pos << "-" << m_interval[bp[nxt].idx].end << " has been inserted at " << pos <<endl;; 
+//					std::cerr << "interval " << bp[nxt].idx << " : "  << m_interval[bp[nxt].idx].pos << "-" << m_interval[bp[nxt].idx].end << " has been inserted at " << pos <<std::endl;; 
 					nxt++;
 					break;
 				case 2:
 					//interval end, post-gap start
 					dp_set.erase(bp[nxt].idx); 
-//					cerr << "interval " << bp[nxt].idx << " : "  << m_interval[bp[nxt].idx].pos << "-" << m_interval[bp[nxt].idx].end << " has been removed at " << pos << endl; 
+//					std::cerr << "interval " << bp[nxt].idx << " : "  << m_interval[bp[nxt].idx].pos << "-" << m_interval[bp[nxt].idx].end << " has been removed at " << pos << std::endl; 
 					nxt++;
 					break;
 				case 3:
@@ -1003,7 +1029,7 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 					nxt++;
 					break;
 				default:
-					cerr << "Something Wrong" << endl;
+					std::cerr << "Something Wrong" << std::endl;
 					exit(1);
 					break;
 			}
@@ -1022,7 +1048,7 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 
 		for(set<int>::iterator it=dp_set.begin(); it!=dp_set.end(); ++it)
 		{
-//			cerr<< "dpval for pos " << pos << " is " << dpval << endl;
+//			std::cerr<< "dpval for pos " << pos << " is " << dpval << std::endl;
 			dp_sum[*it] += dpval;
 			gc_dp_sum[*it] += gc_dpval;
 			dp_cnt[*it]++;
@@ -1040,7 +1066,7 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 
 //		if (dp_cnt[i] == 0)
 //		{
-//			cerr << " pos " << m_interval[i].pos << "-" << m_interval[i].end << " has count 0." << endl;;
+//			std::cerr << " pos " << m_interval[i].pos << "-" << m_interval[i].end << " has count 0." << std::endl;;
 //		}
 		double dp = (dp_cnt[i]>0) ? dp_sum[i]/(double)dp_cnt[i] : 0;
 		double gc_dp = (dp_cnt[i]>0) ? gc_dp_sum[i]/(double)dp_cnt[i] : 0;
@@ -1049,7 +1075,7 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 
 		txt = buf;
 
-//		cerr << m_interval[i].chr <<  ":" << m_interval[i].pos << "-" << m_interval[i].end << "\t" << m_interval[i].len() << "\t"<<  m_interval[i].svtype << "\t" << X[i] << "\t" << GX[i] <<"\t";
+//		std::cerr << m_interval[i].chr <<  ":" << m_interval[i].pos << "-" << m_interval[i].end << "\t" << m_interval[i].len() << "\t"<<  m_interval[i].svtype << "\t" << X[i] << "\t" << GX[i] <<"\t";
 
 		//process_readpair(m_interval[i], isz_list[i], pos_list[i], txt);
 		process_readpair(m_interval[i], isz_list[i], txt);
@@ -1069,7 +1095,7 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 		{
 			txt += "0,.";
 		}
-//		cerr << endl;
+//		std::cerr << std::endl;
 //		Y[i] = (i_cnt[i]>0) ? i_sum[i]/(double)i_cnt[i] : 0;
 	}
 }*/
@@ -1077,17 +1103,17 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
 /*
  void bFile::get_avg_depth()
  {
- vector<double> sums (GC.num_bin, 0);
- vector<double> cnts (GC.num_bin, 0);
+ std::vector<double> sums (GC.num_bin, 0);
+ std::vector<double> cnts (GC.num_bin, 0);
  
  // For average Insert Size
- vector< vector<int> > i_list;
+ std::vector< std::vector<int> > i_list;
  
  i_list.resize(1);
  
  data[0]->isz_list = &i_list;
  
- vector< vector <double> > GCdata;
+ std::vector< std::vector <double> > GCdata;
  GCdata.resize(GC.num_bin);
  
  for(int i=0; i<(int)GC.regions.size();++i)
@@ -1100,8 +1126,8 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
  data[0]->iter = sam_itr_querys(idx, data[0]->hdr, reg);
  if (data[0]->iter == NULL)
  {
- cerr << reg << endl;
- cerr << "Can't parse region" << endl;
+ std::cerr << reg << std::endl;
+ std::cerr << "Can't parse region" << std::endl;
  exit(1);
  }
  
@@ -1119,7 +1145,7 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
  //            while((p = bam_plp_auto(plp, &tid, &pos, &n_plp))!=0)
  while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0)
  {
- //            cerr << "tid " << tid << " pos " << pos << endl;
+ //            std::cerr << "tid " << tid << " pos " << pos << std::endl;
  if (pos<GC.regions[i].pos || pos >GC.regions[i].end) continue;
  sums[GC.regions[i].gcbin] += n_plp[0];
  cnts[GC.regions[i].gcbin] += 1;
@@ -1133,22 +1159,22 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
  }
  
  double avg = 0;
- vector<double> meds (GC.num_bin,0);
+ std::vector<double> meds (GC.num_bin,0);
  
  for(int i=0; i<GC.num_bin; ++i)
  {
  if (cnts[i] > 0)
  {
  avg += (sums[i]/cnts[i]) * GC.gc_dist[i];
- //        cerr << "Avg DP for GC bin " << i << " is " << sums[i]/cnts[i] << ", median is " ;
+ //        std::cerr << "Avg DP for GC bin " << i << " is " << sums[i]/cnts[i] << ", median is " ;
  sort(GCdata[i].begin(), GCdata[i].end());
  int m = (int)(GCdata[i].size()/2) -1;
  meds[i] = (GCdata[i][m] + GCdata[i][m+1]) /2.0;
- //cerr << meds[i] << endl;
+ //std::cerr << meds[i] << std::endl;
  }
  }
  
- cerr << "Average Depth: " << avg << endl;
+ std::cerr << "Average Depth: " << avg << std::endl;
  
  med_isize = median(i_list[0]);
  
@@ -1160,7 +1186,7 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
  sumsq_is += i_list[0][i] * i_list[0][i];
  cnt_is += 1;
  }
- //    cerr << "sum " << sum_is << " sumsq " << sumsq_is << " cnt " << cnt_is << endl;
+ //    std::cerr << "sum " << sum_is << " sumsq " << sumsq_is << " cnt " << cnt_is << std::endl;
  
  if (cnt_is>0)
  {
@@ -1175,17 +1201,17 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
  
  gc_factor.resize(GC.num_bin);
  
- cerr << "Median Insert Size : " << med_isize << endl;
- cerr << "Average Insert Size : " << avg_isize << " (+/- " << std_isize << ")" << endl;
+ std::cerr << "Median Insert Size : " << med_isize << std::endl;
+ std::cerr << "Average Insert Size : " << avg_isize << " (+/- " << std_isize << ")" << std::endl;
  
- //    cerr << "gc factor size : " << gc_factor.size() << endl;
+ //    std::cerr << "gc factor size : " << gc_factor.size() << std::endl;
  
  for(int i=0; i<GC.num_bin; ++i)
  {
- //        cerr << "meds[" << i << "]=" << meds[i]<< " avg=" << avg << " factor " << meds[i]/avg <<endl;
+ //        std::cerr << "meds[" << i << "]=" << meds[i]<< " avg=" << avg << " factor " << meds[i]/avg <<std::endl;
  gc_factor[i] = meds[i]/avg;
  
- //        cerr << "bin " << i << " factor " << gc_factor[i] << endl;
+ //        std::cerr << "bin " << i << " factor " << gc_factor[i] << std::endl;
  }
  
  // TEMPORARY - HARD CODING for 20 BINS
@@ -1198,15 +1224,15 @@ void bFile::read_depth(vector<sv> &m_interval, vector<string> &G )
  */
 
 
-//void bFile::process_readpair(sv &currsv, vector<int> &isz_list, vector<int> &pos_list, string &txt)
+//void bFile::process_readpair(sv &currsv, std::vector<int> &isz_list, std::vector<int> &pos_list, string &txt)
 /*
- void bFile::process_readpair(sv &currsv, vector<int> &isz_list, string &txt)
+ void bFile::process_readpair(sv &currsv, std::vector<int> &isz_list, string &txt)
  {
  
- vector<int> P_isz;
- vector<int> N_isz;
- //    vector<int> P_pos;
- //    vector<int> N_pos;
+ std::vector<int> P_isz;
+ std::vector<int> N_isz;
+ //    std::vector<int> P_pos;
+ //    std::vector<int> N_pos;
  for(int i=0;i<(int)isz_list.size();++i)
  {
  if (isz_list[i]>0 && isz_list[i] < 10*currsv.len )

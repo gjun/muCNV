@@ -51,7 +51,7 @@ bool sv::operator < (const sv& s) const
 	}
 }
 
-int find_start(vector<sv> &L, int pos)
+int find_start(std::vector<sv> &L, int pos)
 {
 	// Assume list is sorted according to pos
 	int left = 0;
@@ -106,7 +106,7 @@ void sv::print(void)
 }
 
 
-void pick_sv_from_merged(sv &picked, vector<sv> &merged)
+void pick_sv_from_merged(sv &picked, std::vector<sv> &merged)
 {
 
 	if (merged.size() == 1) // trivial case
@@ -123,9 +123,9 @@ void pick_sv_from_merged(sv &picked, vector<sv> &merged)
 			max_supp = merged[i].supp;
 	}
 
-	vector<sv> max_svs;
-	vector<int> starts;
-	vector<int> ends;
+	std::vector<sv> max_svs;
+	std::vector<int> starts;
+	std::vector<int> ends;
 	for(int i=0;i<(int)merged.size(); ++i)
 	{
 		if (merged[i].supp == max_supp)

@@ -20,7 +20,7 @@
 extern double BE_THRESHOLD;
 extern double P_THRESHOLD;
 
-bool ordered(vector<Gaussian> &C)
+bool ordered(std::vector<Gaussian> &C)
 {
 	for(unsigned i=0; i<C.size()-1;++i)
 	{
@@ -30,7 +30,7 @@ bool ordered(vector<Gaussian> &C)
 	return true;
 }
 
-bool r_ordered(vector<Gaussian> &C)
+bool r_ordered(std::vector<Gaussian> &C)
 {
 	for(unsigned i=0; i<C.size()-1;++i)
 	{
@@ -46,7 +46,7 @@ void copy(Gaussian &x, Gaussian &y)
 	x.Alpha = y.Alpha;
 }
 
-int gtype::assign(double x, vector<Gaussian> &C)
+int gtype::assign(double x, std::vector<Gaussian> &C)
 {
 	int n_comp = (int) C.size();
 	double p[n_comp];
@@ -96,10 +96,10 @@ int gtype::assign(double x, vector<Gaussian> &C)
 	return ret;
 }
 
-void svgeno::print(sv &S, svdata &D, string &ln, vector<double>& wt)
+void svgeno::print(sv &S, svdata &D, string &ln, std::vector<double>& wt)
 {
-	ln = to_string(S.chrnum);
-	ln += "\t" + to_string(S.pos) + "\t" + svTypeName(S.svtype) + "_" + to_string(S.chrnum) + ":" + to_string(S.pos) + "-" + to_string(S.end) + "\t.\t<" + svTypeName(S.svtype) + ">\t.\t";
+	ln = std::to_string(S.chrnum);
+	ln += "\t" + std::to_string(S.pos) + "\t" + svTypeName(S.svtype) + "_" + std::to_string(S.chrnum) + ":" + std::to_string(S.pos) + "-" + std::to_string(S.end) + "\t.\t<" + svTypeName(S.svtype) + ">\t.\t";
 
 	if (b_pass)
 	{
@@ -114,9 +114,9 @@ void svgeno::print(sv &S, svdata &D, string &ln, vector<double>& wt)
 		ln += "FAIL\t";
 	}
 	
-	ln += "SVTYPE=" + string(svTypeName(S.svtype)) + ";END=" + to_string(S.end) + ";SVLEN=" + to_string(S.len) + ";AC=" + to_string(ac) + ";NS=" + to_string(ns) + ";AF=";
+	ln += "SVTYPE=" + string(svTypeName(S.svtype)) + ";END=" + std::to_string(S.end) + ";SVLEN=" + std::to_string(S.len) + ";AC=" + std::to_string(ac) + ";NS=" + std::to_string(ns) + ";AF=";
 	if (ns>0)
-		ln+=to_string((double)ac/(double)(2.0*ns));
+		ln+=std::to_string((double)ac/(double)(2.0*ns));
 	else
 		ln+="0";
 	
@@ -125,12 +125,12 @@ void svgeno::print(sv &S, svdata &D, string &ln, vector<double>& wt)
 	bool bic_flag = false ;
 	if (Comps.size()>0)
 	{
-		ln+= ";NCLUS=" + to_string(Comps.size()) + ";P_OVERLAP=" + to_string(p_overlap);
+		ln+= ";NCLUS=" + std::to_string(Comps.size()) + ";P_OVERLAP=" + std::to_string(p_overlap);
 
-		ln+= ";BIC_DP="+ to_string(bic[0]) + "," + to_string(bic[1]) + "," + to_string(bic[2]);
+		ln+= ";BIC_DP="+ std::to_string(bic[0]) + "," + std::to_string(bic[1]) + "," + std::to_string(bic[2]);
 		for(unsigned i=3;i<Comps.size(); ++i)
 		{
-			ln += "," + to_string(bic[i]);
+			ln += "," + std::to_string(bic[i]);
 			if (bic[i]<bic[0])
 			{
 				bic_flag = true;
@@ -150,18 +150,18 @@ void svgeno::print(sv &S, svdata &D, string &ln, vector<double>& wt)
 
 	if (Comps.size()>0)
 	{
-		ln += ";MEAN=" + to_string(Comps[0].Mean);
+		ln += ";MEAN=" + std::to_string(Comps[0].Mean);
 
 		for(unsigned i=1;i<Comps.size(); ++i)
-			ln += "," + to_string(Comps[i].Mean);
+			ln += "," + std::to_string(Comps[i].Mean);
 
-		ln += ";STDEV=" + to_string(Comps[0].Stdev);
+		ln += ";STDEV=" + std::to_string(Comps[0].Stdev);
 		for(unsigned i=1;i<Comps.size(); ++i)
-			ln += "," + to_string(Comps[i].Stdev);
+			ln += "," + std::to_string(Comps[i].Stdev);
 
-		ln += ";FRAC=" + to_string(Comps[0].Alpha);
+		ln += ";FRAC=" + std::to_string(Comps[0].Alpha);
 		for(unsigned i=1;i<Comps.size(); ++i)
-			ln += "," + to_string(Comps[i].Alpha);
+			ln += "," + std::to_string(Comps[i].Alpha);
 	}
 
 	if (b_biallelic)
@@ -201,11 +201,11 @@ void svgeno::print(sv &S, svdata &D, string &ln, vector<double>& wt)
 		{
 			if (cn[i]<0)
 			{
-				ln += to_string(cn[i]) + ":" + to_string(D.norm_readcount[i]).substr(0,4) + ":" + to_string((int)D.dp[i]) + ":" +  to_string(D.n_inv_pos[i]) + "," + to_string((int)D.inv_pos[i]) + ":" + to_string(D.n_inv_neg[i]) + "," + to_string((int)D.inv_neg[i]);
+				ln += std::to_string(cn[i]) + ":" + std::to_string(D.norm_readcount[i]).substr(0,4) + ":" + std::to_string((int)D.dp[i]) + ":" +  std::to_string(D.n_inv_pos[i]) + "," + std::to_string((int)D.inv_pos[i]) + ":" + std::to_string(D.n_inv_neg[i]) + "," + std::to_string((int)D.inv_neg[i]);
 			}
 			else
 			{
-				ln += ".:" + to_string(D.norm_readcount[i]).substr(0,4) + ":" + to_string((int)D.dp[i]) + ":" +  to_string(D.n_inv_pos[i]) + "," + to_string((int)D.inv_pos[i]) + ":" + to_string(D.n_inv_neg[i]) + "," + to_string((int)D.inv_neg[i]) ;
+				ln += ".:" + std::to_string(D.norm_readcount[i]).substr(0,4) + ":" + std::to_string((int)D.dp[i]) + ":" +  std::to_string(D.n_inv_pos[i]) + "," + std::to_string((int)D.inv_pos[i]) + ":" + std::to_string(D.n_inv_neg[i]) + "," + std::to_string((int)D.inv_neg[i]) ;
 			}
 		}
 		else
@@ -216,14 +216,14 @@ void svgeno::print(sv &S, svdata &D, string &ln, vector<double>& wt)
 			}
 			else 
 			{
-				ln += to_string(cn[i])+":";
+				ln += std::to_string(cn[i])+":";
 			}
-			ln += to_string(D.norm_dp[i]).substr(0,4) + ":" + to_string((int)D.dp[i]) + ":" + to_string((int)D.n_cnv_pos[i]) + "," + to_string((int)D.cnv_pos[i]) + ":" + to_string((int)D.n_cnv_neg[i]) + "," + to_string((int)D.cnv_neg[i]) + ":" + to_string((int)wt[i]); 
+			ln += std::to_string(D.norm_dp[i]).substr(0,4) + ":" + std::to_string((int)D.dp[i]) + ":" + std::to_string((int)D.n_cnv_pos[i]) + "," + std::to_string((int)D.cnv_pos[i]) + ":" + std::to_string((int)D.n_cnv_neg[i]) + "," + std::to_string((int)D.cnv_neg[i]) + ":" + std::to_string((int)wt[i]); 
 		}
 	}
 }
 
-void gtype::copyComps(vector<Gaussian> &C, vector<Gaussian> &C0)
+void gtype::copyComps(std::vector<Gaussian> &C, std::vector<Gaussian> &C0)
 {
 	C.clear();
 	C.resize(C0.size());
@@ -235,7 +235,7 @@ void gtype::copyComps(vector<Gaussian> &C, vector<Gaussian> &C0)
 }
 
 
-void gtype::call_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vector<double>&std_isz, vector<double> &wt)
+void gtype::call_tmp(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_isz, std::vector<double>&std_isz, std::vector<double> &wt)
 {
 	int n_sample=D.n;
 
@@ -254,7 +254,7 @@ void gtype::call_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 	G.b_biallelic = true;
 	G.p_overlap = 0; 
 
-	vector<Gaussian> C(2);
+	std::vector<Gaussian> C(2);
 	C[0].set(1,0.1);
 	C[1].set(0.5,0.1);
 	copyComps(G.Comps, C);
@@ -323,8 +323,8 @@ void gtype::call_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 	double avg_other_pos = (n_other>0) ? sum_other_pos/n_other : 0;
 	double avg_other_neg = (n_other>0) ? sum_other_neg/n_other : 0;
 
-	G.info = ";POS=(" + to_string((int)avg_other_pos) + "," + to_string((int)avg_var_pos) + ")";
-	G.info += ";NEG=(" + to_string((int)avg_other_neg) + "," + to_string((int)avg_var_neg) + ")";
+	G.info = ";POS=(" + std::to_string((int)avg_other_pos) + "," + std::to_string((int)avg_var_pos) + ")";
+	G.info += ";NEG=(" + std::to_string((int)avg_other_neg) + "," + std::to_string((int)avg_var_neg) + ")";
 	C[0].set(1,0.1);
 	C[1].set(avg_var_dp, 0.1);
 	copyComps(G.Comps, C);
@@ -420,20 +420,20 @@ void gtype::call_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 }
 
 
-void gtype::call_del_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vector<double>&std_isz, vector<double> &wt)
+void gtype::call_del_tmp(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_isz, std::vector<double>&std_isz, std::vector<double> &wt)
 {
 	int n_sample=D.n;
 
 	G.b_biallelic = true;
 	G.p_overlap = 0; 
 
-	vector<double> X;
-	vector<double> Y;
-	vector<double> X2;
-	vector<double> P_X;
-	vector<double> N_X;
-	vector<double> P_Y;
-	vector<double> N_Y;
+	std::vector<double> X;
+	std::vector<double> Y;
+	std::vector<double> X2;
+	std::vector<double> P_X;
+	std::vector<double> N_X;
+	std::vector<double> P_Y;
+	std::vector<double> N_Y;
 
 	X.reserve(n_sample);
 	X2.reserve(n_sample);
@@ -473,9 +473,9 @@ void gtype::call_del_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, v
 		}
 	}
 
-	vector<Gaussian> C1(1);
-	vector<Gaussian> C2(2);
-	vector<Gaussian> C3(3);
+	std::vector<Gaussian> C1(1);
+	std::vector<Gaussian> C2(2);
+	std::vector<Gaussian> C3(3);
 
 	C1[0].estimate(D.norm_dp);
 	C1[0].Alpha = 1;
@@ -539,8 +539,8 @@ void gtype::call_del_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, v
 		}
 	}
 
-	vector<Gaussian> P1(1);
-	vector<Gaussian> P2(2);
+	std::vector<Gaussian> P1(1);
+	std::vector<Gaussian> P2(2);
 	if (P_X.size() > 0)
 	{
 
@@ -555,12 +555,12 @@ void gtype::call_del_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, v
 		if (BIC(D.norm_cnv_pos, P2) < BIC(D.norm_cnv_pos, P1))
 		{
 			G.pos_flag = true;
-			G.info = ";POS=(" + to_string((int)(P2[0].Mean*S.len)) + "," + to_string((int)(P2[1].Mean*S.len)) + ")";
+			G.info = ";POS=(" + std::to_string((int)(P2[0].Mean*S.len)) + "," + std::to_string((int)(P2[1].Mean*S.len)) + ")";
 		}
 	}
 
-	vector<Gaussian> N1(1);
-	vector<Gaussian> N2(2);
+	std::vector<Gaussian> N1(1);
+	std::vector<Gaussian> N2(2);
 	if (N_X.size() > 0)
 	{
 		N1[0].estimate(D.cnv_neg);
@@ -574,7 +574,7 @@ void gtype::call_del_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, v
 		if (BIC(D.norm_cnv_neg, N2) < BIC(D.norm_cnv_neg, N1))
 		{
 			G.neg_flag = true;
-			G.info += ";NEG=(" + to_string((int)(N2[0].Mean*S.len)) + "," + to_string((int)(N2[1].Mean*S.len)) + ")";
+			G.info += ";NEG=(" + std::to_string((int)(N2[0].Mean*S.len)) + "," + std::to_string((int)(N2[1].Mean*S.len)) + ")";
 		}
 	}
 
@@ -664,24 +664,24 @@ void gtype::call_del_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, v
 }
 
 
-void gtype::call_dup_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vector<double>&std_isz, vector<double> &wt)
+void gtype::call_dup_tmp(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_isz, std::vector<double>&std_isz, std::vector<double> &wt)
 {
 	int n_sample=D.n;
 
 	G.b_biallelic = true;
 	G.p_overlap = 0; 
 
-	vector<double> X;
-	vector<double> Y;
-	vector<double> X2;
-	vector<double> X3;
-	vector<double> X4;
-	vector<double> X5;
-	vector<double> X6;
-	vector<double> P_X;
-	vector<double> N_X;
-	vector<double> P_Y;
-	vector<double> N_Y;
+	std::vector<double> X;
+	std::vector<double> Y;
+	std::vector<double> X2;
+	std::vector<double> X3;
+	std::vector<double> X4;
+	std::vector<double> X5;
+	std::vector<double> X6;
+	std::vector<double> P_X;
+	std::vector<double> N_X;
+	std::vector<double> P_Y;
+	std::vector<double> N_Y;
 
 	X.reserve(n_sample);
 	X2.reserve(n_sample);
@@ -742,13 +742,13 @@ void gtype::call_dup_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, v
 		}
 	}
 
-	vector<Gaussian> C1(1);
-	vector<Gaussian> C2(2);
-	vector<Gaussian> C3(3);
-	vector<Gaussian> C4(4);
-	vector<Gaussian> C5(5);
-	vector<Gaussian> C6(6);
-	vector<Gaussian> C7(7);
+	std::vector<Gaussian> C1(1);
+	std::vector<Gaussian> C2(2);
+	std::vector<Gaussian> C3(3);
+	std::vector<Gaussian> C4(4);
+	std::vector<Gaussian> C5(5);
+	std::vector<Gaussian> C6(6);
+	std::vector<Gaussian> C7(7);
 
 	C1[0].estimate(D.norm_dp);
 	C1[0].Alpha = 1;
@@ -813,8 +813,8 @@ void gtype::call_dup_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, v
 		}
 	}
 
-	vector<Gaussian> P1(1);
-	vector<Gaussian> P2(2);
+	std::vector<Gaussian> P1(1);
+	std::vector<Gaussian> P2(2);
 	if (P_X.size() > 0)
 	{
 
@@ -829,12 +829,12 @@ void gtype::call_dup_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, v
 		if (BIC(D.norm_cnv_pos, P2) < BIC(D.norm_cnv_pos, P1))
 		{
 			G.pos_flag = true;
-			G.info = ";POS=(" + to_string((int)(P2[0].Mean*S.len)) + "," + to_string((int)(P2[1].Mean*S.len)) + ")";
+			G.info = ";POS=(" + std::to_string((int)(P2[0].Mean*S.len)) + "," + std::to_string((int)(P2[1].Mean*S.len)) + ")";
 		}
 	}
 
-	vector<Gaussian> N1(1);
-	vector<Gaussian> N2(2);
+	std::vector<Gaussian> N1(1);
+	std::vector<Gaussian> N2(2);
 	if (N_X.size() > 0)
 	{
 		N1[0].estimate(D.cnv_neg);
@@ -848,7 +848,7 @@ void gtype::call_dup_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, v
 		if (BIC(D.norm_cnv_neg, N2) < BIC(D.norm_cnv_neg, N1))
 		{
 			G.neg_flag = true;
-			G.info += ";NEG=(" + to_string((int)(N2[0].Mean*S.len)) + "," + to_string((int)(N2[1].Mean*S.len)) + ")";
+			G.info += ";NEG=(" + std::to_string((int)(N2[0].Mean*S.len)) + "," + std::to_string((int)(N2[1].Mean*S.len)) + ")";
 		}
 	}
 
@@ -938,19 +938,19 @@ void gtype::call_dup_tmp(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, v
 }
 
 
-void gtype::call_del(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vector<double>&std_isz, vector<double> &wt)
+void gtype::call_del(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_isz, std::vector<double>&std_isz, std::vector<double> &wt)
 {
 	int n_sample=D.n;
 
-	vector<Gaussian> P1(1);
-	vector<Gaussian> P2(2);
+	std::vector<Gaussian> P1(1);
+	std::vector<Gaussian> P2(2);
 
-	vector<Gaussian> N1(1);
-	vector<Gaussian> N2(2);
+	std::vector<Gaussian> N1(1);
+	std::vector<Gaussian> N2(2);
 
 //	cerr << S.svtype << "_" << S.chr << ":" << S.pos << "-" << S.end << endl;
 
-	vector<int> posneg_gt(n_sample, -1);
+	std::vector<int> posneg_gt(n_sample, -1);
 
 	for(int i=0;i<n_sample; ++i)
 	{
@@ -960,8 +960,8 @@ void gtype::call_del(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 
 	if (S.len > 150)  
 	{
-		vector<int> pos_i(n_sample, 0);
-		vector<int> neg_i(n_sample, 0);;
+		std::vector<int> pos_i(n_sample, 0);
+		std::vector<int> neg_i(n_sample, 0);;
 
 		double sum_pos0 = 0, sum_pos1 = 0;
 		double sum_neg0 = 0, sum_neg1 = 0;
@@ -1049,7 +1049,7 @@ void gtype::call_del(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 			P2[1].set(m1 , stdev1) ;
 			P2[1].Alpha = (double)n_pos1 / (double)(n_pos0 + n_pos1) ;
 
-			G.info += ";POS=" + to_string(P2[0].Mean) + "(" + to_string(P2[0].Stdev) + ")"  + "," + to_string(P2[1].Mean) + "(" + to_string(P2[1].Stdev) + ")";
+			G.info += ";POS=" + std::to_string(P2[0].Mean) + "(" + std::to_string(P2[0].Stdev) + ")"  + "," + std::to_string(P2[1].Mean) + "(" + std::to_string(P2[1].Stdev) + ")";
 
 			double bic_p1 = BIC(D.cnv_pos, P1, wt);
 			double bic_p2 = BIC(D.cnv_pos, P2, wt);
@@ -1059,8 +1059,8 @@ void gtype::call_del(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 			{
 				G.pos_flag = true;
 			}
-			G.info += ";BIC_P=" + to_string(bic_p1) +  "," + to_string(bic_p2);
-//			G.info += ";BE_P=" + to_string(be_p1);
+			G.info += ";BIC_P=" + std::to_string(bic_p1) +  "," + std::to_string(bic_p2);
+//			G.info += ";BE_P=" + std::to_string(be_p1);
 		}
 		if (n_neg1 > 0)
 		{
@@ -1095,7 +1095,7 @@ void gtype::call_del(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 			N2[1].set(m1 , stdev1) ;
 			N2[1].Alpha = (double)n_neg1 / (double)(n_neg0 + n_neg1) ;
 
-			G.info += ";NEG=" + to_string(N2[0].Mean) + "(" + to_string(N2[0].Stdev) + ")"  + "," + to_string(N2[1].Mean) + "(" + to_string(N2[1].Stdev) + ")";
+			G.info += ";NEG=" + std::to_string(N2[0].Mean) + "(" + std::to_string(N2[0].Stdev) + ")"  + "," + std::to_string(N2[1].Mean) + "(" + std::to_string(N2[1].Stdev) + ")";
 
 			double bic_n1 = BIC(D.cnv_neg, N1, wt);
 			double bic_n2 = BIC(D.cnv_neg, N2, wt);
@@ -1103,7 +1103,7 @@ void gtype::call_del(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 			{
 				G.neg_flag = true;
 			}
-			G.info += ";BIC_N=" + to_string(bic_n1) +  "," + to_string(bic_n2);
+			G.info += ";BIC_N=" + std::to_string(bic_n1) +  "," + std::to_string(bic_n2);
 		}
 
 		if (G.pos_flag && G.neg_flag)
@@ -1131,9 +1131,9 @@ void gtype::call_del(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 
 	double be2, be3;
 
-	vector<Gaussian> C1(1); // 1-component model
-	vector<Gaussian> C2(2); // 2-component model
-	vector<Gaussian> C3(3); // 3-component model
+	std::vector<Gaussian> C1(1); // 1-component model
+	std::vector<Gaussian> C2(2); // 2-component model
+	std::vector<Gaussian> C3(3); // 3-component model
 	
 	// Fit Gaussian mixture models with 1, 2, and 3 components, compare BIC
 	C1[0].estimate(D.norm_dp);
@@ -1193,7 +1193,7 @@ void gtype::call_del(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 		G.p_overlap = be3;
 	}
 
-	vector<int> dp_gt(n_sample, -1);
+	std::vector<int> dp_gt(n_sample, -1);
 
 	if ((G.dp_flag && G.p_overlap<0.35) || (G.dp_flag && (G.pos_flag||G.neg_flag) && G.p_overlap < 0.4 ) || (G.dp_flag && G.pos_flag && G.neg_flag && G.p_overlap<0.45))
 	{
@@ -1258,17 +1258,17 @@ void gtype::call_del(sv &S, svdata& D, svgeno &G, vector<double> &avg_isz, vecto
 	}
 }
 
-void gtype::call_cnv(sv &S, svdata& D, svgeno& G, vector<double> &avg_isz, vector<double> &std_isz, vector<double> &wt)
+void gtype::call_cnv(sv &S, svdata& D, svgeno& G, std::vector<double> &avg_isz, std::vector<double> &std_isz, std::vector<double> &wt)
 {
 	int n_sample = D.n;
 
-	vector<Gaussian> P1(1);
-	vector<Gaussian> P2(2);
+	std::vector<Gaussian> P1(1);
+	std::vector<Gaussian> P2(2);
 	
-	vector<Gaussian> N1(1);
-	vector<Gaussian> N2(2);
+	std::vector<Gaussian> N1(1);
+	std::vector<Gaussian> N2(2);
 	
-	vector<int> posneg_gt(n_sample, -1);
+	std::vector<int> posneg_gt(n_sample, -1);
 	for(int i=0;i<n_sample; ++i)
 	{
 		if (D.norm_dp[i]<0.6)
@@ -1279,8 +1279,8 @@ void gtype::call_cnv(sv &S, svdata& D, svgeno& G, vector<double> &avg_isz, vecto
 
 	if (S.len > 500)
 	{
-		vector<int> pos_i(n_sample, 0);
-		vector<int> neg_i(n_sample, 0);;
+		std::vector<int> pos_i(n_sample, 0);
+		std::vector<int> neg_i(n_sample, 0);;
 		
 		double sum_pos0 = 0, sum_pos1 = 0;
 		double sum_neg0 = 0, sum_neg1 = 0;
@@ -1368,7 +1368,7 @@ void gtype::call_cnv(sv &S, svdata& D, svgeno& G, vector<double> &avg_isz, vecto
 			P2[1].set(m1 , stdev1) ;
 			P2[1].Alpha = (double)n_pos1 / (double)(n_pos0 + n_pos1) ;
 			
-			G.info += ";POS=" + to_string(P2[0].Mean) + "(" + to_string(P2[0].Stdev) + ")"  + "," + to_string(P2[1].Mean) + "(" + to_string(P2[1].Stdev) + ")";
+			G.info += ";POS=" + std::to_string(P2[0].Mean) + "(" + std::to_string(P2[0].Stdev) + ")"  + "," + std::to_string(P2[1].Mean) + "(" + std::to_string(P2[1].Stdev) + ")";
 			
 			double bic_p1 = BIC(D.cnv_pos, P1, wt);
 			double bic_p2 = BIC(D.cnv_pos, P2, wt);
@@ -1377,8 +1377,8 @@ void gtype::call_cnv(sv &S, svdata& D, svgeno& G, vector<double> &avg_isz, vecto
 			{
 				G.pos_flag = true;
 			}
-			G.info += ";BIC_P=" + to_string(bic_p1) +  "," + to_string(bic_p2);
-			G.info += ";BE_P=" + to_string(be_p1);
+			G.info += ";BIC_P=" + std::to_string(bic_p1) +  "," + std::to_string(bic_p2);
+			G.info += ";BE_P=" + std::to_string(be_p1);
 		}
 		if (n_neg1 > 0)
 		{
@@ -1413,7 +1413,7 @@ void gtype::call_cnv(sv &S, svdata& D, svgeno& G, vector<double> &avg_isz, vecto
 			N2[1].set(m1 , stdev1) ;
 			N2[1].Alpha = (double)n_neg1 / (double)(n_neg0 + n_neg1) ;
 			
-			G.info += ";NEG=" + to_string(N2[0].Mean) + "(" + to_string(N2[0].Stdev) + ")"  + "," + to_string(N2[1].Mean) + "(" + to_string(N2[1].Stdev) + ")";
+			G.info += ";NEG=" + std::to_string(N2[0].Mean) + "(" + std::to_string(N2[0].Stdev) + ")"  + "," + std::to_string(N2[1].Mean) + "(" + std::to_string(N2[1].Stdev) + ")";
 			
 
 			double bic_n1 = BIC(D.cnv_neg, N1, wt);
@@ -1425,8 +1425,8 @@ void gtype::call_cnv(sv &S, svdata& D, svgeno& G, vector<double> &avg_isz, vecto
 				G.neg_flag = true;
 			}
 
-			G.info += ";BIC_N=" + to_string(bic_n1) +  "," + to_string(bic_n2);
-			G.info += ";BE_N=" + to_string(be_n1);
+			G.info += ";BIC_N=" + std::to_string(bic_n1) +  "," + std::to_string(bic_n2);
+			G.info += ";BE_N=" + std::to_string(be_n1);
 		}
 		
 		if (G.pos_flag && G.neg_flag)
@@ -1452,7 +1452,7 @@ void gtype::call_cnv(sv &S, svdata& D, svgeno& G, vector<double> &avg_isz, vecto
 		}
 	} //S.len > 500
 
-	vector<Gaussian> C(1);
+	std::vector<Gaussian> C(1);
 	double min_BIC = DBL_MAX;
 
 	unsigned n_comp = 1;
@@ -1501,7 +1501,7 @@ void gtype::call_cnv(sv &S, svdata& D, svgeno& G, vector<double> &avg_isz, vecto
 		}
 	}
 
-	vector<int> dp_cn(n_sample, -1);
+	std::vector<int> dp_cn(n_sample, -1);
 	
 	if ((G.dp_flag && G.p_overlap<0.35) || (G.dp_flag && (G.pos_flag||G.neg_flag) && G.p_overlap < 0.4) || (G.dp_flag && G.pos_flag && G.neg_flag && G.p_overlap<0.45))
 	{
@@ -1577,7 +1577,7 @@ void gtype::call_cnv(sv &S, svdata& D, svgeno& G, vector<double> &avg_isz, vecto
 }
 
 
-void gtype::call_inv(sv &S, svdata& D, svgeno& G, vector<double>& avg_isz, vector<double> &std_isz)
+void gtype::call_inv(sv &S, svdata& D, svgeno& G, std::vector<double>& avg_isz, std::vector<double> &std_isz)
 {
 	int n_sample = D.n;
 
@@ -1585,9 +1585,9 @@ void gtype::call_inv(sv &S, svdata& D, svgeno& G, vector<double>& avg_isz, vecto
 	double be2, be3;
 	double max_overlap = 0.3;
 
-//	vector<Gaussian> C1(1); // 1-component model
-	vector<Gaussian> C2(2); // 2-component model
-	vector<Gaussian> C3(3); // 3-component model
+//	std::vector<Gaussian> C1(1); // 1-component model
+	std::vector<Gaussian> C2(2); // 2-component model
+	std::vector<Gaussian> C3(3); // 3-component model
 	
 	// For each candidate region, run EM
 	// Fit Gaussian mixture models with 1, 2, and 3 components, compare BIC
@@ -1640,8 +1640,8 @@ void gtype::call_inv(sv &S, svdata& D, svgeno& G, vector<double>& avg_isz, vecto
 //			copyComps(G.Comps, C3);
 		}
 
-	vector<int> pos_gt(n_sample, 0);
-	vector<int> neg_gt(n_sample, 0);
+	std::vector<int> pos_gt(n_sample, 0);
+	std::vector<int> neg_gt(n_sample, 0);
 
 	for(int i=0;i<n_sample;++i)
 	{
@@ -1767,7 +1767,7 @@ void gtype::call_inv(sv &S, svdata& D, svgeno& G, vector<double>& avg_isz, vecto
 }
 
 // EM with weights
-void gtype::EM(vector<double>& x, vector<double> &w, vector<Gaussian>& Comps)
+void gtype::EM(std::vector<double>& x, std::vector<double> &w, std::vector<Gaussian>& Comps)
 {
 	unsigned n_sample = (unsigned) x.size();
 	unsigned n_comp = (unsigned) Comps.size();
@@ -1775,7 +1775,7 @@ void gtype::EM(vector<double>& x, vector<double> &w, vector<Gaussian>& Comps)
 	
 	unsigned p_count= 1;
 	double p_val[n_comp];
-	int zeroidx = -1;
+//	int zeroidx = -1;
 	
 	for(unsigned i=0; i<n_comp; ++i)
 	{
@@ -1790,15 +1790,15 @@ void gtype::EM(vector<double>& x, vector<double> &w, vector<Gaussian>& Comps)
 	
 	for(unsigned i=0; i<n_iter; ++i)
 	{
-		vector<double> sum (n_comp,0);
-		vector<double> sum_pr (n_comp,0);
-		vector<double> sum_err (n_comp,0);
+		std::vector<double> sum (n_comp,0);
+		std::vector<double> sum_pr (n_comp,0);
+		std::vector<double> sum_err (n_comp,0);
 		
 		// E step
 		for(unsigned j=0; j<n_sample; ++j)
 		{
 			double sum_p = 0;
-			vector<double> pr(n_comp, 0);
+			std::vector<double> pr(n_comp, 0);
 			for(unsigned m=0;m<n_comp;++m)
 			{
 				pr[m] = Comps[m].Alpha * normpdf(x[j], Comps[m]);
@@ -1857,7 +1857,7 @@ void gtype::EM(vector<double>& x, vector<double> &w, vector<Gaussian>& Comps)
 
 
 // EM for general CNVs without weights
-void gtype::EM(vector<double>& x, vector<Gaussian>& Comps)
+void gtype::EM(std::vector<double>& x, std::vector<Gaussian>& Comps)
 {
 	unsigned n_sample = (unsigned) x.size();
 	unsigned n_comp = (unsigned) Comps.size();
@@ -1878,15 +1878,15 @@ void gtype::EM(vector<double>& x, vector<Gaussian>& Comps)
 	
 	for(unsigned i=0; i<n_iter; ++i)
 	{
-		vector<double> sum (n_comp,0);
-		vector<double> sum_pr (n_comp,0);
-		vector<double> sum_err (n_comp,0);
+		std::vector<double> sum (n_comp,0);
+		std::vector<double> sum_pr (n_comp,0);
+		std::vector<double> sum_err (n_comp,0);
 		
 		// E step
 		for(unsigned j=0; j<n_sample; ++j)
 		{
 			double sum_p = 0;
-			vector<double> pr(n_comp, 0);
+			std::vector<double> pr(n_comp, 0);
 			for(unsigned m=0;m<n_comp;++m)
 			{
 				pr[m] = Comps[m].Alpha * normpdf(x[j], Comps[m]);
@@ -1938,7 +1938,7 @@ void gtype::EM(vector<double>& x, vector<Gaussian>& Comps)
 
 
 // EM with means fixed multiples of base
-void gtype::fit(vector<double>& x, vector<Gaussian>& Comps)
+void gtype::fit(std::vector<double>& x, std::vector<Gaussian>& Comps)
 {
 	int n_sample = (int) x.size();
 	int n_comp = (int) Comps.size();
@@ -1963,16 +1963,16 @@ void gtype::fit(vector<double>& x, vector<Gaussian>& Comps)
 	
 	for(int i=0; i<n_iter; ++i)
 	{
-		vector<double> sum (n_comp,0);
-		vector<double> sum_pr (n_comp,0);
-		vector<double> sum_err (n_comp,0);
+		std::vector<double> sum (n_comp,0);
+		std::vector<double> sum_pr (n_comp,0);
+		std::vector<double> sum_err (n_comp,0);
 		
 		// E step
 		double sum_b = 0;
 		for(int j=0; j<n_sample; ++j)
 		{
 			double sum_p = 0;
-			vector<double> pr(n_comp, 0);
+			std::vector<double> pr(n_comp, 0);
 			for(int m=0;m<n_comp;++m)
 			{
 				pr[m] = Comps[m].Alpha * Comps[m].pdf(x[j]);

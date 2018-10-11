@@ -16,6 +16,7 @@
  */
 
 #include <algorithm>
+#include <map>
 
 #include "muCNV.h"
 
@@ -23,9 +24,7 @@
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
 
-using namespace std;
-
-int find_overlap_sv(sv &S , vector<sv>& dels)
+int find_overlap_sv(sv &S , std::vector<sv>& dels)
 {
 	int idx = 0;
 	double max_RO = 0;
@@ -109,9 +108,9 @@ double RO_THRESHOLD;
 
 int main(int argc, char** argv)
 {
-	cerr << "muCNV 0.9 -- Multi-sample CNV genotyper" << endl;
-	cerr << "(c) 2018 Goo Jun" << endl << endl;
-	cerr.setf(ios::showpoint);
+	std::cerr << "muCNV 0.9 -- Multi-sample CNV genotyper" << std::endl;
+	std::cerr << "(c) 2018 Goo Jun" << std::endl << std::endl;
+	std::cerr.setf(std::ios::showpoint);
 
 	bool bGenotype = false;
 	bool bFilter = false;
@@ -132,10 +131,10 @@ int main(int argc, char** argv)
 	string sampID;
 	string region;
 	
-	vector<string> sample_ids;
-	vector<string> vcfs;
-	vector<string> bam_names;
-	map<string, unsigned> hIdSex;
+	std::vector<string> sample_ids;
+	std::vector<string> vcfs;
+	std::vector<string> bam_names;
+//	std::map<string, unsigned> hIdSex;
 
 
 	srand((unsigned int)time(NULL));
@@ -150,7 +149,7 @@ int main(int argc, char** argv)
 		TCLAP::ValueArg<string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
         TCLAP::ValueArg<string> argInterval("V","interVal", "Binary interval file containing candidate SVs", false, "", "string");
 		TCLAP::ValueArg<string> argSupp("S","Support","Support VCF file containing suppporting info",false,"","string");
-		TCLAP::ValueArg<string> argSuppID("I","IDinSupport","Sample ID list for support vectors",false,"","string");
+		TCLAP::ValueArg<string> argSuppID("I","IDinSupport","Sample ID list for support std::vectors",false,"","string");
 		TCLAP::ValueArg<string> argSampleID("s","sample","Sample ID",false,"","string");
 		TCLAP::ValueArg<string> argIndex("i","index","List file containing list of intermediate pileups. Required with genotype option",false,"","string");
 		TCLAP::ValueArg<string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "string");
@@ -201,7 +200,7 @@ int main(int argc, char** argv)
 
 		if (bMerge && bGenotype)
 		{
-			cerr << "Error: --genotype and --merge cannot be set together" << endl;
+			std::cerr << "Error: --genotype and --merge cannot be set together" << std::endl;
 			exit(1);
 		}
 		
@@ -213,31 +212,31 @@ int main(int argc, char** argv)
 		
 		if (bGenotype && index_file == "")
 		{
-			cerr << "Error: list file is required for genotyping" << endl;
+			std::cerr << "Error: list file is required for genotyping" << std::endl;
 			exit(1);
 		}
 		else if (bGenotype == false && bMerge == false && bFilter == false)
 		{
 			if (bam_file == "")
 			{
-				cerr << "Error: BAM/CRAM file is required for individual processing mode." << endl;
+				std::cerr << "Error: BAM/CRAM file is required for individual processing mode." << std::endl;
 				exit(1);
             }
             if (vcf_file == "" && interval_file == "")
             {
-                cerr << "Error: VCF file or Interval file with SV events is required for individual processing mode." << endl;
+                std::cerr << "Error: VCF file or Interval file with SV events is required for individual processing mode." << std::endl;
                 exit(1);
             }
             if (sampID == "")
             {
-                cerr << "Error: Sample ID should be supplied with -s option." << endl;
+                std::cerr << "Error: Sample ID should be supplied with -s option." << std::endl;
 				exit(1);
 			}
 		}
 	}
 	catch (TCLAP::ArgException &e)
 	{
-		cerr << "Error: " << e.error() << " for arg " << e.argId() << endl;
+		std::cerr << "Error: " << e.error() << " for arg " << e.argId() << std::endl;
 		abort();
 	}
 	
@@ -246,9 +245,9 @@ int main(int argc, char** argv)
 	{
 		// Multi-sample genotyping from summary VCFs
 		
-		vector<double> avg_depths;
-		vector<double> avg_isizes;
-		vector<double> std_isizes;
+		std::vector<double> avg_depths;
+		std::vector<double> avg_isizes;
+		std::vector<double> std_isizes;
 		
 		std::map<string, int> id_to_idx;
 
@@ -264,25 +263,25 @@ int main(int argc, char** argv)
 			id_to_idx[sample_ids[i]] = i;
 		}
 
-		cerr << "Genotyping index loaded." << endl;
-		cerr << n_sample << " samples identified." << endl;
+		std::cerr << "Genotyping index loaded." << std::endl;
+		std::cerr << n_sample << " samples identified." << std::endl;
 
-		ifstream sfile;
-		vector<int> id_map(n_sample, 0);
+		std::ifstream sfile;
+		std::vector<int> id_map(n_sample, 0);
 
 		if (supp_file != "")
 		{
 			if (supp_id_file != "")
 			{
-				cerr << "Supporting vector file and ID file provided." <<endl;
+				std::cerr << "Supporting std::vector file and ID file provided." <<std::endl;
 			}
 			else
 			{
-				cerr << "Error. Supporting ID file is needed for supporting vector file." << endl;
+				std::cerr << "Error. Supporting ID file is needed for supporting std::vector file." << std::endl;
 				exit(1);
 			}
 
-			ifstream idfile(supp_id_file.c_str(), ios::in);
+			std::ifstream idfile(supp_id_file.c_str(), std::ios::in);
 			for(int i=0;i<n_sample;++i)
 			{
 				string ln;
@@ -293,14 +292,14 @@ int main(int argc, char** argv)
 				}
 				else
 				{
-					cerr << "Cannot find " << ln << " in ID" << endl;
+					std::cerr << "Cannot find " << ln << " in ID" << std::endl;
 					exit(1);
 				}
 			}
 			idfile.close();
 		}
 	
-		sfile.open(supp_file.c_str(), ios::in);
+		sfile.open(supp_file.c_str(), std::ios::in);
 
 /*
 			sv S;
@@ -327,8 +326,8 @@ int main(int argc, char** argv)
 
 		int val = 0;
 
-		vector<sv> supp_list;
-		vector<string> suppvec_list;
+		std::vector<sv> supp_list;
+		std::vector<string> suppvec_list;
 
 		while((val = V_list.read_interval_multi(S, D, region))>=0)
 		{
@@ -374,13 +373,13 @@ int main(int argc, char** argv)
 					}
 					else if (suppS.pos > S.pos) // this should never happen
 					{
-						cerr << "Something wrong" <<endl;
-						cerr << "Curren position is " << S.pos << "-" << S.end << " while supporting vector has passed " << suppS.pos << endl;
+						std::cerr << "Something wrong" <<std::endl;
+						std::cerr << "Curren position is " << S.pos << "-" << S.end << " while supporting std::vector has passed " << suppS.pos << std::endl;
 						exit(1);
 					}
 				}
 			}
-			vector<double> wt(n_sample, 1);
+			std::vector<double> wt(n_sample, 1);
 			double add_wt = 0;
 
 			if (suppS.supp > 1 )
@@ -436,7 +435,7 @@ int main(int argc, char** argv)
 //				if (G.b_pass || bFail)
 				{
 					string ln;
-					G.info += ";SUPP=" + to_string(suppS.supp);
+					G.info += ";SUPP=" + std::to_string(suppS.supp);
 					ln.reserve(n_sample*30);
 					G.print(S, D, ln, wt);
 					vfile.print(ln);
@@ -451,10 +450,10 @@ int main(int argc, char** argv)
 	{
 		RO_THRESHOLD = 0.8; 
 
-		vector<sv> dels;
-		vector<sv> dups;
-		vector<sv> invs;
-		vector<sv> all;
+		std::vector<sv> dels;
+		std::vector<sv> dups;
+		std::vector<sv> invs;
+		std::vector<sv> all;
 
 		vcfs.push_back(vcf_file);
 
@@ -476,9 +475,9 @@ int main(int argc, char** argv)
 		}
 		all.clear();
 
-		sort(dels.begin(), dels.end());
+		std::sort(dels.begin(), dels.end());
 
-		vector<sv> merged_candidates;
+		std::vector<sv> merged_candidates;
 		merged_candidates.push_back(dels[0]);
 		for(int i=1; i<(int)dels.size(); ++i)
 		{
@@ -570,10 +569,10 @@ int main(int argc, char** argv)
 	}
 	else if (bFilter)
 	{
-		vector<sv> dels;
-		vector<sv> dups;
-		vector<sv> invs;
-		vector<sv> all;
+		std::vector<sv> dels;
+		std::vector<sv> dups;
+		std::vector<sv> invs;
+		std::vector<sv> all;
 
 		vcfs.push_back(supp_file);
 		read_intervals_from_vcf(sample_ids, vcfs, all);
@@ -598,7 +597,7 @@ int main(int argc, char** argv)
 		}
 		all.clear();
 
-		ifstream vfile(vcf_file.c_str(), ios::in);
+		std::ifstream vfile(vcf_file.c_str(), std::ios::in);
 		int cnt = 1;
 
 		while(vfile.good())
@@ -651,8 +650,8 @@ int main(int argc, char** argv)
 	}
     else if (bPrint)
     {
-        vector<sv> vec_sv;
-        vector<breakpoint> vec_bp;
+        std::vector<sv> vec_sv;
+        std::vector<breakpoint> vec_bp;
         string pileup_name = sampID + ".pileup";
         string varfile_name = sampID + ".var";
         string idxfile_name = sampID + ".idx";
@@ -660,9 +659,9 @@ int main(int argc, char** argv)
         // read out and print pileup info
         read_svs_from_intfile(interval_file, vec_bp, vec_sv);
         
-        ifstream pileupFile(pileup_name.c_str(), ios::in | ios::binary);
-        ifstream varFile(varfile_name.c_str(), ios::in | ios::binary);
-        ifstream idxFile(idxfile_name.c_str(), ios::in | ios::binary);
+        std::ifstream pileupFile(pileup_name.c_str(), std::ios::in | std::ios::binary);
+        std::ifstream varFile(varfile_name.c_str(), std::ios::in | std::ios::binary);
+        std::ifstream idxFile(idxfile_name.c_str(), std::ios::in | std::ios::binary);
         
 		size_t curr_idx = 0;
 
@@ -685,7 +684,7 @@ int main(int argc, char** argv)
         gcContent GC;
         GC.initialize(gc_file);
         
-        vector<double> gc_factor (GC.num_bin);
+        std::vector<double> gc_factor (GC.num_bin);
         
         for(int i=0;i<GC.num_bin;++i)
         {
@@ -720,20 +719,22 @@ int main(int argc, char** argv)
 //			printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pileupFile.tellg());
 
             pileupFile.read(reinterpret_cast<char*>(&n_rp), sizeof(uint16_t));
-//          	printf("%d readpairs\n", n_rp);
+          	printf("%d readpairs\n", n_rp);
             for(int k=0; k<n_rp; ++k)
             {
-                int8_t chrnum, pairstr;
+                int8_t chrnum, pairstr, matequal;
                 int32_t selfpos, matepos;
                 pileupFile.read(reinterpret_cast<char*>(&(chrnum)), sizeof(int8_t));
                 pileupFile.read(reinterpret_cast<char*>(&(selfpos)), sizeof(int32_t));
                 pileupFile.read(reinterpret_cast<char*>(&(matepos)), sizeof(int32_t));
+                pileupFile.read(reinterpret_cast<char*>(&(matequal)), sizeof(uint8_t));
+matequal = 0;
                 pileupFile.read(reinterpret_cast<char*>(&(pairstr)), sizeof(int8_t));
- //               printf("\t%d\t%d\t%d\t%d\n", chrnum, selfpos, matepos, pairstr);
+                printf("\t%d\t%d\t%d\t%d\t%d\n", chrnum, selfpos, matepos, matequal, pairstr);
             }
             
             pileupFile.read(reinterpret_cast<char*>(&n_sp), sizeof(uint16_t));
-  //          printf("%d split reads\n", n_sp);
+			printf("%d split reads\n", n_sp);
             for(int k=0; k<n_sp; ++k)
             {
                 int8_t chrnum;
@@ -744,7 +745,7 @@ int main(int argc, char** argv)
                 pileupFile.read(reinterpret_cast<char*>(&(sapos)), sizeof(int32_t));
                 pileupFile.read(reinterpret_cast<char*>(&(firstclip)), sizeof(int16_t));
                 pileupFile.read(reinterpret_cast<char*>(&(secondclip)), sizeof(int16_t));
-   //             printf("\t%d\t%d\t%d\t%d\t%d\n", chrnum, pos, sapos, firstclip,secondclip);
+                printf("\t%d\t%d\t%d\t%d\t%d\n", chrnum, pos, sapos, firstclip,secondclip);
             }
         }
         pileupFile.close();
@@ -771,13 +772,14 @@ int main(int argc, char** argv)
 	{
 		// Generate summary stats from BAM/CRAM
 		n_sample = 1;
-		cerr << "Processing individual BAM/CRAM file to genearte summary VCF." << endl;
+		std::cerr << "Processing individual BAM/CRAM file to genearte summary VCF." << std::endl;
 
 		gcContent GC;
 		GC.initialize(gc_file);
+		std::cerr << "GC content initialized" << std::endl;
 
-        vector<sv> vec_sv;
-        vector<breakpoint> vec_bp;
+        std::vector<sv> vec_sv;
+        std::vector<breakpoint> vec_bp;
 		vcfs.push_back(vcf_file);
         
         if (vcf_file != "")
@@ -797,27 +799,27 @@ int main(int argc, char** argv)
             }
             else
             {
-                cerr << "Error, interval file name is missing" << endl;
+                std::cerr << "Error, interval file name is missing" << std::endl;
                 exit(1);
             }
         }
         
-		cerr<< vec_sv.size() << " svs and " << vec_bp.size() << " breakpoints identified from the VCF file." << endl;
-		vector<int> idxs;
+		std::cerr<< vec_sv.size() << " svs and " << vec_bp.size() << " breakpoints identified from the VCF file." << std::endl;
+		std::vector<int> idxs;
 
-        sort(vec_bp.begin(), vec_bp.end());
+        std::sort(vec_bp.begin(), vec_bp.end());
         
 		bFile b(GC);
         
 		b.initialize_sequential(bam_file);
-		cerr << "BAM/CRAM file initialized" << endl;
+		std::cerr << "BAM/CRAM file initialized" << std::endl;
         
         b.read_depth_sequential(vec_bp, vec_sv);
         
         b.postprocess_depth(vec_sv);
         b.write_pileup(sampID, vec_sv);
 
-		cerr << "Finished without an error" << endl;
+		std::cerr << "Finished without an error" << std::endl;
 	}
 	return 0;
 }

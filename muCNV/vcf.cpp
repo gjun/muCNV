@@ -21,7 +21,7 @@ void outvcf::close()
 	fclose(fp);
 }
 
-void outvcf::write_header(vector<string> &sampleIDs)
+void outvcf::write_header(std::vector<string> &sampleIDs)
 {
 	fprintf(fp,"##fileformat=VCFv4.1\n");
 	fprintf(fp,"##source=UM_CGI_CNV_pipeline_v0.1\n");
@@ -60,12 +60,12 @@ void outvcf::print(string &ln)
 	fprintf(fp, "%s\n", ln.c_str());
 }
 
-void outvcf::write_del(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, int ns, vector<double>& X, vector<double>& AvgDepth, vector<Gaussian>& C, double be, bool bFilter)
+void outvcf::write_del(sv& interval, std::vector<int>& gt, std::vector<int>& GQ, int ac, int ns, std::vector<double>& X, std::vector<double>& AvgDepth, std::vector<Gaussian>& C, double be, bool bFilter)
 {
 	// For Deletions
 	int n_comp=(int)C.size();
-	int chrnum = interval.chrnum;
-	string chr = to_string(interval.chrnum);
+//	int chrnum = interval.chrnum;
+	string chr = std::to_string(interval.chrnum);
 	int pos = interval.pos;
 	int svend = interval.end;
 	
@@ -152,10 +152,10 @@ void outvcf::write_del(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, i
 }
 
 
-void outvcf::write_cnv(sv& interval, vector<int>& gt, vector<int>& GQ, int ac, int ns, vector<double>& X, vector<double>& AvgDepth, vector<Gaussian>& C, double be, bool bFilter)
+void outvcf::write_cnv(sv& interval, std::vector<int>& gt, std::vector<int>& GQ, int ac, int ns, std::vector<double>& X, std::vector<double>& AvgDepth, std::vector<Gaussian>& C, double be, bool bFilter)
 {
 	int n_comp=(int)C.size();
-	string chr = to_string(interval.chrnum);
+	string chr = std::to_string(interval.chrnum);
 	int pos = interval.pos;
 	int svend = interval.end;
 	int alts[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};;
