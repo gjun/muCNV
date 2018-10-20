@@ -280,7 +280,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 				
 				if (new_sp.firstclip != 0) // Process split read only if the read has soft-clipped ends
 				{
-					if (!process_split(str_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)))
+	//				if (!process_split(str_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)))
 					{
 						new_sp.sapos = 0;
 						new_sp.secondclip = 0;
