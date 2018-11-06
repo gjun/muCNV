@@ -454,7 +454,7 @@ public:
 };
 
 
-template <class T> void vprint(std::vector<T>);
+template <class T> void vprint(std::vector<T> &);
 
 double MAX(std::vector<double>&);
 double MIN(std::vector<double>&);

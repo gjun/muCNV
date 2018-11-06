@@ -280,7 +280,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 				
 				if (new_sp.firstclip != 0) // Process split read only if the read has soft-clipped ends
 				{
-	//				if (!process_split(str_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)))
+					if (!process_split(str_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)))
 					{
 						new_sp.sapos = 0;
 						new_sp.secondclip = 0;
@@ -410,7 +410,7 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
         }
     }
     
-    int nxt = 0;
+    size_t nxt = 0;
    
     uint64_t sum_dp = 0;
     uint64_t sumsq_dp = 0;
@@ -442,7 +442,10 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
     
     int* n_plp = (int *) calloc(1, sizeof(int));;
     const bam_pileup1_t **plp = (const bam_pileup1_t **) calloc(1, sizeof(bam_pileup1_t*));
+
     bam_mplp_t mplp = bam_mplp_init(1, read_bam, (void**) data);
+	bam_mplp_set_maxcnt(mplp, 1000); // This is arbitrary, but we don't need > 1000 depth
+
     
     depth100.resize(GC.num_chr + 1);
 	nbin_100.resize(GC.num_chr + 1);
@@ -506,20 +509,43 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
         curr_bp.chrnum = chrnum;
         curr_bp.pos = pos;
         
-        if (nxt>=(int)vec_bp.size())
+        if (nxt>=vec_bp.size())
             break;
         
         while (vec_bp[nxt] <= curr_bp)
         {
             if (vec_bp[nxt].bptype == 0)
             {
-                dp_list.push_back(vec_bp[nxt].idx);
+//				std::cerr<<"adding bp idx " << vec_bp[nxt].idx << " pos " <<  vec_bp[nxt].pos;
+            	dp_list.push_back(vec_bp[nxt].idx);
+//				std::cerr << " dp_list [";
+//				for(int ii=0;ii<dp_list.size();++ii)
+//					std::cerr << dp_list[ii] << " " ;
+//				std::cerr << "]" << std::endl;
+
             }
             else
             {                
                 std::vector<int>::iterator it = find(dp_list.begin(), dp_list.end(), vec_bp[nxt].idx) ;
-                dp_list.erase( it );
+				if (it == dp_list.end())
+				{
+					int idx_nxt = vec_bp[nxt].idx;
+					std::cerr << "Error, bptype " << vec_bp[nxt].bptype << " bp pos " << vec_bp[nxt].pos << ", sv " << vec_sv[idx_nxt].chrnum << ":" << vec_sv[idx_nxt].pos << "-" << vec_sv[idx_nxt].end << std::endl;
+
+				}
+				else
+				{
+//					dp_list.erase( it, it+1 );
+			//		std::cerr<<"removing bp idx " << vec_bp[nxt].idx << " pos " <<  vec_bp[nxt].pos;
+					*it=dp_list.back();
+					dp_list.pop_back();
+			//		std::cerr << " dp_list [";
+			//		for(int ii=0;ii<dp_list.size();++ii)
+			//			std::cerr << dp_list[ii] << " " ;
+			//		std::cerr << "]" << std::endl;
+				}
             }
+
             nxt++;
         }
         
@@ -547,12 +573,15 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
         gc_sum[bin] += dpval;
         gc_cnt[bin] += 1;
         
-        //for(unordered_set<int>::iterator it=dp_set.begin(); it!=dp_set.end(); ++it)
-        for(std::vector<int>::iterator it=dp_list.begin(); it!=dp_list.end(); ++it)
-        {
-            vec_sv[*it].dp_sum += dpval;
-            vec_sv[*it].n_dp += 1;
-        }
+		for(std::vector<int>::iterator it=dp_list.begin(); it!=dp_list.end(); ++it)
+		{
+			if (*it <0 || *it>vec_sv.size())
+			{
+				std::cerr << "Error, " << *it << " is out of bound " << std::endl;
+			}
+			vec_sv[*it].dp_sum += dpval;
+			vec_sv[*it].n_dp += 1;
+		}
     }
     avg_dp = (double) sum_dp / n_dp;
     std_dp = sqrt(((double)sumsq_dp / n_dp - (avg_dp*avg_dp)));

@@ -101,7 +101,7 @@ int median(std::vector<int> &L)
 }
 
 template <class T>
-	void vprint(std::vector<T> x)
+	void vprint(std::vector<T> &x)
 {
 	std::cerr << "(";
 	for(unsigned i=0; i<x.size()-1; ++i)
