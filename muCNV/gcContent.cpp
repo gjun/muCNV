@@ -50,7 +50,7 @@ void gcContent::initialize(string &gcFile)
     {
         inFile.read(reinterpret_cast <char *> (&chrSize[i]), sizeof(uint32_t));
         chrOffset[i] = chrOffset[i-1] + chrSize[i-1];
-        DMSG("Chr " << i << " size: " << chrSize[i] <<  "offset: " << chrOffset[i]);
+        DMSG("Chr " << i << " size: " << chrSize[i] <<  " offset: " << chrOffset[i]);
     }
     
     // read size of GC-interval bin

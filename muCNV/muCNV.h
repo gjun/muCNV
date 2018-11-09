@@ -63,7 +63,7 @@ public:
     int8_t chrnum;
     int32_t selfpos;
     int32_t matepos;
-    uint8_t matequal;
+    int8_t matequal;
     int8_t pairstr;
 };
 
@@ -106,6 +106,7 @@ class sv
 };
 
 bool in_centrome(sv &);
+bool in_centrome(int, int);
 
 class svdata
 {

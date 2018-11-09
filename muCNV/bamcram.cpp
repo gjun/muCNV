@@ -192,17 +192,20 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
         if ( ret<0 ) break;
         if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
         if ( (int)b->core.qual < aux->min_mapQ ) continue;
+		if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
 
-        if ((b->core.flag & BAM_FPAIRED ) && !(b->core.flag & BAM_FSUPPLEMENTARY) )
+//		fprintf(stderr, "%s\ttid:%d\tpos:%d\tmtid:%d\tmtpos:%d",bam_get_qname(b), b->core.tid, b->core.pos, b->core.mtid, b->core.mpos);
+        if ((b->core.flag & BAM_FPAIRED ) && !(b->core.flag & BAM_FSUPPLEMENTARY) && !in_centrome(b->core.tid+1, b->core.pos) )
         {
+
+//			fprintf(stderr, "%s\n", bam_get_qname(b));
             if (IS_PROPERLYPAIRED(b) && b->core.pos>0 && b->core.mtid == b->core.tid && b->core.isize!=0)
             {
-				/*
-				if (abs(b->core.isize) > 1000)
-				{
-					std::cerr << "isize " << b->core.isize << std::endl;
-				}
-				*/
+				//if (abs(b->core.isize) > 1000)
+				//{
+				//	std::cerr << "isize " << b->core.isize << std::endl;
+				//}
+
                 // get average isize statistics only from properly paired pairs
                 aux->sum_isz += (b->core.isize > 0) ? b->core.isize : -b->core.isize;
                 aux->sumsq_isz += (b->core.isize) * (b->core.isize);
@@ -217,19 +220,23 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                     // add to read pair set
                     readpair new_rp;
                     new_rp.chrnum = b->core.tid+1;
+					new_rp.matepos= 0; 
+					new_rp.matequal = 0;
                     new_rp.selfpos = b->core.pos;
                     new_rp.pairstr = (b->core.flag & BAM_FREVERSE) ? 2 : 0;
 
                     if (b->core.tid == b->core.mtid)
                     {
-                        uint8_t *aux_mq;
-                        if ((aux_mq= bam_aux_get(b, "MQ")) != NULL)
+                        uint8_t *aux_mq = bam_aux_get(b,"MQ");
+						if (aux_mq != NULL)
                         {
-                            new_rp.matequal = bam_aux2i(aux_mq);
+                            new_rp.matequal = (int8_t) bam_aux2i(aux_mq);
+					//		fprintf(stderr, "\tMateQual: %d\n", new_rp.matequal);
                         }
                         else
                         {
                             new_rp.matequal = 0;
+					//		fprintf(stderr, "\tCannot find auxMQ for read %s, flag %#x\n", bam_get_qname(b), b->core.flag);
                         }
                         new_rp.matepos = b->core.mpos;
                         new_rp.pairstr += (b->core.flag & BAM_FMREVERSE) ? 1 : 0;
@@ -238,22 +245,25 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                     }
                     else if (b->core.flag & BAM_FMUNMAP) // mate is unmapped, but self has good MQ  - insertion or inversion
                     {
-                        new_rp.matequal =
+                        new_rp.matequal = 0;
                         new_rp.matepos = -1;
                         aux->n_rp++;
                         (*(aux->p_vec_rp)).push_back(new_rp);
+					//	fprintf(stderr, "\tMateQualZero\n");
                     }
+				
                 }
             }
         }
         
-		if (b->core.flag & BAM_FSUPPLEMENTARY)
+		if ((b->core.flag & BAM_FSUPPLEMENTARY) && !in_centrome(b->core.tid+1, b->core.pos) )
 		{
 			uint8_t *aux_sa = bam_aux_get(b, "SA");
 			char* p_sa;
 			if (aux_sa && (p_sa = bam_aux2Z(aux_sa)))
 			{
 				string str_sa = string(p_sa);
+//				fprintf(stderr, "\tSA:%s", str_sa.c_str());
 
 				splitread new_sp;
 				new_sp.chrnum = b->core.tid + 1;
@@ -268,10 +278,12 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 				if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP)
 				{
 					lclip = bam_cigar_oplen(cigar[0]);
+//					fprintf(stderr, "\tlclip:%d", lclip);
 				}
 				if (bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP)
 				{
 					rclip = bam_cigar_oplen(cigar[0]);
+//					fprintf(stderr, "\trclip:%d", rclip);
 				}
 				if (rclip > lclip && rclip > 15) // arbitrary cutoff, 15
 					new_sp.firstclip = -rclip;
@@ -285,11 +297,15 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 						new_sp.sapos = 0;
 						new_sp.secondclip = 0;
 					}
-					aux->n_sp++;
-					(*(aux->p_vec_sp)).push_back(new_sp);
+					if (!in_centrome(b->core.tid+1, new_sp.sapos))
+					{
+						aux->n_sp++;
+						(*(aux->p_vec_sp)).push_back(new_sp);
+					}
 				}
 			}
 		}
+//		fprintf(stderr, "\n");
         break;
     }
     return ret;
@@ -307,7 +323,8 @@ void bFile::initialize_sequential(string &bname)
     data[0]->n_isz = 0;
     
     //int rf = SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_SEQ | SAM_QUAL;
-    int rf = SAM_FLAG |  SAM_MAPQ | SAM_QUAL| SAM_POS | SAM_SEQ | SAM_CIGAR| SAM_TLEN | SAM_RNEXT | SAM_PNEXT | SAM_AUX;
+	/*
+    int rf = SAM_FLAG |  SAM_QNAME | SAM_MAPQ | SAM_QUAL| SAM_POS | SAM_SEQ | SAM_CIGAR| SAM_TLEN | SAM_RNEXT | SAM_PNEXT | SAM_AUX;
     if (hts_set_opt(data[0]->fp, CRAM_OPT_REQUIRED_FIELDS, rf))
     {
         std::cerr << "Failed to set CRAM_OPT_REQUIRED_FIELDS value" << std::endl;
@@ -318,6 +335,7 @@ void bFile::initialize_sequential(string &bname)
         fprintf(stderr, "Failed to set CRAM_OPT_DECODE_MD value\n");
         exit(1);
     }
+	*/
     
     data[0]->min_mapQ = 1;
     data[0]->min_len = 0;
@@ -444,8 +462,7 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
     const bam_pileup1_t **plp = (const bam_pileup1_t **) calloc(1, sizeof(bam_pileup1_t*));
 
     bam_mplp_t mplp = bam_mplp_init(1, read_bam, (void**) data);
-	bam_mplp_set_maxcnt(mplp, 1000); // This is arbitrary, but we don't need > 1000 depth
-
+	bam_mplp_set_maxcnt(mplp, 64000);
     
     depth100.resize(GC.num_chr + 1);
 	nbin_100.resize(GC.num_chr + 1);
@@ -455,6 +472,8 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
     {
         nbin_100[i] = ceil((double)GC.chrSize[i] / 100.0) + 1 ;
         depth100[i] = (uint16_t *) calloc(nbin_100[i], sizeof(uint16_t));
+		
+		DMSG("chr " << i << " bin size " << nbin_100[i]);
     }
     
     int sum100=0;
@@ -485,9 +504,17 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
             }
 			std::cerr << "n_isz : " << data[0]->n_isz << ", sum_isz : " << data[0]->sum_isz << ", sumsq_isz : " << data[0]->sumsq_isz << std::endl;
 
+			uint8_t bin = GC.gc_array[prev_chrnum][(int)prev_pos * 2 / GC.binsize];
+			if (bin<GC.num_bin)
+			{
+				gc_sum[bin] += sum100;
+				gc_cnt[bin] += n100;
+			}
+	
             sum100=0;
             n100=0;
             prev_chrnum = chrnum;
+	
         }
         else if (pos/100 > prev_pos/100)
         {
@@ -496,9 +523,16 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
             {
                 int val = round((double) (sum100 * 32) / n100);
                 if (val>65535) val=65535; // handle overflow
-                depth100[chrnum][pos/100] = (uint16_t) val;
+                depth100[chrnum][prev_pos/100] = (uint16_t) val;
             }
 
+			uint8_t bin = GC.gc_array[chrnum][(int)prev_pos * 2 / GC.binsize];
+			if (bin<GC.num_bin)
+			{
+				gc_sum[bin] += sum100;
+				gc_cnt[bin] += n100;
+			}
+	
             sum100=0;
             n100=0;
         }
@@ -509,40 +543,46 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
         curr_bp.chrnum = chrnum;
         curr_bp.pos = pos;
         
-        if (nxt>=vec_bp.size())
-            break;
-        
-        while (vec_bp[nxt] <= curr_bp)
+        while (nxt<vec_bp.size() && vec_bp[nxt] <= curr_bp)
         {
             if (vec_bp[nxt].bptype == 0)
             {
-//				std::cerr<<"adding bp idx " << vec_bp[nxt].idx << " pos " <<  vec_bp[nxt].pos;
+		//		std::cerr<<"adding bp idx " << vec_bp[nxt].idx << " pos " <<  vec_bp[nxt].pos;
             	dp_list.push_back(vec_bp[nxt].idx);
-//				std::cerr << " dp_list [";
-//				for(int ii=0;ii<dp_list.size();++ii)
-//					std::cerr << dp_list[ii] << " " ;
-//				std::cerr << "]" << std::endl;
+		//		std::cerr << " dp_list [";
+		//		for(int ii=0;ii<dp_list.size();++ii)
+		//			std::cerr << dp_list[ii] << " " ;
+		//		std::cerr << "]" << std::endl;
 
             }
             else
             {                
-                std::vector<int>::iterator it = find(dp_list.begin(), dp_list.end(), vec_bp[nxt].idx) ;
-				if (it == dp_list.end())
+                std::vector<int>::iterator dp_it = find(dp_list.begin(), dp_list.end(), vec_bp[nxt].idx) ;
+				if (dp_it == dp_list.end())
 				{
 					int idx_nxt = vec_bp[nxt].idx;
-					std::cerr << "Error, bptype " << vec_bp[nxt].bptype << " bp pos " << vec_bp[nxt].pos << ", sv " << vec_sv[idx_nxt].chrnum << ":" << vec_sv[idx_nxt].pos << "-" << vec_sv[idx_nxt].end << std::endl;
-
+					std::cerr << "Error, idx " << vec_bp[nxt].idx << " bptype " << vec_bp[nxt].bptype << " bp pos " << vec_bp[nxt].pos << ", sv " << vec_sv[idx_nxt].chrnum << ":" << vec_sv[idx_nxt].pos << "-" << vec_sv[idx_nxt].end << std::endl;
+					std::cerr << " dp_list [";
+					for(int ii=0;ii<(int)dp_list.size();++ii)
+						std::cerr << dp_list[ii] << " " ;
+					std::cerr << "]" << std::endl;
+					exit(1);
 				}
 				else
 				{
-//					dp_list.erase( it, it+1 );
-			//		std::cerr<<"removing bp idx " << vec_bp[nxt].idx << " pos " <<  vec_bp[nxt].pos;
-					*it=dp_list.back();
+		//			std::cerr << " dp_list [";
+		//			for(int ii=0;ii<dp_list.size();++ii)
+		//				std::cerr << dp_list[ii] << " " ;
+		//			std::cerr << "]" << std::endl;
+	
+		//			std::cerr<<"removing bp idx " << vec_bp[nxt].idx << " pos " <<  vec_bp[nxt].pos;
+					*dp_it=dp_list.back();
 					dp_list.pop_back();
-			//		std::cerr << " dp_list [";
-			//		for(int ii=0;ii<dp_list.size();++ii)
-			//			std::cerr << dp_list[ii] << " " ;
-			//		std::cerr << "]" << std::endl;
+
+	//				std::cerr << " dp_list [";
+	//				for(int ii=0;ii<dp_list.size();++ii)
+	//					std::cerr << dp_list[ii] << " " ;
+	//				std::cerr << "]" << std::endl;
 				}
             }
 
@@ -569,18 +609,17 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
         sumsq_dp += dpval * dpval;
         n_dp += 1;
         
-        int bin = GC.gc_array[tid+1][(int)pos*2 / GC.binsize];
-        gc_sum[bin] += dpval;
-        gc_cnt[bin] += 1;
-        
-		for(std::vector<int>::iterator it=dp_list.begin(); it!=dp_list.end(); ++it)
+    
+		for(size_t ii=0; ii<dp_list.size(); ++ii)
 		{
-			if (*it <0 || *it>vec_sv.size())
+			/*
+			if (dp_list[ii]<0 || dp_list[ii]>=vec_sv.size())
 			{
-				std::cerr << "Error, " << *it << " is out of bound " << std::endl;
+				std::cerr << "Error, " << dp_list[ii] << " is out of bound " << std::endl;
 			}
-			vec_sv[*it].dp_sum += dpval;
-			vec_sv[*it].n_dp += 1;
+			*/
+			vec_sv[dp_list[ii]].dp_sum += dpval;
+			vec_sv[dp_list[ii]].n_dp += 1;
 		}
     }
     avg_dp = (double) sum_dp / n_dp;
@@ -709,29 +748,49 @@ void bFile::write_pileup(string &sampID, std::vector<sv> &vec_sv)
             {
                 rp_idx ++;
             }
-            uint16_t n_rp = (uint16_t) rp_idx - prev_rp;
-            pileupFile.write(reinterpret_cast<char*>(&n_rp), sizeof(uint16_t));
-            curr_pos += sizeof(uint16_t);
+			uint32_t  n_rp = 0;
+            if (rp_idx - prev_rp < 0)
+			{
+				std::cerr << "Wrong read pair index while writing... " << std::endl;
+				exit(1);
+			}
+			else
+			{
+				n_rp = (uint32_t) rp_idx - prev_rp;
+			}
+            pileupFile.write(reinterpret_cast<char*>(&n_rp), sizeof(uint32_t));
+            curr_pos += sizeof(uint32_t);
             
             for(int k=prev_rp; k<rp_idx; ++k)
             {
                 pileupFile.write(reinterpret_cast<char*>(&(vec_rp[k].chrnum)), sizeof(int8_t));
                 pileupFile.write(reinterpret_cast<char*>(&(vec_rp[k].selfpos)), sizeof(int32_t));
                 pileupFile.write(reinterpret_cast<char*>(&(vec_rp[k].matepos)), sizeof(int32_t));
-                pileupFile.write(reinterpret_cast<char*>(&(vec_rp[k].matequal)), sizeof(uint8_t));
+                pileupFile.write(reinterpret_cast<char*>(&(vec_rp[k].matequal)), sizeof(int8_t));
                 pileupFile.write(reinterpret_cast<char*>(&(vec_rp[k].pairstr)), sizeof(int8_t));
-                curr_pos += sizeof(int8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(int8_t);
+                curr_pos += sizeof(int8_t) + sizeof(int32_t) + sizeof(int32_t) + sizeof(int8_t) + sizeof(int8_t);
                 cnt_rp ++;
             }
             prev_rp = rp_idx;
+
+
             // SP
             while(sp_idx < (int)vec_sp.size() && vec_sp[sp_idx].chrnum == i && vec_sp[sp_idx].pos <= j*10000)
             {
                 sp_idx ++;
             }
-            uint16_t n_sp = (uint16_t) sp_idx - prev_sp;
-            pileupFile.write(reinterpret_cast<char*>(&n_sp), sizeof(uint16_t));
-            curr_pos += sizeof(uint16_t);
+            uint32_t n_sp = 0;
+			if (sp_idx - prev_sp < 0)
+			{
+				std::cerr << "Wrong split read index while writing... " << std::endl;
+				exit(1);
+			}
+			else
+			{
+				n_sp = (uint32_t) sp_idx - prev_sp;
+			}
+            pileupFile.write(reinterpret_cast<char*>(&n_sp), sizeof(uint32_t));
+            curr_pos += sizeof(uint32_t);
             
             for(int k=prev_sp; k<sp_idx; ++k)
             {
@@ -740,9 +799,8 @@ void bFile::write_pileup(string &sampID, std::vector<sv> &vec_sv)
                 pileupFile.write(reinterpret_cast<char*>(&(vec_sp[k].sapos)), sizeof(int32_t));
                 pileupFile.write(reinterpret_cast<char*>(&(vec_sp[k].firstclip)), sizeof(int16_t));
                 pileupFile.write(reinterpret_cast<char*>(&(vec_sp[k].secondclip)), sizeof(int16_t));
-                curr_pos += sizeof(int8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(int16_t) + sizeof(int16_t);
+                curr_pos += sizeof(int8_t) + sizeof(int32_t) + sizeof(int32_t) + sizeof(int16_t) + sizeof(int16_t);
                 cnt_sp ++;
-
             }
             prev_sp = sp_idx;
         }

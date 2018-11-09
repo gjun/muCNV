@@ -57,50 +57,6 @@ int find_overlap_sv(sv &S , std::vector<sv>& dels)
 	}
 }
 
-bool in_centrome(sv &S)
-{
-	// GRCh38 Centromere coordinates , hardcoded
-	int centro[24][2] = {
-		{121700000, 125100000},
-		{91800000, 96000000},
-		{87800000, 94000000},
-		{48200000, 51800000},
-		{46100000, 51400000},
-		{58500000, 62600000},
-		{58100000, 62100000},
-		{43200000, 47200000},
-		{42200000, 45500000},
-		{38000000, 41600000},
-		{51000000, 55800000},
-		{33200000, 37800000},
-		{16500000, 18900000},
-		{16100000, 18200000},
-		{17500000, 20500000},
-		{35300000, 38400000},
-		{22700000, 27400000},
-		{15400000, 21500000},
-		{24200000, 28100000},
-		{25700000, 30400000},
-		{10900000, 13000000},
-		{13700000, 17400000},
-		{58100000, 63800000},
-		{10300000, 10600000}
-	};
-//	int hetero[2] = {51078349, 54425074};
-
-//	if (S.pos >= centro[S.chrnum-1][0]-300000 && S.pos <= centro[S.chrnum-1][1]+300000)
-	if (S.pos >= centro[S.chrnum-1][0] && S.pos <= centro[S.chrnum-1][1])
-		return true;
-	if (S.end >= centro[S.chrnum-1][0] && S.end <= centro[S.chrnum-1][1])
-		return true;
-//	if (S.chrnum == 7  && S.pos >= hetero[0] && S.pos <= hetero[1]+1000000)
-//		return true;
-//	if (S.chrnum == 7  && S.end >= hetero[0] && S.end <= hetero[1])
-//		return true;
-	return false;
-}
-
-
 bool bUseGL;
 double P_THRESHOLD;
 double BE_THRESHOLD;
@@ -712,28 +668,28 @@ int main(int argc, char** argv)
         
         while(pileupFile.good())
         {
-            uint16_t n_rp = 0;
-            uint16_t n_sp = 0;
+            uint32_t n_rp = 0;
+            uint32_t n_sp = 0;
 
 			idxFile.read(reinterpret_cast<char*>(&curr_idx), sizeof(size_t));
 //			printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pileupFile.tellg());
 
-            pileupFile.read(reinterpret_cast<char*>(&n_rp), sizeof(uint16_t));
+            pileupFile.read(reinterpret_cast<char*>(&n_rp), sizeof(uint32_t));
           	printf("%d readpairs\n", n_rp);
             for(int k=0; k<n_rp; ++k)
             {
-                int8_t chrnum, pairstr, matequal;
+                int8_t chrnum, pairstr;
+				uint8_t matequal;
                 int32_t selfpos, matepos;
                 pileupFile.read(reinterpret_cast<char*>(&(chrnum)), sizeof(int8_t));
                 pileupFile.read(reinterpret_cast<char*>(&(selfpos)), sizeof(int32_t));
                 pileupFile.read(reinterpret_cast<char*>(&(matepos)), sizeof(int32_t));
                 pileupFile.read(reinterpret_cast<char*>(&(matequal)), sizeof(uint8_t));
-matequal = 0;
                 pileupFile.read(reinterpret_cast<char*>(&(pairstr)), sizeof(int8_t));
-                printf("\t%d\t%d\t%d\t%d\t%d\n", chrnum, selfpos, matepos, matequal, pairstr);
+                printf("\t%d\t%d\t%d\t%u\t%d\n", chrnum, selfpos, matepos, matequal, pairstr);
             }
             
-            pileupFile.read(reinterpret_cast<char*>(&n_sp), sizeof(uint16_t));
+            pileupFile.read(reinterpret_cast<char*>(&n_sp), sizeof(uint32_t));
 			printf("%d split reads\n", n_sp);
             for(int k=0; k<n_sp; ++k)
             {
