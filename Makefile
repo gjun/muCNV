@@ -7,12 +7,12 @@ TARGET=  bin/muCNV
 SRCS := $(wildcard muCNV/*.cpp)
 OBJS := $(addprefix obj/,$(notdir $(SRCS:.cpp=.o)))
 
-CFLAGS= -Wall -O2 -fPIC -std=c++0x
+CFLAGS= -Wall -O3 -fPIC -std=c++0x
 #DFLAGS= -D_FILE_OFFSET_BITS=64 -DDEBUG
 DFLAGS= -D_FILE_OFFSET_BITS=64
 CC= gcc
 CXX= g++ 
-INCLUDES= -I./tclap-1.2.1/include -I../htslib/htslib
+INCLUDES= -I./tclap-1.2.1/include -I../htslib/htslib 
 
 DEPS := $(OBJS:%.o=%.d)
 
@@ -21,7 +21,7 @@ DEPS := $(OBJS:%.o=%.d)
 all: $(TARGET) 
 
 $(TARGET) : $(OBJS)
-	$(CXX) $^ -lm -lz -lhts -o $@ 
+	$(CXX) $^ -lm -lz -lhts -o $@
 
 -include $(DEPS)
 
