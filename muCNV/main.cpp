@@ -655,7 +655,7 @@ int main(int argc, char** argv)
         
         for(int i=1; i<=GC.num_chr; ++i)
         {
-            int N = ceil((double)GC.chrSize[i] / 100.0) ;
+            int N = ceil((double)GC.chrSize[i] / 100.0) + 1;
             uint16_t dp100;
             for(int j=0;j<N;++j)
             {
@@ -672,7 +672,7 @@ int main(int argc, char** argv)
             uint32_t n_sp = 0;
 
 			idxFile.read(reinterpret_cast<char*>(&curr_idx), sizeof(size_t));
-//			printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pileupFile.tellg());
+			printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pileupFile.tellg());
 
             pileupFile.read(reinterpret_cast<char*>(&n_rp), sizeof(uint32_t));
           	printf("%d readpairs\n", n_rp);
