@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		F114FEA7203B7D5100DE1FBC /* gtype_old.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F114FEA5203B7D5100DE1FBC /* gtype_old.cpp */; };
 		F119BC73216EB0FD000F1724 /* libhts.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F129E10D1EF90129007793FB /* libhts.a */; };
-		F13828731FCF36CC003ADE67 /* bamcram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F13828721FCF36CC003ADE67 /* bamcram.cpp */; };
+		F13828731FCF36CC003ADE67 /* bam_cram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F13828721FCF36CC003ADE67 /* bam_cram.cpp */; };
 		F138FD7D1CAD744A00CD5539 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD7C1CAD744A00CD5539 /* main.cpp */; };
 		F138FD8B1CAD74EE00CD5539 /* cluster.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD831CAD74EE00CD5539 /* cluster.cpp */; };
 		F138FD8C1CAD74EE00CD5539 /* common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD841CAD74EE00CD5539 /* common.cpp */; };
@@ -19,6 +19,8 @@
 		F194ED371F25B3C900489E0C /* sv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED361F25B3C900489E0C /* sv.cpp */; };
 		F194ED391F2623BB00489E0C /* vcf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED381F2623BB00489E0C /* vcf.cpp */; };
 		F194ED3B1F2708CC00489E0C /* Gaussian.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED3A1F2708CC00489E0C /* Gaussian.cpp */; };
+		F1DB7AD6219B7D7500CCA521 /* pileup.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1DB7AD5219B7D7500CCA521 /* pileup.cpp */; };
+		F1DB7ADD219B983800CCA521 /* sample_stat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1DB7ADB219B983800CCA521 /* sample_stat.cpp */; };
 		F1FE1D90214F710F005673D3 /* gcContent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FE1D8F214F710F005673D3 /* gcContent.cpp */; };
 /* End PBXBuildFile section */
 
@@ -39,7 +41,7 @@
 		F129E10D1EF90129007793FB /* libhts.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libhts.a; path = lib/libhts.a; sourceTree = "<group>"; };
 		F129E10F1EF901CA007793FB /* liblzma.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = liblzma.tbd; path = usr/lib/liblzma.tbd; sourceTree = SDKROOT; };
 		F129E1111EF901D2007793FB /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
-		F13828721FCF36CC003ADE67 /* bamcram.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = bamcram.cpp; sourceTree = "<group>"; };
+		F13828721FCF36CC003ADE67 /* bam_cram.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = bam_cram.cpp; sourceTree = "<group>"; };
 		F138FD791CAD744A00CD5539 /* muCNV */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = muCNV; sourceTree = BUILT_PRODUCTS_DIR; };
 		F138FD7C1CAD744A00CD5539 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		F138FD831CAD74EE00CD5539 /* cluster.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cluster.cpp; sourceTree = "<group>"; };
@@ -81,6 +83,14 @@
 		F194ED361F25B3C900489E0C /* sv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sv.cpp; sourceTree = "<group>"; };
 		F194ED381F2623BB00489E0C /* vcf.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = vcf.cpp; sourceTree = "<group>"; };
 		F194ED3A1F2708CC00489E0C /* Gaussian.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Gaussian.cpp; sourceTree = "<group>"; };
+		F1DB7AD5219B7D7500CCA521 /* pileup.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = pileup.cpp; sourceTree = "<group>"; };
+		F1DB7AD7219B7E6500CCA521 /* sv.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sv.h; sourceTree = "<group>"; };
+		F1DB7AD8219B873A00CCA521 /* bam_cram.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bam_cram.h; sourceTree = "<group>"; };
+		F1DB7AD9219B877600CCA521 /* pileup.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = pileup.h; sourceTree = "<group>"; };
+		F1DB7ADA219B896000CCA521 /* gcContent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = gcContent.h; sourceTree = "<group>"; };
+		F1DB7ADB219B983800CCA521 /* sample_stat.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = sample_stat.cpp; sourceTree = "<group>"; };
+		F1DB7ADC219B983800CCA521 /* sample_stat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sample_stat.h; sourceTree = "<group>"; };
+		F1DB7ADE219B9BAB00CCA521 /* debug.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = debug.h; sourceTree = "<group>"; };
 		F1FE1D8F214F710F005673D3 /* gcContent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = gcContent.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -130,21 +140,29 @@
 		F138FD7B1CAD744A00CD5539 /* muCNV */ = {
 			isa = PBXGroup;
 			children = (
-				F138FD911CAD74F600CD5539 /* pException.h */,
+				F13828721FCF36CC003ADE67 /* bam_cram.cpp */,
+				F1DB7AD8219B873A00CCA521 /* bam_cram.h */,
 				F138FD831CAD74EE00CD5539 /* cluster.cpp */,
 				F138FD841CAD74EE00CD5539 /* common.cpp */,
 				F138FD871CAD74EE00CD5539 /* Error.cpp */,
+				F1DB7ADE219B9BAB00CCA521 /* debug.h */,
 				F138FD881CAD74EE00CD5539 /* Error.h */,
 				F138FD891CAD74EE00CD5539 /* File.cpp */,
-				F138FD8A1CAD74EE00CD5539 /* muCNV.h */,
-				F138FD7C1CAD744A00CD5539 /* main.cpp */,
-				F194ED341F25A41400489E0C /* gtype.cpp */,
-				F114FEA5203B7D5100DE1FBC /* gtype_old.cpp */,
-				F194ED361F25B3C900489E0C /* sv.cpp */,
-				F194ED381F2623BB00489E0C /* vcf.cpp */,
 				F194ED3A1F2708CC00489E0C /* Gaussian.cpp */,
-				F13828721FCF36CC003ADE67 /* bamcram.cpp */,
 				F1FE1D8F214F710F005673D3 /* gcContent.cpp */,
+				F1DB7ADA219B896000CCA521 /* gcContent.h */,
+				F114FEA5203B7D5100DE1FBC /* gtype_old.cpp */,
+				F194ED341F25A41400489E0C /* gtype.cpp */,
+				F138FD7C1CAD744A00CD5539 /* main.cpp */,
+				F138FD8A1CAD74EE00CD5539 /* muCNV.h */,
+				F138FD911CAD74F600CD5539 /* pException.h */,
+				F1DB7AD5219B7D7500CCA521 /* pileup.cpp */,
+				F1DB7AD9219B877600CCA521 /* pileup.h */,
+				F1DB7ADB219B983800CCA521 /* sample_stat.cpp */,
+				F1DB7ADC219B983800CCA521 /* sample_stat.h */,
+				F194ED361F25B3C900489E0C /* sv.cpp */,
+				F1DB7AD7219B7E6500CCA521 /* sv.h */,
+				F194ED381F2623BB00489E0C /* vcf.cpp */,
 			);
 			path = muCNV;
 			sourceTree = "<group>";
@@ -238,12 +256,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				F194ED3B1F2708CC00489E0C /* Gaussian.cpp in Sources */,
+				F1DB7ADD219B983800CCA521 /* sample_stat.cpp in Sources */,
 				F138FD8F1CAD74EE00CD5539 /* Error.cpp in Sources */,
+				F1DB7AD6219B7D7500CCA521 /* pileup.cpp in Sources */,
 				F138FD8B1CAD74EE00CD5539 /* cluster.cpp in Sources */,
 				F194ED371F25B3C900489E0C /* sv.cpp in Sources */,
 				F194ED351F25A41400489E0C /* gtype.cpp in Sources */,
 				F114FEA7203B7D5100DE1FBC /* gtype_old.cpp in Sources */,
-				F13828731FCF36CC003ADE67 /* bamcram.cpp in Sources */,
+				F13828731FCF36CC003ADE67 /* bam_cram.cpp in Sources */,
 				F138FD8C1CAD74EE00CD5539 /* common.cpp in Sources */,
 				F138FD7D1CAD744A00CD5539 /* main.cpp in Sources */,
 				F138FD901CAD74EE00CD5539 /* File.cpp in Sources */,

@@ -1,12 +1,6 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
-#ifdef DEBUG
-#define DMSG(str) do { std::cerr << str << std::endl; } while( false )
-#else
-#define DMSG(str) do { } while ( false )
-#endif
-
 #include <stdint.h>
 #include <stdio.h>
 #include <iostream>
@@ -26,7 +20,7 @@
 #include "sam.h"
 #include "tbx.h"
 #include "kseq.h"
-
+#include "sv.h"
 
 using std::string;
 
@@ -35,9 +29,6 @@ const double sqPI=1.77245385090552;
 const double invsqrt2pi= 0.398942280401433;
 const double log2pi = 0.7981798684;
 
-enum svType {DEL=0, DUP=1, INV=2, CNV=3, INS=4, BND=5};
-string svTypeName(svType);
-svType svTypeNum(int);
 
 typedef std::pair<uint64_t, uint64_t> interval_t;
 
@@ -77,33 +68,6 @@ public:
     int16_t secondclip; // soft clip position (+: left-side, -: right-side) in secondary alignment
 };
 
-class sv
-{
-	public:
-	svType svtype;
-//	string source;
-//	string chr;
-	int chrnum;
-	int pos;
-	int end;
-	int len;
-	int supp;
-//	pair<int,int> ci_pos;
-//	pair<int,int> ci_end;
-	void get_len()
-	{
-		len = end - pos + 1;
-	};
-    void print(void);
-	bool operator < (const sv&) const;
-	bool operator == (const sv&) const;
-
-    uint64_t dp_sum;
-    int n_dp;
-    uint16_t dp;
-
-	sv();
-};
 
 bool in_centrome(sv &);
 bool in_centrome(int, int);
@@ -195,26 +159,6 @@ public:
 	
 };
 
-class gcint : public sv
-{
-	public:
-	uint8_t gcbin;
-};
-
-class breakpoint
-{
-public:
-    uint8_t chrnum;
-    int bptype; // 0 : pos-gap, 1: pos, 2: pos+gap, 3:end-gap, 4: end, 5: end+gap
-    
-	int pos;
-	int idx; // SV_id
-	bool operator < (const breakpoint&) const;
-	bool operator == (const breakpoint&) const;
-    bool operator <= (const breakpoint&) const;
-
-	breakpoint();
-};
 
 void pick_sv_from_merged(sv &, std::vector<sv> &);
 
@@ -294,60 +238,6 @@ public:
 	int read_interval_multi(sv& , svdata &, string &);	
 };
 
-class gcContent
-{
-public:
-	void initialize(string &); // filename for GC content, populate all std::vectors
-	uint16_t num_bin; // Number of GC bin
-	uint8_t num_chr; //number of chrs
-	uint16_t binsize; // Size of GC intervals (bp)
-	uint16_t num_interval; // number of GC intervals
-    std::vector<size_t> chrOffset;
-	std::vector<gcint> regions; // Double array to store list of regions for each GC bin -- non-overlapping, so let's just be it out-of-order
-	std::vector<double> gc_dist; // Array to store proportion of Ref genome for each GC content bin
-	std::vector<uint32_t> chrSize;
-	std::vector<uint8_t *> gc_array; // Array to store "GC bin number" for every 400-bp (?) interval of reference genome
-};
-
-// A class for a single file BAM I/O
-class bFile
-{
-public:
-	aux_t **data;
-	hts_idx_t* idx;
-	gcContent& GC;
-	double avg_dp;
-    double std_dp;
-    
-	double avg_isize;
-	double std_isize;
-	double med_isize;
-	double avg_rlen;
-	
-	std::vector<double> gc_factor;
-    std::vector<uint64_t> gc_sum;
-    std::vector<uint64_t> gc_cnt;
-    
-	// Get GC corrected depth for chr / pos
-	double gcCorrected(double, int, int);
-    std::vector< uint16_t * > depth100; // to store depth for every 100bp interval
-	std::vector<int> nbin_100;
-
-    std::vector<readpair> vec_rp;
-    std::vector<splitread> vec_sp;
-    
-//	void read_depth(std::vector<sv> &, std::vector<string> &);
-    void read_depth_sequential(std::vector<breakpoint> &, std::vector<sv> &);
-//	void process_readpair(sv &, std::vector<int> &, string &);
-//	void get_avg_depth();
-	void initialize(string &);
-    void initialize_sequential(string &);
-    void postprocess_depth(std::vector<sv> &);
-    void write_pileup(string &, std::vector<sv> &);
-    void write_pileup_text(string &, std::vector<sv> &);
-	bFile (gcContent &x) : GC(x) {};
-
-};
 
 class outvcf
 {

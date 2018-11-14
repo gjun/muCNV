@@ -7,7 +7,10 @@
 //
 
 #include <stdio.h>
-#include "muCNV.h"
+#include <iostream>
+#include <fstream>
+#include "gcContent.h"
+#include "debug.h"
 
 void readmagic(std::ifstream &F)
 {
@@ -21,7 +24,7 @@ void readmagic(std::ifstream &F)
     }
 }
 
-void gcContent::initialize(string &gcFile)
+void GcContent::initialize(std::string &gcFile)
 {
 	// gcFile: filename for GC content file
 
@@ -40,17 +43,17 @@ void gcContent::initialize(string &gcFile)
     DMSG((int)num_chr << " chromosomes in GC content file.");
     
     // read size of chrs 
-    chrSize.resize(num_chr+1);
-    chrSize[0] = 0;
-    chrOffset.resize(num_chr+1);
-    chrOffset[0] = 0;
+    chr_size.resize(num_chr+1);
+    chr_size[0] = 0;
+    chr_offset.resize(num_chr+1);
+    chr_offset[0] = 0;
     
     
     for(int i=1;i<=num_chr;++i)
     {
-        inFile.read(reinterpret_cast <char *> (&chrSize[i]), sizeof(uint32_t));
-        chrOffset[i] = chrOffset[i-1] + chrSize[i-1];
-        DMSG("Chr " << i << " size: " << chrSize[i] <<  " offset: " << chrOffset[i]);
+        inFile.read(reinterpret_cast <char *> (&chr_size[i]), sizeof(uint32_t));
+        chr_offset[i] = chr_offset[i-1] + chr_size[i-1];
+        DMSG("Chr " << i << " size: " << chr_size[i] <<  " offset: " << chr_offset[i]);
     }
     
     // read size of GC-interval bin
@@ -99,14 +102,14 @@ void gcContent::initialize(string &gcFile)
     for(int i=1; i<=num_chr; ++i)
     {
 		// Fixed binsize
-        int N = ceil(chrSize[i] / 200.0);
+        int num_bins_in_chr = ceil(chr_size[i] / 200.0);
 
-        gc_array[i] = (uint8_t *) calloc(N+1, sizeof(uint8_t));
+        gc_array[i] = (uint8_t *) calloc(num_bins_in_chr + 1, sizeof(uint8_t));
 		DMSG("GC array " << i << " is allocated");
 
-        inFile.read(reinterpret_cast<char *>(gc_array[i]), sizeof(uint8_t)*N);
-		// TEMPORARY
-		gc_array[i][N] = 0;
+        inFile.read(reinterpret_cast<char *>(gc_array[i]), sizeof(uint8_t)*num_bins_in_chr);
+        // TEMPORARY, TODO: update GC-content file to include end-of-chr bin
+		gc_array[i][num_bins_in_chr] = 0;
         readmagic(inFile);
         
         if (!inFile.good())
@@ -114,8 +117,9 @@ void gcContent::initialize(string &gcFile)
             std::cerr << "Cannot finish reading GC content file." <<std::endl;
             exit(1);
         }
-        DMSG("Chr " << i << " GC content array loaded for "<<  N << " segments. ");
+        DMSG("Chr " << i << " GC content array loaded for "<<  num_bins_in_chr << " segments. ");
     }
+    
     //    std::cerr << "Currnet position : " << inFile.tellg() << std::endl;
     
     for(int i=0;i<num_bin;++i)
