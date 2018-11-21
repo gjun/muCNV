@@ -48,25 +48,7 @@ std::vector<size_t> sort_indexes(const std::vector<T> &v) {
 	return idx;
 }
 
-class readpair
-{
-public:
-    int8_t chrnum;
-    int32_t selfpos;
-    int32_t matepos;
-    int8_t matequal;
-    int8_t pairstr;
-};
 
-class splitread
-{
-public:
-    int8_t chrnum;
-    int32_t pos;
-    int32_t sapos;
-    int16_t firstclip; // soft clip position (+: left-side, -: right-side) in primary alignment
-    int16_t secondclip; // soft clip position (+: left-side, -: right-side) in secondary alignment
-};
 
 
 bool in_centrome(sv &);
@@ -174,22 +156,6 @@ public:
     bool readAvgDepth();
 };
 
-typedef struct {     // auxiliary data structure
-	samFile *fp;     // the file handle
-	bam_hdr_t *hdr;  // the file header
-	hts_itr_t *iter; // NULL if a region not specified
-
-    uint64_t sum_isz;
-    uint64_t sumsq_isz;
-    uint64_t n_isz;
-
-	uint32_t n_rp;
-	uint32_t n_sp;
-    std::vector<readpair> *p_vec_rp;
-    std::vector<splitread> *p_vec_sp;
-
-	int min_mapQ, min_len; // mapQ filter; length filter
-} aux_t;
 
 class Gaussian
 {

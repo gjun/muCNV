@@ -13,7 +13,7 @@
 #include <fstream>
 #include "pileup.h"
 
-void pileup::write(std::string &sampID, std::vector<sv> &vec_sv)
+void Pileup::write(std::string &sampID, std::vector<sv> &vec_sv)
 {
     std::string pileup_name = sampID + ".pileup";
     std::string varfile_name = sampID + ".var";
@@ -49,7 +49,7 @@ void pileup::write(std::string &sampID, std::vector<sv> &vec_sv)
     curr_pos += sizeof(double) * 4;
     
     // Write GC curve
-    for(int i=0;i<GC.num_bin;++i)
+    for(int i=0;i<gc.num_bin;++i)
     {
         pileupFile.write(reinterpret_cast<char*>(&(gc_factor[i])), sizeof(double));
         curr_pos += sizeof(double);
@@ -61,7 +61,7 @@ void pileup::write(std::string &sampID, std::vector<sv> &vec_sv)
     idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // where SV DP starts
     
     // Write DP100
-    for(int i=1; i<=GC.num_chr; ++i)
+    for(int i=1; i<=gc.num_chr; ++i)
     {
         pileupFile.write(reinterpret_cast<char*>(depth100[i]), sizeof(uint16_t)*(nbin_100[i]));
         curr_pos += sizeof(uint16_t)*nbin_100[i];
@@ -77,9 +77,9 @@ void pileup::write(std::string &sampID, std::vector<sv> &vec_sv)
     int cnt_rp = 0;
     int cnt_sp = 0;
     
-    for(int i=1;i<=GC.num_chr; ++i)
+    for(int i=1;i<=gc.num_chr; ++i)
     {
-        int N = ceil((double)GC.chrSize[i] / 10000.0) ;
+        int N = ceil((double)gc.chr_size[i] / 10000.0) ;
         
         for(int j=1;j<=N;++j)
         {
@@ -177,7 +177,7 @@ void pileup::write(std::string &sampID, std::vector<sv> &vec_sv)
 
 
 
-void pileup::write_text(std::string &sampID, std::vector<sv> &vec_sv)
+void Pileup::write_text(std::string &sampID, std::vector<sv> &vec_sv)
 {
     // TODO: add write GC curve
     // TODO: write average 100-bp depth
@@ -213,3 +213,22 @@ void pileup::write_text(std::string &sampID, std::vector<sv> &vec_sv)
     }
     fclose(fp);
 }
+
+double Pileup::gcCorrected(double D, int chr, int pos)
+{
+    int p = pos*2 / gc.binsize;
+    //    std::cerr << "pos " << pos << " p " << p << std::endl;
+    int bin = gc.gc_array[chr][p];
+    
+    if (bin<20 && gc_factor[bin]>0.0001)
+    {
+        //        std::cerr << D << " at " << chr << ":" << pos << " is adjusted to " << D/gc_factor[bin] << " by gc Factor "<< gc_factor[bin] << std::endl;
+        return D / gc_factor[bin];
+    }
+    else
+    {
+        // Let's not make adjustment for bins with '255' value
+        return D;
+    }
+}
+

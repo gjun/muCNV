@@ -56,7 +56,7 @@ int find_start(std::vector<sv> &L, int pos)
 {
 	// Assume list is sorted according to pos
 	int left = 0;
-	int right = L.size();
+	int right = (int) L.size();
 	int idx = (left+right)/2;
 
 	while(right > left)

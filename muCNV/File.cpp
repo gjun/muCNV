@@ -938,7 +938,7 @@ void readFam(string sFamFile, std::map<string, unsigned> &hIdSex)
 
 			if (tokens[4] == "1" || tokens[4] == "2")
 			{
-				hIdSex[tokens[1]] = strtoul(tokens[4].c_str(), NULL, 10);
+				hIdSex[tokens[1]] = (unsigned) strtoul(tokens[4].c_str(), NULL, 10);
 			}
 		}
 	}

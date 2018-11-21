@@ -19,6 +19,8 @@
 #include <map>
 
 #include "muCNV.h"
+#include "gc_content.h"
+#include "bam_cram.h"
 
 // TCLAP headers
 #include "tclap/CmdLine.h"
@@ -637,12 +639,15 @@ int main(int argc, char** argv)
         
         printf("AVG DP: %f, STdev: %f, AVG ISIZE: %f, STdev: %f \n", avg_dp, std_dp, avg_isize, std_isize);
 
-        gcContent GC;
-        GC.initialize(gc_file);
+        GcContent gc;
+        gc.initialize(gc_file);
         
-        std::vector<double> gc_factor (GC.num_bin);
+        Pileup pup(gc);
         
-        for(int i=0;i<GC.num_bin;++i)
+        // TODO: Use pup.gc_factor
+        std::vector<double> gc_factor (gc.num_bin);
+        
+        for(int i=0;i<gc.num_bin;++i)
         {
             pileupFile.read(reinterpret_cast<char*>(&(gc_factor[i])), sizeof(double));
             printf("GC-bin %d: %f\n", i, gc_factor[i]);
@@ -653,9 +658,9 @@ int main(int argc, char** argv)
         uint64_t dpsum = 0;
         uint64_t n_dp = 0;
         
-        for(int i=1; i<=GC.num_chr; ++i)
+        for(int i=1; i<=gc.num_chr; ++i)
         {
-            int N = ceil((double)GC.chrSize[i] / 100.0) + 1;
+            int N = ceil((double)gc.chr_size[i] / 100.0) + 1;
             uint16_t dp100;
             for(int j=0;j<N;++j)
             {
@@ -730,9 +735,12 @@ int main(int argc, char** argv)
 		n_sample = 1;
 		std::cerr << "Processing individual BAM/CRAM file to genearte summary VCF." << std::endl;
 
-		gcContent GC;
-		GC.initialize(gc_file);
+		GcContent gc;
+		gc.initialize(gc_file);
 		std::cerr << "GC content initialized" << std::endl;
+
+        Pileup pup (gc);
+        std::cerr << "Pileup file initialized" << std::endl;
 
         std::vector<sv> vec_sv;
         std::vector<breakpoint> vec_bp;
@@ -765,7 +773,7 @@ int main(int argc, char** argv)
 
         std::sort(vec_bp.begin(), vec_bp.end());
         
-		bFile b(GC);
+		BamCram b(pup);
         
 		b.initialize_sequential(bam_file);
 		std::cerr << "BAM/CRAM file initialized" << std::endl;
@@ -773,7 +781,7 @@ int main(int argc, char** argv)
         b.read_depth_sequential(vec_bp, vec_sv);
         
         b.postprocess_depth(vec_sv);
-        b.write_pileup(sampID, vec_sv);
+        pup.write(sampID, vec_sv);
 
 		std::cerr << "Finished without an error" << std::endl;
 	}

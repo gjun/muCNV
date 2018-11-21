@@ -109,47 +109,13 @@ bool process_split(string &t, splitread &new_sp, int32_t tid, bool strand)
         {
             return false;
         }
-        
-		/*
-        string s;
-        int c = i;
-        
-        //fprintf(stderr,"s = '%s', strlen(s) = %d, delims = '%s'\n",s,(int)strlen(s), delims);
-        for(;t[i]!=',' && t[i]!=';' && t[i]!='\0';++i);
-
-        if (t[i] ==';' || t[i] == '\0')
-            return false;
-
-        pos_str = std::string((char*)t+c, i-c);
-        if (t[i+1] == '+')
-        {
-            if (!strand)
-                return false;
-        }
-        else if (t[i+1] == '-')
-        {
-            if (strand)
-                return false;
-        }
-        else
-        {
-            return false;
-        }
-        if (t[i+2] != ',')
-            return false;
-        i += 3;
-        
-        c=i;
-        for(;t[i]!=',' && t[i]!=';' && t[i]!='\0';++i);
-        if (t[i] ==';' || t[i] == '\0')
-            return false;
-		*/
 
 		std::string::size_type c;
 		std::string::size_type d;
 
 		new_sp.sapos = stoi(t.substr(i), &c);
 	//	DMSG("POS_STR: " << t.substr(i) << " SAPOS:" <<new_sp.sapos);
+        
 		if (new_sp.sapos < 1) return false;
 
 		c=c+i+1;
@@ -170,10 +136,9 @@ bool process_split(string &t, splitread &new_sp, int32_t tid, bool strand)
 		if (d == string::npos) return false;
 		cigar_str = t.substr(c,d-c);
 	//	DMSG("CIGAR: " << cigar_str);
+        
 		if (cigar_str.length() == 0 ) return false;
-        // cigar_str = std::string((char*)t+c, i-c);
-        // process pos and cigar here
-//        new_sp.sapos = atoi(pos_str.c_str());
+
         new_sp.secondclip = get_cigar_clippos(cigar_str);
 	    return true;
     }
@@ -266,8 +231,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 			if (aux_sa && (p_sa = bam_aux2Z(aux_sa)))
 			{
 				string str_sa = string(p_sa);
-//				fprintf(stderr, "\tSA:%s", str_sa.c_str());
-
+                
 				splitread new_sp;
 				new_sp.chrnum = b->core.tid + 1;
 				new_sp.pos = b->core.pos;
@@ -281,12 +245,10 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 				if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP)
 				{
 					lclip = bam_cigar_oplen(cigar[0]);
-//					fprintf(stderr, "\tlclip:%d", lclip);
 				}
 				if (bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP)
 				{
 					rclip = bam_cigar_oplen(cigar[0]);
-//					fprintf(stderr, "\trclip:%d", rclip);
 				}
 				if (rclip > lclip && rclip > 15) // arbitrary cutoff, 15
 					new_sp.firstclip = -rclip;
@@ -308,14 +270,13 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 				}
 			}
 		}
-//		fprintf(stderr, "\n");
         break;
     }
     return ret;
 }
 
 
-void bFile::initialize_sequential(string &bname)
+void BamCram::initialize_sequential(string &bname)
 {
     data = (aux_t**)calloc(1, sizeof(aux_t*));
     data[0] = (aux_t*)calloc(1, sizeof(aux_t));
@@ -325,20 +286,6 @@ void bFile::initialize_sequential(string &bname)
     data[0]->sumsq_isz = 0;
     data[0]->n_isz = 0;
     
-    //int rf = SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_SEQ | SAM_QUAL;
-	/*
-    int rf = SAM_FLAG |  SAM_QNAME | SAM_MAPQ | SAM_QUAL| SAM_POS | SAM_SEQ | SAM_CIGAR| SAM_TLEN | SAM_RNEXT | SAM_PNEXT | SAM_AUX;
-    if (hts_set_opt(data[0]->fp, CRAM_OPT_REQUIRED_FIELDS, rf))
-    {
-        std::cerr << "Failed to set CRAM_OPT_REQUIRED_FIELDS value" << std::endl;
-        exit(1);
-    }
-    if (hts_set_opt(data[0]->fp, CRAM_OPT_DECODE_MD, 0))
-    {
-        fprintf(stderr, "Failed to set CRAM_OPT_DECODE_MD value\n");
-        exit(1);
-    }
-	*/
     
     data[0]->min_mapQ = 1;
     data[0]->min_len = 0;
@@ -353,71 +300,7 @@ void bFile::initialize_sequential(string &bname)
     idx = NULL;
 }
 
-
-void bFile::initialize(string &bname)
-{
-
-//	data = (aux_t*)calloc(1, sizeof(aux_t));
-	data = (aux_t**)calloc(1, sizeof(aux_t*));
-	data[0] = (aux_t*)calloc(1, sizeof(aux_t));
-	data[0]->fp = hts_open(bname.c_str(), "r");
-		
-	//int rf = SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_SEQ | SAM_QUAL;
-	int rf = SAM_FLAG |  SAM_MAPQ | SAM_QUAL| SAM_POS | SAM_SEQ | SAM_CIGAR| SAM_TLEN | SAM_RNEXT | SAM_PNEXT;
-	if (hts_set_opt(data[0]->fp, CRAM_OPT_REQUIRED_FIELDS, rf))
-	{
-		std::cerr << "Failed to set CRAM_OPT_REQUIRED_FIELDS value" << std::endl;
-		exit(1);
-	}
-	if (hts_set_opt(data[0]->fp, CRAM_OPT_DECODE_MD, 0))
-	{
-		fprintf(stderr, "Failed to set CRAM_OPT_DECODE_MD value\n");
-		exit(1);
-	}
-//	data->min_mapQ = 1; //filter out by MQ10
-//	data->min_len = 0; // does not set minimum length
-//	data->hdr = sam_hdr_read(data->fp);
-
-	data[0]->min_mapQ = 1;
-	data[0]->min_len = 0;
-	data[0]->hdr = sam_hdr_read(data[0]->fp);;
-
-	if (data[0]->hdr == NULL)
-	{
-		std::cerr << "Cannot open CRAM/BAM header" << std::endl;
-		exit(1);
-	}
-	
-	hts_idx_t* tmp_idx = sam_index_load(data[0]->fp, bname.c_str());
-	if (tmp_idx == NULL)
-	{
-		std::cerr << "Cannot open CRAM/BAM index" << std::endl;
-		exit(1);
-	}
-	idx = tmp_idx;
-}
-
-double bFile::gcCorrected(double D, int chr, int pos)
-{
-    int p = pos*2 / GC.binsize;
-//	std::cerr << "pos " << pos << " p " << p << std::endl;
-	int bin = GC.gc_array[chr][p];
-
-	if (bin<20 && gc_factor[bin]>0.0001)
-	{
-//		std::cerr << D << " at " << chr << ":" << pos << " is adjusted to " << D/gc_factor[bin] << " by gc Factor "<< gc_factor[bin] << std::endl;
-		return D / gc_factor[bin];
-	}
-	else
-	{
-		// Let's not make adjustment for bins with '255' value
-		return D;
-	}
-}
-
-
-// Get (overlapping) list of SV intervals, return average depth and GC-corrected average depth on intervals
-void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<sv> &vec_sv)
+void BamCram::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<sv> &vec_sv)
 {
     // vec_bp should have been sorted beforehand
     int tid = -1, pos = -1;
@@ -437,22 +320,14 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
     uint64_t sumsq_dp = 0;
     uint64_t n_dp = 0;
     
-    gc_factor.resize(GC.num_bin);
-    gc_sum.resize(GC.num_bin);
-    gc_cnt.resize(GC.num_bin);
-    for(int i=0;i<GC.num_bin;++i)
-    {
-        gc_sum[i] = 0;
-        gc_cnt[i] = 0;
-    }
     std::vector<int> dp_list;
     
     std::vector<double> dp_sum; // One interval (start-end) will add one entry on these
     std::vector<double> gc_dp_sum;
     std::vector<int> dp_cnt;
 
-    data[0]->p_vec_rp = &vec_rp;
-    data[0]->p_vec_sp = &vec_sp;
+    data[0]->p_vec_rp = &(pup.vec_rp);
+    data[0]->p_vec_sp = &(pup.vec_sp);
     
     data[0]->sum_isz = 0;
     data[0]->sumsq_isz = 0;
@@ -467,28 +342,15 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
     bam_mplp_t mplp = bam_mplp_init(1, read_bam, (void**) data);
 	bam_mplp_set_maxcnt(mplp, 64000);
     
-    depth100.resize(GC.num_chr + 1);
-	nbin_100.resize(GC.num_chr + 1);
-	nbin_100[0] = 0;
-    
-    for(int i=1; i<=GC.num_chr; ++i)
-    {
-        nbin_100[i] = ceil((double)GC.chrSize[i] / 100.0) + 1 ;
-        depth100[i] = (uint16_t *) calloc(nbin_100[i], sizeof(uint16_t));
-		
-		DMSG("chr " << i << " bin size " << nbin_100[i]);
-    }
-    
     int sum100=0;
     int n100=0;
     
     int prev_chrnum = 1;
     int prev_pos = 1;
     
-
 	std::cerr << "processing chr 1" << std::endl;
     
-    while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0 && tid < GC.num_chr)
+    while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0 && tid < pup.gc.num_chr)
     {
         int chrnum = tid+1;
         
@@ -503,15 +365,16 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
             {
                	int val = round((double) (sum100 * 32) / n100); // Now Depth100 stores (depth*32) as value
                 if (val>65535) val=65535; // handle overflow, though unlikely
-                depth100[prev_chrnum][prev_pos/100] = (uint16_t) val;
+                pup.depth100[prev_chrnum][prev_pos/100] = (uint16_t) val;
             }
 			std::cerr << "n_isz : " << data[0]->n_isz << ", sum_isz : " << data[0]->sum_isz << ", sumsq_isz : " << data[0]->sumsq_isz << std::endl;
 
-			uint8_t bin = GC.gc_array[prev_chrnum][(int)prev_pos * 2 / GC.binsize];
-			if (bin<GC.num_bin)
+            // TODO: encapsulate this code
+			uint8_t bin = pup.gc.gc_array[prev_chrnum][(int)prev_pos * 2 / pup.gc.binsize];
+			if (bin<pup.gc.num_bin)
 			{
-				gc_sum[bin] += sum100;
-				gc_cnt[bin] += n100;
+				pup.gc_sum[bin] += sum100;
+				pup.gc_cnt[bin] += n100;
 			}
 	
             sum100=0;
@@ -526,14 +389,15 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
             {
                 int val = round((double) (sum100 * 32) / n100);
                 if (val>65535) val=65535; // handle overflow
-                depth100[chrnum][prev_pos/100] = (uint16_t) val;
+                pup.depth100[chrnum][prev_pos/100] = (uint16_t) val;
             }
-
-			uint8_t bin = GC.gc_array[chrnum][(int)prev_pos * 2 / GC.binsize];
-			if (bin<GC.num_bin)
+            
+            // TODO: encapsulate this code
+			uint8_t bin = pup.gc.gc_array[chrnum][(int)prev_pos * 2 / pup.gc.binsize];
+			if (bin<pup.gc.num_bin)
 			{
-				gc_sum[bin] += sum100;
-				gc_cnt[bin] += n100;
+				pup.gc_sum[bin] += sum100;
+				pup.gc_cnt[bin] += n100;
 			}
 	
             sum100=0;
@@ -550,19 +414,14 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
         {
             if (vec_bp[nxt].bptype == 0)
             {
-		//		std::cerr<<"adding bp idx " << vec_bp[nxt].idx << " pos " <<  vec_bp[nxt].pos;
             	dp_list.push_back(vec_bp[nxt].idx);
-		//		std::cerr << " dp_list [";
-		//		for(int ii=0;ii<dp_list.size();++ii)
-		//			std::cerr << dp_list[ii] << " " ;
-		//		std::cerr << "]" << std::endl;
-
             }
             else
             {                
                 std::vector<int>::iterator dp_it = find(dp_list.begin(), dp_list.end(), vec_bp[nxt].idx) ;
 				if (dp_it == dp_list.end())
 				{
+                    // Error: idx to be removed is not in dp_list
 					int idx_nxt = vec_bp[nxt].idx;
 					std::cerr << "Error, idx " << vec_bp[nxt].idx << " bptype " << vec_bp[nxt].bptype << " bp pos " << vec_bp[nxt].pos << ", sv " << vec_sv[idx_nxt].chrnum << ":" << vec_sv[idx_nxt].pos << "-" << vec_sv[idx_nxt].end << std::endl;
 					std::cerr << " dp_list [";
@@ -572,20 +431,9 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
 					exit(1);
 				}
 				else
-				{
-		//			std::cerr << " dp_list [";
-		//			for(int ii=0;ii<dp_list.size();++ii)
-		//				std::cerr << dp_list[ii] << " " ;
-		//			std::cerr << "]" << std::endl;
-	
-		//			std::cerr<<"removing bp idx " << vec_bp[nxt].idx << " pos " <<  vec_bp[nxt].pos;
+                {
 					*dp_it=dp_list.back();
 					dp_list.pop_back();
-
-	//				std::cerr << " dp_list [";
-	//				for(int ii=0;ii<dp_list.size();++ii)
-	//					std::cerr << dp_list[ii] << " " ;
-	//				std::cerr << "]" << std::endl;
 				}
             }
 
@@ -600,19 +448,15 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
                 ++m;
         }
         int dpval = n_plp[0]-m;
-
-        // double gc_dpval = dpval;
-        // gc_dpval = gcCorrected(dpval, chrnum, pos);
         
-        //sum100 += gc_dpval;
         sum100 += dpval;
         n100 ++;
+        
         // for whole-genome average
         sum_dp += dpval;
         sumsq_dp += dpval * dpval;
         n_dp += 1;
         
-    
 		for(size_t ii=0; ii<dp_list.size(); ++ii)
 		{
 			/*
@@ -625,28 +469,28 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
 			vec_sv[dp_list[ii]].n_dp += 1;
 		}
     }
-    avg_dp = (double) sum_dp / n_dp;
-    std_dp = sqrt(((double)sumsq_dp / n_dp - (avg_dp*avg_dp)));
+    pup.avg_dp = (double) sum_dp / n_dp;
+    pup.std_dp = sqrt(((double)sumsq_dp / n_dp - (pup.avg_dp*pup.avg_dp)));
     
     // Calculate GC-curve and save it with original DP to maximize information preservation instead of storing GC-corrected depths only
-    for(int i=0;i<GC.num_bin;++i)
+    for(int i=0;i<pup.gc.num_bin;++i)
     {
-        if (gc_cnt[i]>20)
+        if (pup.gc_cnt[i]>20)
         {
-            gc_factor[i] = avg_dp / ((double)gc_sum[i] / gc_cnt[i]) ; // multiplication factor
+            pup.gc_factor[i] = pup.avg_dp / ((double)pup.gc_sum[i] / pup.gc_cnt[i]) ; // multiplication factor
         }
         else
         {
-            gc_factor[i] = 0;
+            pup.gc_factor[i] = 0;
         }
     }
 
 	std::cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << std::endl;
-    avg_isize = data[0]->sum_isz / (double)data[0]->n_isz;
-    std_isize = sqrt((double)data[0]->sumsq_isz /(double)data[0]->n_isz - ((double)avg_isize*avg_isize));
+    pup.avg_isize = data[0]->sum_isz / (double)data[0]->n_isz;
+    pup.std_isize = sqrt((double)data[0]->sumsq_isz /(double)data[0]->n_isz - ((double)pup.avg_isize * pup.avg_isize));
 
 	std::cerr << "n_isz : " << data[0]->n_isz << ", sum_isz : " << data[0]->sum_isz << ", sumsq_isz : " << data[0]->sumsq_isz << std::endl;
-	std::cerr << "avg_isz : " << avg_isize << ", std_isize : " << std_isize << std::endl;
+	std::cerr << "avg_isz : " << pup.avg_isize << ", std_isize : " << pup.std_isize << std::endl;
 
     sam_itr_destroy(data[0]->iter);
     free(plp); free(n_plp);
@@ -654,7 +498,7 @@ void bFile::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<s
 }
 
 
-void bFile::postprocess_depth(std::vector<sv> &vec_sv)
+void BamCram::postprocess_depth(std::vector<sv> &vec_sv)
 {
 
     // Update average depth of each SV
@@ -675,6 +519,44 @@ void bFile::postprocess_depth(std::vector<sv> &vec_sv)
     }
 }
 
+
+void BamCram::initialize(string &bname)
+{
+    
+    data = (aux_t**)calloc(1, sizeof(aux_t*));
+    data[0] = (aux_t*)calloc(1, sizeof(aux_t));
+    data[0]->fp = hts_open(bname.c_str(), "r");
+    
+    int rf = SAM_FLAG |  SAM_MAPQ | SAM_QUAL| SAM_POS | SAM_SEQ | SAM_CIGAR| SAM_TLEN | SAM_RNEXT | SAM_PNEXT;
+    if (hts_set_opt(data[0]->fp, CRAM_OPT_REQUIRED_FIELDS, rf))
+    {
+        std::cerr << "Failed to set CRAM_OPT_REQUIRED_FIELDS value" << std::endl;
+        exit(1);
+    }
+    if (hts_set_opt(data[0]->fp, CRAM_OPT_DECODE_MD, 0))
+    {
+        fprintf(stderr, "Failed to set CRAM_OPT_DECODE_MD value\n");
+        exit(1);
+    }
+    
+    data[0]->min_mapQ = 1;
+    data[0]->min_len = 0;
+    data[0]->hdr = sam_hdr_read(data[0]->fp);;
+    
+    if (data[0]->hdr == NULL)
+    {
+        std::cerr << "Cannot open CRAM/BAM header" << std::endl;
+        exit(1);
+    }
+    
+    hts_idx_t* tmp_idx = sam_index_load(data[0]->fp, bname.c_str());
+    if (tmp_idx == NULL)
+    {
+        std::cerr << "Cannot open CRAM/BAM index" << std::endl;
+        exit(1);
+    }
+    idx = tmp_idx;
+}
 
 /*
  static readpart which_readpart(const bam1_t *b)
@@ -776,7 +658,7 @@ void bFile::postprocess_depth(std::vector<sv> &vec_sv)
 
 /*
 // Get (overlapping) list of SV intervals, return average depth and GC-corrected average depth on intervals
-void bFile::read_depth(std::vector<sv> &m_interval, std::vector<string> &G )
+void BamCram::read_depth(std::vector<sv> &m_interval, std::vector<string> &G )
 {
 	char reg[100];
 	
@@ -991,7 +873,7 @@ void bFile::read_depth(std::vector<sv> &m_interval, std::vector<string> &G )
 }*/
 
 /*
- void bFile::get_avg_depth()
+ void BamCram::get_avg_depth()
  {
  std::vector<double> sums (GC.num_bin, 0);
  std::vector<double> cnts (GC.num_bin, 0);
@@ -1114,9 +996,9 @@ void bFile::read_depth(std::vector<sv> &m_interval, std::vector<string> &G )
  */
 
 
-//void bFile::process_readpair(sv &currsv, std::vector<int> &isz_list, std::vector<int> &pos_list, string &txt)
+//void BamCram::process_readpair(sv &currsv, std::vector<int> &isz_list, std::vector<int> &pos_list, string &txt)
 /*
- void bFile::process_readpair(sv &currsv, std::vector<int> &isz_list, string &txt)
+ void BamCram::process_readpair(sv &currsv, std::vector<int> &isz_list, string &txt)
  {
  
  std::vector<int> P_isz;

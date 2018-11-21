@@ -9,8 +9,9 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
-#include "gcContent.h"
+#include "gc_content.h"
 #include "debug.h"
+#include <math.h>
 
 void readmagic(std::ifstream &F)
 {
