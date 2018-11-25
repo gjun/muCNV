@@ -48,11 +48,11 @@ std::vector<size_t> sort_indexes(const std::vector<T> &v) {
 	return idx;
 }
 
-
-
-
 bool in_centrome(sv &);
 bool in_centrome(int, int);
+
+int find_overlap_sv(sv& , std::vector<sv>&);
+
 
 class svdata
 {
@@ -330,7 +330,7 @@ int read_candidate_vcf(std::ifstream &, sv&, string& );
 
 double RO(sv &, sv &);
 void merge_svs(std::vector<sv> &, std::vector<int> &);
-void cluster_svs(std::vector<sv>&, std::vector< std::vector<sv> > &);
+void cluster_svs(std::vector<sv>&, std::vector< std::vector<sv> > &, double);
 
 double BayesError(std::vector<Gaussian>&);
 double BayesError(std::vector<Gaussian2>&);
@@ -344,7 +344,7 @@ int median(std::vector<int> &);
 
 bool ordered(std::vector<Gaussian> &);
 
-void read_vcf_list(string &, std::vector<string>&);
+void read_list(string &, std::vector<string>&);
 void read_index(string, std::vector<string>&, std::vector<string>&, std::vector<string>&, std::vector<double>&);
 
 void readIndex(string, std::vector<string>&, std::vector<string>&, std::vector<string>&, std::vector<string>&);

@@ -15,6 +15,8 @@
 
 #include <string>
 #include <vector>
+#include <iostream>
+#include <fstream>
 
 class readpair
 {
@@ -37,7 +39,7 @@ public:
     int16_t secondclip; // soft clip position (+: left-side, -: right-side) in secondary alignment
 };
 
-class Pileup
+class SampleStat
 {
 public:
     double avg_dp;
@@ -46,6 +48,12 @@ public:
     double std_isize;
     double med_isize;
     double avg_rlen;
+};
+
+class Pileup
+{
+public:
+    SampleStat stat;
     
     GcContent& gc;
     // Get GC corrected depth for chr / pos
@@ -55,42 +63,29 @@ public:
     
     std::vector< uint16_t * > depth100; // to store depth for every 100bp interval
     std::vector<int> nbin_100;
-    
-    std::vector<uint64_t> gc_sum;
-    std::vector<uint64_t> gc_cnt;
+
     
     std::vector<readpair> vec_rp;
     std::vector<splitread> vec_sp;
     
-    void write(std::string &, std::vector<sv> &);
-    void write_text(std::string &, std::vector<sv> &);
+    Pileup(GcContent &x) : gc(x) {};
+    void initialize();
     
-    Pileup(GcContent &x) : gc(x) {
-        // Check whether gc is initialized correctly
-        gc_factor.resize(gc.num_bin);
-        gc_sum.resize(gc.num_bin);
-        gc_cnt.resize(gc.num_bin);
-        
-        for(int i=0;i<gc.num_bin;++i)
-        {
-            gc_sum[i] = 0;
-            gc_cnt[i] = 0;
-        }
-        
-        depth100.resize(gc.num_chr + 1);
-        nbin_100.resize(gc.num_chr + 1);
-        nbin_100[0] = 0;
-        
-        for(int i=1; i<=gc.num_chr; ++i)
-        {
-            nbin_100[i] = ceil((double)gc.chr_size[i] / 100.0) + 1 ;
-            depth100[i] = (uint16_t *) calloc(nbin_100[i], sizeof(uint16_t));
-            
-            DMSG("chr " << i << " bin size " << nbin_100[i]);
-        }
-        
-        
-    };
+    int write_number(std::ofstream&, int);
+    int write_sample_id(std::ofstream&, std::string &);
+    int write_sample_stat(std::ofstream&, SampleStat &);
+    int write_gc_factor(std::ofstream&, std::vector<double>&);
+    int write_depth(std::ofstream&, uint16_t*, int);
+    int write_readpair(std::ofstream&, readpair&);
+    int write_splitread(std::ofstream&, splitread&);
+    
+    int read_number(std::ifstream&, int);
+    int read_sample_id(std::ifstream&, char *);
+    int read_sample_stat(std::ifstream&, SampleStat &);
+    int read_gc_factor(std::ifstream&, std::vector<double>&);
+    int read_depth(std::ifstream&, uint16_t*, int);
+    int read_readpair(std::ifstream&, readpair&);
+    int read_splitread(std::ifstream&, splitread&);
 };
 
 

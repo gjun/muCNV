@@ -17,9 +17,6 @@
 
 #include "muCNV.h"
 
-extern double BE_THRESHOLD;
-extern double P_THRESHOLD;
-
 bool ordered(std::vector<Gaussian> &C)
 {
 	for(unsigned i=0; i<C.size()-1;++i)
@@ -88,7 +85,7 @@ int gtype::assign(double x, std::vector<Gaussian> &C)
 		return -1;
 	}
 	
-	if (max_R > 0.1) //   P_THRESHOLD)
+	if (max_R > 0.1)
 	{
 		return -1;
 	}

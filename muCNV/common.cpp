@@ -78,6 +78,39 @@ svType svTypeNum(int t)
     return DEL;
 }
 
+int find_overlap_sv(sv &S , std::vector<sv>& dels)
+{
+    int idx = 0;
+    double max_RO = 0;
+    double max_idx = 0;
+    
+    if (S.pos > 5000000)
+    {
+        idx = find_start(dels, S.pos - 5000000);
+    }
+    while(dels[idx].pos < S.end && idx<(int)dels.size())
+    {
+        if (dels[idx].end > S.pos)
+        {
+            double r = RO(dels[idx], S);
+            if (r>max_RO)
+            {
+                max_RO = r;
+                max_idx = idx;
+            }
+        }
+        idx++;
+    }
+    if (max_RO>0.6)
+    {
+        return max_idx;
+    }
+    else
+    {
+        return -1;
+    }
+}
+
 bool in_centrome(int chrnum, int pos)
 {
     // GRCh38 Centromere coordinates , hardcoded

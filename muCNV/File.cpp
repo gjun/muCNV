@@ -34,7 +34,7 @@ svType get_svtype(string &s)
         return BND;
 }
 
-void read_vcf_list(string &index_file, std::vector<string> &vcf_files)
+void read_list(string &index_file, std::vector<string> &items)
 {
 	std::ifstream inFile(index_file.c_str(), std::ios::in);
 	
@@ -44,10 +44,10 @@ void read_vcf_list(string &index_file, std::vector<string> &vcf_files)
 		getline(inFile,ln);
 		if (!ln.empty())
 		{
-			vcf_files.push_back(ln);
+			items.push_back(ln);
 		}
 	}
-	std::cerr << vcf_files.size() << " VCF files exist in the index file." << std::endl;
+	std::cerr << items.size() << " items exist in the index file " << index_file << std::endl;
 }
 	
 void read_index(string index_file, std::vector<string> &sample_ids, std::vector<string> &vcf_files, std::vector<string> &bam_files, std::vector<double> &avg_depths)

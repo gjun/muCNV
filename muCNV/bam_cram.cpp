@@ -320,6 +320,9 @@ void BamCram::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector
     uint64_t sumsq_dp = 0;
     uint64_t n_dp = 0;
     
+    std::vector<uint64_t> gc_sum;
+    std::vector<uint64_t> gc_cnt;
+    
     std::vector<int> dp_list;
     
     std::vector<double> dp_sum; // One interval (start-end) will add one entry on these
@@ -335,12 +338,23 @@ void BamCram::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector
 
 	data[0]->n_rp = 0;
 	data[0]->n_sp = 0;
+
+    gc_sum.resize(pup.gc.num_bin);
+    gc_cnt.resize(pup.gc.num_bin);
+    
+    for(int i=0;i<pup.gc.num_bin;++i)
+    {
+        gc_sum[i] = 0;
+        gc_cnt[i] = 0;
+    }
+    
     
     int* n_plp = (int *) calloc(1, sizeof(int));;
     const bam_pileup1_t **plp = (const bam_pileup1_t **) calloc(1, sizeof(bam_pileup1_t*));
 
     bam_mplp_t mplp = bam_mplp_init(1, read_bam, (void**) data);
 	bam_mplp_set_maxcnt(mplp, 64000);
+    
     
     int sum100=0;
     int n100=0;
@@ -373,8 +387,8 @@ void BamCram::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector
 			uint8_t bin = pup.gc.gc_array[prev_chrnum][(int)prev_pos * 2 / pup.gc.binsize];
 			if (bin<pup.gc.num_bin)
 			{
-				pup.gc_sum[bin] += sum100;
-				pup.gc_cnt[bin] += n100;
+				gc_sum[bin] += sum100;
+				gc_cnt[bin] += n100;
 			}
 	
             sum100=0;
@@ -396,8 +410,8 @@ void BamCram::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector
 			uint8_t bin = pup.gc.gc_array[chrnum][(int)prev_pos * 2 / pup.gc.binsize];
 			if (bin<pup.gc.num_bin)
 			{
-				pup.gc_sum[bin] += sum100;
-				pup.gc_cnt[bin] += n100;
+				gc_sum[bin] += sum100;
+				gc_cnt[bin] += n100;
 			}
 	
             sum100=0;
@@ -469,15 +483,19 @@ void BamCram::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector
 			vec_sv[dp_list[ii]].n_dp += 1;
 		}
     }
-    pup.avg_dp = (double) sum_dp / n_dp;
-    pup.std_dp = sqrt(((double)sumsq_dp / n_dp - (pup.avg_dp*pup.avg_dp)));
+    
+    // TODO: refactor this..
+
+    pup.stat.avg_dp = (double) sum_dp / n_dp;
+    pup.stat.std_dp = sqrt(((double)sumsq_dp / n_dp - (pup.stat.avg_dp * pup.stat.avg_dp)));
+    
     
     // Calculate GC-curve and save it with original DP to maximize information preservation instead of storing GC-corrected depths only
     for(int i=0;i<pup.gc.num_bin;++i)
     {
-        if (pup.gc_cnt[i]>20)
+        if (gc_cnt[i]>20)
         {
-            pup.gc_factor[i] = pup.avg_dp / ((double)pup.gc_sum[i] / pup.gc_cnt[i]) ; // multiplication factor
+            pup.gc_factor[i] = pup.stat.avg_dp / ((double)gc_sum[i] / gc_cnt[i]) ; // multiplication factor
         }
         else
         {
@@ -486,11 +504,11 @@ void BamCram::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector
     }
 
 	std::cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << std::endl;
-    pup.avg_isize = data[0]->sum_isz / (double)data[0]->n_isz;
-    pup.std_isize = sqrt((double)data[0]->sumsq_isz /(double)data[0]->n_isz - ((double)pup.avg_isize * pup.avg_isize));
-
-	std::cerr << "n_isz : " << data[0]->n_isz << ", sum_isz : " << data[0]->sum_isz << ", sumsq_isz : " << data[0]->sumsq_isz << std::endl;
-	std::cerr << "avg_isz : " << pup.avg_isize << ", std_isize : " << pup.std_isize << std::endl;
+    pup.stat.avg_isize = data[0]->sum_isz / (double)data[0]->n_isz;
+    pup.stat.std_isize = sqrt((double)data[0]->sumsq_isz /(double)data[0]->n_isz - ((double)pup.stat.avg_isize * pup.stat.avg_isize));
+    
+    std::cerr << "n_isz : " << data[0]->n_isz << ", sum_isz : " << data[0]->sum_isz << ", sumsq_isz : " << data[0]->sumsq_isz << std::endl;
+	std::cerr << "avg_isz : " << pup.stat.avg_isize << ", std_isize : " << pup.stat.std_isize << std::endl;
 
     sam_itr_destroy(data[0]->iter);
     free(plp); free(n_plp);

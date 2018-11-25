@@ -18,8 +18,6 @@
 #include "muCNV.h"
 #include <algorithm>
 
-extern double RO_THRESHOLD;
-
 double RO(sv &x, sv &y)
 {
 	double l = 0;
@@ -82,7 +80,7 @@ void merge_svs(std::vector<sv> &candidates , std::vector<int> &idxs)
 	}
 }
 
-void cluster_svs(std::vector<sv> &candidates , std::vector< std::vector<sv> > &merged_candidates)
+void cluster_svs(std::vector<sv> &candidates , std::vector< std::vector<sv> > &merged_candidates, double RO_THRESHOLD)
 {
 
 	int curr = 0;
