@@ -51,33 +51,36 @@ int main(int argc, char** argv)
     
     // muCNV merge
     //      merge single-sample pileups into multi-sample mpileups
-    else if (strcmp(argv[1], "merge"))
+    else if (strcmp(argv[1], "merge") == 0)
         ret = main_merge_pileup(argc-1, argv+1);
 
     // muCNV genotype
     //      variant call (uses: read multiple mpileup or pileup, call variants, weights(?), VCF out)
-    else if (strcmp(argv[1], "genotype"))
+    else if (strcmp(argv[1], "genotype") == 0)
         ret = main_genotype(argc-1, argv+1);
 
     // muCNV print
     //      read single-sample or multi-sample pileup to print out
-    else if (strcmp(argv[1], "print"))
+    else if (strcmp(argv[1], "print") == 0)
         ret = main_print_pileup(argc-1, argv+1);
 
     // muCNV vcf2int
     //      read VCF to make binary interval lists
-    else if (strcmp(argv[1], "vcf2int"))
+    else if (strcmp(argv[1], "vcf2int") == 0)
         ret = main_vcf_to_int(argc-1, argv+1);
 
     // muCNV gcidx
     //      Generate GC content table from reference FASTA
-    else if (strcmp(argv[1], "gcidx"))
+    else if (strcmp(argv[1], "gcidx") == 0)
         ret = main_gcidx(argc-1, argv+1);
     
     // muCNV filter
     //      Merge / filter SVs from VCF
-    else if (strcmp(argv[1], "gcidx"))
+    else if (strcmp(argv[1], "gcidx") == 0)
         ret = main_filter(argc-1, argv+1);
 
+    else
+        std::cerr << "Usage: muCNV 'command' [options]" << std::endl;
+    
     return ret;
 }
