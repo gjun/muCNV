@@ -109,7 +109,7 @@ int Pileup::write_splitread(std::ofstream &pileup_file, splitread& sp)
     return ret;
 }
 
-int Pileup::read_number(std::ifstream &pileup_file, int number)
+int Pileup::read_number(std::ifstream &pileup_file, int& number)
 {
     pileup_file.read(reinterpret_cast<char*>(&number), sizeof(int));
     return(sizeof(int));

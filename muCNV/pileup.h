@@ -79,7 +79,7 @@ public:
     int write_readpair(std::ofstream&, readpair&);
     int write_splitread(std::ofstream&, splitread&);
     
-    int read_number(std::ifstream&, int);
+    int read_number(std::ifstream&, int&);
     int read_sample_id(std::ifstream&, char *);
     int read_sample_stat(std::ifstream&, SampleStat &);
     int read_gc_factor(std::ifstream&, std::vector<double>&);
