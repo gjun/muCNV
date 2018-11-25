@@ -12,6 +12,7 @@
 #include "gc_content.h"
 #include "debug.h"
 #include <math.h>
+#include <string.h>
 
 void readmagic(std::ifstream &F)
 {

@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <map>
+#include <string.h>
 
 #include "muCNV.h"
 #include "gc_content.h"
