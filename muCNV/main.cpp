@@ -46,6 +46,12 @@ int main(int argc, char** argv)
 
     // muCNV pileup
     //      single-sample pileup
+    if (argc<2)
+    {
+        std::cerr << "Usage: muCNV 'command' [options]" << std::endl;
+        return 0;
+    }
+    
     if (strcmp(argv[1], "pileup") == 0)
         ret = main_pileup(argc-1, argv+1);
     
