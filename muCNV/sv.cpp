@@ -103,7 +103,7 @@ bool sv::operator == (const sv& s) const
 
 void sv::print(void)
 {
-    printf("%d:%d-%d, %s\n", chrnum, pos, end, svTypeName(svtype).c_str());
+    printf("%d:%d-%d_%s", chrnum, pos, end, svTypeName(svtype).c_str());
 }
 
 

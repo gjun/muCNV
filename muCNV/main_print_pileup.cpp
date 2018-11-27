@@ -197,14 +197,14 @@ int main_print_pileup(int argc, char** argv)
     
     for(int j=0;j<n_var;++j)
     {
-        printf("Var %d:", j);
+        vec_sv[j].print();
         for(int i=0; i<n_sample; ++i)
         {
             uint16_t dp;
-            vec_sv[i].print();
             var_file.read_depth(&dp, 1);
-            printf("\t%f\n", (dp/32.0));
+            printf("\t%f", (dp/32.0));
         }
+        printf("\n");
     }
     var_file.close();
     
