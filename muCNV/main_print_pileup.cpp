@@ -110,7 +110,10 @@ int main_print_pileup(int argc, char** argv)
         printf("GC-factors for sapmle %d:\n", i);
         std::vector<double> gc_factor (gc.num_bin);
         pup.read_gc_factor(gc_factor, gc.num_bin);
-        printf("GC-bin %d: %f\n", i, gc_factor[i]);
+        for(int j=0; j<gc.num_bin; ++j)
+        {
+            printf("GC-bin %d: %f\n", j, gc_factor[j]);
+        }
     }
 
     idx_file.read_uint64(curr_idx);

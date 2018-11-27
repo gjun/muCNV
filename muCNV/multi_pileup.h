@@ -12,10 +12,15 @@
 #include <stdio.h>
 #include "pileup.h"
 
+using std::string;
+
 class MultiPileup : public Pileup
 {
-    void read_sample_ids(std::vector<std::string>&);
-    
+/*    void read();
+    void read_depth100();
+    void read_var_depth();
+    void read_pair_split();
+  */
     // Get GC corrected depth for chr / pos
   //  double gcCorrected(double, int, int);
     
