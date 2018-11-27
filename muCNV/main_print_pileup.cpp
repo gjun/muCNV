@@ -13,6 +13,7 @@
 
 #include "muCNV.h"
 #include "gc_content.h"
+#include "pileup.h"
 
 int main_print_pileup(int argc, char** argv)
 {
@@ -63,6 +64,7 @@ int main_print_pileup(int argc, char** argv)
     std::vector<sv> vec_sv;
     std::vector<breakpoint> vec_bp;
     
+    // mvar, mpileup ?
     string pileup_name = sampID + ".pileup";
     string varfile_name = sampID + ".var";
     string idxfile_name = sampID + ".idx";
@@ -71,115 +73,140 @@ int main_print_pileup(int argc, char** argv)
     // read out and print pileup info
     read_svs_from_intfile(interval_file, vec_bp, vec_sv);
     
-    std::ifstream pileupFile(pileup_name.c_str(), std::ios::in | std::ios::binary);
-    std::ifstream varFile(varfile_name.c_str(), std::ios::in | std::ios::binary);
-    std::ifstream idxFile(idxfile_name.c_str(), std::ios::in | std::ios::binary);
+    Pileup pup;
+    Pileup var_file;
+    BaseFile idx_file;
     
-    size_t curr_idx = 0;
+    pup.open(pileup_name, std::ios::in | std::ios::binary);
+    var_file.open(varfile_name, std::ios::in | std::ios::binary);
+    idx_file.open(idxfile_name, std::ios::in | std::ios::binary);
     
-    char buf[256];
+    uint64_t curr_idx = 0;
     
-    pileupFile.read(reinterpret_cast<char*>(&n_sample), sizeof(int));
+    pup.read_int32(n_sample);
     printf("n_sample(pileup) : %d \n", n_sample);
-    // TODO: read N-sample IDs
-    pileupFile.read(reinterpret_cast<char *>(buf), 256);
-    printf("sample ID(pileup) : %s\n", buf);
+
+    printf("SampleID:");
+    for(int i=0; i<n_sample; ++i)
+    {
+        char buf[256];
+        pup.read_sample_id(buf);
+        printf("\t%s", buf);
+    }
+    printf("\n");
     
-    double avg_dp, std_dp, avg_isize, std_isize;
-    pileupFile.read(reinterpret_cast<char*>(&avg_dp), sizeof(double));
-    pileupFile.read(reinterpret_cast<char*>(&std_dp), sizeof(double));
-    pileupFile.read(reinterpret_cast<char*>(&avg_isize), sizeof(double));
-    pileupFile.read(reinterpret_cast<char*>(&std_isize), sizeof(double));
-    
-    printf("AVG DP: %f, STdev: %f, AVG ISIZE: %f, STdev: %f \n", avg_dp, std_dp, avg_isize, std_isize);
+    for(int i=0; i<n_sample; ++i)
+    {
+        SampleStat s;
+        pup.read_sample_stat(s);
+        printf("Sample %d, AVG DP: %f, STdev: %f, AVG ISIZE: %f, STdev: %f \n", i, s.avg_dp, s.std_dp, s.avg_isize, s.std_isize);
+    }
     
     GcContent gc;
     gc.initialize(gc_file);
     
-    // TODO: Use Pileup::gc_factor
-    
-    std::vector<double> gc_factor (gc.num_bin);
-    
-    for(int i=0;i<gc.num_bin;++i)
+    for(int i=0; i<n_sample; ++i)
     {
-        pileupFile.read(reinterpret_cast<char*>(&(gc_factor[i])), sizeof(double));
+        printf("GC-factors for sapmle %d:\n", i);
+        std::vector<double> gc_factor (gc.num_bin);
+        pup.read_gc_factor(gc_factor, gc.num_bin);
         printf("GC-bin %d: %f\n", i, gc_factor[i]);
     }
-    idxFile.read(reinterpret_cast<char*>(&curr_idx), sizeof(size_t));
-    printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pileupFile.tellg());
+
+    idx_file.read_uint64(curr_idx);
+    printf("index position %d, tellg position %lu\n", (int)curr_idx, (unsigned long)pup.tellg());
     
-    uint64_t dpsum = 0;
-    uint64_t n_dp = 0;
+    std::vector<uint64_t> dpsum (n_sample, 0);
+    std::vector<uint64_t> n_dp (n_sample, 0);
     
-    for(int i=1; i<=gc.num_chr; ++i)
+    for(int c=1; c<=gc.num_chr; ++c)
     {
-        int N = ceil((double)gc.chr_size[i] / 100.0) + 1;
+        int N = ceil((double)gc.chr_size[c] / 100.0) + 1;
         uint16_t dp100;
         for(int j=0;j<N;++j)
         {
-            pileupFile.read(reinterpret_cast<char*>(&dp100), sizeof(uint16_t));
-            dpsum += dp100;
-            n_dp+=1;
+            for(int i=0; i<n_sample; ++i)
+            {
+                pup.read_depth(&dp100, 1);
+                dpsum[i] += dp100;
+                n_dp[i] +=1;
+            }
         }
     }
-    printf("Average DP100: %d\n", (int)round((double)dpsum/n_dp/32.0));
-    
-    while(pileupFile.good())
+    for(int i=0; i<n_sample; ++i)
     {
-        uint32_t n_rp = 0;
-        uint32_t n_sp = 0;
+        printf("Sample %d, average DP100: %d\n", i, (int)round((double)dpsum[i]/n_dp[i]/32.0));
+    }
+    
+    
+    for(int c=1;c<=gc.num_chr; ++c)
+    {
+        int N = ceil((double)gc.chr_size[c] / 10000.0) ;
         
-        idxFile.read(reinterpret_cast<char*>(&curr_idx), sizeof(size_t));
-        printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pileupFile.tellg());
-        
-        pileupFile.read(reinterpret_cast<char*>(&n_rp), sizeof(uint32_t));
-        printf("%d readpairs\n", n_rp);
-        for(int k=0; k<n_rp; ++k)
+        for(int j=1;j<=N;++j)
         {
-            int8_t chrnum, pairstr;
-            uint8_t matequal;
-            int32_t selfpos, matepos;
-            pileupFile.read(reinterpret_cast<char*>(&(chrnum)), sizeof(int8_t));
-            pileupFile.read(reinterpret_cast<char*>(&(selfpos)), sizeof(int32_t));
-            pileupFile.read(reinterpret_cast<char*>(&(matepos)), sizeof(int32_t));
-            pileupFile.read(reinterpret_cast<char*>(&(matequal)), sizeof(uint8_t));
-            pileupFile.read(reinterpret_cast<char*>(&(pairstr)), sizeof(int8_t));
-            printf("\t%d\t%d\t%d\t%u\t%d\n", chrnum, selfpos, matepos, matequal, pairstr);
-        }
-        
-        pileupFile.read(reinterpret_cast<char*>(&n_sp), sizeof(uint32_t));
-        printf("%d split reads\n", n_sp);
-        for(int k=0; k<n_sp; ++k)
-        {
-            int8_t chrnum;
-            int32_t pos, sapos;
-            int16_t firstclip, secondclip;
-            pileupFile.read(reinterpret_cast<char*>(&(chrnum)), sizeof(int8_t));
-            pileupFile.read(reinterpret_cast<char*>(&(pos)), sizeof(int32_t));
-            pileupFile.read(reinterpret_cast<char*>(&(sapos)), sizeof(int32_t));
-            pileupFile.read(reinterpret_cast<char*>(&(firstclip)), sizeof(int16_t));
-            pileupFile.read(reinterpret_cast<char*>(&(secondclip)), sizeof(int16_t));
-            printf("\t%d\t%d\t%d\t%d\t%d\n", chrnum, pos, sapos, firstclip,secondclip);
+            idx_file.read_uint64(curr_idx);
+            printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pup.tellg());
+            
+            for(int i=0; i<n_sample; ++i)
+            {
+                uint32_t n_rp = 0;
+                pup.read_uint32(n_rp);
+                printf("Sample %d, %d readpairs\n", i, n_rp);
+                for(int k=0; k<n_rp; ++k)
+                {
+                    readpair rp;
+                    pup.read_readpair(rp);
+                    printf("\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+                }
+                
+                uint32_t n_sp = 0;
+                pup.read_uint32(n_sp);
+                printf("Sample %d, %d split reads\n", i, n_sp);
+                for(int k=0; k<n_sp; ++k)
+                {
+                    splitread sp;
+                    pup.read_splitread(sp);
+                    printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
+
+                }
+
+            }
         }
     }
-    pileupFile.close();
+
+    pup.close();
+    idx_file.close();
     
     int n_var = 0;
-    varFile.read(reinterpret_cast<char*>(&n_sample), sizeof(int));
-    varFile.read(reinterpret_cast<char*>(&n_var), sizeof(int));
-    printf("n_var : %d\n", n_var);
     
-    varFile.read(reinterpret_cast<char *>(buf), 256);
-    printf("sample ID(var) : %s\n", buf);
+    var_file.read_int32(n_sample);
+    var_file.read_int32(n_var);
     
-    for(int i=0;i<n_var;++i)
+    printf("Variant File, n_sample: %d, n_var : %d\n", n_sample, n_var);
+    
+    printf("Sample ID(s):");
+    for(int i=0; i<n_sample; ++i)
     {
-        uint16_t dp;
-        vec_sv[i].print();
-        varFile.read(reinterpret_cast<char*>(&dp), sizeof(uint16_t));
-        printf("var %d: %f\n",i, (dp/32.0));
+        char buf[256];
+
+        var_file.read_sample_id(buf);
+        printf("\t%s", buf);
     }
-    varFile.close();
+    printf("\n");
+    
+    for(int j=0;j<n_var;++j)
+    {
+        printf("Var %d:", j);
+        for(int i=0; i<n_sample; ++i)
+        {
+            uint16_t dp;
+            vec_sv[i].print();
+            var_file.read_depth(&dp, 1);
+            printf("\t%f\n", (dp/32.0));
+        }
+    }
+    var_file.close();
     
     return 0;
 }

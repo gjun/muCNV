@@ -23,9 +23,12 @@ typedef struct {     // auxiliary data structure
     
     uint32_t n_rp;
     uint32_t n_sp;
+    
     std::vector<readpair> *p_vec_rp;
     std::vector<splitread> *p_vec_sp;
     
+
+
     int min_mapQ, min_len; // mapQ filter; length filter
 } aux_t;
 
@@ -36,21 +39,25 @@ public:
     aux_t **data;
     hts_idx_t* idx;
    // GcContent& GC;
-    Pileup& pup;
+    
+    std::vector<double> gc_factor;
+    std::vector< uint16_t * > depth100; // to store depth for every 100bp interval
+    std::vector<int> nbin_100;
+    
+    SampleStat stat;
+    std::vector<readpair> vec_rp;
+    std::vector<splitread> vec_sp;
     
     //    void read_depth(std::vector<sv> &, std::vector<string> &);
     
-    void read_depth_sequential(std::vector<breakpoint> &, std::vector<sv> &);
+    void read_depth_sequential(Pileup &, GcContent&, std::vector<breakpoint> &, std::vector<sv> &);
     
     //    void process_readpair(sv &, std::vector<int> &, string &);
     //    void get_avg_depth();
     
-    void initialize(string &);
-    void initialize_sequential(string &);
+   // void initialize(string &);
+    void initialize_sequential(string &, GcContent&);
     void postprocess_depth(std::vector<sv> &);
-
-   // BamCram(GcContent &x) : GC(x) {};
-    BamCram(Pileup &x) : pup(x) {};
     
 };
 

@@ -28,6 +28,8 @@
 		F1FEF25F21A9D0B8007EF4D7 /* main_filter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FEF25E21A9D0B8007EF4D7 /* main_filter.cpp */; };
 		F1FEF26121A9D320007EF4D7 /* main_merge_pileup.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FEF26021A9D320007EF4D7 /* main_merge_pileup.cpp */; };
 		F1FEF26321A9F207007EF4D7 /* main_gcidx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FEF26221A9F207007EF4D7 /* main_gcidx.cpp */; };
+		F1FEF26621AB0DFD007EF4D7 /* multi_pileup.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FEF26421AB0DFD007EF4D7 /* multi_pileup.cpp */; };
+		F1FEF26921AB12CF007EF4D7 /* base_file.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FEF26721AB12CF007EF4D7 /* base_file.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -103,6 +105,10 @@
 		F1FEF25E21A9D0B8007EF4D7 /* main_filter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main_filter.cpp; sourceTree = "<group>"; };
 		F1FEF26021A9D320007EF4D7 /* main_merge_pileup.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main_merge_pileup.cpp; sourceTree = "<group>"; };
 		F1FEF26221A9F207007EF4D7 /* main_gcidx.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main_gcidx.cpp; sourceTree = "<group>"; };
+		F1FEF26421AB0DFD007EF4D7 /* multi_pileup.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = multi_pileup.cpp; sourceTree = "<group>"; };
+		F1FEF26521AB0DFD007EF4D7 /* multi_pileup.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = multi_pileup.h; sourceTree = "<group>"; };
+		F1FEF26721AB12CF007EF4D7 /* base_file.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = base_file.cpp; sourceTree = "<group>"; };
+		F1FEF26821AB12CF007EF4D7 /* base_file.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = base_file.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -166,6 +172,10 @@
 				F194ED341F25A41400489E0C /* gtype.cpp */,
 				F138FD7C1CAD744A00CD5539 /* main.cpp */,
 				F1FEF25921A8A8ED007EF4D7 /* main_genotype.cpp */,
+				F1FEF26421AB0DFD007EF4D7 /* multi_pileup.cpp */,
+				F1FEF26721AB12CF007EF4D7 /* base_file.cpp */,
+				F1FEF26821AB12CF007EF4D7 /* base_file.h */,
+				F1FEF26521AB0DFD007EF4D7 /* multi_pileup.h */,
 				F1FEF25B21A8ABAE007EF4D7 /* main_print_pileup.cpp */,
 				F1FEF25521A79495007EF4D7 /* main_pileup.cpp */,
 				F1FEF25E21A9D0B8007EF4D7 /* main_filter.cpp */,
@@ -273,6 +283,7 @@
 			files = (
 				F194ED3B1F2708CC00489E0C /* Gaussian.cpp in Sources */,
 				F1FEF25A21A8A8ED007EF4D7 /* main_genotype.cpp in Sources */,
+				F1FEF26921AB12CF007EF4D7 /* base_file.cpp in Sources */,
 				F138FD8F1CAD74EE00CD5539 /* Error.cpp in Sources */,
 				F1FEF25D21A8ABAE007EF4D7 /* main_print_pileup.cpp in Sources */,
 				F1DB7AD6219B7D7500CCA521 /* pileup.cpp in Sources */,
@@ -283,6 +294,7 @@
 				F114FEA7203B7D5100DE1FBC /* gtype_old.cpp in Sources */,
 				F1FEF25621A79495007EF4D7 /* main_pileup.cpp in Sources */,
 				F13828731FCF36CC003ADE67 /* bam_cram.cpp in Sources */,
+				F1FEF26621AB0DFD007EF4D7 /* multi_pileup.cpp in Sources */,
 				F138FD8C1CAD74EE00CD5539 /* common.cpp in Sources */,
 				F138FD7D1CAD744A00CD5539 /* main.cpp in Sources */,
 				F1FEF26321A9F207007EF4D7 /* main_gcidx.cpp in Sources */,

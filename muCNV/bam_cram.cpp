@@ -276,7 +276,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 }
 
 
-void BamCram::initialize_sequential(string &bname)
+void BamCram::initialize_sequential(string &bname, GcContent &gc)
 {
     data = (aux_t**)calloc(1, sizeof(aux_t*));
     data[0] = (aux_t*)calloc(1, sizeof(aux_t));
@@ -296,11 +296,24 @@ void BamCram::initialize_sequential(string &bname)
         std::cerr << "Cannot open CRAM/BAM header" << std::endl;
         exit(1);
     }
-
     idx = NULL;
+
+    gc_factor.resize(gc.num_bin);
+    
+    depth100.resize(gc.num_chr + 1);
+    nbin_100.resize(gc.num_chr + 1);
+    nbin_100[0] = 0;
+    
+    for(int i=1; i<=gc.num_chr; ++i)
+    {
+        nbin_100[i] = ceil((double)gc.chr_size[i] / 100.0) + 1 ;
+        depth100[i] = (uint16_t *) calloc(nbin_100[i], sizeof(uint16_t));
+        
+        DMSG("chr " << i << " bin size " << nbin_100[i]);
+    }
 }
 
-void BamCram::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector<sv> &vec_sv)
+void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<breakpoint> &vec_bp, std::vector<sv> &vec_sv)
 {
     // vec_bp should have been sorted beforehand
     int tid = -1, pos = -1;
@@ -329,8 +342,8 @@ void BamCram::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector
     std::vector<double> gc_dp_sum;
     std::vector<int> dp_cnt;
 
-    data[0]->p_vec_rp = &(pup.vec_rp);
-    data[0]->p_vec_sp = &(pup.vec_sp);
+    data[0]->p_vec_rp = &(vec_rp);
+    data[0]->p_vec_sp = &(vec_sp);
     
     data[0]->sum_isz = 0;
     data[0]->sumsq_isz = 0;
@@ -339,10 +352,10 @@ void BamCram::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector
 	data[0]->n_rp = 0;
 	data[0]->n_sp = 0;
 
-    gc_sum.resize(pup.gc.num_bin);
-    gc_cnt.resize(pup.gc.num_bin);
+    gc_sum.resize(gc.num_bin);
+    gc_cnt.resize(gc.num_bin);
     
-    for(int i=0;i<pup.gc.num_bin;++i)
+    for(int i=0;i<gc.num_bin;++i)
     {
         gc_sum[i] = 0;
         gc_cnt[i] = 0;
@@ -364,7 +377,7 @@ void BamCram::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector
     
 	std::cerr << "processing chr 1" << std::endl;
     
-    while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0 && tid < pup.gc.num_chr)
+    while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0 && tid < gc.num_chr)
     {
         int chrnum = tid+1;
         
@@ -379,13 +392,13 @@ void BamCram::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector
             {
                	int val = round((double) (sum100 * 32) / n100); // Now Depth100 stores (depth*32) as value
                 if (val>65535) val=65535; // handle overflow, though unlikely
-                pup.depth100[prev_chrnum][prev_pos/100] = (uint16_t) val;
+                depth100[prev_chrnum][prev_pos/100] = (uint16_t) val;
             }
 			std::cerr << "n_isz : " << data[0]->n_isz << ", sum_isz : " << data[0]->sum_isz << ", sumsq_isz : " << data[0]->sumsq_isz << std::endl;
 
             // TODO: encapsulate this code
-			uint8_t bin = pup.gc.gc_array[prev_chrnum][(int)prev_pos * 2 / pup.gc.binsize];
-			if (bin<pup.gc.num_bin)
+			uint8_t bin = gc.gc_array[prev_chrnum][(int)prev_pos * 2 / gc.binsize];
+			if (bin<gc.num_bin)
 			{
 				gc_sum[bin] += sum100;
 				gc_cnt[bin] += n100;
@@ -403,12 +416,12 @@ void BamCram::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector
             {
                 int val = round((double) (sum100 * 32) / n100);
                 if (val>65535) val=65535; // handle overflow
-                pup.depth100[chrnum][prev_pos/100] = (uint16_t) val;
+                depth100[chrnum][prev_pos/100] = (uint16_t) val;
             }
             
             // TODO: encapsulate this code
-			uint8_t bin = pup.gc.gc_array[chrnum][(int)prev_pos * 2 / pup.gc.binsize];
-			if (bin<pup.gc.num_bin)
+			uint8_t bin = gc.gc_array[chrnum][(int)prev_pos * 2 / gc.binsize];
+			if (bin<gc.num_bin)
 			{
 				gc_sum[bin] += sum100;
 				gc_cnt[bin] += n100;
@@ -486,29 +499,29 @@ void BamCram::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector
     
     // TODO: refactor this..
 
-    pup.stat.avg_dp = (double) sum_dp / n_dp;
-    pup.stat.std_dp = sqrt(((double)sumsq_dp / n_dp - (pup.stat.avg_dp * pup.stat.avg_dp)));
+    stat.avg_dp = (double) sum_dp / n_dp;
+    stat.std_dp = sqrt(((double)sumsq_dp / n_dp - (stat.avg_dp * stat.avg_dp)));
     
     
     // Calculate GC-curve and save it with original DP to maximize information preservation instead of storing GC-corrected depths only
-    for(int i=0;i<pup.gc.num_bin;++i)
+    for(int i=0;i<gc.num_bin;++i)
     {
         if (gc_cnt[i]>20)
         {
-            pup.gc_factor[i] = pup.stat.avg_dp / ((double)gc_sum[i] / gc_cnt[i]) ; // multiplication factor
+            gc_factor[i] = stat.avg_dp / ((double)gc_sum[i] / gc_cnt[i]) ; // multiplication factor
         }
         else
         {
-            pup.gc_factor[i] = 0;
+            gc_factor[i] = 0;
         }
     }
 
 	std::cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << std::endl;
-    pup.stat.avg_isize = data[0]->sum_isz / (double)data[0]->n_isz;
-    pup.stat.std_isize = sqrt((double)data[0]->sumsq_isz /(double)data[0]->n_isz - ((double)pup.stat.avg_isize * pup.stat.avg_isize));
+    stat.avg_isize = data[0]->sum_isz / (double)data[0]->n_isz;
+    stat.std_isize = sqrt((double)data[0]->sumsq_isz /(double)data[0]->n_isz - ((double)stat.avg_isize * stat.avg_isize));
     
     std::cerr << "n_isz : " << data[0]->n_isz << ", sum_isz : " << data[0]->sum_isz << ", sumsq_isz : " << data[0]->sumsq_isz << std::endl;
-	std::cerr << "avg_isz : " << pup.stat.avg_isize << ", std_isize : " << pup.stat.std_isize << std::endl;
+	std::cerr << "avg_isz : " << stat.avg_isize << ", std_isize : " << stat.std_isize << std::endl;
 
     sam_itr_destroy(data[0]->iter);
     free(plp); free(n_plp);
@@ -518,7 +531,7 @@ void BamCram::read_depth_sequential(std::vector<breakpoint> &vec_bp, std::vector
 
 void BamCram::postprocess_depth(std::vector<sv> &vec_sv)
 {
-
+    // TODO: make this on-the-fly, not post-process, this is a remnant of 'normalized' and 'GC-corrected' version
     // Update average depth of each SV
     for(int i=0;i<(int)vec_sv.size(); ++i)
     {
@@ -536,7 +549,7 @@ void BamCram::postprocess_depth(std::vector<sv> &vec_sv)
         }
     }
 }
-
+/*
 
 void BamCram::initialize(string &bname)
 {
@@ -575,7 +588,7 @@ void BamCram::initialize(string &bname)
     }
     idx = tmp_idx;
 }
-
+*/
 /*
  static readpart which_readpart(const bam1_t *b)
  {

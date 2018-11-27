@@ -72,8 +72,8 @@ int main_pileup(int argc, char** argv)
     gc.initialize(gc_file);
     std::cerr << "GC content initialized" << std::endl;
     
-    Pileup pup (gc);
-    std::cerr << "Pileup file initialized" << std::endl;
+    // TODO: check whether gc is initialized correctly
+
     
     std::vector<sv> vec_sv;
     std::vector<breakpoint> vec_bp;
@@ -92,43 +92,46 @@ int main_pileup(int argc, char** argv)
         std::cerr << "Error, VCF or Interval file is required." << std::endl;
     }
 
-    std::cerr<< vec_sv.size() << " svs and " << vec_bp.size() << " breakpoints identified from the VCF/Interval file." << std::endl;
+    // Read discovery variant list
+    std::cerr<< vec_sv.size() << " SVs and " << vec_bp.size() << " breakpoints identified from the VCF/Interval file." << std::endl;
     std::vector<int> idxs;
-    
     std::sort(vec_bp.begin(), vec_bp.end());
     
-    BamCram b(pup);
-    
-    b.initialize_sequential(bam_file);
-    std::cerr << "BAM/CRAM file initialized" << std::endl;
-    
-    b.read_depth_sequential(vec_bp, vec_sv);
-   
-    b.postprocess_depth(vec_sv);
-    
     std::string pileup_name = sample_id + ".pileup";
-    std::string var_file_name = sample_id + ".var";
+    std::string varfile_name = sample_id + ".var";
     std::string idxfile_name = sample_id + ".idx";
     
+    // Initialize Pileup
+    Pileup pup;
+    pup.open(pileup_name, std::ios::out | std::ios::binary);
+    std::cerr << "Pileup file initialized" << std::endl;
+
+    //Initialize BAM/CRAM
+    BamCram b;
+    b.initialize_sequential(bam_file, gc);
+    std::cerr << "BAM/CRAM file initialized" << std::endl;
+    // Read BAM/CRAM
+    b.read_depth_sequential(pup, gc, vec_bp, vec_sv);
+    b.postprocess_depth(vec_sv);
+
+    // Write Pileup
     size_t curr_pos = 0;
+
+    BaseFile idx_file;
+    idx_file.open(idxfile_name, std::ios::out | std::ios::binary);
     
-    std::ofstream pileup_file(pileup_name.c_str(), std::ios::out | std::ios::binary);
-    std::ofstream idxFile(idxfile_name.c_str(), std::ios::out | std::ios::binary);
+    curr_pos += pup.write_int32(1);
+    curr_pos += pup.write_sample_id(sample_id);
+    curr_pos += pup.write_sample_stat(b.stat);
+    curr_pos += pup.write_gc_factor(b.gc_factor, gc.num_bin);
     
-    curr_pos += pup.write_number(pileup_file, 1);
-    curr_pos += pup.write_sample_id(pileup_file, sample_id);
-    curr_pos += pup.write_sample_stat(pileup_file, pup.stat);
-    curr_pos += pup.write_gc_factor(pileup_file, pup.gc_factor);
-    
-    idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // 1-st index: where DP100 starts, should be the same for all samples
-    
+    idx_file.write_uint64(curr_pos);
+
     // Write DP100
     for(int i=1; i<=gc.num_chr; ++i)
     {
-        curr_pos += pup.write_depth(pileup_file, pup.depth100[i], pup.nbin_100[i]);
+        curr_pos += pup.write_depth(b.depth100[i], b.nbin_100[i]);
     }
-    
-    //   std::cerr << "After DP100 written, curr_pos is at " << curr_pos << std::endl;
     
     int sp_idx = 0;
     int rp_idx = 0;
@@ -144,9 +147,9 @@ int main_pileup(int argc, char** argv)
         
         for(int j=1;j<=N;++j)
         {
-            idxFile.write(reinterpret_cast<char*>(&curr_pos), sizeof(size_t)); // where each 10,000-bp interval starts;
+            idx_file.write_uint64(curr_pos); // where each 10,000-bp interval starts;
             // RP
-            while(rp_idx < (int)pup.vec_rp.size() && pup.vec_rp[rp_idx].chrnum == i && pup.vec_rp[rp_idx].selfpos <= j*10000)
+            while(rp_idx < (int)b.vec_rp.size() && b.vec_rp[rp_idx].chrnum == i && b.vec_rp[rp_idx].selfpos <= j*10000)
             {
                 rp_idx ++;
             }
@@ -160,18 +163,17 @@ int main_pileup(int argc, char** argv)
             {
                 n_rp = (uint32_t) rp_idx - prev_rp;
             }
-            pileup_file.write(reinterpret_cast<char*>(&n_rp), sizeof(uint32_t));
-            curr_pos += sizeof(uint32_t);
+            curr_pos += pup.write_uint32(n_rp);
             
             for(int k=prev_rp; k<rp_idx; ++k)
             {
-                curr_pos += pup.write_readpair(pileup_file, pup.vec_rp[k]);
+                curr_pos += pup.write_readpair(b.vec_rp[k]);
                 cnt_rp ++;
             }
             prev_rp = rp_idx;
             
             // SP
-            while(sp_idx < (int)pup.vec_sp.size() && pup.vec_sp[sp_idx].chrnum == i && pup.vec_sp[sp_idx].pos <= j*10000)
+            while(sp_idx < (int)b.vec_sp.size() && b.vec_sp[sp_idx].chrnum == i && b.vec_sp[sp_idx].pos <= j*10000)
             {
                 sp_idx ++;
             }
@@ -185,36 +187,36 @@ int main_pileup(int argc, char** argv)
             {
                 n_sp = (uint32_t) sp_idx - prev_sp;
             }
-            pileup_file.write(reinterpret_cast<char*>(&n_sp), sizeof(uint32_t));
-            curr_pos += sizeof(uint32_t);
+            curr_pos += pup.write_uint32(n_sp);
             
             for(int k=prev_sp; k<sp_idx; ++k)
             {
-                curr_pos += pup.write_splitread(pileup_file, pup.vec_sp[k]);
+                curr_pos += pup.write_splitread(b.vec_sp[k]);
                 cnt_sp ++;
             }
             prev_sp = sp_idx;
         }
         // fprintf(stderr, "\rChr %d, Index %d, cnt_rp %d, cnt_sp %d\n", i, (int)curr_pos, cnt_rp, cnt_sp);
     }
-    pileup_file.close();
-    idxFile.close();
+    pup.close();
+    idx_file.close();
     
-    std::ofstream var_file(var_file_name.c_str(), std::ios::out | std::ios::binary);
+    Pileup var_file;
+    var_file.open(varfile_name, std::ios::out | std::ios::binary);
+    
     // Number of samples in this var_file (can include multiple samples)
-    pup.write_number(var_file, 1);
+    var_file.write_int32(1);
     
     // Number of SVs in this var_file (can include multiple samples)
     int n_var = (int)vec_sv.size();
-    pup.write_number(var_file, n_var);
-    pup.write_sample_id(var_file, sample_id);
+    var_file.write_int32(n_var);
+    var_file.write_sample_id(sample_id);
     
     for(int i=0;i<(int)vec_sv.size();++i)
     {
-        pup.write_depth(var_file, &(vec_sv[i].dp), 1);        
+        var_file.write_depth(&(vec_sv[i].dp), 1);
     }
     var_file.close();
-    
     
     std::cerr << "Finished without an error" << std::endl;
     return 0;
