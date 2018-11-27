@@ -85,9 +85,9 @@ int main_merge_pileup(int argc, char** argv)
     size_t curr_pos = 0;
     string filename;
     
-    filename = output_name + ".mpileup";
+    filename = output_name + ".pileup";
     mpup.open(filename, std::ios::out | std::ios::binary);
-    filename = output_name + ".midx";
+    filename = output_name + ".idx";
     midx.open(filename, std::ios::out | std::ios::binary);
     
     curr_pos += mpup.write_int32(n_sample);
@@ -230,7 +230,7 @@ int main_merge_pileup(int argc, char** argv)
     }
     std::cerr << "Var files are initialized" << std::endl;
 
-    filename = output_name + ".mvar";
+    filename = output_name + ".var";
     Pileup mvar;
     mvar.open(filename, std::ios::out | std::ios::binary);
     

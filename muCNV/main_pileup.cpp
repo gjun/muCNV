@@ -36,15 +36,13 @@ int main_pileup(int argc, char** argv)
     {
         TCLAP::CmdLine cmd("Command description message", ' ', "0.06");
         
-        TCLAP::ValueArg<std::string> argBam("b","bam","Input BAM/CRAM file name",false,"","std::string");
-        TCLAP::ValueArg<std::string> argOut("o","out","Output filename",false,"muCNV.vcf","std::string");
+        TCLAP::ValueArg<std::string> argBam("b","bam","Input BAM/CRAM file name",true,"","std::string");
         TCLAP::ValueArg<std::string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","std::string");
         TCLAP::ValueArg<std::string> argInterval("V","interVal", "Binary interval file containing candidate SVs", false, "", "std::string");
-        TCLAP::ValueArg<std::string> argSampleID("s","sample","Sample ID",false,"","std::string");
+        TCLAP::ValueArg<std::string> argSampleID("s","sample","Sample ID for output filename base",false,"","std::string");
         TCLAP::ValueArg<std::string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "std::string");
         
         cmd.add(argBam);
-        cmd.add(argOut);
         cmd.add(argVcf);
         cmd.add(argInterval);
         cmd.add(argGcfile);
@@ -52,7 +50,6 @@ int main_pileup(int argc, char** argv)
         cmd.parse(argc, argv);
         
         bam_file = argBam.getValue();
-        out_filename = argOut.getValue();
         sample_id = argSampleID.getValue();
         vcf_file = argVcf.getValue();
         interval_file = argInterval.getValue();
