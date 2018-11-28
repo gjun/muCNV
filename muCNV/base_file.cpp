@@ -79,6 +79,13 @@ int BaseFile::read_uint64(uint64_t & number)
     return(sizeof(uint64_t));
 }
 
+int BaseFile::read_uint64_multi(uint64_t* array, int N)
+{
+    fs.read(reinterpret_cast<char*>(array), sizeof(uint64_t)*N);
+    return(sizeof(uint64_t)*N);
+}
+
+
 int BaseFile::read_sample_id(char* buf)
 {
     // read sample ID (each with 256 bytes)

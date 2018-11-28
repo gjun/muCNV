@@ -28,8 +28,11 @@ public:
     int read_int32(int32_t &);
     int read_uint32(uint32_t &);
     int read_uint64(uint64_t &);
+    int read_uint64_multi(uint64_t *, int);
     int read_sample_id(char *);
     size_t tellg() { return fs.tellg(); };
+    bool good() { return fs.good(); };
+    std::istream& seekg(size_t p) { return fs.seekg(p); };
     
 protected:
     std::fstream fs;
