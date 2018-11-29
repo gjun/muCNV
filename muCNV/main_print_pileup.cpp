@@ -121,21 +121,22 @@ int main_print_pileup(int argc, char** argv)
     
     std::vector<uint64_t> dpsum (n_sample, 0);
     std::vector<uint64_t> n_dp (n_sample, 0);
-    
+    uint16_t *dp100 = (uint16_t*) malloc(sizeof(uint16_t) * n_sample);
+
     for(int c=1; c<=gc.num_chr; ++c)
     {
         int N = ceil((double)gc.chr_size[c] / 100.0) + 1;
-        uint16_t dp100;
         for(int j=0;j<N;++j)
         {
+            pup.read_depth(dp100, n_sample);
             for(int i=0; i<n_sample; ++i)
             {
-                pup.read_depth(&dp100, 1);
-                dpsum[i] += dp100;
+                dpsum[i] += dp100[i];
                 n_dp[i] +=1;
             }
         }
     }
+    delete [] dp100;
     for(int i=0; i<n_sample; ++i)
     {
         printf("Sample %d, average DP100: %d\n", i, (int)round((double)dpsum[i]/n_dp[i]/32.0));

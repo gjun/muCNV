@@ -9,7 +9,7 @@
 #include "data_reader.h"
 #include <math.h>
 
-int DataReader::load(std::vector<string>& base_names, GcContent &gc)
+int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &stats, GcContent &gc)
 {
     // base_names: list of base names for pileup/var/idx triples
     // return value: total number of samples
@@ -23,7 +23,7 @@ int DataReader::load(std::vector<string>& base_names, GcContent &gc)
     idx_files.resize(n_pileup);
     n_samples.resize(n_pileup);
     
-    for(int i=0; i< (int) base_names.size(); ++i)
+    for(int i=0; i<n_pileup ; ++i)
     {
         string pileup_name = base_names[i] + ".pileup";
         string var_name = base_names[i] + ".var";
@@ -44,8 +44,19 @@ int DataReader::load(std::vector<string>& base_names, GcContent &gc)
         }
         n_sample_total += n_samples[i] ;
         
-        gc_factors[i].resize(gc.num_bin);
-        pileups[i].read_gc_factor(gc_factors[i], gc.num_bin);
+        for(int j=0; j<n_samples[i]; ++j)
+        {
+            SampleStat s;
+            pileups[i].read_sample_stat(s);
+            stats.push_back(s);
+        }
+        
+        for(int j=0; j<n_samples[i]; ++j)
+        {
+            std::vector<double> gc_f;
+            pileups[i].read_gc_factor(gc_f, gc.num_bin);
+            gc_factors.push_back(gc_f);
+        }
         
         // number of variants
         var_files[i].read_int32(n_var);
@@ -78,11 +89,12 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
     
     // SV < 100kb : process all 100-bp intervals
     // SV >= 100kb : process 'around breakpoints' in original resolution and merge into 1kb blocks inside the SV
-    int startpos = 0;
-    int endpos = 0;
-    
+
     if (curr_sv.len < 100000)
     {
+        int startpos = 0;
+        int endpos = 0;
+        
         // put enough buffers before/after for median filtering
         startpos = curr_sv.pos - 2000;
         
@@ -126,16 +138,37 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
             {
                 for(int k=0; k<n_samples[i]; ++k)
                 {
-                    // TODO: normalize!
                     dp100[sample_idx + k][j] = D[j*n_samples[i] + k];
                 }
             }
             sample_idx += n_samples[i];
             delete [] D;
         }
+        return startpos;
+    }
+    else if (curr_sv.len <= 1000000) 
+    {
+        int startpos = 0;
+        int endpos = 0;
+        
+        // read start-2000 to start+2000 (100bp resolution)
+        // read start+2000 to end+2000 (1kbp resolution)
+        // read end-2000 to end+2000 (100bp resolution)
+        
+        return startpos;
+    }
+    else
+    {
+        int startpos = 0;
+        int endpos = 0;
+        // read start-2000 to start+2000 (10kbp resolution)
+        // read start+2000 to end+2000 (10kbp resolution)
+        // read end-2000 to end+2000 (10kbp resolution)
+        return startpos;
     }
 
-    return startpos;
+
+    return -1; // Should never reach here
     /*
     for(int i=0; i<n_pileup; ++i)
     {
@@ -270,6 +303,16 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
     }
     var_file.close();
     */
+}
+
+void DataReader::read_pair_split(sv& curr_sv, std::vector< std::vector<readpair> > &dvec_rp, std::vector< std::vector<splitread> > &dvec_sp)
+{
+    return;
+}
+
+void DataReader::read_var_depth(int k, std::vector<double> &var_dp)
+{
+    return;
 }
 
 // GC-correction of n-th sample at chr:pos
