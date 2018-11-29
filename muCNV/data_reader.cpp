@@ -16,6 +16,7 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
     
     n_sample_total = 0;
     n_pileup = (int) base_names.size();
+	multi_idx.resize(n_pileup);
 
     int prev_n_var = 0;
     pileups.resize(n_pileup);
@@ -29,12 +30,15 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
         string var_name = base_names[i] + ".var";
         string idx_name = base_names[i] + ".idx";
         
+		std::cerr << "1" << std::endl;
         pileups[i].open(pileup_name, std::ios::in | std::ios::binary);
         var_files[i].open(var_name, std::ios::in | std::ios::binary);
         idx_files[i].open(idx_name, std::ios::in | std::ios::binary);
         
+		std::cerr << "2" << std::endl;
         // number of samples in each pileup
         pileups[i].read_int32(n_samples[i]);
+		std::cerr << "3" << std::endl;
         int32_t tmp;
         var_files[i].read_int32(tmp);
         if (n_samples[i] != tmp)
@@ -43,13 +47,22 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
             exit(1);
         }
         n_sample_total += n_samples[i] ;
+
+        for(int j=0; j<n_samples[i]; ++j)
+        {
+			char buf[256];
+            pileups[i].read_sample_id(buf);
+			sample_ids.push_back(std::string(buf));
+        }
         
+		std::cerr << "4" << std::endl;
         for(int j=0; j<n_samples[i]; ++j)
         {
             SampleStat s;
             pileups[i].read_sample_stat(s);
             stats.push_back(s);
         }
+		std::cerr << "5" << std::endl;
         
         for(int j=0; j<n_samples[i]; ++j)
         {
@@ -57,6 +70,8 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
             pileups[i].read_gc_factor(gc_f, gc.num_bin);
             gc_factors.push_back(gc_f);
         }
+
+		std::cerr << "6" << std::endl;
         
         // number of variants
         var_files[i].read_int32(n_var);
@@ -66,6 +81,7 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
             exit(1);
         }
         prev_n_var = n_var;
+		std::cerr << "7" << std::endl;
         
         // read indices TODO: make this to block read using chrsizes
         while(idx_files[i].good())
@@ -74,6 +90,7 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
             idx_files[i].read_uint64(num);
             multi_idx[i].push_back(num);
         }
+		std::cerr << "8" << std::endl;
         // idx offset?
     }
     return n_sample_total;
@@ -120,29 +137,38 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
         for(int i=0; i<n_pileup; ++i)
         {
             uint64_t start_byte = multi_idx[i][0]; // This is the index position where dp100 record starts
+			std::cerr << "startbyte " << start_byte << std::endl;
             
             for(int c=1; c<curr_sv.chrnum; ++c)
             {
                 start_byte += (ceil((double)gc.chr_size[c] / 100.0) + 1) * n_samples[i] * sizeof(uint16_t);
             }
+			std::cerr << "startbyte " << start_byte << std::endl;
             start_byte += n_start * n_samples[i] * sizeof(uint16_t);
+			std::cerr << "startbyte " << start_byte << std::endl;
             
             int n_dp_by_sample = n_samples[i] * n_dp ;
             
-            uint16_t *D = (uint16_t*) malloc(sizeof(uint16_t) * n_dp_by_sample) ;
+            uint16_t *D = new uint16_t[n_dp_by_sample];
+			std::cerr << "n_dp_by_sample " << n_dp_by_sample << std::endl;
             
             pileups[i].seekg(start_byte);
             pileups[i].read_depth(D, n_dp_by_sample);
+			std::cerr << "read n_dp_by_sample " << n_dp_by_sample << std::endl;
          
             for(int j=0; j<n_dp; ++j)
             {
                 for(int k=0; k<n_samples[i]; ++k)
                 {
-                    dp100[sample_idx + k][j] = D[j*n_samples[i] + k];
+//					std::cerr << j << ", " << n_samples[i] << ", " << k << " : " << D[j*n_samples[i] + k ] << std::endl;
+                    dp100[sample_idx + k][j] = (double)D[j*n_samples[i] + k] / 32.0;
                 }
             }
             sample_idx += n_samples[i];
+
+			std::cerr << "read n_dp_by_sample " << n_dp_by_sample << std::endl;
             delete [] D;
+			std::cerr << "read n_dp_by_sample " << n_dp_by_sample << std::endl;
         }
         return startpos;
     }

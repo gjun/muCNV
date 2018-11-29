@@ -115,6 +115,7 @@ int main_genotype(int argc, char** argv)
         std::cerr << "Error, VCF or Interval file is required." << std::endl;
     
     //vec_bp is not necessary for genotyping, but let's keep it for simplicity now
+	std::cerr << vec_sv.size() << " SVs identified " << std::endl;
     
     read_list(index_file, pileup_names);
     int n_sample = 0;
@@ -126,6 +127,7 @@ int main_genotype(int argc, char** argv)
     DataReader reader;
     std::vector<SampleStat> stats;
     n_sample = reader.load(pileup_names, stats, gc);
+    std::cerr << n_sample << " samples identified from pileup files\n" << std::endl;
 
 //    for(int i=0; i<n_var; ++i)
     if (1)
@@ -134,19 +136,24 @@ int main_genotype(int argc, char** argv)
         
         vec_sv[i].print();
 
-        std::vector< std::vector<double> > dvec_dp100;
-        std::vector< std::vector<readpair> > dvec_rp;
-        std::vector< std::vector<splitread> > dvec_sp;
-        std::vector<double> var_dp;
+        std::vector< std::vector<double> > dvec_dp100 (n_sample);
+        std::vector< std::vector<readpair> > dvec_rp (n_sample);
+        std::vector< std::vector<splitread> > dvec_sp (n_sample);
+        std::vector<double> var_dp (n_sample);
         
         int startpos = reader.read_depth100(vec_sv[i], dvec_dp100, gc);
+		std::cerr << "here" << std::endl;
         int endpos = startpos + (int)dvec_dp100[0].size() * 100;
+		std::cerr << "there" << std::endl;
         // TEMPORARY TEST --->
-        printf("%s: at chr%d:%d-%d\n", reader.sample_ids[0].c_str(), vec_sv[i].chrnum, startpos, endpos);
+		std::cerr << reader.sample_ids[0];
+		std::cerr << " " << vec_sv[i].chrnum;
+		std::cerr << ":" << startpos << "-" << endpos << std::endl;
+        fprintf(stderr, "%s: at chr%d:%d-%d\n", reader.sample_ids[0].c_str(), vec_sv[i].chrnum, startpos, endpos);
         
-        for (int j=0; j<dvec_dp100[0].size(); ++i)
+        for (int j=0; j<dvec_dp100[0].size(); ++j)
         {
-            printf("%f\n", dvec_dp100[0][j]);
+            fprintf(stderr, "%f\n", dvec_dp100[0][j]);
         }
         // <---
         reader.read_pair_split(vec_sv[i], dvec_rp, dvec_sp);
