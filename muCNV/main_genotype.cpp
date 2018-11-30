@@ -142,9 +142,7 @@ int main_genotype(int argc, char** argv)
         std::vector<double> var_dp (n_sample);
         
         int startpos = reader.read_depth100(vec_sv[i], dvec_dp100, gc);
-		std::cerr << "here" << std::endl;
         int endpos = startpos + (int)dvec_dp100[0].size() * 100;
-		std::cerr << "there" << std::endl;
         // TEMPORARY TEST --->
 		std::cerr << reader.sample_ids[0];
 		std::cerr << " " << vec_sv[i].chrnum;
