@@ -27,17 +27,16 @@ int main_vcf_to_int(int argc, char** argv)
         
         TCLAP::ValueArg<string> argVcf("v","vcf","VCF file containing candidate SVs",true,"","string");
         TCLAP::ValueArg<string> argInterval("i","interVal", "Binary interval file containing candidate SVs", false, "", "string");
-        TCLAP::SwitchArg argPrint("p","print", "Print out SV variants", cmd, false);
+        TCLAP::SwitchArg switchPrint("p","print", "Print out SV variants", cmd, false);
 
         cmd.add(argVcf);
         cmd.add(argInterval);
-        cmd.add(argPrint);
         
         cmd.parse(argc, argv);
 
         vcf_file = argVcf.getValue();
         interval_file = argInterval.getValue();
-        bPrint = argPrint.getValue();
+        bPrint = switchPrint.getValue();
     }
     catch (TCLAP::ArgException &e)
     {
