@@ -33,12 +33,14 @@ private:
     int n_sample_total;
     int n_var;
     int n_pileup;
+    std::vector<uint64_t> chr_idx_rp;
+    std::vector< std::vector<uint64_t> > chr_bytepos_dp100;
     std::vector<Pileup> pileups;
     std::vector<Pileup> var_files;
     std::vector<BaseFile> idx_files;
     
     // Number of pileups * number of indices per sapmle (~ 300,000)
-    std::vector< std::vector<uint64_t> > multi_idx;
+    std::vector< uint64_t* > multi_idx;
     std::vector< std::vector<double>> gc_factors;
 
     size_t get_dp100_offset(uint64_t, int, int);

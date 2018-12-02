@@ -24,6 +24,18 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
     idx_files.resize(n_pileup);
     n_samples.resize(n_pileup);
     
+
+    
+    int idx_cnt = 1;
+    chr_idx_rp.resize(gc.num_chr+1);
+    for(int i=1;i<=gc.num_chr; ++i)
+    {
+        chr_idx_rp[i] = idx_cnt; // chr_idx[1] contains the array index of pileup index of chr 1
+        idx_cnt += ceil((double)gc.chr_size[i] / 10000.0) ;
+    }
+    
+    std::cerr<< idx_cnt << " indices should be in index file" << std::endl;
+ 
     for(int i=0; i<n_pileup ; ++i)
     {
         string pileup_name = base_names[i] + ".pileup";
@@ -75,13 +87,23 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
         }
         prev_n_var = n_var;
         
-        while(idx_files[i].good())
-        {
-            uint64_t num;
-            idx_files[i].read_uint64(num);
-            multi_idx[i].push_back(num);
-        }
+        multi_idx[i] = new uint64_t[idx_cnt];
+        idx_files[i].read_uint64_multi(multi_idx[i], idx_cnt);
+        idx_files[i].close(); // index file content is now on memory
+        
         // idx offset?
+    }
+
+    chr_bytepos_dp100.resize(n_pileup);
+    for(int i=0; i<n_pileup; ++i)
+    {
+        chr_bytepos_dp100[i].resize(gc.num_chr +1);
+        chr_bytepos_dp100[i][0]= 0;
+        chr_bytepos_dp100[i][1] = multi_idx[0][0];
+        for(int c=2; c<=gc.num_chr; ++c)
+        {
+            chr_bytepos_dp100[i][c] = chr_bytepos_dp100[i][c-1] + (ceil((double)gc.chr_size[c] / 100.0) + 1) * n_samples[i] * sizeof(uint16_t);
+        }
     }
     return n_sample_total;
 }
@@ -128,11 +150,9 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
         {
             uint64_t start_byte = multi_idx[i][0]; // This is the index position where dp100 record starts
 			std::cerr << "startbyte " << start_byte << std::endl;
+        
+            start_byte = chr_bytepos_dp100[i][curr_sv.chrnum];
             
-            for(int c=1; c<curr_sv.chrnum; ++c)
-            {
-                start_byte += (ceil((double)gc.chr_size[c] / 100.0) + 1) * n_samples[i] * sizeof(uint16_t);
-            }
 			std::cerr << "startbyte " << start_byte << std::endl;
             start_byte += n_start * n_samples[i] * sizeof(uint16_t);
 			std::cerr << "startbyte " << start_byte << std::endl;
@@ -249,42 +269,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
         printf("Sample %d, average DP100: %d\n", i, (int)round((double)dpsum[i]/n_dp[i]/32.0));
     }
     
-    
-    for(int c=1;c<=gc.num_chr; ++c)
-    {
-        int N = ceil((double)gc.chr_size[c] / 10000.0) ;
-        
-        for(int j=1;j<=N;++j)
-        {
-            idx_file.read_uint64(curr_idx);
-            printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pup.tellg());
-            
-            for(int i=0; i<n_sample; ++i)
-            {
-                uint32_t n_rp = 0;
-                pup.read_uint32(n_rp);
-                printf("Sample %d, %d readpairs\n", i, n_rp);
-                for(int k=0; k<n_rp; ++k)
-                {
-                    readpair rp;
-                    pup.read_readpair(rp);
-                    printf("\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
-                }
-                
-                uint32_t n_sp = 0;
-                pup.read_uint32(n_sp);
-                printf("Sample %d, %d split reads\n", i, n_sp);
-                for(int k=0; k<n_sp; ++k)
-                {
-                    splitread sp;
-                    pup.read_splitread(sp);
-                    printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
-                    
-                }
-                
-            }
-        }
-    }
+  
     
     pup.close();
     idx_file.close();
@@ -323,61 +308,100 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
 
 void DataReader::read_pair_split(sv& curr_sv, std::vector< std::vector<readpair> > &dvec_rp, std::vector< std::vector<splitread> > &dvec_sp)
 {
-    int startpos = 0;
-    int endpos = 0;
-    
     int sample_idx = 0;
     
-    //TODO: make '10000' using a mnenonic, not hard-coded.
+    // Starting breakpoint
+    int startpos = curr_sv.pos - 500;
+    int endpos = curr_sv.pos + 500;
     
-    int n_start = (startpos / 10000);
+    if (startpos<1) startpos = 1;
+    if (endpos>=curr_sv.end) endpos = curr_sv.end;
+    
+    
+    uint64_t start_idx = chr_idx_rp[curr_sv.chrnum] + (int)startpos/10000;
+    uint64_t end_idx = chr_idx_rp[curr_sv.chrnum] + (int)endpos/10000;
     
     for(int i=0; i<n_pileup; ++i)
     {
-        for(int i=1;i<=gc.num_chr; ++i)
+        pileups[i].seekg(multi_idx[i][start_idx]);
+
+        for(uint64_t j=start_idx; j<=end_idx; ++j)
         {
-            int N = ceil((double)gc.chr_size[i] / 10000.0) ;
-        
-        }
-    
-    }
-    for(int i=0; i<n_pileup; ++i)
-    {
-        uint64_t start_byte = multi_idx[i][0]; // This is the index position where dp100 record starts
-        std::cerr << "startbyte " << start_byte << std::endl;
-        
-        for(int c=1; c<curr_sv.chrnum; ++c)
-        {
-            start_byte += (ceil((double)gc.chr_size[c] / 100.0) + 1) * n_samples[i] * sizeof(uint16_t);
-        }
-        std::cerr << "startbyte " << start_byte << std::endl;
-        start_byte += n_start * n_samples[i] * sizeof(uint16_t);
-        std::cerr << "startbyte " << start_byte << std::endl;
-        
-        int n_dp_by_sample = n_samples[i] * n_dp ;
-        
-        uint16_t *D = new uint16_t[n_dp_by_sample];
-        std::cerr << "n_dp_by_sample " << n_dp_by_sample << std::endl;
-        
-        pileups[i].seekg(start_byte);
-        pileups[i].read_depth(D, n_dp_by_sample);
-        std::cerr << "read n_dp_by_sample " << n_dp_by_sample << std::endl;
-        
-        for(int j=0; j<n_dp; ++j)
-        {
+            
             for(int k=0; k<n_samples[i]; ++k)
             {
-                //                    std::cerr << j << ", " << n_samples[i] << ", " << k << " : " << D[j*n_samples[i] + k ] << std::endl;
-                dp100[sample_idx + k][j] = (double)D[j*n_samples[i] + k] / 32.0;
+                uint32_t n_rp = 0;
+                pileups[i].read_uint32(n_rp);
+ 
+                for(int l=0; l<n_rp; ++l)
+                {
+                    readpair rp;
+                    pileups[i].read_readpair(rp);
+                    fprintf(stderr, "\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+                }
+                // check whether rp.selfpos is between startpos and endpos
+                // if so, check strand matequal/matepos
+                
+                uint32_t n_sp = 0;
+                pileups[i].read_uint32(n_sp);
+                for(int l=0; l<n_sp; ++l)
+                {
+                    splitread sp;
+                    pileups[i].read_splitread(sp);
+                    fprintf(stderr, "\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
+                    
+                }
+                
             }
         }
-        sample_idx += n_samples[i];
-        
-        std::cerr << "read n_dp_by_sample " << n_dp_by_sample << std::endl;
-        delete [] D;
-        std::cerr << "read n_dp_by_sample " << n_dp_by_sample << std::endl;
-    }
 
+        sample_idx += n_samples[i];
+    }
+    
+    // Ending breakpoint
+    sample_idx = 0;
+    startpos = curr_sv.end - 500;
+    endpos = curr_sv.end + 500;
+    
+    if (startpos<curr_sv.pos) startpos = curr_sv.pos+1;
+    
+    start_idx = chr_idx_rp[curr_sv.chrnum] + (int)startpos/10000;
+    end_idx = chr_idx_rp[curr_sv.chrnum] + (int)endpos/10000;
+    
+    for(int i=0; i<n_pileup; ++i)
+    {
+        pileups[i].seekg(multi_idx[i][start_idx]);
+
+        for(uint64_t j=start_idx; j<=end_idx; ++j)
+        {
+            
+            for(int k=0; k<n_samples[i]; ++k)
+            {
+                uint32_t n_rp = 0;
+                pileups[i].read_uint32(n_rp);
+                
+                for(int l=0; l<n_rp; ++l)
+                {
+                    readpair rp;
+                    pileups[i].read_readpair(rp);
+                    printf("\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+                }
+                
+                uint32_t n_sp = 0;
+                pileups[i].read_uint32(n_sp);
+                for(int l=0; l<n_sp; ++l)
+                {
+                    splitread sp;
+                    pileups[i].read_splitread(sp);
+                    printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
+                    
+                }
+                
+            }
+        }
+        
+        sample_idx += n_samples[i];
+    }
     
     return;
 }
