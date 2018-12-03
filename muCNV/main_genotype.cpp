@@ -54,7 +54,7 @@ int main_genotype(int argc, char** argv)
         TCLAP::ValueArg<string> argRegion("r", "region", "Genomic region (chr:start-end)", false, "", "string" );
 
         TCLAP::SwitchArg switchFail("a", "all", "Report filter failed variants", cmd, false);
-        TCLAP::SwitchArg switchNoHeader("l", "less header", "Do not print header in genoptyed VCF", cmd, false);
+        TCLAP::SwitchArg switchNoHeader("l", "lessheader", "Do not print header in genoptyed VCF", cmd, false);
         
         cmd.add(argOut);
         cmd.add(argVcf);
