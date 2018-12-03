@@ -533,17 +533,19 @@ void DataReader::read_var_depth(int var_i, std::vector<double> &var_dp)
 	// var_i : i-th var
 	uint64_t bytepos = 0;
 	int sample_idx = 0;
-	uint16_t D[1000];  // max number, TEMPORARY
+	uint16_t D[1000];  // max number of sample per each pileup, TEMPORARY
 
 	for(int i=0; i<n_pileup; ++i)
-	{		
-		bytepos = 2*sizeof(int32_t) + 256*n_samples[i];
+	{
+        // var_i : zero-index
+        bytepos = 2*sizeof(int32_t) + 256*n_samples[i] + (var_i * sizeof(uint16_t));
 		var_files[i].seekg(bytepos);
 		var_files[i].read_depth(D, n_samples[i]);
 		for(int j=0; j<n_samples[i]; ++j)
 		{
-			var_dp[sample_idx + j] = D[j];
+            var_dp[sample_idx + j] = (double)D[j]/32.0;
 		}
+        sample_idx += n_samples[i];
 	}
     return;
 }
