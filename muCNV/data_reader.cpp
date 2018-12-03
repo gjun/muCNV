@@ -108,7 +108,7 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
     return n_sample_total;
 }
 
-int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &dp100, GcContent& gc)
+int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &dp100, std::vector< std::vector<double> > &gd100, GcContent& gc)
 {
     // this information is not useful when sv length is short
     // process only for >300bp SVs
@@ -144,6 +144,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
         for(int i=0; i<n_sample_total; ++i)
         {
             dp100[i].resize(n_dp);
+			gd100[i].resize(n_dp);
         }
         
         for(int i=0; i<n_pileup; ++i)
@@ -172,6 +173,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
                 {
 //					std::cerr << j << ", " << n_samples[i] << ", " << k << " : " << D[j*n_samples[i] + k ] << std::endl;
                     dp100[sample_idx + k][j] = (double)D[j*n_samples[i] + k] / 32.0;
+					gd100[sample_idx + k][j] = correct_gc(gc, sample_idx+k, dp100[sample_idx+k][j], curr_sv.chrnum, startpos + j*100);
                 }
             }
             sample_idx += n_samples[i];

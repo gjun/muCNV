@@ -143,9 +143,10 @@ int main_genotype(int argc, char** argv)
         vec_sv[i].print();
 
         std::vector< std::vector<double> > dvec_dp100 (n_sample);
+        std::vector< std::vector<double> > dvec_gd100 (n_sample);
         std::vector<double> var_dp (n_sample);
         
-        int startpos = reader.read_depth100(vec_sv[i], dvec_dp100, gc);
+        int startpos = reader.read_depth100(vec_sv[i], dvec_dp100, dvec_gd100, gc);
         int endpos = startpos + (int)dvec_dp100[0].size() * 100;\
     
         string fname = "var" + std::to_string(i) + ".dp100.txt";
@@ -156,6 +157,10 @@ int main_genotype(int argc, char** argv)
         {
             fprintf(fp, "\ts%d", k);
         }
+        for(int k=0; k<n_sample; ++k)
+        {
+            fprintf(fp, "\tg%d", k);
+        }
         fprintf(fp, "\n");
         // TEMPORARY TEST --->
         for(int j=0; j<dvec_dp100[0].size(); ++j)
@@ -164,6 +169,10 @@ int main_genotype(int argc, char** argv)
             for(int k=0; k<n_sample; ++k)
             {
                 fprintf(fp, "\t%f", dvec_dp100[k][j]);
+            }
+            for(int k=0; k<n_sample; ++k)
+            {
+                fprintf(fp, "\t%f", dvec_gd100[k][j]);
             }
             fprintf(fp, "\n");
 
@@ -184,16 +193,16 @@ int main_genotype(int argc, char** argv)
 
 		std::vector<ReadStat> rdstats (n_sample);
         reader.read_pair_split(vec_sv[i], rdstats, gc);
-
         reader.read_var_depth(i, var_dp);
         
         fname = "var" + std::to_string(i) + ".stat.txt";
         
         fp = fopen(fname.c_str(), "wt");
-        fprintf(fp, "index\tprefr\tprerf\tpostfr\tpostrf\tprerpmiss\tpostrpmiss\tprespmiss\tpostspmiss\tpresplitout\tpresplitin\tpostsplitout\tpostsplitin\tdpvar\n");
+        fprintf(fp, "index\tavgdp\tstddp\tavgisz\tstdisz\tprefr\tprerf\tpostfr\tpostrf\tprerpmiss\tpostrpmiss\tprespmiss\tpostspmiss\tpresplitout\tpresplitin\tpostsplitout\tpostsplitin\tdpvar\n");
         for(int j=0; j<n_sample; ++j)
         {
-            fprintf(fp, "%d\t%d\t%d\t%d\t%d", j, rdstats[j].n_pre_FR, rdstats[j].n_pre_RF, rdstats[j].n_post_FR, rdstats[j].n_post_RF);
+			fprintf(fp, "%d\t%f\t%f\t%f\t%f", j, stats[j].avg_dp, stats[j].std_dp, stats[j].avg_isize, stats[j].std_isize);
+            fprintf(fp, "\t%d\t%d\t%d\t%d", rdstats[j].n_pre_FR, rdstats[j].n_pre_RF, rdstats[j].n_post_FR, rdstats[j].n_post_RF);
             fprintf(fp, "\t%d\t%d\t%d\t%d", rdstats[j].n_pre_rp_missing, rdstats[j].n_post_rp_missing, rdstats[j].n_pre_sp_missing, rdstats[j].n_post_sp_missing);
             fprintf(fp, "\t%d\t%d\t%d\t%d", rdstats[j].n_pre_split_out, rdstats[j].n_pre_split_in, rdstats[j].n_post_split_out, rdstats[j].n_post_split_in);
             fprintf(fp, "\t%f\n", var_dp[j]);
