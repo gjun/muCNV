@@ -321,7 +321,7 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
     int end_pos2 = curr_sv.end + 500;
 
     if (start_pos2 <= curr_sv.pos) start_pos2 = curr_sv.pos+1;
-	if (end_pos2 > gc.chr_size[sv.chrnum])  end_pos2 = gc.chr_size[sv.chrnum]-1;
+	if (end_pos2 > gc.chr_size[curr_sv.chrnum])  end_pos2 = gc.chr_size[curr_sv.chrnum]-1;
     
     uint64_t start_idx1 = chr_idx_rp[curr_sv.chrnum] + (int)start_pos1/10000;
     uint64_t end_idx1 = chr_idx_rp[curr_sv.chrnum] + (int)end_pos1/10000;
@@ -337,9 +337,6 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
     for(int i=0; i<n_pileup; ++i)
     {
         pileups[i].seekg(multi_idx[i][start_idx]);
-
-		int pre_missing = 0;
-		int pos_missing = 0;
 
         for(uint64_t j=start_idx; j<=end_idx; ++j)
         {
@@ -358,45 +355,35 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
 					{
 						if (rp.matequal>0)
 						{
-
 							if (rp.matepos >= start_pos2 && rp.matepos <= end_pos2)
 							{
 								printf("PRE_RP\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
-								if (rp.pairstr == 1)
-								{
-									//         |---(SV)---|
-									// FR: ---->          <----
-									//      rp             mate
+								if (rp.pairstr == 1 && rp.selfpos < rp.matepos)
 									rdstats[sample_idx + k].n_pre_FR ++;
-								}
-								else if ( rp.pairstr == 2)
-								{
-									//       |-----(SV)i---|
-									// RF:    <----    ---->
-									//         rp       mate
+	 							else if (rp.pairstr == 2 && rp.selfpos <= rp.matepos)
 									rdstats[sample_idx + k].n_pre_RF ++;
-								}
-
-							}
+                            }
 						}
-						else pre_missing++;
+						else
+                            rdstats[sample_idx + k].n_pre_rp_missing ++;
 					}
-					//         |---(SV)---|
-					// FR: ---->          <----
-					//     mate             rp
-					else if (rp.selfpos >= start_pos2 && rp.selfpos <= end_pos2 && rp.matepos >= start_pos1 && rp.matepos <= end_pos1 && rp.pairstr == 2)
+ 					if (b_overlap && rp.selfpos >= start_pos2 && rp.selfpos <= end_pos2)
 					{
 						if (rp.matequal > 0)
 						{
-							if (rp.selfpos <= end_pos1 && rp.matepos >= start_pos2 && rp.matepos <= end_pos2)
-								printf("BEG_RP\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+                            if (rp.matepos >= start_pos1 && rp.matepos <= end_pos1)
+                            {
+                                printf("POST_RP\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+                                if (rp.pairstr == 2 && rp.selfpos > rp.matepos)
+                                    rdstats[sample_idx + k].n_post_FR ++;
+                                else if (rp.pairstr == 1 && rp.matepos <= rp.selfpos)
+                                    rdstats[sample_idx + k].n_post_RF ++;
+                            }
 						}
-						else post_missing++;
+						else
+                            rdstats[sample_idx+k].n_post_rp_missing ++;
 					}
                 }
-                // check whether rp.selfpos is between startpos and endpos
-                // if so, check strand matequal/matepos
-                
 				printf("\n");
                 uint32_t n_sp = 0;
                 pileups[i].read_uint32(n_sp);
@@ -404,11 +391,51 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                 {
                     splitread sp;
                     pileups[i].read_splitread(sp);
-					if (sp.pos >=startpos && sp.pos <= endpos && sp.sapos >= curr_sv.end -500 && sp.sapos <= curr_sv.end +500)
-					{
-						printf(">>> ");
-					}
-                    printf("BEG_SP\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
+					if (sp.pos >=start_pos1 && sp.pos <= end_pos1)
+                    {
+                        if (sp.sapos >= start_pos2 && sp.sapos <= end_pos2)
+                        {
+                            if (sp.pos < sp.sapos)
+                            {
+                                if (sp.firstclip <= 0 && sp.secondclip >=0)
+                                {
+                                    rdstats[sample_idx+k].n_pre_split_in ++;
+                                }
+                                else if (sp.firstclip >=0 && sp.secondclip <=0)
+                                {
+                                    rdstats[sample_idx+k].n_pre_split_out ++;
+                                }
+                            }
+                            printf("PRE_SP\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
+
+                        }
+                        else if (sp.sapos == 0)
+                        {
+                            rdstats[sample_idx+k].n_pre_sp_missing ++;
+                        }
+                    }
+                    if (b_overlap && sp.pos >=start_pos2 && sp.pos <= end_pos2)
+                    {
+                        if (sp.sapos >= start_pos1 && sp.sapos <= end_pos1)
+                        {
+                            if (sp.pos > sp.sapos)
+                            {
+                                if (sp.firstclip <= 0 && sp.secondclip >=0)
+                                {
+                                    rdstats[sample_idx+k].n_pre_split_out ++;
+                                }
+                                else if (sp.firstclip >=0 && sp.secondclip <=0)
+                                {
+                                    rdstats[sample_idx+k].n_pre_split_in ++;
+                                }
+                            }
+                            printf("POST_SP\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
+                        }
+                        else if (sp.sapos == 0)
+                        {
+                            rdstats[sample_idx+k].n_post_sp_missing ++;
+                        }
+                    }
                 }
                 
             }
@@ -417,26 +444,23 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
         sample_idx += n_samples[i];
     }
     
-    // Ending breakpoint
+    if (b_overlap) return;
+    
+    // Non-overlapping case
+    start_idx = start_idx2;
+    end_idx = end_idx2;
     sample_idx = 0;
-    startpos = curr_sv.end - 500;
-    endpos = curr_sv.end + 500;
-    
-    if (startpos<curr_sv.pos) startpos = curr_sv.pos+1;
-    
-    start_idx = chr_idx_rp[curr_sv.chrnum] + (int)startpos/10000;
-    end_idx = chr_idx_rp[curr_sv.chrnum] + (int)endpos/10000;
     
     for(int i=0; i<n_pileup; ++i)
     {
         pileups[i].seekg(multi_idx[i][start_idx]);
-
+        
         for(uint64_t j=start_idx; j<=end_idx; ++j)
         {
             
             for(int k=0; k<n_samples[i]; ++k)
             {
-				printf("\nSample %d\n", sample_idx+k);
+                printf("\nSample %d\n", sample_idx+k);
                 uint32_t n_rp = 0;
                 pileups[i].read_uint32(n_rp);
                 
@@ -444,31 +468,54 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                 {
                     readpair rp;
                     pileups[i].read_readpair(rp);
-
-					if (rp.matequal>0)
-					{
-						if (rp.selfpos >=startpos && rp.selfpos <= endpos && rp.matepos >= curr_sv.pos -500 && rp.matepos <= curr_sv.pos +500 && rp.pairstr == 2)
-						{
-							printf(">>> ");
-						}
-                    	printf("END_RP\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
-					}
+     
+                    if (rp.selfpos >= start_pos2 && rp.selfpos <= end_pos2)
+                    {
+                        if (rp.matequal > 0)
+                        {
+                            if (rp.matepos >= start_pos1 && rp.matepos <= end_pos1)
+                            {
+                                printf("POST_RP\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+                                if (rp.pairstr == 2 && rp.selfpos > rp.matepos)
+                                    rdstats[sample_idx + k].n_post_FR ++;
+                                else if (rp.pairstr == 1 && rp.matepos <= rp.selfpos)
+                                    rdstats[sample_idx + k].n_post_RF ++;
+                            }
+                        }
+                        else
+                            rdstats[sample_idx+k].n_post_rp_missing ++;
+                    }
                 }
-                
-				printf("\n");
+                printf("\n");
                 uint32_t n_sp = 0;
                 pileups[i].read_uint32(n_sp);
                 for(uint32_t l=0; l<n_sp; ++l)
                 {
                     splitread sp;
                     pileups[i].read_splitread(sp);
-
-					if (sp.pos >=startpos && sp.pos <= endpos && sp.sapos >= curr_sv.pos -500 && sp.sapos <= curr_sv.pos +500)
-					{
-						printf(">>> ");
-					}
-                    printf("END_SP\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
-                    
+      
+                    if (sp.pos >=start_pos2 && sp.pos <= end_pos2)
+                    {
+                        if (sp.sapos >= start_pos1 && sp.sapos <= end_pos1)
+                        {
+                            if (sp.pos > sp.sapos)
+                            {
+                                if (sp.firstclip <= 0 && sp.secondclip >=0)
+                                {
+                                    rdstats[sample_idx+k].n_post_split_out ++;
+                                }
+                                else if (sp.firstclip >=0 && sp.secondclip <=0)
+                                {
+                                    rdstats[sample_idx+k].n_pre_split_in ++;
+                                }
+                            }
+                            printf("POST_SP\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
+                        }
+                        else if (sp.sapos == 0)
+                        {
+                            rdstats[sample_idx+k].n_post_sp_missing ++;
+                        }
+                    }
                 }
                 
             }
@@ -476,6 +523,7 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
         
         sample_idx += n_samples[i];
     }
+    
     
     return;
 }

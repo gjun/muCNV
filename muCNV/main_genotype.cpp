@@ -21,6 +21,7 @@ int main_genotype(int argc, char** argv)
 {
     bool bNoHeader = false;
     bool bFail = false;
+    int var_i = 0;
     
     string index_file;
     string vcf_file;
@@ -42,6 +43,7 @@ int main_genotype(int argc, char** argv)
         TCLAP::ValueArg<string> argOut("o","out","Output filename",false,"muCNV.vcf","string");
         TCLAP::ValueArg<string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
         TCLAP::ValueArg<string> argInterval("V","interVal", "Binary interval file containing candidate SVs", false, "", "string");
+        TCLAP::ValueArg<int> argN("n","number", "N-th variant only", false, 466307, "integer");
 
 //        TCLAP::ValueArg<string> argSupp("S","Support","Support VCF file containing suppporting info",false,"","string");
  //       TCLAP::ValueArg<string> argSuppID("I","IDinSupport","Sample ID list for support vectors",false,"","string");
@@ -52,12 +54,13 @@ int main_genotype(int argc, char** argv)
         TCLAP::ValueArg<string> argRegion("r", "region", "Genomic region (chr:start-end)", false, "", "string" );
 
         TCLAP::SwitchArg switchFail("a", "all", "Report filter failed variants", cmd, false);
-        TCLAP::SwitchArg switchNoHeader("n", "noheader", "Do not print header in genoptyed VCF", cmd, false);
+        TCLAP::SwitchArg switchNoHeader("h", "headerless", "Do not print header in genoptyed VCF", cmd, false);
         
         cmd.add(argOut);
         cmd.add(argVcf);
         cmd.add(argInterval);
         cmd.add(argGcfile);
+        cmd.add(argN);
         cmd.add(argIndex);
 //        cmd.add(argSuppID);
  //       cmd.add(argSupp);
@@ -66,6 +69,7 @@ int main_genotype(int argc, char** argv)
         
         cmd.parse(argc, argv);
         
+        var_i = argN.getValue();
         index_file = argIndex.getValue();
         out_filename = argOut.getValue();
         vcf_file = argVcf.getValue();
@@ -134,18 +138,37 @@ int main_genotype(int argc, char** argv)
     {
     //    int i=1000; // TEMPORARY FOR TESTING
 //		int i=315268;
-		int i=466307; // a good one for testing
+		int i=var_i; // a good one for testing
         
         vec_sv[i].print();
 
         std::vector< std::vector<double> > dvec_dp100 (n_sample);
-        std::vector< std::vector<readpair> > dvec_rp (n_sample);
-        std::vector< std::vector<splitread> > dvec_sp (n_sample);
         std::vector<double> var_dp (n_sample);
         
         int startpos = reader.read_depth100(vec_sv[i], dvec_dp100, gc);
-        int endpos = startpos + (int)dvec_dp100[0].size() * 100;
+        int endpos = startpos + (int)dvec_dp100[0].size() * 100;\
+    
+        string fname = "var" + std::to_string(i) + ".dp100.txt";
+        
+        FILE *fp = fopen(fname.c_str(), "wt");
+        fprintf(fp, "index");
+        for(int k=0; k<n_sample; ++k)
+        {
+            fprintf(fp, "\ts%d", k);
+        }
+        fprintf(fp, "\n");
         // TEMPORARY TEST --->
+        for(int j=0; j<dvec_dp100[0].size(); ++j)
+        {
+            fprintf(fp, "%d",j);
+            for(int k=0; k<n_sample; ++k)
+            {
+                fprintf(fp, "\t%f", dvec_dp100[k][j]);
+            }
+            fprintf(fp, "\n");
+
+        }
+        fclose(fp);
 		/*
 		std::cerr << reader.sample_ids[0];
 		std::cerr << " " << vec_sv[i].chrnum;
@@ -164,6 +187,18 @@ int main_genotype(int argc, char** argv)
 
         reader.read_var_depth(i, var_dp);
         
+        fname = "var" + std::to_string(i) + ".stat.txt";
+        
+        fp = fopen(fname.c_str(), "wt");
+        fprintf(fp, "index\tprefr\tprerf\tpostfr\tpostrf\tprerpmiss\tpostrpmiss\tprespmiss\tpostspmiss\tpresplitout\tpresplitin\tpostsplitout\tpostsplitin\tdpvar\n");
+        for(int j=0; j<n_sample; ++j)
+        {
+            fprintf(fp, "%d\t%d\t%d\t%d\t%d", j, rdstats[j].n_pre_FR, rdstats[j].n_pre_RF, rdstats[j].n_post_FR, rdstats[j].n_post_RF);
+            fprintf(fp, "\t%d\t%d\t%d\t%d", rdstats[j].n_pre_rp_missing, rdstats[j].n_post_rp_missing, rdstats[j].n_pre_sp_missing, rdstats[j].n_post_sp_missing);
+            fprintf(fp, "\t%d\t%d\t%d\t%d", rdstats[j].n_pre_split_out, rdstats[j].n_pre_split_in, rdstats[j].n_post_split_out, rdstats[j].n_post_split_in);
+            fprintf(fp, "\t%f\n", var_dp[j]);
+        }
+        fclose(fp);
         // 0. Cluster var_dp 1-D
 		// using var depth
         

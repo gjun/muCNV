@@ -29,10 +29,12 @@ class ReadStat
 	int n_pre_sp_missing; 
 	int n_post_sp_missing;
 
-	int n_pre_split_rc; // right clipped
-	int n_pre_split_lc; // left clipped
-	int n_post_split_rc; // right clipped
-	int n_post_split_lc; // left clipped
+    //  ---------(sclip)                  (sclip)-------- split_in, DEL
+    //  (sclip)---------                  ----------(sclip) split_out, DUP
+	int n_pre_split_out; // right clipped
+	int n_pre_split_in; // left clipped
+	int n_post_split_out; // right clipped
+	int n_post_split_in; // left clipped
 
 	ReadStat() 
 	{
@@ -45,10 +47,10 @@ class ReadStat
 
 		n_pre_sp_missing = 0;
 		n_post_sp_missing =0;
-		n_pre_split_rc = 0;
-		n_pre_split_lc = 0;
-		n_post_split_rc = 0;
-		n_post_split_lc = 0;
+		n_pre_split_out = 0;
+		n_pre_split_in = 0;
+		n_post_split_out = 0;
+		n_post_split_in = 0;
 	}
 };
 
@@ -61,7 +63,7 @@ public:
     int load(std::vector<string> &, std::vector<SampleStat>&, GcContent &);
     int read_depth100(sv&, std::vector< std::vector<double> > &, GcContent& gc);
     void read_var_depth(int, std::vector<double>&);
-    void read_pair_split(sv&, std::vector< std::vector<readpair> > &, std::vector< std::vector<splitread> > &, GcContent &);
+    void read_pair_split(sv&, std::vector<ReadStat> &, GcContent &);
     double correct_gc(GcContent &, int, double, int, int);
 
 private:
