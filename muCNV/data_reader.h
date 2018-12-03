@@ -15,6 +15,43 @@
 
 using std::string;
 
+class ReadStat
+{
+	public:
+	int n_pre_FR;  // DEL
+	int n_pre_RF;  // DUP
+	int n_post_FR; // DEL
+	int n_post_RF; // DUP
+
+	int n_pre_rp_missing; 
+	int n_post_rp_missing;
+
+	int n_pre_sp_missing; 
+	int n_post_sp_missing;
+
+	int n_pre_split_rc; // right clipped
+	int n_pre_split_lc; // left clipped
+	int n_post_split_rc; // right clipped
+	int n_post_split_lc; // left clipped
+
+	ReadStat() 
+	{
+		n_pre_FR = 0;
+		n_pre_RF = 0;
+		n_post_FR = 0;
+		n_post_RF = 0;
+		n_pre_rp_missing = 0;
+		n_post_rp_missing =0;
+
+		n_pre_sp_missing = 0;
+		n_post_sp_missing =0;
+		n_pre_split_rc = 0;
+		n_pre_split_lc = 0;
+		n_post_split_rc = 0;
+		n_post_split_lc = 0;
+	}
+};
+
 class DataReader
 {
 public:
@@ -24,7 +61,7 @@ public:
     int load(std::vector<string> &, std::vector<SampleStat>&, GcContent &);
     int read_depth100(sv&, std::vector< std::vector<double> > &, GcContent& gc);
     void read_var_depth(int, std::vector<double>&);
-    void read_pair_split(sv&, std::vector< std::vector<readpair> > &, std::vector< std::vector<splitread> > &);
+    void read_pair_split(sv&, std::vector< std::vector<readpair> > &, std::vector< std::vector<splitread> > &, GcContent &);
     double correct_gc(GcContent &, int, double, int, int);
 
 private:

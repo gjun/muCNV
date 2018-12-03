@@ -132,7 +132,9 @@ int main_genotype(int argc, char** argv)
 //    for(int i=0; i<n_var; ++i)
     if (1)
     {
-        int i=1000; // TEMPORARY FOR TESTING
+    //    int i=1000; // TEMPORARY FOR TESTING
+//		int i=315268;
+		int i=466307; // a good one for testing
         
         vec_sv[i].print();
 
@@ -144,6 +146,7 @@ int main_genotype(int argc, char** argv)
         int startpos = reader.read_depth100(vec_sv[i], dvec_dp100, gc);
         int endpos = startpos + (int)dvec_dp100[0].size() * 100;
         // TEMPORARY TEST --->
+		/*
 		std::cerr << reader.sample_ids[0];
 		std::cerr << " " << vec_sv[i].chrnum;
 		std::cerr << ":" << startpos << "-" << endpos << std::endl;
@@ -153,17 +156,26 @@ int main_genotype(int argc, char** argv)
         {
             fprintf(stderr, "%f\n", dvec_dp100[0][j]);
         }
+		*/
         // <---
-        reader.read_pair_split(vec_sv[i], dvec_rp, dvec_sp);
+
+		std::vector<ReadStat> rdstats (n_sample);
+        reader.read_pair_split(vec_sv[i], rdstats, gc);
+
         reader.read_var_depth(i, var_dp);
         
         // 0. Cluster var_dp 1-D
+		// using var depth
         
         // 1. Cluster var_dp 2-D
+		// Using dp100 
         
         // 2. Readpair / splitread counting
+		// From individual genotyping, if RP/SP genotyped ones have expected avg. depth, they're genotyped
+		// If not, consider them missing
         
         // 3. dp100 filtering / clustering (?)
+		// median filtering and edge detection around breakpoint
     }
     
     return 0;

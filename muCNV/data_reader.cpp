@@ -132,8 +132,8 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
             startpos = 1;
         
         endpos = curr_sv.end + 2000;
-        if (endpos > gc.chr_size[curr_sv.chrnum])
-            endpos = gc.chr_size[curr_sv.chrnum];
+        if (endpos > (int) gc.chr_size[curr_sv.chrnum])
+            endpos = (int) gc.chr_size[curr_sv.chrnum];
     
         int sample_idx = 0;
         
@@ -185,7 +185,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
     else if (curr_sv.len <= 1000000) 
     {
         int startpos = 0;
-        int endpos = 0;
+//        int endpos = 0;
         
         // read start-2000 to start+2000 (100bp resolution)
         // read start+2000 to end+2000 (1kbp resolution)
@@ -196,7 +196,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
     else
     {
         int startpos = 0;
-        int endpos = 0;
+ //       int endpos = 0;
         // read start-2000 to start+2000 (10kbp resolution)
         // read start+2000 to end+2000 (10kbp resolution)
         // read end-2000 to end+2000 (10kbp resolution)
@@ -306,50 +306,109 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
     */
 }
 
-void DataReader::read_pair_split(sv& curr_sv, std::vector< std::vector<readpair> > &dvec_rp, std::vector< std::vector<splitread> > &dvec_sp)
+void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, GcContent &gc)
 {
     int sample_idx = 0;
-    
+
     // Starting breakpoint
-    int startpos = curr_sv.pos - 500;
-    int endpos = curr_sv.pos + 500;
+    int start_pos1 = curr_sv.pos - 500;
+    int end_pos1 = curr_sv.pos + 500;
+
+    if (start_pos1<1) start_pos1 = 1;
+	if (end_pos1 >= curr_sv.end) end_pos1 = curr_sv.end-1;
+
+    int start_pos2 = curr_sv.end - 500;
+    int end_pos2 = curr_sv.end + 500;
+
+    if (start_pos2 <= curr_sv.pos) start_pos2 = curr_sv.pos+1;
+	if (end_pos2 > gc.chr_size[sv.chrnum])  end_pos2 = gc.chr_size[sv.chrnum]-1;
     
-    if (startpos<1) startpos = 1;
-    if (endpos>=curr_sv.end) endpos = curr_sv.end;
-    
-    
-    uint64_t start_idx = chr_idx_rp[curr_sv.chrnum] + (int)startpos/10000;
-    uint64_t end_idx = chr_idx_rp[curr_sv.chrnum] + (int)endpos/10000;
-    
+    uint64_t start_idx1 = chr_idx_rp[curr_sv.chrnum] + (int)start_pos1/10000;
+    uint64_t end_idx1 = chr_idx_rp[curr_sv.chrnum] + (int)end_pos1/10000;
+
+    uint64_t start_idx2 = chr_idx_rp[curr_sv.chrnum] + (int)start_pos2/10000;
+    uint64_t end_idx2 = chr_idx_rp[curr_sv.chrnum] + (int)end_pos2/10000;
+
+	bool b_overlap = (end_idx1 >= start_idx2); // in fact, > case should never happen
+
+	uint64_t start_idx = start_idx1;
+	uint64_t end_idx = (b_overlap) ? end_idx2 : end_idx1;
+
     for(int i=0; i<n_pileup; ++i)
     {
         pileups[i].seekg(multi_idx[i][start_idx]);
+
+		int pre_missing = 0;
+		int pos_missing = 0;
 
         for(uint64_t j=start_idx; j<=end_idx; ++j)
         {
             
             for(int k=0; k<n_samples[i]; ++k)
             {
+				printf("\nSample %d\n", sample_idx+k);
                 uint32_t n_rp = 0;
                 pileups[i].read_uint32(n_rp);
  
-                for(int l=0; l<n_rp; ++l)
+                for(uint32_t l=0; l<n_rp; ++l)
                 {
                     readpair rp;
                     pileups[i].read_readpair(rp);
-                    fprintf(stderr, "\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+					if (rp.selfpos >= start_pos1 && rp.selfpos <= end_pos1)
+					{
+						if (rp.matequal>0)
+						{
+
+							if (rp.matepos >= start_pos2 && rp.matepos <= end_pos2)
+							{
+								printf("PRE_RP\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+								if (rp.pairstr == 1)
+								{
+									//         |---(SV)---|
+									// FR: ---->          <----
+									//      rp             mate
+									rdstats[sample_idx + k].n_pre_FR ++;
+								}
+								else if ( rp.pairstr == 2)
+								{
+									//       |-----(SV)i---|
+									// RF:    <----    ---->
+									//         rp       mate
+									rdstats[sample_idx + k].n_pre_RF ++;
+								}
+
+							}
+						}
+						else pre_missing++;
+					}
+					//         |---(SV)---|
+					// FR: ---->          <----
+					//     mate             rp
+					else if (rp.selfpos >= start_pos2 && rp.selfpos <= end_pos2 && rp.matepos >= start_pos1 && rp.matepos <= end_pos1 && rp.pairstr == 2)
+					{
+						if (rp.matequal > 0)
+						{
+							if (rp.selfpos <= end_pos1 && rp.matepos >= start_pos2 && rp.matepos <= end_pos2)
+								printf("BEG_RP\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+						}
+						else post_missing++;
+					}
                 }
                 // check whether rp.selfpos is between startpos and endpos
                 // if so, check strand matequal/matepos
                 
+				printf("\n");
                 uint32_t n_sp = 0;
                 pileups[i].read_uint32(n_sp);
-                for(int l=0; l<n_sp; ++l)
+                for(uint32_t l=0; l<n_sp; ++l)
                 {
                     splitread sp;
                     pileups[i].read_splitread(sp);
-                    fprintf(stderr, "\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
-                    
+					if (sp.pos >=startpos && sp.pos <= endpos && sp.sapos >= curr_sv.end -500 && sp.sapos <= curr_sv.end +500)
+					{
+						printf(">>> ");
+					}
+                    printf("BEG_SP\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
                 }
                 
             }
@@ -377,23 +436,38 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector< std::vector<readpair>
             
             for(int k=0; k<n_samples[i]; ++k)
             {
+				printf("\nSample %d\n", sample_idx+k);
                 uint32_t n_rp = 0;
                 pileups[i].read_uint32(n_rp);
                 
-                for(int l=0; l<n_rp; ++l)
+                for(uint32_t l=0; l<n_rp; ++l)
                 {
                     readpair rp;
                     pileups[i].read_readpair(rp);
-                    printf("\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+
+					if (rp.matequal>0)
+					{
+						if (rp.selfpos >=startpos && rp.selfpos <= endpos && rp.matepos >= curr_sv.pos -500 && rp.matepos <= curr_sv.pos +500 && rp.pairstr == 2)
+						{
+							printf(">>> ");
+						}
+                    	printf("END_RP\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+					}
                 }
                 
+				printf("\n");
                 uint32_t n_sp = 0;
                 pileups[i].read_uint32(n_sp);
-                for(int l=0; l<n_sp; ++l)
+                for(uint32_t l=0; l<n_sp; ++l)
                 {
                     splitread sp;
                     pileups[i].read_splitread(sp);
-                    printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
+
+					if (sp.pos >=startpos && sp.pos <= endpos && sp.sapos >= curr_sv.pos -500 && sp.sapos <= curr_sv.pos +500)
+					{
+						printf(">>> ");
+					}
+                    printf("END_SP\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
                     
                 }
                 
@@ -406,8 +480,23 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector< std::vector<readpair>
     return;
 }
 
-void DataReader::read_var_depth(int k, std::vector<double> &var_dp)
+void DataReader::read_var_depth(int var_i, std::vector<double> &var_dp)
 {
+	// var_i : i-th var
+	uint64_t bytepos = 0;
+	int sample_idx = 0;
+	uint16_t D[1000];  // max number, TEMPORARY
+
+	for(int i=0; i<n_pileup; ++i)
+	{		
+		bytepos = 2*sizeof(int32_t) + 256*n_samples[i];
+		var_files[i].seekg(bytepos);
+		var_files[i].read_depth(D, n_samples[i]);
+		for(int j=0; j<n_samples[i]; ++j)
+		{
+			var_dp[sample_idx + j] = D[j];
+		}
+	}
     return;
 }
 

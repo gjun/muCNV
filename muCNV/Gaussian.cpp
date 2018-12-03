@@ -72,7 +72,7 @@ void Gaussian2::update()
 {
 	Det = det(Cov);
 	
-	if (Det>1e-16)
+	if (Det>1e-8)
 	{
 		Prc[0] = Cov[3]/Det;
 		Prc[3] = Cov[0]/Det;
@@ -80,7 +80,7 @@ void Gaussian2::update()
 	}
 	else
 	{
-		 // ??
+		// for singular cases, just use Cov = [0.01 0; 0 0.01]
 		Prc[0]=100;
 		Prc[1]=0;
 		Prc[2]=0;
