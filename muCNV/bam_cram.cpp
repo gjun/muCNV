@@ -8,14 +8,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <set>
-#include <unordered_set>
 #include <math.h>
 #include <algorithm>
 #include <string>
-#include <queue>
 
-#include "muCNV.h"
 #include "pileup.h"
 #include "bam_cram.h"
 
@@ -23,7 +19,7 @@
 
 typedef enum { READ_UNKNOWN = 0, READ_1 = 1, READ_2 = 2 } readpart;
 
-int get_cigar_clippos(string &cigar_str)
+int get_cigar_clippos(std::string &cigar_str)
 {
     int lclip = 0;
     int rclip = 0;
@@ -67,13 +63,13 @@ int get_cigar_clippos(string &cigar_str)
     return 0;
 }
 
-bool process_split(string &t, splitread &new_sp, int32_t tid, bool strand)
+bool process_split(std::string &t, splitread &new_sp, int32_t tid, bool strand)
 {
     int i=1;
     
     int32_t chr = 0;
-    string cigar_str;
-    string pos_str;
+    std::string cigar_str;
+    std::string pos_str;
 
     if (t.substr(0,3) == "chr")
     {
@@ -133,7 +129,7 @@ bool process_split(string &t, splitread &new_sp, int32_t tid, bool strand)
 		c+=2;
 
 		d = t.find(',', c);
-		if (d == string::npos) return false;
+        if (d == std::string::npos) return false;
 		cigar_str = t.substr(c,d-c);
 	//	DMSG("CIGAR: " << cigar_str);
         
@@ -230,7 +226,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 			char* p_sa;
 			if (aux_sa && (p_sa = bam_aux2Z(aux_sa)))
 			{
-				string str_sa = string(p_sa);
+				std::string str_sa = std::string(p_sa);
                 
 				splitread new_sp;
 				new_sp.chrnum = b->core.tid + 1;
@@ -276,7 +272,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 }
 
 
-void BamCram::initialize_sequential(string &bname, GcContent &gc)
+void BamCram::initialize_sequential(std::string &bname, GcContent &gc)
 {
     data = (aux_t**)calloc(1, sizeof(aux_t*));
     data[0] = (aux_t*)calloc(1, sizeof(aux_t));
@@ -551,7 +547,7 @@ void BamCram::postprocess_depth(std::vector<sv> &vec_sv)
 }
 /*
 
-void BamCram::initialize(string &bname)
+void BamCram::initialize(std::string &bname)
 {
     
     data = (aux_t**)calloc(1, sizeof(aux_t*));
@@ -689,11 +685,11 @@ void BamCram::initialize(string &bname)
 
 /*
 // Get (overlapping) list of SV intervals, return average depth and GC-corrected average depth on intervals
-void BamCram::read_depth(std::vector<sv> &m_interval, std::vector<string> &G )
+void BamCram::read_depth(std::vector<sv> &m_interval, std::vector<std::string> &G )
 {
 	char reg[100];
 	
-	string chr = m_interval[0].chr;
+	std::string chr = m_interval[0].chr;
 	int chrnum = m_interval[0].chrnum;
 	int startpos = 1;
 	int endpos = m_interval[0].end;
@@ -863,7 +859,7 @@ void BamCram::read_depth(std::vector<sv> &m_interval, std::vector<string> &G )
 
 	for(int i=0;i<n;++i)
 	{
-		string &txt = G[i];
+		std::string &txt = G[i];
 
 		char buf[100];
 
@@ -1027,9 +1023,9 @@ void BamCram::read_depth(std::vector<sv> &m_interval, std::vector<string> &G )
  */
 
 
-//void BamCram::process_readpair(sv &currsv, std::vector<int> &isz_list, std::vector<int> &pos_list, string &txt)
+//void BamCram::process_readpair(sv &currsv, std::vector<int> &isz_list, std::vector<int> &pos_list, std::string &txt)
 /*
- void BamCram::process_readpair(sv &currsv, std::vector<int> &isz_list, string &txt)
+ void BamCram::process_readpair(sv &currsv, std::vector<int> &isz_list, std::string &txt)
  {
  
  std::vector<int> P_isz;

@@ -13,7 +13,7 @@
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
 
-#include "muCNV.h"
+#include "in_vcf.h"
 #include "gc_content.h"
 #include "data_reader.h"
 
@@ -97,8 +97,6 @@ int main_genotype(int argc, char** argv)
     
     // Multi-sample genotyping from summary VCFs
     
-
-    
     std::vector<string> sample_ids;
     std::vector<string> vcfs;
     std::vector<string> pileup_names;
@@ -147,7 +145,6 @@ int main_genotype(int argc, char** argv)
         std::vector<double> var_dp (n_sample);
         
         int startpos = reader.read_depth100(vec_sv[i], dvec_dp100, dvec_gd100, gc);
-        int endpos = startpos + (int)dvec_dp100[0].size() * 100;\
     
         string fname = "var" + std::to_string(i) + ".dp100.txt";
         

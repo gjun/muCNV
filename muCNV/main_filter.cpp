@@ -7,33 +7,35 @@
 //
 
 #include <stdio.h>
-#include "muCNV.h"
+#include "in_vcf.h"
+#include <fstream>
+
 // TCLAP headers
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
 
 int main_filter(int argc, char** argv)
 {
-    string vcf_file;
-    string interval_file;
-    string out_filename;
-    string supp_file;
+    std::string vcf_file;
+    std::string interval_file;
+    std::string out_filename;
+    std::string supp_file;
     bool bMerge;
     bool bFilter;
     
-    std::vector<string> sample_ids;
-    std::vector<string> vcfs;
-    std::vector<string> bam_names;
+    std::vector<std::string> sample_ids;
+    std::vector<std::string> vcfs;
+    std::vector<std::string> bam_names;
     
     // Parsing command-line arguments
     try
     {
         TCLAP::CmdLine cmd("Command description message", ' ', "0.06");
         
-        TCLAP::ValueArg<string> argOut("o","out","Output filename",false,"muCNV.vcf","string");
-        TCLAP::ValueArg<string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
-        TCLAP::ValueArg<string> argInterval("i","interval", "Binary interval file containing candidate SVs", false, "", "string");
-        TCLAP::ValueArg<string> argSupp("S","Support","Support VCF file containing suppporting info",false,"","string");
+        TCLAP::ValueArg<std::string> argOut("o","out","Output filename",false,"muCNV.vcf","string");
+        TCLAP::ValueArg<std::string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
+        TCLAP::ValueArg<std::string> argInterval("i","interval", "Binary interval file containing candidate SVs", false, "", "string");
+        TCLAP::ValueArg<std::string> argSupp("S","Support","Support VCF file containing suppporting info",false,"","string");
         TCLAP::SwitchArg switchFilter("f", "filter", "Filter candidate discovery set using supporting VCF", cmd, false);
         TCLAP::SwitchArg switchMerge("m", "merge", "Merge candidate discovery SVs based on RO", cmd, false);
         
@@ -218,7 +220,7 @@ int main_filter(int argc, char** argv)
         while(vfile.good())
         {
             sv S;
-            string suppvec;
+            std::string suppvec;
             int idx = -1;
             
             if (read_candidate_vcf(vfile, S, suppvec)>0)

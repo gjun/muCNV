@@ -7,24 +7,25 @@
 //
 
 #include <stdio.h>
+#include <cmath>
 // TCLAP headers
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
 
-#include "muCNV.h"
+#include "in_vcf.h"
 #include "gc_content.h"
 #include "pileup.h"
 
 int main_print_pileup(int argc, char** argv)
 {
-    string index_file;
-    string vcf_file;
-    string interval_file;
-    string gc_file;
-    string sampID;
-    string region;
+    std::string index_file;
+    std::string vcf_file;
+    std::string interval_file;
+    std::string gc_file;
+    std::string sampID;
+    std::string region;
     
-    std::vector<string> sample_ids;
+    std::vector<std::string> sample_ids;
     
     // Parsing command-line arguments
     try
@@ -32,11 +33,11 @@ int main_print_pileup(int argc, char** argv)
         TCLAP::CmdLine cmd("Command description message", ' ', "0.06");
         
 
-        TCLAP::ValueArg<string> argSampleID("s","sample","Sample ID",false,"","string");
-        TCLAP::ValueArg<string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
-        TCLAP::ValueArg<string> argInterval("V","interVal", "Binary interval file containing candidate SVs", false, "", "string");
-        TCLAP::ValueArg<string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "string");
-        TCLAP::ValueArg<string> argRegion("r", "region", "Genomic region (chr:start-end)", false, "", "string" );
+        TCLAP::ValueArg<std::string> argSampleID("s","sample","Sample ID",false,"","string");
+        TCLAP::ValueArg<std::string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
+        TCLAP::ValueArg<std::string> argInterval("V","interVal", "Binary interval file containing candidate SVs", false, "", "string");
+        TCLAP::ValueArg<std::string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "string");
+        TCLAP::ValueArg<std::string> argRegion("r", "region", "Genomic region (chr:start-end)", false, "", "string" );
         
         cmd.add(argVcf);
         cmd.add(argInterval);
@@ -65,9 +66,9 @@ int main_print_pileup(int argc, char** argv)
     std::vector<breakpoint> vec_bp;
     
     // mvar, mpileup ?
-    string pileup_name = sampID + ".pileup";
-    string varfile_name = sampID + ".var";
-    string idxfile_name = sampID + ".idx";
+    std::string pileup_name = sampID + ".pileup";
+    std::string varfile_name = sampID + ".var";
+    std::string idxfile_name = sampID + ".idx";
     
     // TODO: make this also work with VCF file
     // read out and print pileup info

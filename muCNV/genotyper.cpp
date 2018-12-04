@@ -15,7 +15,7 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "muCNV.h"
+#include "genotyper.h"
 
 bool ordered(std::vector<Gaussian> &C)
 {
@@ -43,7 +43,7 @@ void copy(Gaussian &x, Gaussian &y)
 	x.Alpha = y.Alpha;
 }
 
-int gtype::assign(double x, std::vector<Gaussian> &C)
+int Genotyper::assign(double x, std::vector<Gaussian> &C)
 {
 	int n_comp = (int) C.size();
 	double p[n_comp];
@@ -93,7 +93,7 @@ int gtype::assign(double x, std::vector<Gaussian> &C)
 	return ret;
 }
 
-void svgeno::print(sv &S, svdata &D, string &ln, std::vector<double>& wt)
+void svgeno::print(sv &S, svdata &D, std::string &ln, std::vector<double>& wt)
 {
 	ln = std::to_string(S.chrnum);
 	ln += "\t" + std::to_string(S.pos) + "\t" + svTypeName(S.svtype) + "_" + std::to_string(S.chrnum) + ":" + std::to_string(S.pos) + "-" + std::to_string(S.end) + "\t.\t<" + svTypeName(S.svtype) + ">\t.\t";
@@ -111,7 +111,7 @@ void svgeno::print(sv &S, svdata &D, string &ln, std::vector<double>& wt)
 		ln += "FAIL\t";
 	}
 	
-	ln += "SVTYPE=" + string(svTypeName(S.svtype)) + ";END=" + std::to_string(S.end) + ";SVLEN=" + std::to_string(S.len) + ";AC=" + std::to_string(ac) + ";NS=" + std::to_string(ns) + ";AF=";
+    ln += "SVTYPE=" + std::string(svTypeName(S.svtype)) + ";END=" + std::to_string(S.end) + ";SVLEN=" + std::to_string(S.len) + ";AC=" + std::to_string(ac) + ";NS=" + std::to_string(ns) + ";AF=";
 	if (ns>0)
 		ln+=std::to_string((double)ac/(double)(2.0*ns));
 	else
@@ -220,7 +220,7 @@ void svgeno::print(sv &S, svdata &D, string &ln, std::vector<double>& wt)
 	}
 }
 
-void gtype::copyComps(std::vector<Gaussian> &C, std::vector<Gaussian> &C0)
+void Genotyper::copyComps(std::vector<Gaussian> &C, std::vector<Gaussian> &C0)
 {
 	C.clear();
 	C.resize(C0.size());
@@ -231,8 +231,7 @@ void gtype::copyComps(std::vector<Gaussian> &C, std::vector<Gaussian> &C0)
 	}
 }
 
-
-void gtype::call_tmp(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_isz, std::vector<double>&std_isz, std::vector<double> &wt)
+void Genotyper::call_tmp(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_isz, std::vector<double>&std_isz, std::vector<double> &wt)
 {
 	int n_sample=D.n;
 
@@ -417,7 +416,7 @@ void gtype::call_tmp(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_isz, 
 }
 
 
-void gtype::call_del_tmp(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_isz, std::vector<double>&std_isz, std::vector<double> &wt)
+void Genotyper::call_del_tmp(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_isz, std::vector<double>&std_isz, std::vector<double> &wt)
 {
 	int n_sample=D.n;
 
@@ -661,7 +660,7 @@ void gtype::call_del_tmp(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_i
 }
 
 
-void gtype::call_dup_tmp(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_isz, std::vector<double>&std_isz, std::vector<double> &wt)
+void Genotyper::call_dup_tmp(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_isz, std::vector<double>&std_isz, std::vector<double> &wt)
 {
 	int n_sample=D.n;
 
@@ -935,7 +934,7 @@ void gtype::call_dup_tmp(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_i
 }
 
 
-void gtype::call_del(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_isz, std::vector<double>&std_isz, std::vector<double> &wt)
+void Genotyper::call_del(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_isz, std::vector<double>&std_isz, std::vector<double> &wt)
 {
 	int n_sample=D.n;
 
@@ -1255,7 +1254,7 @@ void gtype::call_del(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_isz, 
 	}
 }
 
-void gtype::call_cnv(sv &S, svdata& D, svgeno& G, std::vector<double> &avg_isz, std::vector<double> &std_isz, std::vector<double> &wt)
+void Genotyper::call_cnv(sv &S, svdata& D, svgeno& G, std::vector<double> &avg_isz, std::vector<double> &std_isz, std::vector<double> &wt)
 {
 	int n_sample = D.n;
 
@@ -1574,7 +1573,7 @@ void gtype::call_cnv(sv &S, svdata& D, svgeno& G, std::vector<double> &avg_isz, 
 }
 
 
-void gtype::call_inv(sv &S, svdata& D, svgeno& G, std::vector<double>& avg_isz, std::vector<double> &std_isz)
+void Genotyper::call_inv(sv &S, svdata& D, svgeno& G, std::vector<double>& avg_isz, std::vector<double> &std_isz)
 {
 	int n_sample = D.n;
 
@@ -1760,281 +1759,6 @@ void gtype::call_inv(sv &S, svdata& D, svgeno& G, std::vector<double>& avg_isz, 
 		G.b_pass = false;
 		G.b_dump = true;
 	}
-
-}
-
-// EM with weights
-void gtype::EM(std::vector<double>& x, std::vector<double> &w, std::vector<Gaussian>& Comps)
-{
-	unsigned n_sample = (unsigned) x.size();
-	unsigned n_comp = (unsigned) Comps.size();
-	unsigned n_iter = 10;
-	
-	unsigned p_count= 1;
-	double p_val[n_comp];
-//	int zeroidx = -1;
-	
-	for(unsigned i=0; i<n_comp; ++i)
-	{
-		p_val[i] = Comps[i].Mean;
-		/*
-		if (Comps[i].Mean < 0.1)
-		{
-			zeroidx = i;
-		}
-		*/
-	}
-	
-	for(unsigned i=0; i<n_iter; ++i)
-	{
-		std::vector<double> sum (n_comp,0);
-		std::vector<double> sum_pr (n_comp,0);
-		std::vector<double> sum_err (n_comp,0);
-		
-		// E step
-		for(unsigned j=0; j<n_sample; ++j)
-		{
-			double sum_p = 0;
-			std::vector<double> pr(n_comp, 0);
-			for(unsigned m=0;m<n_comp;++m)
-			{
-				pr[m] = Comps[m].Alpha * normpdf(x[j], Comps[m]);
-				/*
-				if (zeroidx == (int)m )
-				{
-					pr[m] *= 2.0;
-				}
-				*/
-				sum_p += pr[m];
-			}
-			
-			if (sum_p > 1e-30) // if the value is an outlier, exclude it from calculations
-			{
-				for(unsigned m=0;m<n_comp;++m)
-				{
-					pr[m] /= sum_p;
-					sum[m] += pr[m] * x[j] * w[j];
-					sum_err[m] += pr[m] * w[j] * (x[j] - Comps[m].Mean)*(x[j]-Comps[m].Mean);
-					sum_pr[m] += pr[m] * w[j];
-				}
-			}
-		}
-		
-		double sumsum = 0;
-		// Add pseudo-count values
-		for(unsigned m=0; m<n_comp; ++m)
-		{
-			sum[m] += p_val[m] * p_count;
-			
-			sum_err[m] += (p_val[m] - Comps[m].Mean)*(p_val[m]-Comps[m].Mean) * p_count;
-			sum_pr[m] += p_count;
-			sumsum += sum_pr[m];
-		}
-		
-		// M step
-		for(unsigned m=0;m<n_comp;++m)
-		{
-			Comps[m].Mean = sum[m]/sum_pr[m];
-			Comps[m].Stdev = sqrt(sum_err[m] / sum_pr[m]) ;
-			Comps[m].Alpha = sum_pr[m] / sumsum;
-			if (Comps[m].Stdev < 1e-10)
-				Comps[m].Stdev = 0.005;
-
-//			cerr << "\t(" << Comps[m].Mean << "," << Comps[m].Stdev  << " : " << Comps[m].Alpha << ")" ;
-			/*
-			if (zeroidx == (int)m)
-			{
-				Comps[m].Mean = 0;
-			}
-			*/
-		}
-//		cerr << endl;
-	}
-}
-
-
-// EM for general CNVs without weights
-void gtype::EM(std::vector<double>& x, std::vector<Gaussian>& Comps)
-{
-	unsigned n_sample = (unsigned) x.size();
-	unsigned n_comp = (unsigned) Comps.size();
-	unsigned n_iter = 10;
-	
-	unsigned p_count= 2;
-	double p_val[n_comp];
-	int zeroidx = -1;
-	
-	for(unsigned i=0; i<n_comp; ++i)
-	{
-		p_val[i] = Comps[i].Mean;
-		if (Comps[i].Mean < 0.1)
-		{
-			zeroidx = i;
-		}
-	}
-	
-	for(unsigned i=0; i<n_iter; ++i)
-	{
-		std::vector<double> sum (n_comp,0);
-		std::vector<double> sum_pr (n_comp,0);
-		std::vector<double> sum_err (n_comp,0);
-		
-		// E step
-		for(unsigned j=0; j<n_sample; ++j)
-		{
-			double sum_p = 0;
-			std::vector<double> pr(n_comp, 0);
-			for(unsigned m=0;m<n_comp;++m)
-			{
-				pr[m] = Comps[m].Alpha * normpdf(x[j], Comps[m]);
-				if (zeroidx == (int)m )
-				{
-					pr[m] *= 2.0;
-				}
-				sum_p += pr[m];
-			}
-			
-			if (sum_p > 1e-12) // if the value is an outlier, exclude it from calculations
-			{
-				for(unsigned m=0;m<n_comp;++m)
-				{
-					pr[m] /= sum_p;
-					sum[m] += pr[m] * x[j];
-					sum_err[m] += pr[m] * (x[j] - Comps[m].Mean)*(x[j]-Comps[m].Mean);
-					sum_pr[m] += pr[m];
-				}
-			}
-		}
-		
-		// Add pseudo-count values
-		for(unsigned m=0; m<n_comp; ++m)
-		{
-			sum[m] += p_val[m] * p_count;
-			
-			sum_err[m] += (p_val[m] - Comps[m].Mean)*(p_val[m]-Comps[m].Mean) * p_count;
-			sum_pr[m] += p_count;
-		}
-		
-		// M step
-		for(unsigned m=0;m<n_comp;++m)
-		{
-			Comps[m].Mean = sum[m]/sum_pr[m];
-			Comps[m].Stdev = sqrt(sum_err[m] / sum_pr[m]) ;
-			Comps[m].Alpha = sum_pr[m] /( n_sample + n_comp*p_count);
-			//Comps[m].Alpha = (sum_pr[m] - p_count)/( n_sample);
-
-			// cerr << "\t(" << Comps[m].Mean << "," << Comps[m].Stdev  << " : " << Comps[m].Alpha << ")" ;
-			if (zeroidx == (int)m)
-			{
-				Comps[m].Mean = 0;
-			}
-		}
-		//cerr << endl;
-	}
-}
-
-
-// EM with means fixed multiples of base
-void gtype::fit(std::vector<double>& x, std::vector<Gaussian>& Comps)
-{
-	int n_sample = (int) x.size();
-	int n_comp = (int) Comps.size();
-	int n_iter = 10;
-	
-	int p_count= 2;
-	double p_val[n_comp];
-	int zeroidx = -1;
-	
-	int factor[n_comp];
-	double base = 0.5;
-
-	for(int i=0; i<n_comp; ++i)
-	{
-		p_val[i] = Comps[i].Mean;
-		factor[i] = round(Comps[i].Mean / base);
-		if (p_val[i] <0.1) // zero
-		{
-			zeroidx = i;
-		}
-	}
-	
-	for(int i=0; i<n_iter; ++i)
-	{
-		std::vector<double> sum (n_comp,0);
-		std::vector<double> sum_pr (n_comp,0);
-		std::vector<double> sum_err (n_comp,0);
-		
-		// E step
-		double sum_b = 0;
-		for(int j=0; j<n_sample; ++j)
-		{
-			double sum_p = 0;
-			std::vector<double> pr(n_comp, 0);
-			for(int m=0;m<n_comp;++m)
-			{
-				pr[m] = Comps[m].Alpha * Comps[m].pdf(x[j]);
-				sum_p += pr[m];
-			}
-			
-			if (sum_p > 1e-12) // if the value is an outlier, exclude it from calculations
-			{
-				for(int m=0;m<n_comp;++m)
-				{
-					pr[m] /= sum_p;
-					if (m!= zeroidx)
-					{
-						sum_b +=  pr[m] *x[j] / (double)factor[m];
-					}
-//					sum[m] += pr[m] * x[j];
-					sum_err[m] += pr[m] * (x[j] - Comps[m].Mean)*(x[j]-Comps[m].Mean);
-					sum_pr[m] += pr[m];
-				}
-			}
-		}
-		
-		// Add pseudo-count values
-		for(int m=0; m<n_comp; ++m)
-		{
-//			sum[m] += p_val[m] * p_count;
-			sum_err[m] += (p_val[m] - Comps[m].Mean)*(p_val[m]-Comps[m].Mean) * p_count;
-			sum_pr[m] += p_count;
-		}
-		
-		// M step
-		double  sum_nonzero = 0;
-		for(int m=0;m<n_comp;++m)
-		{
-//			Comps[m].Mean = sum[m] / sum_pr[m];
-			if (m!=zeroidx)
-				sum_nonzero += sum_pr[m];
-
-			Comps[m].Stdev = sqrt(sum_err[m] / (sum_pr[m] ));
-			Comps[m].Alpha = sum_pr[m] /( n_sample + n_comp*p_count);
-		}
-		base = sum_b / sum_nonzero;
-
-		for(int m=0;m<n_comp;++m)
-		{
-			Comps[m].Mean = base * factor[m];
-			//cerr << "\t(" << Comps[m].Mean << "," << Comps[m].Stdev  << " : " << Comps[m].Alpha << ")" ;
-		}
-//		cerr << endl;
-	}
-
-	double sum_p = 0;
-	for(int m=0;m<n_comp;++m)
-	{
-		Comps[m].Alpha  -= p_count / ((double)n_sample + n_comp * p_count);
-		if (Comps[m].Alpha < 0) Comps[m].Alpha = 0;
-		sum_p += Comps[m].Alpha;
-	}
-//	cerr << "Final: ";
-	for(int m=0;m<n_comp;++m)
-	{
-		Comps[m].Alpha  = Comps[m].Alpha / sum_p;
-//		cerr << "\t(" << Comps[m].Mean << "," << Comps[m].Stdev  << " : " << Comps[m].Alpha << ")" ;
-	}
-//	cerr << endl;
 
 }
 

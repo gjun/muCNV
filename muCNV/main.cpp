@@ -19,7 +19,6 @@
 #include <map>
 #include <string.h>
 
-#include "muCNV.h"
 #include "gc_content.h"
 #include "bam_cram.h"
 

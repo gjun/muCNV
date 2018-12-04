@@ -7,11 +7,12 @@
 //
 
 #include <stdio.h>
+#include <cmath>
 // TCLAP headers
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
 
-#include "muCNV.h"
+#include "in_vcf.h"
 
 #include "gc_content.h"
 #include "pileup.h"

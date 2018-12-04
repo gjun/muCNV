@@ -6,11 +6,10 @@
 //  Copyright © 2017 Goo Jun. All rights reserved.
 //
 
-#include "muCNV.h"
-#include <stdio.h>
+#include "out_vcf.h"
 #include <math.h>
 
-void outvcf::open(string &fname)
+void outvcf::open(std::string &fname)
 {
 	fp = fopen(fname.c_str(), "w");
 	varcnt = 0;
@@ -21,7 +20,7 @@ void outvcf::close()
 	fclose(fp);
 }
 
-void outvcf::write_header(std::vector<string> &sampleIDs)
+void outvcf::write_header(std::vector<std::string> &sampleIDs)
 {
 	fprintf(fp,"##fileformat=VCFv4.1\n");
 	fprintf(fp,"##source=UM_CGI_CNV_pipeline_v0.1\n");
@@ -55,7 +54,7 @@ void outvcf::write_header(std::vector<string> &sampleIDs)
 	
 }
 
-void outvcf::print(string &ln)
+void outvcf::print(std::string &ln)
 {
 	fprintf(fp, "%s\n", ln.c_str());
 }
@@ -65,7 +64,7 @@ void outvcf::write_del(sv& interval, std::vector<int>& gt, std::vector<int>& GQ,
 	// For Deletions
 	int n_comp=(int)C.size();
 //	int chrnum = interval.chrnum;
-	string chr = std::to_string(interval.chrnum);
+    std::string chr = std::to_string(interval.chrnum);
 	int pos = interval.pos;
 	int svend = interval.end;
 	
@@ -155,7 +154,7 @@ void outvcf::write_del(sv& interval, std::vector<int>& gt, std::vector<int>& GQ,
 void outvcf::write_cnv(sv& interval, std::vector<int>& gt, std::vector<int>& GQ, int ac, int ns, std::vector<double>& X, std::vector<double>& AvgDepth, std::vector<Gaussian>& C, double be, bool bFilter)
 {
 	int n_comp=(int)C.size();
-	string chr = std::to_string(interval.chrnum);
+    std::string chr = std::to_string(interval.chrnum);
 	int pos = interval.pos;
 	int svend = interval.end;
 	int alts[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};;

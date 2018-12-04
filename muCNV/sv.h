@@ -10,6 +10,7 @@
 #define sv_h
 
 #include <string>
+#include "gaussian.h"
 
 enum svType {DEL=0, DUP=1, INV=2, CNV=3, INS=4, BND=5};
 std::string svTypeName(svType);
@@ -57,4 +58,172 @@ public:
     
     breakpoint();
 };
+
+
+class svdata
+{
+public:
+    int n;
+    std::vector<double> dp;
+    std::vector<double> isz;
+    
+    std::vector<double> cnv_pos;
+    std::vector<double> cnv_neg;
+    std::vector<double> inv_pos;
+    std::vector<double> inv_neg;
+    
+    std::vector<int> n_isz;
+    std::vector<int> n_cnv_pos;
+    std::vector<int> n_cnv_neg;
+    std::vector<int> n_inv_pos;
+    std::vector<int> n_inv_neg;
+    
+    std::vector<double> norm_dp;
+    std::vector<double> norm_readcount;
+    std::vector<double> norm_cnv_pos;
+    std::vector<double> norm_cnv_neg;
+    std::vector<double> norm_inv_pos;
+    std::vector<double> norm_inv_neg;
+    
+    void set_size(int num)
+    {
+        n = num;
+        dp.resize(n);
+        isz.resize(n);
+        
+        cnv_pos.resize(n);
+        cnv_neg.resize(n);
+        inv_pos.resize(n);
+        inv_neg.resize(n);
+        
+        n_isz.resize(n);
+        n_cnv_pos.resize(n);
+        n_cnv_neg.resize(n);
+        n_inv_pos.resize(n);
+        n_inv_neg.resize(n);
+        
+        norm_dp.resize(n);
+        norm_cnv_pos.resize(n);
+        norm_cnv_neg.resize(n);
+        norm_inv_pos.resize(n);
+        norm_inv_neg.resize(n);
+        norm_readcount.resize(n);
+    };
+    
+    void normalize(sv &interval, std::vector<double> &avg_depth, std::vector<double> &avg_isize)
+    {
+        for(int i=0;i<n;++i)
+        {
+            norm_dp[i] = dp[i] / avg_depth[i];
+            if (interval.svtype == DEL)
+            {
+                norm_cnv_pos[i] = (cnv_pos[i] - avg_isize[i] ) / interval.len;
+                norm_cnv_neg[i] = (cnv_neg[i] - avg_isize[i] ) / interval.len;
+                norm_inv_pos[i] = (inv_pos[i] - avg_isize[i] ) / interval.len;
+                norm_inv_neg[i] = (inv_neg[i] - avg_isize[i] ) / interval.len;
+            }
+            else if (interval.svtype == DUP || interval.svtype == CNV)
+            {
+                norm_cnv_pos[i] = (cnv_pos[i] + avg_isize[i]) / interval.len;
+                norm_cnv_neg[i] = (cnv_neg[i] + avg_isize[i]) / interval.len;
+                norm_inv_pos[i] = (inv_pos[i] + avg_isize[i]) / interval.len;
+                norm_inv_neg[i] = (inv_neg[i] + avg_isize[i]) / interval.len;
+            }
+            else if (interval.svtype == INV )
+            {
+                norm_cnv_pos[i] = (cnv_pos[i] ) / avg_isize[i];
+                norm_cnv_neg[i] = (cnv_neg[i] ) / avg_isize[i];
+                norm_inv_pos[i] = (inv_pos[i] ) / interval.len;
+                norm_inv_neg[i] = (inv_neg[i] ) / interval.len;
+            }
+            // READLEN fixed to 150 : later!!
+            norm_readcount[i] = (double)n_isz[i] * 150.0 / (interval.len + 2.0*(avg_isize[i]-75)) / avg_depth[i];
+        }
+    };
+    
+    void print(sv &interval)
+    {
+    }
+    
+};
+
+class svgeno
+{
+public:
+    bool b_biallelic;
+    bool b_pass;
+    bool b_dump;
+    
+    bool dp_flag;
+    bool pos_flag;
+    bool neg_flag;
+    
+    bool cnv_pos_flag;
+    bool cnv_neg_flag;
+    bool inv_pos_flag;
+    bool inv_neg_flag;
+    
+    double p_overlap;
+    std::string info;
+    int n_sample;
+    
+    int ac;
+    int ns;
+    std::vector<double> bic;
+    
+    std::vector<Gaussian> Comps;
+    
+    std::vector<int> gt; // bi-allelic genotype
+    std::vector<int> cn; // copy number
+    
+    void initialize(int N)
+    {
+        n_sample = N;
+        Comps.clear();
+        
+        ns = 0;
+        ac = 0;
+        p_overlap = 1;
+        
+        gt.resize(n_sample, -1);
+        cn.resize(n_sample, -1);
+        bic.resize(20, 0);
+        
+        for(int i=0;i<n_sample; ++i)
+        {
+            gt[i] = -1;
+            cn[i] = -1;
+        }
+        for(int i=0;i<20;++i)
+        {
+            bic[i] = 0;
+        }
+        
+        b_biallelic = false;
+        b_pass = false;
+        b_dump = true;
+        
+        dp_flag = false;
+        pos_flag = false;
+        neg_flag = false;
+        // For inversions
+        cnv_pos_flag = false;
+        cnv_neg_flag = false;
+        inv_pos_flag = false;
+        inv_neg_flag = false;
+        info = "";
+        
+    };
+    void print (sv &, svdata &, std::string &, std::vector<double> &);
+};
+
+double RO(sv &, sv &);
+
+void pick_sv_from_merged(sv &, std::vector<sv> &);
+int find_overlap_sv(sv& , std::vector<sv>&);
+int find_start(std::vector<sv> &, int );
+
+bool in_centrome(sv &);
+bool in_centrome(int, int);
+
 #endif /* sv_h */

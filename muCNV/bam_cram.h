@@ -1,5 +1,5 @@
 //
-//  bFile.h
+//  bam_cram.h
 //  muCNV
 //
 //  Created by Goo Jun on 11/13/18.
@@ -11,6 +11,8 @@
 
 // #include "gc_content.h"
 #include "pileup.h"
+#include "hts.h"
+#include "sam.h"
 
 typedef struct {     // auxiliary data structure
     samFile *fp;     // the file handle
@@ -27,8 +29,6 @@ typedef struct {     // auxiliary data structure
     std::vector<readpair> *p_vec_rp;
     std::vector<splitread> *p_vec_sp;
     
-
-
     int min_mapQ, min_len; // mapQ filter; length filter
 } aux_t;
 
@@ -56,7 +56,7 @@ public:
     //    void get_avg_depth();
     
    // void initialize(string &);
-    void initialize_sequential(string &, GcContent&);
+    void initialize_sequential(std::string &, GcContent&);
     void postprocess_depth(std::vector<sv> &);
     
 };

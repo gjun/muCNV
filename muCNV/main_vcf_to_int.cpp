@@ -11,12 +11,12 @@
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
 
-#include "muCNV.h"
+#include "in_vcf.h"
 
 int main_vcf_to_int(int argc, char** argv)
 {
-    string vcf_file;
-    string interval_file;
+    std::string vcf_file;
+    std::string interval_file;
     bool bPrint;
     std::vector<sv> vec_sv;
     std::vector<breakpoint> vec_bp;
@@ -25,8 +25,8 @@ int main_vcf_to_int(int argc, char** argv)
     {
         TCLAP::CmdLine cmd("Command description message", ' ', "0.06");
         
-        TCLAP::ValueArg<string> argVcf("v","vcf","VCF file containing candidate SVs",true,"","string");
-        TCLAP::ValueArg<string> argInterval("i","interVal", "Binary interval file containing candidate SVs", false, "", "string");
+        TCLAP::ValueArg<std::string> argVcf("v","vcf","VCF file containing candidate SVs",true,"","string");
+        TCLAP::ValueArg<std::string> argInterval("i","interVal", "Binary interval file containing candidate SVs", false, "", "string");
         TCLAP::SwitchArg switchPrint("p","print", "Print out SV variants", cmd, false);
 
         cmd.add(argVcf);

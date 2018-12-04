@@ -15,30 +15,8 @@
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "muCNV.h"
+#include "cluster.h"
 #include <algorithm>
-
-double RO(sv &x, sv &y)
-{
-	double l = 0;
-	double L = 0;
-
-	if (y.pos > x.end)
-	{
-		return 0;
-	}
-	else if (x.pos > y.end)
-	{
-		return 0;
-	}
-
-	bool bStart = (x.pos < y.pos);
-	bool bEnd = (x.end < y.end);
-
-	l = (bEnd ? x.end : y.end) -  (bStart ? y.pos : x.pos);
-	L = (bEnd ? y.end : x.end) - (bStart ? x.pos : y.pos);
-	return (l/L);
-}
 
 //void merge_svs(std::vector<sv> &candidates , std::vector< std::vector<sv> > &merged_candidates)
 void merge_svs(std::vector<sv> &candidates , std::vector<int> &idxs)

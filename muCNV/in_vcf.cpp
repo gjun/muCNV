@@ -14,11 +14,14 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "muCNV.h"
 #include <map>
 #include <stdlib.h>
+#include "in_vcf.h"
+#include "common.h"
+#include <iostream>
+#include <fstream>
 
-svType get_svtype(string &s)
+svType get_svtype(std::string &s)
 {
     if (s == "DEL")
         return DEL;
@@ -34,13 +37,13 @@ svType get_svtype(string &s)
         return BND;
 }
 
-void read_list(string &index_file, std::vector<string> &items)
+void read_list(std::string &index_file, std::vector<std::string> &items)
 {
 	std::ifstream inFile(index_file.c_str(), std::ios::in);
 	
 	while(inFile.good())
 	{
-		string ln;
+		std::string ln;
 		getline(inFile,ln);
 		if (!ln.empty())
 		{
@@ -50,17 +53,17 @@ void read_list(string &index_file, std::vector<string> &items)
 	std::cerr << items.size() << " items exist in the index file " << index_file << std::endl;
 }
 	
-void read_index(string index_file, std::vector<string> &sample_ids, std::vector<string> &vcf_files, std::vector<string> &bam_files, std::vector<double> &avg_depths)
+void read_index(std::string index_file, std::vector<std::string> &sample_ids, std::vector<std::string> &vcf_files, std::vector<std::string> &bam_files, std::vector<double> &avg_depths)
 {
 	std::ifstream inFile(index_file.c_str(), std::ios::in);
 	
 	while(inFile.good())
 	{
-		string ln;
+		std::string ln;
 		getline(inFile,ln);
 		if (!ln.empty())
 		{
-			std::vector<string> tokens;
+			std::vector<std::string> tokens;
 			split(ln.c_str(), " \t\n", tokens);
 			
 			if (tokens[0].empty())
@@ -90,7 +93,7 @@ void read_index(string index_file, std::vector<string> &sample_ids, std::vector<
 	
 }
 /*
-int suppvcf::initialize(const char* filename, std::vector<string> &sample_ids, string &region)
+int suppvcf::initialize(const char* filename, std::vector<std::string> &sample_ids, std::string &region)
 {
 
 	htsFile *fp = hts_open(filename, "r");
@@ -140,7 +143,7 @@ int suppvcf::initialize(const char* filename, std::vector<string> &sample_ids, s
 				if (str.s[0] == '#' && str.s[1] == 'C' && str.s[2] == 'H' && str.s[3] == 'R')
 				{
 					// read sample ids
-					std::vector<string> tokens;
+					std::vector<std::string> tokens;
 					split(str.s, " \t\n", tokens);
 					for(int j=9; j<(int)tokens.size(); ++j)
 					{
@@ -167,11 +170,11 @@ int suppvcf::initialize(const char* filename, std::vector<string> &sample_ids, s
 
 				// Read avg depth
 				flag = false;
-				std::vector<string> tokens;
+				std::vector<std::string> tokens;
 				split(str.s, " \t\n", tokens);
 				for(int j=9;j<tokens.size();++j)
 				{
-					std::vector<string> fields;
+					std::vector<std::string> fields;
 					split(tokens[j].c_str(), ":", fields);
 
 					avg_depths.push_back(atof(fields[0].c_str()));
@@ -209,7 +212,7 @@ int suppvcf::initialize(const char* filename, std::vector<string> &sample_ids, s
 */
 
 
-int invcfs::initialize(std::vector<string> &vcf_files, std::vector<string> &sample_ids, std::vector<double> &avg_depths, std::vector<double> &avg_isizes, std::vector<double> &std_isizes, string &region)
+int invcfs::initialize(std::vector<std::string> &vcf_files, std::vector<std::string> &sample_ids, std::vector<double> &avg_depths, std::vector<double> &avg_isizes, std::vector<double> &std_isizes, std::string &region)
 {
 	int n_vcf = (int)vcf_files.size();
 	
@@ -264,7 +267,7 @@ int invcfs::initialize(std::vector<string> &vcf_files, std::vector<string> &samp
 				if (str.s[0] == '#' && str.s[1] == 'C' && str.s[2] == 'H' && str.s[3] == 'R')
 				{
 					// read sample ids
-					std::vector<string> tokens;
+					std::vector<std::string> tokens;
 					split(str.s, " \t\n", tokens);
 					for(int j=9; j<(int)tokens.size(); ++j)
 					{
@@ -291,11 +294,11 @@ int invcfs::initialize(std::vector<string> &vcf_files, std::vector<string> &samp
 
 				// Read avg depth
 				flag = false;
-				std::vector<string> tokens;
+				std::vector<std::string> tokens;
 				split(str.s, " \t\n", tokens);
 				for(int j=9;j<(int)tokens.size();++j)
 				{
-					std::vector<string> fields;
+					std::vector<std::string> fields;
 					split(tokens[j].c_str(), ":", fields);
 
 					avg_depths.push_back(atof(fields[0].c_str()));
@@ -331,7 +334,7 @@ int invcfs::initialize(std::vector<string> &vcf_files, std::vector<string> &samp
 }
 
 
-void invcfs::parse_sv(std::vector<string> &tokens, sv& interval)
+void invcfs::parse_sv(std::vector<std::string> &tokens, sv& interval)
 {
 	int chr;
 
@@ -367,14 +370,14 @@ void invcfs::parse_sv(std::vector<string> &tokens, sv& interval)
 	interval.chrnum = chr;
 	interval.pos = atoi(tokens[1].c_str());
 
-	string info = tokens[7];
+	std::string info = tokens[7];
 
-	std::vector<string> infotokens;
+	std::vector<std::string> infotokens;
 
 	split(info.c_str(), ";", infotokens);
 	for(int j=0;j<(int)infotokens.size();++j)
 	{
-		std::vector<string> infofields;
+		std::vector<std::string> infofields;
 		split(infotokens[j].c_str(), "=", infofields);
 		if (infofields.size()>1)
 		{
@@ -392,16 +395,16 @@ void invcfs::parse_sv(std::vector<string> &tokens, sv& interval)
 	} // if chr >= 1 && chr <= 22
 }
 
-double invcfs::get_second_value(string &t)
+double invcfs::get_second_value(std::string &t)
 {
 	if (t==".") return 0;
 	
 	int p=0;
 	while(t[p++] != ',');
-	return atof(t.substr(p,string::npos).c_str());
+	return atof(t.substr(p,std::string::npos).c_str());
 }
 
-void invcfs::get_value_pair(string &t, int &n, double &x)
+void invcfs::get_value_pair(std::string &t, int &n, double &x)
 {
 	if (t==".")
 	{
@@ -414,14 +417,14 @@ void invcfs::get_value_pair(string &t, int &n, double &x)
 	while(t[p++] != ',');
 	
 	n = atoi(t.substr(0, p-1).c_str());
-	x = atof(t.substr(p,string::npos).c_str());
+	x = atof(t.substr(p,std::string::npos).c_str());
 	if (x<0)
 	{
 		x= -1*x;
 	}
 }
 
-int invcfs::read_interval_multi(sv& interval, svdata& dt, string &region)
+int invcfs::read_interval_multi(sv& interval, svdata& dt, std::string &region)
 {
 	int idx = 0;
 	kstring_t str = {0,0,0};
@@ -432,7 +435,7 @@ int invcfs::read_interval_multi(sv& interval, svdata& dt, string &region)
 
 	if (bTabix)
 	{
-		std::vector<string> tks;
+		std::vector<std::string> tks;
 		split(region.c_str(), ":-", tks);
 		if (tks.size() != 3)
 		{
@@ -458,7 +461,7 @@ int invcfs::read_interval_multi(sv& interval, svdata& dt, string &region)
 		if (ret>=0)
 		{
 			// Read per-sample depth, insert size info
-			std::vector<string> tokens;
+			std::vector<std::string> tokens;
 			split(str.s, " \t\n", tokens);
 			
 			// Read interval information
@@ -469,7 +472,7 @@ int invcfs::read_interval_multi(sv& interval, svdata& dt, string &region)
 			}
 			for(int j=9;j<(int)tokens.size();++j) // Parse genotype fields
 			{
-				std::vector<string> fields;
+				std::vector<std::string> fields;
 				split(tokens[j].c_str(), ":", fields);
 				
 				// GC corrected depth
@@ -500,9 +503,9 @@ int invcfs::read_interval_multi(sv& interval, svdata& dt, string &region)
 	}
 }
 
-int read_candidate_vcf(std::ifstream &vfile, sv& new_interval, string& suppvec)
+int read_candidate_vcf(std::ifstream &vfile, sv& new_interval, std::string& suppvec)
 {
-	string ln;
+	std::string ln;
 	getline(vfile, ln);
 
 	if (!ln.empty())
@@ -510,7 +513,7 @@ int read_candidate_vcf(std::ifstream &vfile, sv& new_interval, string& suppvec)
 		if (ln[0] != '#')
 		{
 			int chr;
-			std::vector<string> tokens;
+			std::vector<std::string> tokens;
 			split(ln.c_str(), " \t\n", tokens);
 			if (tokens[0].substr(0,3) == "chr" || tokens[0].substr(0,3) == "Chr" )
 			{
@@ -546,14 +549,14 @@ int read_candidate_vcf(std::ifstream &vfile, sv& new_interval, string& suppvec)
 				new_interval.chrnum = chr;
 				new_interval.pos = atoi(tokens[1].c_str());
 
-				string info = tokens[7];
+				std::string info = tokens[7];
 				int chr2num = new_interval.chrnum;
 
-				std::vector<string> infotokens;
+				std::vector<std::string> infotokens;
 				split(info.c_str(), ";", infotokens);
 				for(int j=0;j<(int)infotokens.size();++j)
 				{
-					std::vector<string> infofields;
+					std::vector<std::string> infofields;
 					split(infotokens[j].c_str(), "=", infofields);
 					if (infofields.size()>1)
 					{
@@ -569,7 +572,7 @@ int read_candidate_vcf(std::ifstream &vfile, sv& new_interval, string& suppvec)
 						}
 						else if (infofields[0] == "CHR2")
 						{
-                            chr2num = atoi(infofields[1].c_str()); //TODO: make chr string to int function
+                            chr2num = atoi(infofields[1].c_str()); //TODO: make chr std::string to int function
 						}
 						else if (infofields[0] == "SUPP")
 						{
@@ -595,7 +598,7 @@ int read_candidate_vcf(std::ifstream &vfile, sv& new_interval, string& suppvec)
 	return -1;
 }
 
-void write_interval(string &intFileName, std::vector<sv> &vec_sv)
+void write_interval(std::string &intFileName, std::vector<sv> &vec_sv)
 {
     std::ofstream intFile(intFileName.c_str(), std::ios::out | std::ios::binary);
     int n_var = (int)vec_sv.size();
@@ -613,7 +616,7 @@ void write_interval(string &intFileName, std::vector<sv> &vec_sv)
     }
     intFile.close();
 }
-void read_svs_from_intfile(string &intFileName, std::vector<breakpoint> &vec_bp, std::vector<sv> &vec_sv)
+void read_svs_from_intfile(std::string &intFileName, std::vector<breakpoint> &vec_bp, std::vector<sv> &vec_sv)
 {
     std::ifstream intFile(intFileName.c_str(), std::ios::in | std::ios::binary);
     int n_var = 0;
@@ -654,18 +657,18 @@ void read_svs_from_intfile(string &intFileName, std::vector<breakpoint> &vec_bp,
 }
 
 
-void read_svs_from_vcf(string &vcf_file, std::vector<breakpoint> &v_bp, std::vector<sv> &v_sv)
+void read_svs_from_vcf(std::string &vcf_file, std::vector<breakpoint> &v_bp, std::vector<sv> &v_sv)
 {
     std::ifstream vfile(vcf_file.c_str(), std::ios::in);
     while(vfile.good())
     {
-        string ln;
+        std::string ln;
         getline(vfile, ln);
         
         if (!ln.empty() && ln[0] != '#')
         {
             int chr;
-            std::vector<string> tokens;
+            std::vector<std::string> tokens;
             split(ln.c_str(), " \t\n", tokens);
             // Let's add error handling later (and factor this part out)
             if (tokens[0].substr(0,3) == "chr" || tokens[0].substr(0,3) == "Chr" )
@@ -701,13 +704,13 @@ void read_svs_from_vcf(string &vcf_file, std::vector<breakpoint> &v_bp, std::vec
                 new_interval.chrnum = chr;
                 new_interval.pos = atoi(tokens[1].c_str());
                 
-                string info = tokens[7];
+                std::string info = tokens[7];
                 
-                std::vector<string> infotokens;
+                std::vector<std::string> infotokens;
                 split(info.c_str(), ";", infotokens);
                 for(int j=0;j<(int)infotokens.size();++j)
                 {
-                    std::vector<string> infofields;
+                    std::vector<std::string> infofields;
                     split(infotokens[j].c_str(), "=", infofields);
                     if (infofields.size()>1)
                     {
@@ -779,7 +782,7 @@ void read_svs_from_vcf(string &vcf_file, std::vector<breakpoint> &v_bp, std::vec
     vfile.close();
 }
 
-void read_intervals_from_vcf(std::vector<string> &sample_ids, std::vector<string> &vcf_files, std::vector<sv> &candidates)
+void read_intervals_from_vcf(std::vector<std::string> &sample_ids, std::vector<std::string> &vcf_files, std::vector<sv> &candidates)
 {
 //	for(int i=0;i<(int)sample_ids.size();++i)
 	int i=0; // TEMPORARY, READ SINGLE VCF FILE
@@ -787,7 +790,7 @@ void read_intervals_from_vcf(std::vector<string> &sample_ids, std::vector<string
 		std::ifstream vfile(vcf_files[i].c_str(), std::ios::in);
 		while(vfile.good())
 		{
-			string ln;
+			std::string ln;
 			getline(vfile, ln);
 
 
@@ -799,7 +802,7 @@ void read_intervals_from_vcf(std::vector<string> &sample_ids, std::vector<string
 				//	std::cerr << ln << std::endl;
 
 					int chr;
-					std::vector<string> tokens;
+					std::vector<std::string> tokens;
 					split(ln.c_str(), " \t\n", tokens);
 					// Let's add error handling later
 					if (tokens[0].substr(0,3) == "chr" || tokens[0].substr(0,3) == "Chr" )
@@ -844,16 +847,16 @@ void read_intervals_from_vcf(std::vector<string> &sample_ids, std::vector<string
 
 //						std::cerr << "pos : " << new_interval.pos << std::endl;
 
-						string info = tokens[7];
+						std::string info = tokens[7];
 						int chr2num = new_interval.chrnum;
 						
 						// std::cerr << "info : " << info << std::endl;
 
-						std::vector<string> infotokens;
+						std::vector<std::string> infotokens;
 						split(info.c_str(), ";", infotokens);
 						for(int j=0;j<(int)infotokens.size();++j)
 						{
-							std::vector<string> infofields;
+							std::vector<std::string> infofields;
 							//std::cerr << infotokens[j] << std::endl;
 							split(infotokens[j].c_str(), "=", infofields);
 							if (infofields.size()>1)
@@ -866,7 +869,7 @@ void read_intervals_from_vcf(std::vector<string> &sample_ids, std::vector<string
 								/*
 								else if (infofields[0] == "CIPOS")
 								{
-									std::vector<string> ci;
+									std::vector<std::string> ci;
 									split(infofields[1].c_str(), ",", ci);
 									new_interval.ci_pos.first = atoi(ci[0].c_str());
 									new_interval.ci_pos.second = atoi(ci[1].c_str());
@@ -875,7 +878,7 @@ void read_intervals_from_vcf(std::vector<string> &sample_ids, std::vector<string
 								}
 								else if (infofields[0] == "CIEND")
 								{
-									std::vector<string> ci;
+									std::vector<std::string> ci;
 									split(infofields[1].c_str(), ",", ci);
 									new_interval.ci_end.first = atoi(ci[0].c_str());
 									new_interval.ci_end.second = atoi(ci[1].c_str());
@@ -913,17 +916,17 @@ void read_intervals_from_vcf(std::vector<string> &sample_ids, std::vector<string
 } //read_intervals_from_vcf
 
 
-void readFam(string sFamFile, std::map<string, unsigned> &hIdSex)
+void readFam(std::string sFamFile, std::map<std::string, unsigned> &hIdSex)
 {
 	std::ifstream inFile(sFamFile.c_str(), std::ios::in);
 
 	while(inFile.good())
 	{
-		string ln;
+		std::string ln;
 		getline(inFile,ln);
 		if (!ln.empty())
 		{
-			std::vector<string> tokens;
+			std::vector<std::string> tokens;
 			split(ln.c_str(), " \t\n", tokens);
 
 			if (tokens[1].empty())

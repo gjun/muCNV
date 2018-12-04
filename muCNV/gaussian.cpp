@@ -6,9 +6,73 @@
 //  Copyright © 2017 Goo Jun. All rights reserved.
 //
 
-#include "muCNV.h"
+
+#include "gaussian.h"
 //#include <math.h>
 #include <cmath>
+
+
+double MAX(std::vector<double>& x)
+{
+    double ret = -1.0*DBL_MAX;
+    for(unsigned i=0;i<x.size();++i)
+    {
+        if (ret<x[i])
+        {
+            ret = x[i];
+        }
+    }
+    return ret;
+}
+
+double MIN(std::vector<double>& x)
+{
+    double ret = DBL_MAX;
+    for(unsigned i=0;i<x.size();++i)
+    {
+        if (ret>x[i])
+        {
+            ret = x[i];
+        }
+    }
+    return ret;
+}
+
+
+double det(double* M)
+{
+    return (M[0]*M[3]-M[1]*M[2]);
+}
+
+
+double mean(std::vector<double>& x)
+{
+    double sum = 0;
+    for(unsigned j=0; j<x.size(); ++j)
+    {
+        sum += x[j];
+    }
+    return sum/x.size();
+}
+
+double stdev(std::vector<double>& x, double M)
+{
+    
+    if (x.size()>1)
+    {
+        double sumsq = 0;
+        for(unsigned j=0; j<x.size(); ++j)
+        {
+            sumsq += (x[j]-M) *(x[j]-M);
+        }
+        return sqrt(sumsq / x.size());
+    }
+    else
+    {
+        return 0.01;
+    }
+}
+
 
 Gaussian::Gaussian()
 {
@@ -66,7 +130,6 @@ void Gaussian2::set(const double &m0, const double & m1, const double & c0, cons
 	
 	update();
 }
-
 
 void Gaussian2::update()
 {
@@ -166,7 +229,6 @@ double lognormpdf(double x, Gaussian& C)
 		return 0;
 	}
 }
-
 
 
 double BayesError(std::vector<Gaussian>& Comps)

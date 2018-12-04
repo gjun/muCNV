@@ -8,8 +8,9 @@
 
 #include <stdio.h>
 
-#include "muCNV.h"
+#include "in_vcf.h"
 #include "pileup.h"
+#include <cmath>
 
 // TCLAP headers
 #include "tclap/CmdLine.h"
@@ -18,18 +19,18 @@
 
 int main_merge_pileup(int argc, char** argv)
 {
-    string index_file;
-    string output_name;
-    string gc_file;
+    std::string index_file;
+    std::string output_name;
+    std::string gc_file;
     
     // Parsing command-line arguments
     try
     {
         TCLAP::CmdLine cmd("Command description message", ' ', "0.06");
     
-        TCLAP::ValueArg<string> argIndex("i","index","Text file containing list of pileup samples",true,"","string");
-        TCLAP::ValueArg<string> argOut("o","output","Output base filename for merged pileup",true,"","string");
-        TCLAP::ValueArg<string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "string");
+        TCLAP::ValueArg<std::string> argIndex("i","index","Text file containing list of pileup samples",true,"","string");
+        TCLAP::ValueArg<std::string> argOut("o","output","Output base filename for merged pileup",true,"","string");
+        TCLAP::ValueArg<std::string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "string");
         
         cmd.add(argGcfile);
         cmd.add(argIndex);
@@ -50,7 +51,7 @@ int main_merge_pileup(int argc, char** argv)
     
     int n_sample = 0;
     
-    std::vector<string> samples;
+    std::vector<std::string> samples;
     read_list(index_file, samples);
     
     n_sample = (int) samples.size();
@@ -64,7 +65,7 @@ int main_merge_pileup(int argc, char** argv)
     
     for(int i=0;i<n_sample; ++i)
     {
-        string pileup_name = samples[i] + ".pileup";
+        std::string pileup_name = samples[i] + ".pileup";
         
         pileups[i].open(pileup_name, std::ios::in | std::ios::binary);
         
@@ -83,7 +84,7 @@ int main_merge_pileup(int argc, char** argv)
     Pileup mpup;
     BaseFile midx;
     size_t curr_pos = 0;
-    string filename;
+    std::string filename;
     
     filename = output_name + ".pileup";
     mpup.open(filename, std::ios::out | std::ios::binary);
@@ -198,7 +199,7 @@ int main_merge_pileup(int argc, char** argv)
     
     for(int i=0;i<n_sample; ++i)
     {
-        string var_name = samples[i] + ".var";
+        std::string var_name = samples[i] + ".var";
         varfiles[i].open(var_name, std::ios::in | std::ios::binary);
         
         int n = 0;
