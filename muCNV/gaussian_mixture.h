@@ -15,11 +15,15 @@
 
 class GaussianMixture
 {
+public:
     std::vector<Gaussian> Comps;
     int n_comp;
     
     //1-D with weights
-    void EM(std::vector<double>&, std::vector<double>&);
+    void wEM(std::vector<double>&, std::vector<double>&);
+    
+    //1-D without weights
+    void EM(std::vector<double>&);
     
     GaussianMixture(int) {};
 

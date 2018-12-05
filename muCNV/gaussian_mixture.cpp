@@ -9,9 +9,110 @@
 #include "gaussian_mixture.h"
 #include <math.h>
 
+// 2-D EM without weights
+// EM with weights
+void GaussianMixture::EM(std::vector<double>& x)
+{
+    unsigned n_sample = (unsigned) x.size();
+    unsigned n_iter = 10;
+    
+    unsigned p_count= 1;
+    double p_val[n_comp];
+    int zeroidx = -1;
+    
+    for(unsigned i=0; i<n_comp; ++i)
+    {
+        p_val[i] = Comps[i].Mean;
+        if (Comps[i].Mean < 0.01)
+        {
+            zeroidx = i;
+        }
+    }
+    
+    for(unsigned i=0; i<n_iter; ++i)
+    {
+        std::vector<double> sum (n_comp,0);
+        std::vector<double> sum_pr (n_comp,0);
+        std::vector<double> sum_err (n_comp,0);
+        
+        double pr[n_comp][n_sample];
+        bool b_include[n_sample];
+        
+        // E step
+        for(unsigned j=0; j<n_sample; ++j)
+        {
+            double sum_p = 0;
+            for(unsigned m=0;m<n_comp;++m)
+            {
+                pr[m][j] = Comps[m].Alpha * normpdf(x[j], Comps[m]);
+                if (zeroidx == (int)m)
+                    pr[m][j] *= 2.0; // Truncated normal.
+                sum_p += pr[m][j];
+            }
+            
+            if (sum_p > 1e-30)
+                b_include[j] = false; // if the value is an outlier, exclude it from calculations
+            else
+                b_include[j] = true;
+            
+            if (b_include[j])
+            {
+                for(unsigned m=0;m<n_comp;++m)
+                {
+                    pr[m][j] /= sum_p;
+                    sum[m] += pr[m][j] * x[j];
+                    sum_pr[m] += pr[m][j];
+                }
+            }
+
+        }
+        
+        double sumsum = 0;
+        // Add pseudo-count values
+        for(unsigned m=0; m<n_comp; ++m)
+        {
+            sum[m] += p_val[m] * p_count;
+            sum_pr[m] += p_count;
+            sumsum += sum_pr[m];
+        }
+        // M step
+        for(unsigned m=0;m<n_comp;++m)
+        {
+            if (m != zeroidx)   // Mean of '0' in truncated normal should always be 0
+                Comps[m].Mean = sum[m]/sum_pr[m];
+        }
+        
+        for(int j=0; j<n_sample; ++j)
+        {
+            for(int m=0; m<n_comp; ++m)
+            {
+                sum_err[m] += pr[m][j] * (x[j] - Comps[m].Mean)*(x[j]-Comps[m].Mean);
+            }
+        }
+        
+        // Pseudo-count for variance -- commented out
+        /*
+        for(unsigned m=0; m<n_comp; ++m)
+        {
+            sum_err[m] += (p_val[m] - Comps[m].Mean)*(p_val[m]-Comps[m].Mean) * p_count;
+        }
+        */
+        for(unsigned m=0; m<n_comp; ++m)
+        {
+            Comps[m].Stdev = sqrt(sum_err[m] / sum_pr[m]) ;
+            Comps[m].Alpha = sum_pr[m] / sumsum;
+            if (Comps[m].Stdev < 1e-10)
+                Comps[m].Stdev = 0.005;
+        }
+        //            cerr << "\t(" << Comps[m].Mean << "," << Comps[m].Stdev  << " : " << Comps[m].Alpha << ")";
+            //        cerr << endl;
+    }
+}
+
+
 // 2-D EM with weights
 // EM with weights
-void GaussianMixture::EM(std::vector<double>& x, std::vector<double> &w)
+void GaussianMixture::wEM(std::vector<double>& x, std::vector<double> &w)
 {
     unsigned n_sample = (unsigned) x.size();
     unsigned n_comp = (unsigned) Comps.size();
@@ -37,6 +138,7 @@ void GaussianMixture::EM(std::vector<double>& x, std::vector<double> &w)
         std::vector<double> sum (n_comp,0);
         std::vector<double> sum_pr (n_comp,0);
         std::vector<double> sum_err (n_comp,0);
+
         
         // E step
         for(unsigned j=0; j<n_sample; ++j)
@@ -147,7 +249,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
                 sum_p += pr[m][j];
             }
             if (sum_p < 1e-30) b_include[j] = false;
-
+            
             if (b_include[j]) // if the value is an outlier, exclude it from calculations
             {
                 for(unsigned m=0;m<n_comp;++m)
@@ -155,7 +257,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
                     pr[m][j] /= sum_p;
                     sum_x[m] += pr[m][j] * x[j];
                     sum_y[m] += pr[m][j] * y[j];
-
+                    
                     sum_pr[m] += pr[m][j];
                 }
             }

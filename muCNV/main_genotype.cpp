@@ -16,6 +16,7 @@
 #include "in_vcf.h"
 #include "gc_content.h"
 #include "data_reader.h"
+#include "gaussian_mixture.h"
 
 int main_genotype(int argc, char** argv)
 {
@@ -207,10 +208,14 @@ int main_genotype(int argc, char** argv)
         fclose(fp);
         // 0. Cluster var_dp 1-D
 		// using var depth
+        GaussianMixture gmix(2);
         
         // 1. Cluster var_dp 2-D
-		// Using dp100 
-        
+		// Using dp100  -- if SV length > 300bp
+        if (vec_sv[i].len > 300)
+        {
+            GaussianMixture2 gmix2(2);
+        }
         // 2. Readpair / splitread counting
 		// From individual genotyping, if RP/SP genotyped ones have expected avg. depth, they're genotyped
 		// If not, consider them missing
