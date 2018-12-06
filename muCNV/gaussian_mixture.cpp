@@ -11,6 +11,39 @@
 
 // 2-D EM without weights
 // EM with weights
+GaussianMixture::GaussianMixture(std::vector<double> &m, std::vector<double> &s)
+{
+    if (m.size() != s.size())
+    {
+        std::cerr << "Error, mean and std. dev vector sizes are different" << std::endl;
+        exit(1);
+    }
+    n_comp = (int) m.size();
+
+    Comps.resize(n_comp);
+    for(int i=0; i< n_comp; ++i)
+    {
+        Comps[i].Mean = m[i];
+        Comps[i].Stdev = s[i];
+    }
+}
+
+GaussianMixture& GaussianMixture::operator = (const GaussianMixture& gmix)
+{
+    n_comp = (int) gmix.n_comp;
+    Comps.resize(gmix.n_comp);
+    
+    for(int i=0; i<n_comp; ++i)
+    {
+        Comps[i].Mean = gmix.Comps[i].Mean;
+        Comps[i].Stdev = gmix.Comps[i].Stdev;
+    }
+    bic = gmix.bic;
+    llk = gmix.llk;
+    
+    return *this;
+}
+
 void GaussianMixture::EM(std::vector<double>& x)
 {
     unsigned n_sample = (unsigned) x.size();
@@ -110,6 +143,77 @@ void GaussianMixture::EM(std::vector<double>& x)
 }
 
 
+int GaussianMixture::assign_copynumber(double x)
+{
+    double p[n_comp];
+    double max_P = -1;
+    double max_R = -1;
+    int ret = -1;
+    
+    for(int i=0;i<n_comp; ++i)
+    {
+        // Major allele might domiate Alpha when sample size is large
+        //        p[i] = C[i].Alpha * C[i].pdf(x);
+        p[i] = Comps[i].pdf(x);
+        
+        if (p[i] > max_P)
+        {
+            max_P = p[i];
+            ret = i;
+        }
+    }
+    for(int i=0;i<n_comp; ++i)
+    {
+        if (ret != i)
+        {
+            double R = p[i] / max_P;
+            if (R>max_R)
+            {
+                max_R = R;
+            }
+        }
+    }
+    
+    ret = round(Comps[ret].Mean * 2);
+    
+    int up = ceil(x*2.0);
+    int down = floor(x*2.0);
+    
+    if (ret != up && ret != down)
+    {
+        return -1;
+    }
+    
+    if (max_R > 0.1)
+    {
+        return -1;
+    }
+    
+    return ret;
+}
+
+
+bool GaussianMixture::ordered()
+{
+    for(unsigned i=0; i<n_comp-1;++i)
+    {
+        if (Comps[i].Mean<=Comps[i+1].Mean)
+            return false;
+    }
+    return true;
+}
+
+bool GaussianMixture::r_ordered()
+{
+    for(unsigned i=0; i<Comps.size()-1;++i)
+    {
+        if (Comps[i].Mean>=Comps[i+1].Mean)
+            return false;
+    }
+    return true;
+}
+
+
 // 2-D EM with weights
 // EM with weights
 void GaussianMixture::wEM(std::vector<double>& x, std::vector<double> &w)
@@ -132,6 +236,7 @@ void GaussianMixture::wEM(std::vector<double>& x, std::vector<double> &w)
          }
          */
     }
+    
     
     for(unsigned i=0; i<n_iter; ++i)
     {
@@ -201,6 +306,46 @@ void GaussianMixture::wEM(std::vector<double>& x, std::vector<double> &w)
     }
 }
 
+
+GaussianMixture2::GaussianMixture2(std::vector<double> &m, std::vector<double> &s)
+{
+    if (m.size() != s.size())
+    {
+        std::cerr << "Error, mean and std. dev vector sizes are different" << std::endl;
+        exit(1);
+    }
+    n_comp = (int) m.size();
+    
+    Comps.resize(n_comp);
+    for(int i=0; i< n_comp; ++i)
+    {
+        Comps[i].Mean[0] = m[i];
+        Comps[i].Mean[1] = m[i];
+        
+        Comps[i].Cov[0] = s[i];
+        Comps[i].Cov[3] = s[i];
+    }
+}
+
+GaussianMixture2& GaussianMixture2::operator = (const GaussianMixture2& gmix)
+{
+    n_comp = (int) gmix.n_comp;
+    
+    Comps.resize(gmix.n_comp);
+    
+    for(int i=0; i<n_comp; ++i)
+    {
+        Comps[i].Mean[0] = gmix.Comps[i].Mean[0];
+        Comps[i].Mean[1] = gmix.Comps[i].Mean[1];
+        
+        for(int j=0; j<4; ++j)
+            Comps[i].Cov[j] = gmix.Comps[i].Cov[j];
+    }
+    bic = gmix.bic;
+    llk = gmix.llk;
+    
+    return *this;
+}
 
 
 // 2-D EM for general without weights
@@ -316,4 +461,72 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 }
 
 
+bool GaussianMixture2::ordered()
+{
+    for(unsigned i=0; i<n_comp-1;++i)
+    {
+        if (Comps[i].Mean[0] + Comps[i].Mean[1] <= Comps[i+1].Mean[0] + Comps[i+1].Mean[1])
+            return false;
+    }
+    return true;
+}
 
+bool GaussianMixture2::r_ordered()
+{
+    for(unsigned i=0; i<Comps.size()-1;++i)
+    {
+        if (Comps[i].Mean[0]+Comps[i].Mean[1] >= Comps[i+1].Mean[0]+Comps[i+1].Mean[1])
+            return false;
+    }
+    return true;
+}
+
+
+int GaussianMixture2::assign_copynumber(double x, double y)
+{
+    double p[n_comp];
+    double max_P = -1;
+    double max_R = -1;
+    int ret = -1;
+    
+    for(int i=0;i<n_comp; ++i)
+    {
+        // Major allele might domiate Alpha when sample size is large
+        //        p[i] = C[i].Alpha * C[i].pdf(x);
+        p[i] = Comps[i].pdf(x, y);
+        
+        if (p[i] > max_P)
+        {
+            max_P = p[i];
+            ret = i;
+        }
+    }
+    for(int i=0;i<n_comp; ++i)
+    {
+        if (ret != i)
+        {
+            double R = p[i] / max_P;
+            if (R>max_R)
+            {
+                max_R = R;
+            }
+        }
+    }
+    
+    ret = round(Comps[ret].Mean[0] + Comps[ret].Mean[1]);
+    
+    int up = ceil(x*2.0);
+    int down = floor(x*2.0);
+    
+    if (ret != up && ret != down)
+    {
+        return -1;
+    }
+    
+    if (max_R > 0.1)
+    {
+        return -1;
+    }
+    
+    return ret;
+}

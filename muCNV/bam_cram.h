@@ -11,8 +11,8 @@
 
 // #include "gc_content.h"
 #include "pileup.h"
-#include "hts.h"
-#include "sam.h"
+#include "htslib/hts.h"
+#include "htslib/sam.h"
 
 typedef struct {     // auxiliary data structure
     samFile *fp;     // the file handle

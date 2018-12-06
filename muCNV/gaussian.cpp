@@ -44,7 +44,6 @@ double det(double* M)
     return (M[0]*M[3]-M[1]*M[2]);
 }
 
-
 double mean(std::vector<double>& x)
 {
     double sum = 0;

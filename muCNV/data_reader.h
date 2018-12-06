@@ -20,6 +20,8 @@ class ReadStat
 	public:
 	int n_pre_FR;  // DEL
 	int n_pre_RF;  // DUP
+    int n_pre_FF;  // INV
+    int n_post_RR; // INV
 	int n_post_FR; // DEL
 	int n_post_RF; // DUP
 
@@ -40,6 +42,8 @@ class ReadStat
 	{
 		n_pre_FR = 0;
 		n_pre_RF = 0;
+        n_pre_FF = 0;
+        n_post_RR = 0;
 		n_post_FR = 0;
 		n_post_RF = 0;
 		n_pre_rp_missing = 0;

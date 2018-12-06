@@ -13,11 +13,15 @@
 #include <vector>
 #include "gaussian.h"
 
+// Todo: make GaussianMixture and GaussianMixture2 to be inherited from a generic mixture of Gaussians class
+
 class GaussianMixture
 {
 public:
     std::vector<Gaussian> Comps;
     int n_comp;
+    double llk;
+    double bic;
     
     //1-D with weights
     void wEM(std::vector<double>&, std::vector<double>&);
@@ -25,8 +29,16 @@ public:
     //1-D without weights
     void EM(std::vector<double>&);
     
-    GaussianMixture(int) {};
+    bool ordered();
+    bool r_ordered();
+    
+    // Copy constructor
+    GaussianMixture () {};
+    GaussianMixture (const GaussianMixture &);
+    GaussianMixture (std::vector<double> &, std::vector<double> &);
+    GaussianMixture& operator = ( const GaussianMixture& gmix);
 
+    int assign_copynumber(double);
 };
 
 class GaussianMixture2
@@ -34,13 +46,21 @@ class GaussianMixture2
 public:
     std::vector<Gaussian2> Comps;
     int n_comp;
+    double llk;
+    double bic;
     
     //2-D without weights
     void EM2(std::vector<double>&, std::vector<double>&);
 
-    // TODO: keep LLK value
+    int assign_copynumber(double, double);
+    bool ordered();
+    bool r_ordered();
     
-    GaussianMixture2(int) {};
+    GaussianMixture2 () {llk = -DBL_MAX; bic = DBL_MAX; n_comp = 0;};
+    GaussianMixture2 (const GaussianMixture2 &);
+    GaussianMixture2 (std::vector<double> &, std::vector<double> &);
+    GaussianMixture2& operator = ( const GaussianMixture2& gmix);
+    
 };
 
 #endif /* gaussian_mixture_h */

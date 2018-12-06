@@ -61,31 +61,6 @@
 		F138FDC21CAD7FB900CD5539 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
 		F138FDC41CAD844700CD5539 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		F138FDC51CAD844700CD5539 /* README */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
-		F154FC0D1ED2CDF7004E1629 /* bgzf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = bgzf.h; path = htslib/bgzf.h; sourceTree = "<group>"; };
-		F154FC0E1ED2CDF7004E1629 /* cram.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cram.h; path = htslib/cram.h; sourceTree = "<group>"; };
-		F154FC0F1ED2CDF7004E1629 /* faidx.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = faidx.h; path = htslib/faidx.h; sourceTree = "<group>"; };
-		F154FC101ED2CDF7004E1629 /* hfile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hfile.h; path = htslib/hfile.h; sourceTree = "<group>"; };
-		F154FC111ED2CDF7004E1629 /* hts_defs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hts_defs.h; path = htslib/hts_defs.h; sourceTree = "<group>"; };
-		F154FC121ED2CDF7004E1629 /* hts_endian.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hts_endian.h; path = htslib/hts_endian.h; sourceTree = "<group>"; };
-		F154FC131ED2CDF7004E1629 /* hts_log.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hts_log.h; path = htslib/hts_log.h; sourceTree = "<group>"; };
-		F154FC141ED2CDF7004E1629 /* hts.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hts.h; path = htslib/hts.h; sourceTree = "<group>"; };
-		F154FC151ED2CDF7004E1629 /* kbitset.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = kbitset.h; path = htslib/kbitset.h; sourceTree = "<group>"; };
-		F154FC161ED2CDF7004E1629 /* kfunc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = kfunc.h; path = htslib/kfunc.h; sourceTree = "<group>"; };
-		F154FC171ED2CDF7004E1629 /* khash_str2int.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = khash_str2int.h; path = htslib/khash_str2int.h; sourceTree = "<group>"; };
-		F154FC181ED2CDF7004E1629 /* khash.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = khash.h; path = htslib/khash.h; sourceTree = "<group>"; };
-		F154FC191ED2CDF7004E1629 /* klist.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = klist.h; path = htslib/klist.h; sourceTree = "<group>"; };
-		F154FC1A1ED2CDF7004E1629 /* knetfile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = knetfile.h; path = htslib/knetfile.h; sourceTree = "<group>"; };
-		F154FC1B1ED2CDF7004E1629 /* kseq.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = kseq.h; path = htslib/kseq.h; sourceTree = "<group>"; };
-		F154FC1C1ED2CDF7004E1629 /* ksort.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ksort.h; path = htslib/ksort.h; sourceTree = "<group>"; };
-		F154FC1D1ED2CDF7004E1629 /* kstring.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = kstring.h; path = htslib/kstring.h; sourceTree = "<group>"; };
-		F154FC1E1ED2CDF7004E1629 /* regidx.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = regidx.h; path = htslib/regidx.h; sourceTree = "<group>"; };
-		F154FC1F1ED2CDF7004E1629 /* sam.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sam.h; path = htslib/sam.h; sourceTree = "<group>"; };
-		F154FC201ED2CDF7004E1629 /* synced_bcf_reader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = synced_bcf_reader.h; path = htslib/synced_bcf_reader.h; sourceTree = "<group>"; };
-		F154FC211ED2CDF7004E1629 /* tbx.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tbx.h; path = htslib/tbx.h; sourceTree = "<group>"; };
-		F154FC221ED2CDF7004E1629 /* thread_pool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = thread_pool.h; path = htslib/thread_pool.h; sourceTree = "<group>"; };
-		F154FC231ED2CDF7004E1629 /* vcf_sweep.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vcf_sweep.h; path = htslib/vcf_sweep.h; sourceTree = "<group>"; };
-		F154FC241ED2CDF7004E1629 /* vcf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vcf.h; path = htslib/vcf.h; sourceTree = "<group>"; };
-		F154FC251ED2CDF7004E1629 /* vcfutils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vcfutils.h; path = htslib/vcfutils.h; sourceTree = "<group>"; };
 		F194ED341F25A41400489E0C /* genotyper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = genotyper.cpp; sourceTree = "<group>"; };
 		F194ED361F25B3C900489E0C /* sv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sv.cpp; sourceTree = "<group>"; };
 		F194ED381F2623BB00489E0C /* out_vcf.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = out_vcf.cpp; sourceTree = "<group>"; };
@@ -143,7 +118,6 @@
 			isa = PBXGroup;
 			children = (
 				F138FD7B1CAD744A00CD5539 /* muCNV */,
-				F154FC0C1ED2CDE9004E1629 /* htslib */,
 				F138FDC41CAD844700CD5539 /* Makefile */,
 				F138FDC51CAD844700CD5539 /* README */,
 				F138FDC21CAD7FB900CD5539 /* libz.tbd */,
@@ -203,38 +177,6 @@
 				F194ED381F2623BB00489E0C /* out_vcf.cpp */,
 			);
 			path = muCNV;
-			sourceTree = "<group>";
-		};
-		F154FC0C1ED2CDE9004E1629 /* htslib */ = {
-			isa = PBXGroup;
-			children = (
-				F154FC0D1ED2CDF7004E1629 /* bgzf.h */,
-				F154FC0E1ED2CDF7004E1629 /* cram.h */,
-				F154FC0F1ED2CDF7004E1629 /* faidx.h */,
-				F154FC101ED2CDF7004E1629 /* hfile.h */,
-				F154FC111ED2CDF7004E1629 /* hts_defs.h */,
-				F154FC121ED2CDF7004E1629 /* hts_endian.h */,
-				F154FC131ED2CDF7004E1629 /* hts_log.h */,
-				F154FC141ED2CDF7004E1629 /* hts.h */,
-				F154FC151ED2CDF7004E1629 /* kbitset.h */,
-				F154FC161ED2CDF7004E1629 /* kfunc.h */,
-				F154FC171ED2CDF7004E1629 /* khash_str2int.h */,
-				F154FC181ED2CDF7004E1629 /* khash.h */,
-				F154FC191ED2CDF7004E1629 /* klist.h */,
-				F154FC1A1ED2CDF7004E1629 /* knetfile.h */,
-				F154FC1B1ED2CDF7004E1629 /* kseq.h */,
-				F154FC1C1ED2CDF7004E1629 /* ksort.h */,
-				F154FC1D1ED2CDF7004E1629 /* kstring.h */,
-				F154FC1E1ED2CDF7004E1629 /* regidx.h */,
-				F154FC1F1ED2CDF7004E1629 /* sam.h */,
-				F154FC201ED2CDF7004E1629 /* synced_bcf_reader.h */,
-				F154FC211ED2CDF7004E1629 /* tbx.h */,
-				F154FC221ED2CDF7004E1629 /* thread_pool.h */,
-				F154FC231ED2CDF7004E1629 /* vcf_sweep.h */,
-				F154FC241ED2CDF7004E1629 /* vcf.h */,
-				F154FC251ED2CDF7004E1629 /* vcfutils.h */,
-			);
-			name = htslib;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -439,7 +381,6 @@
 				HEADER_SEARCH_PATHS = (
 					"tclap-1.2.1/include",
 					tabix,
-					htslib,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -458,7 +399,6 @@
 				HEADER_SEARCH_PATHS = (
 					"tclap-1.2.1/include",
 					tabix,
-					htslib,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",

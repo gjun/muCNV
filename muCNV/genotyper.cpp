@@ -17,210 +17,34 @@
 
 #include "genotyper.h"
 
-bool ordered(std::vector<Gaussian> &C)
+SvGeno::SvGeno(int n)
 {
-	for(unsigned i=0; i<C.size()-1;++i)
-	{
-		if (C[i].Mean<=C[i+1].Mean)
-			return false;
-	}
-	return true;
+    n_sample = n;
+    ns = 0;
+    ac = 0;
+    gt.resize(n_sample, -1);
+    cn.resize(n_sample, -1);
+    b_biallelic = false;
+    b_pass = false;
+    dp_flag = false;
+    dp2_flag = false;
+    rp_flag = false;
+    sp_flag = false;
+    info = "";
 }
 
-bool r_ordered(std::vector<Gaussian> &C)
+SvData::SvData(int n)
 {
-	for(unsigned i=0; i<C.size()-1;++i)
-	{
-		if (C[i].Mean>=C[i+1].Mean)
-			return false;
-	}
-	return true;
+    n_sample = n;
+    rdstats.resize(n);
+    sampstats.resize(n);
+    var_depth.resize(n);
+    dp_x.resize(n);
+    dp_y.resize(n);
 }
 
-void copy(Gaussian &x, Gaussian &y)
-{
-	x.set(y.Mean, y.Stdev);
-	x.Alpha = y.Alpha;
-}
 
-int Genotyper::assign(double x, std::vector<Gaussian> &C)
-{
-	int n_comp = (int) C.size();
-	double p[n_comp];
-	double max_P = -1;
-	double max_R = -1;
-	int ret = -1;
-
-	for(int i=0;i<n_comp; ++i)
-	{
-// Major allele might domiate Alpha when sample size is large 
-//		p[i] = C[i].Alpha * C[i].pdf(x);
-		p[i] = C[i].pdf(x);
-		
-		if (p[i] > max_P)
-		{
-			max_P = p[i];
-			ret = i;
-		}
-	}
-	for(int i=0;i<n_comp; ++i)
-	{
-		if (ret != i)
-		{
-			double R = p[i] / max_P;
-			if (R>max_R)
-			{
-				max_R = R;
-			}
-		}
-	}
-	
-	ret = round(C[ret].Mean * 2);
-
-	int up = ceil(x*2.0);
-	int down = floor(x*2.0);
-
-	if (ret != up && ret != down)
-	{
-		return -1;
-	}
-	
-	if (max_R > 0.1)
-	{
-		return -1;
-	}
-	
-	return ret;
-}
-
-void svgeno::print(sv &S, svdata &D, std::string &ln, std::vector<double>& wt)
-{
-	ln = std::to_string(S.chrnum);
-	ln += "\t" + std::to_string(S.pos) + "\t" + svTypeName(S.svtype) + "_" + std::to_string(S.chrnum) + ":" + std::to_string(S.pos) + "-" + std::to_string(S.end) + "\t.\t<" + svTypeName(S.svtype) + ">\t.\t";
-
-	if (b_pass)
-	{
-		ln += "PASS\t";
-	}
-	else if (b_dump)
-	{
-		ln += "FAIL;DUMP\t";
-	}
-	else
-	{
-		ln += "FAIL\t";
-	}
-	
-    ln += "SVTYPE=" + std::string(svTypeName(S.svtype)) + ";END=" + std::to_string(S.end) + ";SVLEN=" + std::to_string(S.len) + ";AC=" + std::to_string(ac) + ";NS=" + std::to_string(ns) + ";AF=";
-	if (ns>0)
-		ln+=std::to_string((double)ac/(double)(2.0*ns));
-	else
-		ln+="0";
-	
-	ln+= info;
-
-	bool bic_flag = false ;
-	if (Comps.size()>0)
-	{
-		ln+= ";NCLUS=" + std::to_string(Comps.size()) + ";P_OVERLAP=" + std::to_string(p_overlap);
-
-		ln+= ";BIC_DP="+ std::to_string(bic[0]) + "," + std::to_string(bic[1]) + "," + std::to_string(bic[2]);
-		for(unsigned i=3;i<Comps.size(); ++i)
-		{
-			ln += "," + std::to_string(bic[i]);
-			if (bic[i]<bic[0])
-			{
-				bic_flag = true;
-			}
-		}
-	}
-
-	if (bic_flag)
-		ln += ";BIC";
-
-	if (dp_flag)
-		ln += ";DP";
-	if (pos_flag)
-		ln += ";POS";
-	if (neg_flag)
-		ln += ";NEG";
-
-	if (Comps.size()>0)
-	{
-		ln += ";MEAN=" + std::to_string(Comps[0].Mean);
-
-		for(unsigned i=1;i<Comps.size(); ++i)
-			ln += "," + std::to_string(Comps[i].Mean);
-
-		ln += ";STDEV=" + std::to_string(Comps[0].Stdev);
-		for(unsigned i=1;i<Comps.size(); ++i)
-			ln += "," + std::to_string(Comps[i].Stdev);
-
-		ln += ";FRAC=" + std::to_string(Comps[0].Alpha);
-		for(unsigned i=1;i<Comps.size(); ++i)
-			ln += "," + std::to_string(Comps[i].Alpha);
-	}
-
-	if (b_biallelic)
-		ln += "\tGT:CN:ND:DP:FP:FN:WT";
-	//	ln += "\tGT";
-	else
-		ln += "\tCN:ND:DP:FP:FN";
-//		ln += "\tCN";
-	
-	for (int i=0; i<n_sample; ++i)
-	{
-		if (b_biallelic)
-		{
-			switch(gt[i])
-			{
-				case 0:
-					ln += "\t0/0";
-					break;
-				case 1:
-					ln += "\t0/1";
-					break;
-				case 2:
-					ln += "\t1/1";
-					break;
-				default:
-					ln += "\t.";
-					break;
-			}
-			ln+= ":";
-		}
-		else
-		{
-			ln += "\t";
-		}
-
-		if (S.svtype == INV)
-		{
-			if (cn[i]<0)
-			{
-				ln += std::to_string(cn[i]) + ":" + std::to_string(D.norm_readcount[i]).substr(0,4) + ":" + std::to_string((int)D.dp[i]) + ":" +  std::to_string(D.n_inv_pos[i]) + "," + std::to_string((int)D.inv_pos[i]) + ":" + std::to_string(D.n_inv_neg[i]) + "," + std::to_string((int)D.inv_neg[i]);
-			}
-			else
-			{
-				ln += ".:" + std::to_string(D.norm_readcount[i]).substr(0,4) + ":" + std::to_string((int)D.dp[i]) + ":" +  std::to_string(D.n_inv_pos[i]) + "," + std::to_string((int)D.inv_pos[i]) + ":" + std::to_string(D.n_inv_neg[i]) + "," + std::to_string((int)D.inv_neg[i]) ;
-			}
-		}
-		else
-		{
-			if (cn[i] <0)
-			{
-				ln +=  ".:";
-			}
-			else 
-			{
-				ln += std::to_string(cn[i])+":";
-			}
-			ln += std::to_string(D.norm_dp[i]).substr(0,4) + ":" + std::to_string((int)D.dp[i]) + ":" + std::to_string((int)D.n_cnv_pos[i]) + "," + std::to_string((int)D.cnv_pos[i]) + ":" + std::to_string((int)D.n_cnv_neg[i]) + "," + std::to_string((int)D.cnv_neg[i]) + ":" + std::to_string((int)wt[i]); 
-		}
-	}
-}
-
-void Genotyper::copyComps(std::vector<Gaussian> &C, std::vector<Gaussian> &C0)
+void copyComps(std::vector<Gaussian> &C, std::vector<Gaussian> &C0)
 {
 	C.clear();
 	C.resize(C0.size());
@@ -231,216 +55,69 @@ void Genotyper::copyComps(std::vector<Gaussian> &C, std::vector<Gaussian> &C0)
 	}
 }
 
-void Genotyper::call_del(sv &S, svdata& D, svgeno &G, std::vector<double> &avg_isz, std::vector<double>&std_isz, std::vector<double> &wt)
+void select_model(GaussianMixture &ret_gmix, std::vector< std::vector<double> > &means, std::vector<double> &x)
 {
-	int n_sample=D.n;
+    double best_bic = DBL_MAX;
+    
+    // number of models
+    for(int m=0; m<means.size(); ++m)
+    {
+        std::vector<double> s (means[m].size(), 0.05);
+        GaussianMixture gmix(means[m], s);
+        gmix.EM(x); // fit mixture model
+        if (gmix.bic < best_bic)
+        {
+            best_bic = gmix.bic;
+            ret_gmix = gmix; // assignment
+        }
+    }
+    return;
+}
 
-	std::vector<Gaussian> P1(1);
-	std::vector<Gaussian> P2(2);
+void select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vector<double> > &means   , std::vector<double> &x, std::vector<double> &y)
+{
+    double best_bic = DBL_MAX;
+    
+    // number of models
+    for(int m=0; m<means.size(); ++m)
+    {
+        std::vector<double> s (means[m].size(), 0.05);
+        GaussianMixture2 gmix2(means[m], s);
+        gmix2.EM(x, y); // fit mixture model
+        if (gmix2.bic < best_bic)
+        {
+            best_bic = gmix2.bic;
+            ret_gmix2 = gmix2; // assignment
+        }
+    }
+    return;
+}
 
-	std::vector<Gaussian> N1(1);
-	std::vector<Gaussian> N2(2);
-
-//	cerr << S.svtype << "_" << S.chr << ":" << S.pos << "-" << S.end << endl;
-
-	std::vector<int> posneg_gt(n_sample, -1);
-
-	for(int i=0;i<n_sample; ++i)
-	{
-		if (D.norm_dp[i]>1.4)
-			wt[i] = 0;
-	}
-
-	if (S.len > 150)  
-	{
-		std::vector<int> pos_i(n_sample, 0);
-		std::vector<int> neg_i(n_sample, 0);;
-
-		double sum_pos0 = 0, sum_pos1 = 0;
-		double sum_neg0 = 0, sum_neg1 = 0;
-		double sumsq_pos0 = 0, sumsq_pos1 = 0;
-		double sumsq_neg0 = 0, sumsq_neg1 = 0;
-
-		int n_pos0 = 0, n_pos1 = 0;
-		int n_neg0 = 0, n_neg1 = 0;;
-
-		for(int i=0;i<n_sample; ++i)
-		{
-			double max_err = S.len / 10.0 ; 
-			if (max_err > 1000) 
-			{
-				max_err = 1000;
-			}
-			else if (max_err < 75)
-			{
-				max_err = 75;
-			}
-
-			double isz_min = S.len + avg_isz[i] - max_err;
-			double isz_max = S.len + avg_isz[i] + max_err;
-			
-			if (D.n_cnv_pos[i] > 2 && D.cnv_pos[i] > isz_min && D.cnv_pos[i] < isz_max && D.norm_dp[i]<0.75)
-			{
-				pos_i[i] = 1;
-				sum_pos1 += D.n_cnv_pos[i] * D.cnv_pos[i];
-				n_pos1 += D.n_cnv_pos[i];
-			}
-			else
-			{
-				pos_i[i] = 0;
-				sum_pos0 += D.cnv_pos[i];
-				n_pos0 ++;
-			}
-			if (D.n_cnv_neg[i] > 2 && D.cnv_neg[i] > isz_min && D.cnv_neg[i] < isz_max && D.norm_dp[i]<0.75)
-			{
-				sum_neg1 += D.n_cnv_neg[i] * D.cnv_neg[i];
-				neg_i[i] = 1;
-				n_neg1 += D.n_cnv_neg[i];
-			}
-			else
-			{
-				sum_neg0 += D.cnv_neg[i];
-				neg_i[i] = 0;
-				n_neg0 ++;
-			}
-			if (pos_i[i] && neg_i[i])
-			{
-				wt[i] += (D.n_cnv_pos[i] + D.n_cnv_neg[i]) / 2.0;
-			}
-		}
-		if (n_pos1 > 0)
-		{
-			P1[0].estimate(D.cnv_pos);
-			P1[0].Alpha = 1;
-
-			double m0 = sum_pos0 / n_pos0;
-
-			// pseudocount;
-			sum_pos1 += S.len + S.len + 800;
-			n_pos1 +=2; 
-			double m1 = sum_pos1 / n_pos1;
-
-			for(int i=0; i<n_sample; ++i)
-			{
-				if (pos_i[i])
-				{
-					sumsq_pos1 += D.n_cnv_pos[i] * (D.cnv_pos[i]-m1) * (D.cnv_pos[i]-m1) ;
-				}
-				else
-				{
-					sumsq_pos0 += (D.cnv_pos[i] -m0 ) * (D.cnv_pos[i] - m0);
-				}
-			}
-			sumsq_pos1 += (S.len+300 - m1)*(S.len+300 -m1) + (S.len+500-m1)*(S.len+500-m1);
-
-			double stdev0 = sqrt(sumsq_pos0 / n_pos0);
-			double stdev1 = sqrt(sumsq_pos1 / n_pos1);
-
-			P2[0].set(m0 , stdev0) ;
-			P2[0].Alpha = (double)n_pos0 / (double)(n_pos0 + n_pos1) ;
-
-			P2[1].set(m1 , stdev1) ;
-			P2[1].Alpha = (double)n_pos1 / (double)(n_pos0 + n_pos1) ;
-
-			G.info += ";POS=" + std::to_string(P2[0].Mean) + "(" + std::to_string(P2[0].Stdev) + ")"  + "," + std::to_string(P2[1].Mean) + "(" + std::to_string(P2[1].Stdev) + ")";
-
-			double bic_p1 = BIC(D.cnv_pos, P1, wt);
-			double bic_p2 = BIC(D.cnv_pos, P2, wt);
-
-//			double be_p1 = BayesError(P2);
-			if (bic_p1 > bic_p2)
-			{
-				G.pos_flag = true;
-			}
-			G.info += ";BIC_P=" + std::to_string(bic_p1) +  "," + std::to_string(bic_p2);
-//			G.info += ";BE_P=" + std::to_string(be_p1);
-		}
-		if (n_neg1 > 0)
-		{
-			N1[0].estimate(D.cnv_neg);
-			N1[0].Alpha = 1;
-
-			double m0 = sum_neg0 / n_neg0;
-
-			// pseudocount;
-			sum_neg1 += S.len + S.len + 800;
-			n_neg1 +=2; 
-			double m1 = sum_neg1 / n_neg1;
-
-			for(int i=0; i<n_sample; ++i)
-			{
-				if (neg_i[i])
-				{
-					sumsq_neg1 += D.n_cnv_neg[i] * (D.cnv_neg[i]-m1) * (D.cnv_neg[i]-m1) ;
-				}
-				else
-				{
-					sumsq_neg0 += (D.cnv_neg[i] -m0 ) * (D.cnv_neg[i] - m0);
-				}
-			}
-			sumsq_neg1 += (S.len+300 - m1)*(S.len+300 -m1) + (S.len+500-m1)*(S.len+500-m1);
-			double stdev0 = sqrt(sumsq_neg0 / n_neg0);
-			double stdev1 = sqrt(sumsq_neg1 / n_neg1);
-
-			N2[0].set(m0 , stdev0) ;
-			N2[0].Alpha = (double)n_neg0 / (double)(n_neg0 + n_neg1) ;
-
-			N2[1].set(m1 , stdev1) ;
-			N2[1].Alpha = (double)n_neg1 / (double)(n_neg0 + n_neg1) ;
-
-			G.info += ";NEG=" + std::to_string(N2[0].Mean) + "(" + std::to_string(N2[0].Stdev) + ")"  + "," + std::to_string(N2[1].Mean) + "(" + std::to_string(N2[1].Stdev) + ")";
-
-			double bic_n1 = BIC(D.cnv_neg, N1, wt);
-			double bic_n2 = BIC(D.cnv_neg, N2, wt);
-			if (bic_n1 > bic_n2)
-			{
-				G.neg_flag = true;
-			}
-			G.info += ";BIC_N=" + std::to_string(bic_n1) +  "," + std::to_string(bic_n2);
-		}
-
-		if (G.pos_flag && G.neg_flag)
-		{
-			for(int i=0; i<n_sample; ++i)
-			{
-				double p0 = P2[0].pdf(D.cnv_pos[i]);
-				double p1 = P2[1].pdf(D.cnv_pos[i]);
-
-				double n0 = N2[0].pdf(D.cnv_neg[i]);
-				double n1 = N2[1].pdf(D.cnv_neg[i]);
-
-				if ((p1 > 2*p0 && D.n_cnv_pos[i]>1) && (n1 > 2*n0 && D.n_cnv_neg[i] >1) && D.norm_dp[i] < 0.85) // Add depth constraint
-				{
-					posneg_gt[i] = 1;
-				}
-				else if (p0 >p1 && n0 >n1)
-				{
-					posneg_gt[i] = 0;
-					// default : missing
-				}
-			}
-		}
-	} //S.len > 150
-
-	double be2, be3;
-
-	std::vector<Gaussian> C1(1); // 1-component model
-	std::vector<Gaussian> C2(2); // 2-component model
-	std::vector<Gaussian> C3(3); // 3-component model
-	
+void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
+{
+    int n_sample = D.n_sample;
+    
 	// Fit Gaussian mixture models with 1, 2, and 3 components, compare BIC
-	C1[0].estimate(D.norm_dp);
-	C1[0].Alpha = 1;
-	
-	double min_bic = DBL_MAX;
+    GaussianMixture gmix;
+    std::vector< std::vector<double> > means = { {1.0}, {1.0, 0.5}, {0.5, 0.0}, {1.0, 0.5, 0.0}};
+    select_model(gmix, means, D.var_depth);
+    
+    if (gmix.n_comp > 1)
+    {
+        // success
+        // assign genotypes
+    }
 
-	// P_Overlap
-	G.p_overlap = 1;
-	G.b_biallelic = true; //deletions 
-	
-	// One-component model
-	G.bic[0] = BIC(D.norm_dp, C1, wt);
-	min_bic = G.bic[0]; 
+    if (S.len > 300)
+    {
+        // DP100 genotyping
+        GaussianMixture2 gmix2;
+        std::vector< std::vector<double> > means = { {1.0}, {1.0, 0.5}, {0.5, 0.0}, {1.0, 0.5, 0.0}};
+        select_model(gmix2, means, D.dp_x, D.dp_y);
+        
+        // 2-D genotyping
+    }
+    
 	
 	// Two-component model
 	C2[0].set(1, 0.01);
@@ -871,3 +548,130 @@ void Genotyper::call_cnv(sv &S, svdata& D, svgeno& G, std::vector<double> &avg_i
 
 
 
+std::string Genotyper::print(sv &S, svdata &D, svgeno &G)
+{
+    std::string ln = std::to_string(S.chrnum);
+    ln += "\t" + std::to_string(S.pos) + "\t" + svTypeName(S.svtype) + "_" + std::to_string(S.chrnum) + ":" + std::to_string(S.pos) + "-" + std::to_string(S.end) + "\t.\t<" + svTypeName(S.svtype) + ">\t.\t";
+    
+    if (b_pass)
+    {
+        ln += "PASS\t";
+    }
+    else if (b_dump)
+    {
+        ln += "FAIL;DUMP\t";
+    }
+    else
+    {
+        ln += "FAIL\t";
+    }
+    
+    ln += "SVTYPE=" + std::string(svTypeName(S.svtype)) + ";END=" + std::to_string(S.end) + ";SVLEN=" + std::to_string(S.len) + ";AC=" + std::to_string(ac) + ";NS=" + std::to_string(ns) + ";AF=";
+    if (ns>0)
+        ln+=std::to_string((double)ac/(double)(2.0*ns));
+    else
+        ln+="0";
+    
+    ln+= info;
+    
+    bool bic_flag = false ;
+    if (Comps.size()>0)
+    {
+        ln+= ";NCLUS=" + std::to_string(Comps.size()) + ";P_OVERLAP=" + std::to_string(p_overlap);
+        
+        ln+= ";BIC_DP="+ std::to_string(bic[0]) + "," + std::to_string(bic[1]) + "," + std::to_string(bic[2]);
+        for(unsigned i=3;i<Comps.size(); ++i)
+        {
+            ln += "," + std::to_string(bic[i]);
+            if (bic[i]<bic[0])
+            {
+                bic_flag = true;
+            }
+        }
+    }
+    
+    if (bic_flag)
+        ln += ";BIC";
+    
+    if (dp_flag)
+        ln += ";DP";
+    if (pos_flag)
+        ln += ";POS";
+    if (neg_flag)
+        ln += ";NEG";
+    
+    if (Comps.size()>0)
+    {
+        ln += ";MEAN=" + std::to_string(Comps[0].Mean);
+        
+        for(unsigned i=1;i<Comps.size(); ++i)
+            ln += "," + std::to_string(Comps[i].Mean);
+        
+        ln += ";STDEV=" + std::to_string(Comps[0].Stdev);
+        for(unsigned i=1;i<Comps.size(); ++i)
+            ln += "," + std::to_string(Comps[i].Stdev);
+        
+        ln += ";FRAC=" + std::to_string(Comps[0].Alpha);
+        for(unsigned i=1;i<Comps.size(); ++i)
+            ln += "," + std::to_string(Comps[i].Alpha);
+    }
+    
+    if (b_biallelic)
+        ln += "\tGT:CN:ND:DP:FP:FN:WT";
+    //    ln += "\tGT";
+    else
+        ln += "\tCN:ND:DP:FP:FN";
+    //        ln += "\tCN";
+    
+    for (int i=0; i<n_sample; ++i)
+    {
+        if (b_biallelic)
+        {
+            switch(gt[i])
+            {
+                case 0:
+                    ln += "\t0/0";
+                    break;
+                case 1:
+                    ln += "\t0/1";
+                    break;
+                case 2:
+                    ln += "\t1/1";
+                    break;
+                default:
+                    ln += "\t.";
+                    break;
+            }
+            ln+= ":";
+        }
+        else
+        {
+            ln += "\t";
+        }
+        
+        if (S.svtype == INV)
+        {
+            if (cn[i]<0)
+            {
+                ln += std::to_string(cn[i]) + ":" + std::to_string(D.norm_readcount[i]).substr(0,4) + ":" + std::to_string((int)D.dp[i]) + ":" +  std::to_string(D.n_inv_pos[i]) + "," + std::to_string((int)D.inv_pos[i]) + ":" + std::to_string(D.n_inv_neg[i]) + "," + std::to_string((int)D.inv_neg[i]);
+            }
+            else
+            {
+                ln += ".:" + std::to_string(D.norm_readcount[i]).substr(0,4) + ":" + std::to_string((int)D.dp[i]) + ":" +  std::to_string(D.n_inv_pos[i]) + "," + std::to_string((int)D.inv_pos[i]) + ":" + std::to_string(D.n_inv_neg[i]) + "," + std::to_string((int)D.inv_neg[i]) ;
+            }
+        }
+        else
+        {
+            if (cn[i] <0)
+            {
+                ln +=  ".:";
+            }
+            else
+            {
+                ln += std::to_string(cn[i])+":";
+            }
+            ln += std::to_string(D.norm_dp[i]).substr(0,4) + ":" + std::to_string((int)D.dp[i]) + ":" + std::to_string((int)D.n_cnv_pos[i]) + "," + std::to_string((int)D.cnv_pos[i]) + ":" + std::to_string((int)D.n_cnv_neg[i]) + "," + std::to_string((int)D.cnv_neg[i]) + ":" + std::to_string((int)wt[i]);
+        }
+    }
+    return ln;
+}

@@ -13,9 +13,9 @@
 #include <vector>
 #include <string>
 
-#include "hts.h"
-#include "tbx.h"
-#include "kseq.h"
+#include "htslib/hts.h"
+#include "htslib/tbx.h"
+#include "htslib/kseq.h"
 
 #include "sv.h"
 

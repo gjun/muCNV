@@ -364,6 +364,9 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
 									rdstats[sample_idx + k].n_pre_FR ++;
 	 							else if (rp.pairstr == 2 && rp.selfpos <= rp.matepos)
 									rdstats[sample_idx + k].n_pre_RF ++;
+                                else if (rp.pairstr == 0 && rp.selfpos <= rp.matepos)
+                                    rdstats[sample_idx + k].n_pre_FF ++;
+                                
                             }
 						}
 						else
@@ -383,6 +386,8 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                                     rdstats[sample_idx + k].n_post_FR ++;
                                 else if (rp.pairstr == 1 && rp.matepos <= rp.selfpos)
                                     rdstats[sample_idx + k].n_post_RF ++;
+                                else if (rp.pairstr == 3 && rp.selfpos <= rp.matepos)
+                                    rdstats[sample_idx + k].n_post_RR ++;
                             }
 						}
 						else
@@ -493,6 +498,8 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                                     rdstats[sample_idx + k].n_post_FR ++;
                                 else if (rp.pairstr == 1 && rp.matepos <= rp.selfpos)
                                     rdstats[sample_idx + k].n_post_RF ++;
+                                else if (rp.pairstr == 3 && rp.selfpos <= rp.matepos)
+                                    rdstats[sample_idx + k].n_post_RR ++;
                             }
                         }
                         else
