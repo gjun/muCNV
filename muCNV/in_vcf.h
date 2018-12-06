@@ -13,9 +13,9 @@
 #include <vector>
 #include <string>
 
-#include "htslib/hts.h"
-#include "htslib/tbx.h"
-#include "htslib/kseq.h"
+#include <htslib/hts.h>
+#include <htslib/tbx.h>
+#include <htslib/kseq.h>
 
 #include "sv.h"
 
@@ -33,7 +33,6 @@ public:
     double get_second_value(std::string &);
     void get_value_pair(std::string &, int &, double &);
     int initialize(std::vector<std::string> &, std::vector<std::string> &, std::vector<double> &, std::vector<double> &, std::vector<double> &, std::string &);
-    int read_interval_multi(sv& , svdata &, std::string &);
 };
 
 

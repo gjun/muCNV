@@ -24,8 +24,6 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
     idx_files.resize(n_pileup);
     n_samples.resize(n_pileup);
     
-
-    
     int idx_cnt = 1;
     chr_idx_rp.resize(gc.num_chr+1);
     for(int i=1;i<=gc.num_chr; ++i)
@@ -111,201 +109,79 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
 int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &dp100, std::vector< std::vector<double> > &gd100, GcContent& gc)
 {
     // this information is not useful when sv length is short
-    // process only for >300bp SVs
+    // process only for >200bp SVs (or at include least two full 100-bp intervals)
     
-    if (curr_sv.len < 300 )
+    bool b_medfilt = true; // whether to do median filtering or not
+    
+    if (curr_sv.len < 200 )
         return -1;
+    else if (curr_sv.len < 500)
+    {
+        b_medfilt = false;
+    }
+
+    int startpos = 0;
+    int endpos = 0;
     
-    // SV < 100kb : process all 100-bp intervals
-    // SV >= 100kb : process 'around breakpoints' in original resolution and merge into 1kb blocks inside the SV
-
-    if (curr_sv.len < 100000)
-    {
-        int startpos = 0;
-        int endpos = 0;
-        
-        // put enough buffers before/after for median filtering
-        startpos = curr_sv.pos - 2000;
-        
-        // return startpos to let the caller know where dp100 starts
-        if (startpos < 0)
-            startpos = 1;
-        
-        endpos = curr_sv.end + 2000;
-        if (endpos > (int) gc.chr_size[curr_sv.chrnum])
-            endpos = (int) gc.chr_size[curr_sv.chrnum];
+    // put enough buffers before/after for median filtering
+    startpos = curr_sv.pos - 2000;
     
-        int sample_idx = 0;
-        
-        int n_start = (startpos / 100);
-        int n_end = (endpos / 100);
-        int n_dp = n_end - n_start + 1;
-        
-        for(int i=0; i<n_sample_total; ++i)
-        {
-            dp100[i].resize(n_dp);
-			gd100[i].resize(n_dp);
-        }
-        
-        for(int i=0; i<n_pileup; ++i)
-        {
-            uint64_t start_byte = multi_idx[i][0]; // This is the index position where dp100 record starts
-			std::cerr << "startbyte " << start_byte << std::endl;
-        
-            start_byte = chr_bytepos_dp100[i][curr_sv.chrnum];
-            
-			std::cerr << "startbyte " << start_byte << std::endl;
-            start_byte += n_start * n_samples[i] * sizeof(uint16_t);
-			std::cerr << "startbyte " << start_byte << std::endl;
-            
-            int n_dp_by_sample = n_samples[i] * n_dp ;
-            
-            uint16_t *D = new uint16_t[n_dp_by_sample];
-			std::cerr << "n_dp_by_sample " << n_dp_by_sample << std::endl;
-            
-            pileups[i].seekg(start_byte);
-            pileups[i].read_depth(D, n_dp_by_sample);
-			std::cerr << "read n_dp_by_sample " << n_dp_by_sample << std::endl;
-         
-            for(int j=0; j<n_dp; ++j)
-            {
-                for(int k=0; k<n_samples[i]; ++k)
-                {
-//					std::cerr << j << ", " << n_samples[i] << ", " << k << " : " << D[j*n_samples[i] + k ] << std::endl;
-                    dp100[sample_idx + k][j] = (double)D[j*n_samples[i] + k] / 32.0;
-					gd100[sample_idx + k][j] = correct_gc(gc, sample_idx+k, dp100[sample_idx+k][j], curr_sv.chrnum, startpos + j*100);
-                }
-            }
-            sample_idx += n_samples[i];
+    // return startpos to let the caller know where dp100 starts
+    if (startpos < 0)
+        startpos = 1;
+    
+    endpos = curr_sv.end + 2000;
+    if (endpos > (int) gc.chr_size[curr_sv.chrnum])
+        endpos = (int) gc.chr_size[curr_sv.chrnum];
 
-			std::cerr << "read n_dp_by_sample " << n_dp_by_sample << std::endl;
-            delete [] D;
-			std::cerr << "read n_dp_by_sample " << n_dp_by_sample << std::endl;
-        }
-        return startpos;
-    }
-    else if (curr_sv.len <= 1000000) 
+    int sample_idx = 0;
+    
+    int n_start = (startpos / 100);
+    int n_end = (endpos / 100);
+    int n_dp = n_end - n_start + 1;
+    
+    for(int i=0; i<n_sample_total; ++i)
     {
-        int startpos = 0;
-//        int endpos = 0;
-        
-        // read start-2000 to start+2000 (100bp resolution)
-        // read start+2000 to end+2000 (1kbp resolution)
-        // read end-2000 to end+2000 (100bp resolution)
-        
-        return startpos;
+        dp100[i].resize(n_dp);
+        gd100[i].resize(n_dp);
     }
-    else
-    {
-        int startpos = 0;
- //       int endpos = 0;
-        // read start-2000 to start+2000 (10kbp resolution)
-        // read start+2000 to end+2000 (10kbp resolution)
-        // read end-2000 to end+2000 (10kbp resolution)
-        return startpos;
-    }
-
-
-    return -1; // Should never reach here
-    /*
+    
     for(int i=0; i<n_pileup; ++i)
     {
-
-            uint16_t dp100;
-            for(int j=0;j<N;++j)
-            {
-                for(int i=0; i<n_sample; ++i)
-                {
-                    pup.read_depth(&dp100, 1);
-                    dpsum[i] += dp100;
-                    n_dp[i] +=1;
-                }
-            }
-        }
-    }
+        uint64_t start_byte = multi_idx[i][0]; // This is the index position where dp100 record starts
+        std::cerr << "startbyte " << start_byte << std::endl;
     
-    }
-    for(int i=0; i<n_sample; ++i)
-    {
-        SampleStat s;
-        pup.read_sample_stat(s);
-        printf("Sample %d, AVG DP: %f, STdev: %f, AVG ISIZE: %f, STdev: %f \n", i, s.avg_dp, s.std_dp, s.avg_isize, s.std_isize);
-    }
-    
-    GcContent gc;
-    gc.initialize(gc_file);
-    
-    for(int i=0; i<n_sample; ++i)
-    {
-        printf("GC-factors for sapmle %d:\n", i);
-        std::vector<double> gc_factor (gc.num_bin);
-        pup.read_gc_factor(gc_factor, gc.num_bin);
-        for(int j=0; j<gc.num_bin; ++j)
-        {
-            printf("GC-bin %d: %f\n", j, gc_factor[j]);
-        }
-    }
-    
-    idx_file.read_uint64(curr_idx);
-    printf("index position %d, tellg position %lu\n", (int)curr_idx, (unsigned long)pup.tellg());
-    
-    std::vector<uint64_t> dpsum (n_sample, 0);
-    std::vector<uint64_t> n_dp (n_sample, 0);
-    
-    for(int c=1; c<=gc.num_chr; ++c)
-    {
-        int N = ceil((double)gc.chr_size[c] / 100.0) + 1;
-        uint16_t dp100;
-        for(int j=0;j<N;++j)
-        {
-            for(int i=0; i<n_sample; ++i)
-            {
-                pup.read_depth(&dp100, 1);
-                dpsum[i] += dp100;
-                n_dp[i] +=1;
-            }
-        }
-    }
-    for(int i=0; i<n_sample; ++i)
-    {
-        printf("Sample %d, average DP100: %d\n", i, (int)round((double)dpsum[i]/n_dp[i]/32.0));
-    }
-    
-  
-    
-    pup.close();
-    idx_file.close();
-    
-    int n_var = 0;
-    
-    var_file.read_int32(n_sample);
-    var_file.read_int32(n_var);
-    
-    printf("Variant File, n_sample: %d, n_var : %d\n", n_sample, n_var);
-    
-    printf("Sample ID(s):");
-    for(int i=0; i<n_sample; ++i)
-    {
-        char buf[256];
+        start_byte = chr_bytepos_dp100[i][curr_sv.chrnum];
         
-        var_file.read_sample_id(buf);
-        printf("\t%s", buf);
-    }
-    printf("\n");
-    
-    for(int j=0;j<n_var;++j)
-    {
-        vec_sv[j].print();
-        for(int i=0; i<n_sample; ++i)
+        std::cerr << "startbyte " << start_byte << std::endl;
+        start_byte += n_start * n_samples[i] * sizeof(uint16_t);
+        std::cerr << "startbyte " << start_byte << std::endl;
+        
+        int n_dp_by_sample = n_samples[i] * n_dp ;
+        
+        uint16_t *D = new uint16_t[n_dp_by_sample];
+        std::cerr << "n_dp_by_sample " << n_dp_by_sample << std::endl;
+        
+        pileups[i].seekg(start_byte);
+        pileups[i].read_depth(D, n_dp_by_sample);
+        std::cerr << "read n_dp_by_sample " << n_dp_by_sample << std::endl;
+     
+        for(int j=0; j<n_dp; ++j)
         {
-            uint16_t dp;
-            var_file.read_depth(&dp, 1);
-            printf("\t%f", (dp/32.0));
+            for(int k=0; k<n_samples[i]; ++k)
+            {
+//					std::cerr << j << ", " << n_samples[i] << ", " << k << " : " << D[j*n_samples[i] + k ] << std::endl;
+                dp100[sample_idx + k][j] = (double)D[j*n_samples[i] + k] / 32.0;
+                gd100[sample_idx + k][j] = correct_gc(gc, sample_idx+k, dp100[sample_idx+k][j], curr_sv.chrnum, startpos + j*100);
+            }
         }
-        printf("\n");
+        sample_idx += n_samples[i];
+
+        std::cerr << "read n_dp_by_sample " << n_dp_by_sample << std::endl;
+        delete [] D;
+        std::cerr << "read n_dp_by_sample " << n_dp_by_sample << std::endl;
     }
-    var_file.close();
-    */
+    return startpos;
 }
 
 void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, GcContent &gc)
@@ -590,5 +466,15 @@ double DataReader::correct_gc(GcContent& gc, int n, double depth, int chr, int p
     {
         // Let's not make adjustment for bins with '255' value
         return depth;
+    }
+}
+
+void DataReader::close()
+{
+    for(int i=0; i<n_pileup; ++i)
+    {
+        pileups[i].close();
+        var_files[i].close();
+        idx_files[i].close();
     }
 }

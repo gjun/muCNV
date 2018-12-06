@@ -311,8 +311,9 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
-					"tclap-1.2.1/include",
+					/usr/local/include/,
 					tabix,
+					"tclap-1.2.1/include",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = YES;
@@ -364,8 +365,9 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
-					"tclap-1.2.1/include",
+					/usr/local/include/,
 					tabix,
+					"tclap-1.2.1/include",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -381,6 +383,7 @@
 				HEADER_SEARCH_PATHS = (
 					"tclap-1.2.1/include",
 					tabix,
+					/usr/local/include,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -399,6 +402,7 @@
 				HEADER_SEARCH_PATHS = (
 					"tclap-1.2.1/include",
 					tabix,
+					/usr/local/include,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",

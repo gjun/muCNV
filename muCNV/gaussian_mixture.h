@@ -9,6 +9,8 @@
 #ifndef gaussian_mixture_h
 #define gaussian_mixture_h
 
+#define MAX_P_OVERLAP 0.3
+
 #include <stdio.h>
 #include <vector>
 #include "gaussian.h"
@@ -22,6 +24,7 @@ public:
     int n_comp;
     double llk;
     double bic;
+    double p_overlap;
     
     //1-D with weights
     void wEM(std::vector<double>&, std::vector<double>&);
@@ -33,7 +36,7 @@ public:
     bool r_ordered();
     
     // Copy constructor
-    GaussianMixture () {};
+    GaussianMixture () {llk = -DBL_MAX; bic = DBL_MAX; p_overlap = 1.0; n_comp = 0;};
     GaussianMixture (const GaussianMixture &);
     GaussianMixture (std::vector<double> &, std::vector<double> &);
     GaussianMixture& operator = ( const GaussianMixture& gmix);
@@ -48,6 +51,7 @@ public:
     int n_comp;
     double llk;
     double bic;
+    double p_overlap;
     
     //2-D without weights
     void EM2(std::vector<double>&, std::vector<double>&);
@@ -56,7 +60,7 @@ public:
     bool ordered();
     bool r_ordered();
     
-    GaussianMixture2 () {llk = -DBL_MAX; bic = DBL_MAX; n_comp = 0;};
+    GaussianMixture2 () {llk = -DBL_MAX; bic = DBL_MAX; p_overlap = 1.0; n_comp = 0;};
     GaussianMixture2 (const GaussianMixture2 &);
     GaussianMixture2 (std::vector<double> &, std::vector<double> &);
     GaussianMixture2& operator = ( const GaussianMixture2& gmix);

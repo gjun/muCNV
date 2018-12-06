@@ -33,9 +33,12 @@ public:
     int ac;
     int ns;
     
-    std::vector<int> gt; // bi-allelic genotype
-    std::vector<int> cn; // copy number
-    
+    std::vector<uint8_t> gt; // bi-allelic genotype
+    std::vector<uint8_t> cn; // copy number
+    std::vector<uint8_t> gt_depth;
+    std::vector<uint8_t> gt_depth2;
+    std::vector<uint8_t> gt_readpair;
+
     SvGeno (int);
 };
 

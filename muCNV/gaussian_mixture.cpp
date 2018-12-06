@@ -25,6 +25,7 @@ GaussianMixture::GaussianMixture(std::vector<double> &m, std::vector<double> &s)
     {
         Comps[i].Mean = m[i];
         Comps[i].Stdev = s[i];
+        Comps[i].Alpha = 1.0/n_comp;
     }
 }
 
@@ -37,6 +38,7 @@ GaussianMixture& GaussianMixture::operator = (const GaussianMixture& gmix)
     {
         Comps[i].Mean = gmix.Comps[i].Mean;
         Comps[i].Stdev = gmix.Comps[i].Stdev;
+        Comps[i].Alpha = gmix.Comps[i].Alpha;
     }
     bic = gmix.bic;
     llk = gmix.llk;
@@ -324,6 +326,8 @@ GaussianMixture2::GaussianMixture2(std::vector<double> &m, std::vector<double> &
         
         Comps[i].Cov[0] = s[i];
         Comps[i].Cov[3] = s[i];
+        
+        Comps[i].Alpha = 1.0/n_comp;
     }
 }
 
@@ -340,6 +344,7 @@ GaussianMixture2& GaussianMixture2::operator = (const GaussianMixture2& gmix)
         
         for(int j=0; j<4; ++j)
             Comps[i].Cov[j] = gmix.Comps[i].Cov[j];
+        Comps[i].Alpha = gmix.Comps[i].Alpha;
     }
     bic = gmix.bic;
     llk = gmix.llk;

@@ -17,7 +17,7 @@ using std::string;
 
 class ReadStat
 {
-	public:
+public:
 	int n_pre_FR;  // DEL
 	int n_pre_RF;  // DUP
     int n_pre_FF;  // INV
@@ -55,7 +55,7 @@ class ReadStat
 		n_pre_split_in = 0;
 		n_post_split_out = 0;
 		n_post_split_in = 0;
-	}
+    }
 };
 
 class DataReader
@@ -69,6 +69,7 @@ public:
     void read_var_depth(int, std::vector<double>&);
     void read_pair_split(sv&, std::vector<ReadStat> &, GcContent &);
     double correct_gc(GcContent &, int, double, int, int);
+    void close();
 
 private:
     std::vector<int32_t> n_samples; // number of samples in each multi pileup files

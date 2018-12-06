@@ -55,7 +55,7 @@ void copyComps(std::vector<Gaussian> &C, std::vector<Gaussian> &C0)
 	}
 }
 
-void select_model(GaussianMixture &ret_gmix, std::vector< std::vector<double> > &means, std::vector<double> &x)
+void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector<double> > &means, std::vector<double> &x)
 {
     double best_bic = DBL_MAX;
     
@@ -65,7 +65,7 @@ void select_model(GaussianMixture &ret_gmix, std::vector< std::vector<double> > 
         std::vector<double> s (means[m].size(), 0.05);
         GaussianMixture gmix(means[m], s);
         gmix.EM(x); // fit mixture model
-        if (gmix.bic < best_bic)
+        if (gmix.bic < best_bic && gmix.p_overlap < MAX_P_OVERLAP)
         {
             best_bic = gmix.bic;
             ret_gmix = gmix; // assignment
@@ -74,7 +74,7 @@ void select_model(GaussianMixture &ret_gmix, std::vector< std::vector<double> > 
     return;
 }
 
-void select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vector<double> > &means   , std::vector<double> &x, std::vector<double> &y)
+void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vector<double> > &means, std::vector<double> &x, std::vector<double> &y)
 {
     double best_bic = DBL_MAX;
     
@@ -83,8 +83,8 @@ void select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vector<double> 
     {
         std::vector<double> s (means[m].size(), 0.05);
         GaussianMixture2 gmix2(means[m], s);
-        gmix2.EM(x, y); // fit mixture model
-        if (gmix2.bic < best_bic)
+        gmix2.EM2(x, y); // fit mixture model
+        if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP )
         {
             best_bic = gmix2.bic;
             ret_gmix2 = gmix2; // assignment
@@ -105,573 +105,114 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     if (gmix.n_comp > 1)
     {
         // success
-        // assign genotypes
+        // assign dp-genotypes
     }
 
+    if (S.len > 300) // this should be dp_x and dp_y valid or not
+    {
+        // DP100 genotyping
+        GaussianMixture2 gmix2;
+        select_model(gmix2, means, D.dp_x, D.dp_y);
+        
+        // 2-D genotyping
+        if (gmix2.n_comp>1)
+        {
+            // success
+            //assign dp2 genotypes
+        }
+    }
+    
+    // Readpair genotyping
+    
+	std::vector<int> dp_gt(n_sample, -1);
+}
+
+void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
+{
+    // Fit Gaussian mixture models with 1, 2, and 3 components, compare BIC
+    GaussianMixture gmix;
+    
+    std::vector< std::vector<double> > means = { {1.0}, {1.0, 1.5}, {1.0, 1.5, 2.0}, {1.0, 1.5, 2.0, 2.5}, {1.0, 1.5, 2.0, 2.5, 3.0}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0}};
+    
+    select_model(gmix, means, D.var_depth);
+    
+    if (gmix.n_comp > 1)
+    {
+        // success
+        // assign genotypes
+    }
+    
     if (S.len > 300)
     {
         // DP100 genotyping
         GaussianMixture2 gmix2;
-        std::vector< std::vector<double> > means = { {1.0}, {1.0, 0.5}, {0.5, 0.0}, {1.0, 0.5, 0.0}};
         select_model(gmix2, means, D.dp_x, D.dp_y);
         
         // 2-D genotyping
+        if (gmix2.n_comp>1)
+        {
+            // success
+            //assign dp2 genotypes
+        }
     }
     
-	
-	// Two-component model
-	C2[0].set(1, 0.01);
-	C2[1].set(0.5, 0.01);
-	C2[0].Alpha = C2[1].Alpha = 0.5;
-	EM(D.norm_dp, wt, C2);
-	//fit(D.norm_dp, C2);
+    // Readpair genotyping
 
-	copyComps(G.Comps, C1);
-
-	G.bic[1] = BIC(D.norm_dp, C2, wt);
-	G.dp_flag = false;
-	be2 = BayesError(C2);
-
-	if (G.bic[1] < min_bic || be2<0.2)
-	{
-		if (ordered(C2) && C2[0].Mean > 0.8 && C2[0].Mean < 1.3 && C2[1].Mean<0.7 && C2[1].Mean > 0.3)
-		{
-			G.dp_flag = true;
-			min_bic = G.bic[1];
-			copyComps(G.Comps, C2);
-			G.p_overlap = be2;
-		}
-	}
-
-	// Three-component model
-	C3[0].set(1, 0.01);
-	C3[1].set(0.5, 0.01);
-	C3[2].set(0.05, 0.01);
-	C3[0].Alpha = C3[1].Alpha = C3[2].Alpha = 1.0/3.0;
-	EM(D.norm_dp, wt, C3);
-
-	//fit(D.norm_dp, C3);
-
-	G.bic[2] = BIC(D.norm_dp, C3, wt);
-	be3 = BayesError(C3);
-
-	if ((G.bic[2] < min_bic || be3<0.2) && ordered(C3) && be3<G.p_overlap+0.2)
-	{
-		min_bic = G.bic[2];
-		G.dp_flag = true;
-		copyComps(G.Comps, C3);
-		G.p_overlap = be3;
-	}
-
-	std::vector<int> dp_gt(n_sample, -1);
-
-	if ((G.dp_flag && G.p_overlap<0.35) || (G.dp_flag && (G.pos_flag||G.neg_flag) && G.p_overlap < 0.4 ) || (G.dp_flag && G.pos_flag && G.neg_flag && G.p_overlap<0.45))
-	{
-		for(int i=0;i<n_sample;++i)
-		{
-			switch(assign(D.norm_dp[i], G.Comps))
-			{
-			case 0:
-				dp_gt[i] = 2;
-				break;
-			case 1:
-				dp_gt[i] = 1;
-				break;
-			case 2:
-				dp_gt[i] = 0;
-				break;
-			}
-		}
-	}
-	
-	for(int i=0;i<n_sample;++i)
-	{
-		if (dp_gt[i] == 2 || (posneg_gt[i] == 1 && D.norm_dp[i]<0.2))
-		{
-			G.gt[i] = 2;
-			G.cn[i] = 0;
-			G.ac +=2;
-			G.ns +=1;
-		}
-		else if (dp_gt[i] == 1 || posneg_gt[i] == 1)
-		{
-			G.gt[i] = 1;
-			G.cn[i] = 1;
-			G.ac += 1;
-			G.ns +=1;
-		}
-		else if (dp_gt[i] == 0 || posneg_gt[i] == 0)
-		{
-			G.gt[i] = 0;
-			G.cn[i] = 2;
-
-			G.ns += 1;
-		}
-	}
-
-	if (G.dp_flag || G.pos_flag || G.neg_flag)
-	{
-		G.b_dump = false;
-		if (G.Comps.size() == 2 && G.Comps[1].Alpha > 0.8)
-		{
-			// This is unlikely. If HET is highly common, there should be HOMALT.
-			G.b_pass = false;
-		}
-		else if ( (G.ac>0) &&  (G.ac < (2*G.ns)) && (G.ns>(n_sample*0.5)))
-		{
-			G.b_pass = true;
-		}
-	}
-	else
-	{
-		G.b_dump = true;
-	}
 }
 
-void Genotyper::call_cnv(sv &S, svdata& D, svgeno& G, std::vector<double> &avg_isz, std::vector<double> &std_isz, std::vector<double> &wt)
-{
-	int n_sample = D.n;
-
-	std::vector<Gaussian> P1(1);
-	std::vector<Gaussian> P2(2);
-	
-	std::vector<Gaussian> N1(1);
-	std::vector<Gaussian> N2(2);
-	
-	std::vector<int> posneg_gt(n_sample, -1);
-	for(int i=0;i<n_sample; ++i)
-	{
-		if (D.norm_dp[i]<0.6)
-			wt[i] = 0;
-	}
-
-
-
-	if (S.len > 500)
-	{
-		std::vector<int> pos_i(n_sample, 0);
-		std::vector<int> neg_i(n_sample, 0);;
-		
-		double sum_pos0 = 0, sum_pos1 = 0;
-		double sum_neg0 = 0, sum_neg1 = 0;
-		double sumsq_pos0 = 0, sumsq_pos1 = 0;
-		double sumsq_neg0 = 0, sumsq_neg1 = 0;
-		
-		int n_pos0 = 0, n_pos1 = 0;
-		int n_neg0 = 0, n_neg1 = 0;;
-		
-		for(int i=0;i<n_sample; ++i)
-		{
-			double max_err = S.len / 10.0 ;
-			if (max_err > 1000)
-			{
-				max_err = 1000;
-			}
-			else if (max_err < 75)
-			{
-				max_err = 75;
-			}
-			
-			double isz_min = S.len - avg_isz[i] - max_err;
-			double isz_max = S.len - avg_isz[i] + max_err;
-			
-			if (D.n_cnv_pos[i] > 2 && D.cnv_pos[i] > isz_min && D.cnv_pos[i] < isz_max && D.norm_dp[i]>1.3)
-			{
-				pos_i[i] = 1;
-				sum_pos1 += D.n_cnv_pos[i] * D.cnv_pos[i];
-				n_pos1 += D.n_cnv_pos[i];
-			}
-			else
-			{
-				pos_i[i] = 0;
-				sum_pos0 += D.cnv_pos[i];
-				n_pos0 ++;
-			}
-			if (D.n_cnv_neg[i] > 2 && D.cnv_neg[i] > isz_min && D.cnv_neg[i] < isz_max && D.norm_dp[i]>1.3)
-			{
-				sum_neg1 += D.n_cnv_neg[i] * D.cnv_neg[i];
-				neg_i[i] = 1;
-				n_neg1 += D.n_cnv_neg[i];
-			}
-			else
-			{
-				sum_neg0 += D.cnv_neg[i];
-				neg_i[i] = 0;
-				n_neg0 ++;
-			}
-			if (pos_i[i] && neg_i[i] )
-			{
-				wt[i] += (D.n_cnv_pos[i] + D.n_cnv_neg[i]) / 2.0;
-			}
-		}
-		if (n_pos1 > 0)
-		{
-			P1[0].estimate(D.cnv_pos);
-			P1[0].Alpha = 1;
-			
-			double m0 = sum_pos0 / n_pos0;
-			
-			// pseudocount;
-			sum_pos1 += S.len + S.len - 800;
-			n_pos1 +=2;
-			double m1 = sum_pos1 / n_pos1;
-			
-			for(int i=0; i<n_sample; ++i)
-			{
-				if (pos_i[i])
-				{
-					sumsq_pos1 += D.n_cnv_pos[i] * (D.cnv_pos[i]-m1) * (D.cnv_pos[i]-m1) ;
-				}
-				else
-				{
-					sumsq_pos0 += (D.cnv_pos[i] -m0 ) * (D.cnv_pos[i] - m0);
-				}
-			}
-			sumsq_pos1 += (S.len-300 - m1)*(S.len-300 -m1) + (S.len-500-m1)*(S.len-500-m1);
-			
-			double stdev0 = sqrt(sumsq_pos0 / n_pos0);
-			double stdev1 = sqrt(sumsq_pos1 / n_pos1);
-			
-			P2[0].set(m0 , stdev0) ;
-			P2[0].Alpha = (double)n_pos0 / (double)(n_pos0 + n_pos1) ;
-			
-			P2[1].set(m1 , stdev1) ;
-			P2[1].Alpha = (double)n_pos1 / (double)(n_pos0 + n_pos1) ;
-			
-			G.info += ";POS=" + std::to_string(P2[0].Mean) + "(" + std::to_string(P2[0].Stdev) + ")"  + "," + std::to_string(P2[1].Mean) + "(" + std::to_string(P2[1].Stdev) + ")";
-			
-			double bic_p1 = BIC(D.cnv_pos, P1, wt);
-			double bic_p2 = BIC(D.cnv_pos, P2, wt);
-			double be_p1 = BayesError(P2);
-			if (bic_p1 > bic_p2)
-			{
-				G.pos_flag = true;
-			}
-			G.info += ";BIC_P=" + std::to_string(bic_p1) +  "," + std::to_string(bic_p2);
-			G.info += ";BE_P=" + std::to_string(be_p1);
-		}
-		if (n_neg1 > 0)
-		{
-			N1[0].estimate(D.cnv_neg);
-			N1[0].Alpha = 1;
-			
-			double m0 = sum_neg0 / n_neg0;
-			
-			// pseudocount;
-			sum_neg1 += S.len + S.len - 800;
-			n_neg1 +=2;
-			double m1 = sum_neg1 / n_neg1;
-			
-			for(int i=0; i<n_sample; ++i)
-			{
-				if (neg_i[i])
-				{
-					sumsq_neg1 += D.n_cnv_neg[i] * (D.cnv_neg[i]-m1) * (D.cnv_neg[i]-m1) ;
-				}
-				else
-				{
-					sumsq_neg0 += (D.cnv_neg[i] -m0 ) * (D.cnv_neg[i] - m0);
-				}
-			}
-			sumsq_neg1 += (S.len-300 - m1)*(S.len-300 -m1) + (S.len-500-m1)*(S.len-500-m1);
-			double stdev0 = sqrt(sumsq_neg0 / n_neg0);
-			double stdev1 = sqrt(sumsq_neg1 / n_neg1);
-			
-			N2[0].set(m0 , stdev0) ;
-			N2[0].Alpha = (double)n_neg0 / (double)(n_neg0 + n_neg1) ;
-			
-			N2[1].set(m1 , stdev1) ;
-			N2[1].Alpha = (double)n_neg1 / (double)(n_neg0 + n_neg1) ;
-			
-			G.info += ";NEG=" + std::to_string(N2[0].Mean) + "(" + std::to_string(N2[0].Stdev) + ")"  + "," + std::to_string(N2[1].Mean) + "(" + std::to_string(N2[1].Stdev) + ")";
-			
-
-			double bic_n1 = BIC(D.cnv_neg, N1, wt);
-			double bic_n2 = BIC(D.cnv_neg, N2, wt);
-			double be_n1 = BayesError(N2);
-		
-			if (bic_n1 > bic_n2)
-			{
-				G.neg_flag = true;
-			}
-
-			G.info += ";BIC_N=" + std::to_string(bic_n1) +  "," + std::to_string(bic_n2);
-			G.info += ";BE_N=" + std::to_string(be_n1);
-		}
-		
-		if (G.pos_flag && G.neg_flag)
-		{
-			for(int i=0; i<n_sample; ++i)
-			{
-				double p0 = P2[0].pdf(D.cnv_pos[i]);
-				double p1 = P2[1].pdf(D.cnv_pos[i]);
-				
-				double n0 = N2[0].pdf(D.cnv_neg[i]);
-				double n1 = N2[1].pdf(D.cnv_neg[i]);
-				
-				if (((p1 > 2*p0 && D.n_cnv_pos[i]>1) && (n1 > 2*n0 && D.n_cnv_neg[i] >1)) && D.norm_dp[i]>1.2)
-				{
-					posneg_gt[i] = 1;
-				}
-				else if (p0 >p1 && n0 >n1)
-				{
-					posneg_gt[i] = 0;
-					// default : missing
-				}
-			}
-		}
-	} //S.len > 500
-
-	std::vector<Gaussian> C(1);
-	double min_BIC = DBL_MAX;
-
-	unsigned n_comp = 1;
-
-	C[0].Mean = 1;
-	C[0].Stdev = stdev(D.norm_dp, C[0].Mean);
-	G.bic[0] = BIC(D.norm_dp, C, wt);
-	min_BIC = G.bic[0];
-	copyComps(G.Comps, C);
-
-	bool keep_going = true;
-	G.p_overlap = 1;
-	for(int i=1;i<10 && keep_going; ++i)
-	{
-		Gaussian *pG = new Gaussian;
-		C.push_back(*pG);
-
-		for(int j=0; j<=i; ++j)
-		{
-			C[j].Mean = 0.5 * j + 1.0;
-			C[j].Stdev = 0.02;
-			C[j].Alpha = 1.0/(i+1);
-		}
-//		C[0].Stdev = 0.1; // More variance in CN2 only
-		
-		EM(D.norm_dp, wt, C);
-		//fit(D.norm_dp, C);
-
-		G.bic[i] = BIC(D.norm_dp, C, wt);
-		double be = BayesError(C);
-		
-		keep_going = false;
-
-		if (G.bic[i] < min_BIC && C[i].Alpha > 0.5/(double)n_sample && r_ordered(C) && be < G.p_overlap+0.2) // not significantly increase Bayes error
-		{
-			n_comp = i+1;
-
-			min_BIC = G.bic[i];
-
-			copyComps(G.Comps, C);
-
-			G.dp_flag = true;
-			G.p_overlap = be;
-
-			keep_going = true;
-		}
-	}
-
-	std::vector<int> dp_cn(n_sample, -1);
-	
-	if ((G.dp_flag && G.p_overlap<0.35) || (G.dp_flag && (G.pos_flag||G.neg_flag) && G.p_overlap < 0.4) || (G.dp_flag && G.pos_flag && G.neg_flag && G.p_overlap<0.45))
-	{
-		for(int i=0;i<n_sample;++i)
-		{
-			dp_cn[i] = assign(D.norm_dp[i], G.Comps);
-		}
-	}
-
-	G.b_biallelic = (n_comp < 4);
-
-	for(int i=0;i<n_sample;++i)
-	{
-		if (G.b_biallelic)
-		{
-			if (dp_cn[i] == 4 || (posneg_gt[i] == 1 && D.norm_dp[i]>1.8))
-			{
-				G.gt[i] = 2;
-				G.cn[i] = 4;
-				G.ac +=2;
-				G.ns +=1;
-			}
-			else if (dp_cn[i] == 3 || posneg_gt[i] == 1)
-			{
-				G.gt[i] = 1;
-				G.cn[i] = 3;
-				G.ac += 1;
-				G.ns +=1;
-			}
-			else if (dp_cn[i] == 2 || posneg_gt[i] == 0)
-			{
-				G.gt[i] = 0;
-				G.cn[i] = 2;
-				G.ns += 1;
-			}
-			else
-			{
-				G.gt[i] = -1;
-				G.cn[i] = -1;
-			}
-		}
-		else
-		{
-			if (G.cn[i]>=0)
-			{
-				G.ns++;
-				if (G.cn[i] >  2)
-				{
-					G.ac++;
-				}
-			}
-		}
-	}
-
-	if (G.dp_flag || G.pos_flag || G.neg_flag)
-	{
-		G.b_dump = false;
-
-		if (n_comp ==2 && G.Comps[1].Alpha > 0.8)
-		{
-			// This is unlikely
-			G.b_pass = false;
-		}
-		else if ( (G.ac>0) &&  (G.ac < (2*G.ns)) && (G.ns>(n_sample*0.5)))
-		{
-			G.b_pass = true;
-		}
-	}
-	else
-	{
-		G.b_dump = true;
-	}
-}
-
-
-
-std::string Genotyper::print(sv &S, svdata &D, svgeno &G)
+std::string Genotyper::print(sv &S, SvData &D, SvGeno &G)
 {
     std::string ln = std::to_string(S.chrnum);
     ln += "\t" + std::to_string(S.pos) + "\t" + svTypeName(S.svtype) + "_" + std::to_string(S.chrnum) + ":" + std::to_string(S.pos) + "-" + std::to_string(S.end) + "\t.\t<" + svTypeName(S.svtype) + ">\t.\t";
     
-    if (b_pass)
+    if (G.b_pass)
     {
         ln += "PASS\t";
-    }
-    else if (b_dump)
-    {
-        ln += "FAIL;DUMP\t";
     }
     else
     {
         ln += "FAIL\t";
     }
     
-    ln += "SVTYPE=" + std::string(svTypeName(S.svtype)) + ";END=" + std::to_string(S.end) + ";SVLEN=" + std::to_string(S.len) + ";AC=" + std::to_string(ac) + ";NS=" + std::to_string(ns) + ";AF=";
-    if (ns>0)
-        ln+=std::to_string((double)ac/(double)(2.0*ns));
+    ln += "SVTYPE=" + std::string(svTypeName(S.svtype)) + ";END=" + std::to_string(S.end) + ";SVLEN=" + std::to_string(S.len) + ";AC=" + std::to_string(G.ac) + ";NS=" + std::to_string(G.ns) + ";AF=";
+    if (G.ns>0)
+        ln+=std::to_string((double)G.ac/(double)(2.0*G.ns));
     else
         ln+="0";
     
-    ln+= info;
+    ln+= G.info;
+
     
-    bool bic_flag = false ;
-    if (Comps.size()>0)
-    {
-        ln+= ";NCLUS=" + std::to_string(Comps.size()) + ";P_OVERLAP=" + std::to_string(p_overlap);
-        
-        ln+= ";BIC_DP="+ std::to_string(bic[0]) + "," + std::to_string(bic[1]) + "," + std::to_string(bic[2]);
-        for(unsigned i=3;i<Comps.size(); ++i)
-        {
-            ln += "," + std::to_string(bic[i]);
-            if (bic[i]<bic[0])
-            {
-                bic_flag = true;
-            }
-        }
-    }
-    
-    if (bic_flag)
-        ln += ";BIC";
-    
-    if (dp_flag)
+    if (G.dp_flag)
         ln += ";DP";
-    if (pos_flag)
-        ln += ";POS";
-    if (neg_flag)
-        ln += ";NEG";
+    if (G.dp2_flag)
+        ln += ";DP2";
+    if (G.rp_flag)
+        ln += ";RP";
+    if (G.sp_flag)
+        ln += ";SP";
     
-    if (Comps.size()>0)
-    {
-        ln += ";MEAN=" + std::to_string(Comps[0].Mean);
-        
-        for(unsigned i=1;i<Comps.size(); ++i)
-            ln += "," + std::to_string(Comps[i].Mean);
-        
-        ln += ";STDEV=" + std::to_string(Comps[0].Stdev);
-        for(unsigned i=1;i<Comps.size(); ++i)
-            ln += "," + std::to_string(Comps[i].Stdev);
-        
-        ln += ";FRAC=" + std::to_string(Comps[0].Alpha);
-        for(unsigned i=1;i<Comps.size(); ++i)
-            ln += "," + std::to_string(Comps[i].Alpha);
-    }
-    
-    if (b_biallelic)
-        ln += "\tGT:CN:ND:DP:FP:FN:WT";
-    //    ln += "\tGT";
-    else
-        ln += "\tCN:ND:DP:FP:FN";
-    //        ln += "\tCN";
+    ln += "\tGT:CN";
     
     for (int i=0; i<n_sample; ++i)
     {
-        if (b_biallelic)
+        switch(G.gt[i])
         {
-            switch(gt[i])
-            {
-                case 0:
-                    ln += "\t0/0";
-                    break;
-                case 1:
-                    ln += "\t0/1";
-                    break;
-                case 2:
-                    ln += "\t1/1";
-                    break;
-                default:
-                    ln += "\t.";
-                    break;
-            }
-            ln+= ":";
+            case 0:
+                ln += "\t0/0";
+                break;
+            case 1:
+                ln += "\t0/1";
+                break;
+            case 2:
+                ln += "\t1/1";
+                break;
+            default:
+                ln += "\t.";
+                break;
         }
-        else
-        {
-            ln += "\t";
-        }
-        
-        if (S.svtype == INV)
-        {
-            if (cn[i]<0)
-            {
-                ln += std::to_string(cn[i]) + ":" + std::to_string(D.norm_readcount[i]).substr(0,4) + ":" + std::to_string((int)D.dp[i]) + ":" +  std::to_string(D.n_inv_pos[i]) + "," + std::to_string((int)D.inv_pos[i]) + ":" + std::to_string(D.n_inv_neg[i]) + "," + std::to_string((int)D.inv_neg[i]);
-            }
-            else
-            {
-                ln += ".:" + std::to_string(D.norm_readcount[i]).substr(0,4) + ":" + std::to_string((int)D.dp[i]) + ":" +  std::to_string(D.n_inv_pos[i]) + "," + std::to_string((int)D.inv_pos[i]) + ":" + std::to_string(D.n_inv_neg[i]) + "," + std::to_string((int)D.inv_neg[i]) ;
-            }
-        }
-        else
-        {
-            if (cn[i] <0)
-            {
-                ln +=  ".:";
-            }
-            else
-            {
-                ln += std::to_string(cn[i])+":";
-            }
-            ln += std::to_string(D.norm_dp[i]).substr(0,4) + ":" + std::to_string((int)D.dp[i]) + ":" + std::to_string((int)D.n_cnv_pos[i]) + "," + std::to_string((int)D.cnv_pos[i]) + ":" + std::to_string((int)D.n_cnv_neg[i]) + "," + std::to_string((int)D.cnv_neg[i]) + ":" + std::to_string((int)wt[i]);
-        }
+        ln += ":" + std::to_string(G.cn[i]);
     }
+    ln += "\n";
     return ln;
 }
