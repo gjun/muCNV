@@ -9,6 +9,33 @@
 #include "data_reader.h"
 #include <math.h>
 
+void medianfilter(const element* signal, element* result, int N)
+{
+    //   Move window through all elements of the signal
+    for (int i = 2; i < N - 2; ++i)
+    {
+        //   Pick up window elements
+        element window[5];
+        for (int j = 0; j < 5; ++j)
+            window[j] = signal[i - 2 + j];
+        //   Order elements (only half of them)
+        for (int j = 0; j < 3; ++j)
+        {
+            //   Find position of minimum element
+            int min = j;
+            for (int k = j + 1; k < 5; ++k)
+                if (window[k] < window[min])
+                    min = k;
+            //   Put found minimum element in its place
+            const element temp = window[j];
+            window[j] = window[min];
+            window[min] = temp;
+        }
+        //   Get result - the middle element
+        result[i - 2] = window[2];
+    }
+}
+
 int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &stats, GcContent &gc)
 {
     // base_names: list of base names for pileup/var/idx triples
@@ -106,82 +133,87 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
     return n_sample_total;
 }
 
-int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &dp100, std::vector< std::vector<double> > &gd100, GcContent& gc)
+int DataReader::read_depth100(sv& curr_sv, GcContent& gc)
 {
     // this information is not useful when sv length is short
     // process only for >200bp SVs (or at include least two full 100-bp intervals)
     
     bool b_medfilt = true; // whether to do median filtering or not
     
-    if (curr_sv.len < 200 )
+    int n_inside =(int)curr_sv.end/100 - (int)curr_sv.pos/100;
+    
+    if (n_inside < 3)
         return -1;
-    else if (curr_sv.len < 500)
-    {
-        b_medfilt = false;
-    }
+    else if (n_inside < 5)
+        b_medfilt = false; // no median filtering
 
-    int startpos = 0;
-    int endpos = 0;
+    // now, let's forget edge detection and focus on the 'inside' portions
+    // for small SVs ( <100kb ), it's okay to read the whole thing
+    // for larger SVs, read two segments in the 'middle'
     
-    // put enough buffers before/after for median filtering
-    startpos = curr_sv.pos - 2000;
-    
-    // return startpos to let the caller know where dp100 starts
-    if (startpos < 0)
-        startpos = 1;
-    
-    endpos = curr_sv.end + 2000;
-    if (endpos > (int) gc.chr_size[curr_sv.chrnum])
-        endpos = (int) gc.chr_size[curr_sv.chrnum];
-
-    int sample_idx = 0;
-    
-    int n_start = (startpos / 100);
-    int n_end = (endpos / 100);
-    int n_dp = n_end - n_start + 1;
-    
-    for(int i=0; i<n_sample_total; ++i)
+    if (curr_sv.len < 100000)
     {
-        dp100[i].resize(n_dp);
-        gd100[i].resize(n_dp);
-    }
-    
-    for(int i=0; i<n_pileup; ++i)
-    {
-        uint64_t start_byte = multi_idx[i][0]; // This is the index position where dp100 record starts
-        std::cerr << "startbyte " << start_byte << std::endl;
-    
-        start_byte = chr_bytepos_dp100[i][curr_sv.chrnum];
+        int startpos = 0;
+        int endpos = 0;
         
-        std::cerr << "startbyte " << start_byte << std::endl;
-        start_byte += n_start * n_samples[i] * sizeof(uint16_t);
-        std::cerr << "startbyte " << start_byte << std::endl;
+        startpos = curr_sv.pos - 2000;
         
-        int n_dp_by_sample = n_samples[i] * n_dp ;
+        if (startpos < 0)
+            startpos = 1;
         
-        uint16_t *D = new uint16_t[n_dp_by_sample];
-        std::cerr << "n_dp_by_sample " << n_dp_by_sample << std::endl;
+        endpos = curr_sv.end + 2000;
+        if (endpos > (int) gc.chr_size[curr_sv.chrnum])
+            endpos = (int) gc.chr_size[curr_sv.chrnum];
         
-        pileups[i].seekg(start_byte);
-        pileups[i].read_depth(D, n_dp_by_sample);
-        std::cerr << "read n_dp_by_sample " << n_dp_by_sample << std::endl;
-     
-        for(int j=0; j<n_dp; ++j)
+        int sample_idx = 0;
+        
+        int n_start = (startpos / 100);
+        int n_end = (endpos / 100);
+        int n_dp = n_end - n_start + 1;
+        
+        int x_start = (curr_sv.pos / 100) - n_start + 1;
+        int x_end = (curr_sv.end + curr_sv.pos / 200) - n_start;
+        int y_start = x_end+1;
+        int y_end = (curr_sv.end/100) - n_start -1;
+        
+        for(int i=0; i<n_pileup; ++i)
         {
-            for(int k=0; k<n_samples[i]; ++k)
+            uint64_t start_byte = multi_idx[i][0]; // This is the index position where dp100 record starts
+            start_byte = chr_bytepos_dp100[i][curr_sv.chrnum];
+            start_byte += n_start * n_samples[i] * sizeof(uint16_t);
+            
+            int n_dp_by_sample = n_samples[i] * n_dp;
+            
+            uint16_t *D = new uint16_t[n_dp_by_sample];
+            uint16_t *D_filt = new uint16_t[n_dp_by_sample];
+            
+            pileups[i].seekg(start_byte);
+            pileups[i].read_depth(D, n_dp_by_sample);
+            
+            // now do median filtering
+            for(int j=0; j<n_samples[i]; ++j)
             {
-//					std::cerr << j << ", " << n_samples[i] << ", " << k << " : " << D[j*n_samples[i] + k ] << std::endl;
-                dp100[sample_idx + k][j] = (double)D[j*n_samples[i] + k] / 32.0;
-                gd100[sample_idx + k][j] = correct_gc(gc, sample_idx+k, dp100[sample_idx+k][j], curr_sv.chrnum, startpos + j*100);
+                
             }
+            // sample by sample sum
+            for(int j=x_start; j<x_end; ++j)
+            {
+            
+            }
+            for(int j=y_start;j<y_end;++j)
+            {
+            
+            }
+            
+            sample_idx += n_samples[i];
+            
+            delete [] D;
+            delete [] D_filt;
         }
-        sample_idx += n_samples[i];
-
-        std::cerr << "read n_dp_by_sample " << n_dp_by_sample << std::endl;
-        delete [] D;
-        std::cerr << "read n_dp_by_sample " << n_dp_by_sample << std::endl;
+        
     }
-    return startpos;
+
+    return 1;
 }
 
 void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, GcContent &gc)
