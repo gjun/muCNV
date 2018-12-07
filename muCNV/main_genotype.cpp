@@ -135,13 +135,12 @@ int main_genotype(int argc, char** argv)
         vec_sv[i].print();
 
         std::vector< std::vector<double> > dvec_dp100 (n_sample);
-        std::vector< std::vector<double> > dvec_gd100 (n_sample);
         std::vector<double> var_dp (n_sample);
         
-        int startpos = reader.read_depth100(vec_sv[i], dvec_dp100, dvec_gd100, gc);
-    
+        int startpos = reader.read_depth100(vec_sv[i], dvec_dp100, gc);
+
+        /*
         string fname = "var" + std::to_string(i) + ".dp100.txt";
-        
         FILE *fp = fopen(fname.c_str(), "wt");
         fprintf(fp, "index");
         for(int k=0; k<n_sample; ++k)
@@ -162,19 +161,14 @@ int main_genotype(int argc, char** argv)
             {
                 fprintf(fp, "\t%f", dvec_dp100[k][j]);
             }
-            for(int k=0; k<n_sample; ++k)
-            {
-                fprintf(fp, "\t%f", dvec_gd100[k][j]);
-            }
-            fprintf(fp, "\n");
-
         }
         fclose(fp);
-        
+        */
 		std::vector<ReadStat> rdstats (n_sample);
         reader.read_pair_split(vec_sv[i], rdstats, gc);
         reader.read_var_depth(i, var_dp);
         
+        /*
         fname = "var" + std::to_string(i) + ".stat.txt";
         
         fp = fopen(fname.c_str(), "wt");
@@ -188,6 +182,7 @@ int main_genotype(int argc, char** argv)
             fprintf(fp, "\t%f\n", var_dp[j]);
         }
         fclose(fp);
+         */
         // 0. Cluster var_dp 1-D
 		// using var depth
         

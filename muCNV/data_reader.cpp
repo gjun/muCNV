@@ -9,30 +9,22 @@
 #include "data_reader.h"
 #include <math.h>
 
-void medianfilter(const element* signal, element* result, int N)
+void median_filter(uint16_t* D, uint16_t* D_filt, int n_sample, int n_dp)
 {
-    //   Move window through all elements of the signal
-    for (int i = 2; i < N - 2; ++i)
+    for(int i=0; i<n_sample; ++i)
     {
-        //   Pick up window elements
-        element window[5];
-        for (int j = 0; j < 5; ++j)
-            window[j] = signal[i - 2 + j];
-        //   Order elements (only half of them)
-        for (int j = 0; j < 3; ++j)
+        for(int j=2; j<n_dp-2; ++j) // first two and last two will be padded later
         {
-            //   Find position of minimum element
-            int min = j;
-            for (int k = j + 1; k < 5; ++k)
-                if (window[k] < window[min])
-                    min = k;
-            //   Put found minimum element in its place
-            const element temp = window[j];
-            window[j] = window[min];
-            window[min] = temp;
+            std::vector<uint16_t> buf (5,0);
+            for(int k=0; k<5; ++k)
+            {
+                buf[k] = D[(j-2)*n_sample + i];
+            }
+            std::nth_element (buf.begin(), buf.begin()+3, buf.end());
+            D_filt[j] = buf[2];
         }
-        //   Get result - the middle element
-        result[i - 2] = window[2];
+        D_filt[0] = D_filt[1] = D_filt[2]; // padding
+        D_filt[n_dp-1] = D_filt[n_dp-2] = D_filt[n_dp-3];
     }
 }
 
@@ -133,84 +125,121 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
     return n_sample_total;
 }
 
-int DataReader::read_depth100(sv& curr_sv, GcContent& gc)
+int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &dvec_dp, GcContent& gc)
 {
     // this information is not useful when sv length is short
     // process only for >200bp SVs (or at include least two full 100-bp intervals)
     
     bool b_medfilt = true; // whether to do median filtering or not
     
-    int n_inside =(int)curr_sv.end/100 - (int)curr_sv.pos/100;
+    int n_inside =(int)curr_sv.end/100 - (int)curr_sv.pos/100; // number of 100-bp intervals that completely 'falls' inside the SV
     
     if (n_inside < 3)
-        return -1;
+        return 0;
     else if (n_inside < 5)
         b_medfilt = false; // no median filtering
 
     // now, let's forget edge detection and focus on the 'inside' portions
-    // for small SVs ( <100kb ), it's okay to read the whole thing
-    // for larger SVs, read two segments in the 'middle'
+
+    int startpos = 0;
+    int endpos = 0;
     
-    if (curr_sv.len < 100000)
+    startpos = curr_sv.pos - 2000;
+    
+    if (startpos < 0)
+        startpos = 1;
+    
+    endpos = curr_sv.end + 2000;
+    if (endpos > (int) gc.chr_size[curr_sv.chrnum])
+        endpos = (int) gc.chr_size[curr_sv.chrnum];
+    
+    int sample_idx = 0;
+    
+    int n_start = (startpos / 100);
+    int n_end = (endpos / 100);
+    int n_dp = n_end - n_start + 1;
+    
+    if (n_inside <= 200)
+        dvec_dp.resize(2);
+    else
+        dvec_dp.resize(4);
+    
+    for(int i=0; i<dvec_dp.size(); ++i)
+            dvec_dp[i].resize(n_sample_total);
+
+    for(int i=0; i<n_pileup; ++i)
     {
-        int startpos = 0;
-        int endpos = 0;
+        uint64_t start_byte = multi_idx[i][0]; // This is the index position where dp100 record starts
+        start_byte = chr_bytepos_dp100[i][curr_sv.chrnum];
+        start_byte += n_start * n_samples[i] * sizeof(uint16_t);
         
-        startpos = curr_sv.pos - 2000;
+        int n_dp_by_sample = n_samples[i] * n_dp;
         
-        if (startpos < 0)
-            startpos = 1;
+        uint16_t *D = new uint16_t[n_dp_by_sample];
+        uint16_t *D_filt = new uint16_t[n_dp_by_sample];
         
-        endpos = curr_sv.end + 2000;
-        if (endpos > (int) gc.chr_size[curr_sv.chrnum])
-            endpos = (int) gc.chr_size[curr_sv.chrnum];
+        pileups[i].seekg(start_byte);
+        pileups[i].read_depth(D, n_dp_by_sample);
         
-        int sample_idx = 0;
+        // now do median filtering
+        if (b_medfilt)
+            median_filter(D, D_filt, n_samples[i], n_dp);
         
-        int n_start = (startpos / 100);
-        int n_end = (endpos / 100);
-        int n_dp = n_end - n_start + 1;
-        
-        int x_start = (curr_sv.pos / 100) - n_start + 1;
-        int x_end = (curr_sv.end + curr_sv.pos / 200) - n_start;
-        int y_start = x_end+1;
-        int y_end = (curr_sv.end/100) - n_start -1;
-        
-        for(int i=0; i<n_pileup; ++i)
+        // if n_inside < 200, make two
+        // sample by sample sum
+        std::vector<int> seg_starts;
+        std::vector<int> seg_ends;
+        if (n_inside <= 200)
         {
-            uint64_t start_byte = multi_idx[i][0]; // This is the index position where dp100 record starts
-            start_byte = chr_bytepos_dp100[i][curr_sv.chrnum];
-            start_byte += n_start * n_samples[i] * sizeof(uint16_t);
-            
-            int n_dp_by_sample = n_samples[i] * n_dp;
-            
-            uint16_t *D = new uint16_t[n_dp_by_sample];
-            uint16_t *D_filt = new uint16_t[n_dp_by_sample];
-            
-            pileups[i].seekg(start_byte);
-            pileups[i].read_depth(D, n_dp_by_sample);
-            
-            // now do median filtering
-            for(int j=0; j<n_samples[i]; ++j)
-            {
-                
-            }
-            // sample by sample sum
-            for(int j=x_start; j<x_end; ++j)
-            {
-            
-            }
-            for(int j=y_start;j<y_end;++j)
-            {
-            
-            }
-            
-            sample_idx += n_samples[i];
-            
-            delete [] D;
-            delete [] D_filt;
+            seg_starts.push_back((curr_sv.pos / 100) - n_start + 1);
+            seg_ends.push_back((curr_sv.end + curr_sv.pos / 200) - n_start);
+            seg_starts.push_back(seg_ends[0]);
+            seg_ends.push_back((curr_sv.end/100) - n_start);
         }
+        // if n_inside < 400, make four consecutive segments
+        else if (n_inside <= 400)
+        {
+            seg_starts.push_back((curr_sv.pos / 100) - n_start + 1);
+            seg_ends.push_back((curr_sv.end + curr_sv.pos / 400) - n_start);
+            seg_starts.push_back(seg_ends[0]);
+            seg_ends.push_back((curr_sv.end + curr_sv.pos/ 200) - n_start);
+            seg_starts.push_back(seg_ends[1]);
+            seg_ends.push_back(((curr_sv.end + curr_sv.pos)* 3 / 400) - n_start);
+            seg_starts.push_back(seg_ends[2]);
+            seg_ends.push_back((curr_sv.end/100) - n_start);
+        }
+        // for larger ones, make four 'interspread' averages - 10k = 400
+        else
+        {
+            seg_starts.push_back((curr_sv.pos / 100) - n_start + 1);
+            seg_starts.push_back((curr_sv.end + curr_sv.pos / 400) - n_start);
+            seg_starts.push_back((curr_sv.end + curr_sv.pos/ 200) - n_start);
+            seg_starts.push_back(((curr_sv.end + curr_sv.pos)* 3 / 400) - n_start);
+            for(int j=0; j<4; ++j)
+                seg_ends.push_back(seg_starts[j] + 100);
+        }
+
+        for(int k=0; k<seg_starts.size(); ++k)
+        {
+            
+            std::vector<unsigned> dp_sum (n_samples[i], 0);
+            std::vector<unsigned> dp_cnt (n_samples[i], 0);
+            
+            for(int j=seg_starts[k]; j<seg_ends[k]; ++j)
+            {
+                for(int m=0; m<n_samples[i]; ++m)
+                {
+                    dp_sum[m] += D[j*n_samples[i] + m];
+                    dp_cnt[m] ++;
+                }
+            }
+            for(int m=0; m<n_samples[i]; ++m)
+                dvec_dp[k][m+sample_idx] = (double)dp_sum[m]/dp_cnt[m]/32.0 ; //question: GC-corrected ?
+        }
+        sample_idx += n_samples[i];
         
+        delete [] D;
+        delete [] D_filt;
     }
 
     return 1;
