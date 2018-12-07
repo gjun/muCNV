@@ -16,6 +16,8 @@
  */
 #include "common.h"
 #include <math.h>
+#include <string.h>
+#include <algorithm>
 
 void split(const char* s, const char* delims, std::vector<std::string>& tokens)
 {

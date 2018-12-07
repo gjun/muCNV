@@ -83,7 +83,6 @@ int main_genotype(int argc, char** argv)
         cmd.add(argIndex);
         cmd.add(argRegion);
         cmd.add(argRange);
-        cmd.add(switchDumpstat);
         cmd.parse(argc, argv);
         
         range = argRange.getValue();
@@ -160,7 +159,7 @@ int main_genotype(int argc, char** argv)
         std::cerr << "Variants index from " << n_start << " to " << n_end << " will be genotyepd" << std::endl;
     }
     
-    for(int i=n_start; i<n_end + 1; ++i)
+    for(int i=n_start; i<=n_end; ++i)
     {
         //vec_sv[i].print();
 

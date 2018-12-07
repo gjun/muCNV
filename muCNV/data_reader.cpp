@@ -8,6 +8,7 @@
 
 #include "data_reader.h"
 #include <math.h>
+#include <algorithm>
 
 svType ReadStat::sv_support()
 {
