@@ -53,12 +53,6 @@ double normpdf(double, Gaussian&);
 double mean(std::vector<double>&);
 double stdev(std::vector<double>&, double);
 
-double BayesError(std::vector<Gaussian>&);
-double BayesError(std::vector<Gaussian2>&);
-
-double BIC(std::vector<double>&, std::vector<Gaussian>&);
-double BIC(std::vector<double>&, std::vector<Gaussian>&, std::vector<double> &);
-double BIC(std::vector<double>&, std::vector<double>&, std::vector<Gaussian2>&);
 double det(double*);
 
 void printCluster(std::vector<Gaussian> &C);

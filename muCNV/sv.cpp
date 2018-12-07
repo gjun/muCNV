@@ -36,6 +36,12 @@ svType svTypeNum(int t)
     return DEL;
 }
 
+std::string svTypeName(svType t)
+{
+    std::string S[6] = {"DEL", "DUP", "INV", "CNV", "INS", "BND"};
+    return S[t];
+}
+
 breakpoint::breakpoint()
 {
     chrnum = 0;

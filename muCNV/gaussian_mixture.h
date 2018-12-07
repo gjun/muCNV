@@ -34,7 +34,9 @@ public:
     
     bool ordered();
     bool r_ordered();
-    
+    double BIC(std::vector<double>& );
+    double BayesError();
+
     // Copy constructor
     GaussianMixture () {llk = -DBL_MAX; bic = DBL_MAX; p_overlap = 1.0; n_comp = 0;};
     GaussianMixture (const GaussianMixture &);
@@ -59,7 +61,9 @@ public:
     int assign_copynumber(double, double);
     bool ordered();
     bool r_ordered();
-    
+    double BIC(std::vector<double>& , std::vector<double>& );
+    double BayesError();
+
     GaussianMixture2 () {llk = -DBL_MAX; bic = DBL_MAX; p_overlap = 1.0; n_comp = 0;};
     GaussianMixture2 (const GaussianMixture2 &);
     GaussianMixture2 (std::vector<double> &, std::vector<double> &);

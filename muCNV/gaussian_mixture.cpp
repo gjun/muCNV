@@ -142,6 +142,22 @@ void GaussianMixture::EM(std::vector<double>& x)
         //            cerr << "\t(" << Comps[m].Mean << "," << Comps[m].Stdev  << " : " << Comps[m].Alpha << ")";
             //        cerr << endl;
     }
+    
+    for(int j=0; j<n_sample; ++j)
+    {
+        double l = 0;
+        for(int m=0; m<n_comp; ++m)
+        {
+            l += Comps[m].Alpha * normpdf(x[j], Comps[m]);
+        }
+        if (l>0)
+        {
+            llk += log(l);
+        }
+    }
+    
+    bic = -2.0 * llk +  2*n_comp*log(n_sample);
+    p_overlap = BayesError();
 }
 
 
@@ -186,7 +202,7 @@ int GaussianMixture::assign_copynumber(double x)
         return -1;
     }
     
-    if (max_R > 0.1)
+    if (max_R > 0.2)
     {
         return -1;
     }
@@ -213,6 +229,58 @@ bool GaussianMixture::r_ordered()
             return false;
     }
     return true;
+}
+
+
+double GaussianMixture::BIC(std::vector<double>& x)
+{
+    int n_sample = (int)x.size();
+
+    double ret = 0;
+    
+    for(int j=0; j<n_sample; ++j)
+    {
+        double l = 0;
+        for(int m=0; m<n_comp; ++m)
+        {
+            l += Comps[m].Alpha * normpdf(x[j], Comps[m]);
+        }
+        if (l>0)
+        {
+            llk += log(l);
+        }
+    }
+    
+    ret = -2.0 * llk +  2*n_comp*log(n_sample);
+    
+    return ret;
+}
+
+
+double GaussianMixture::BayesError()
+{
+    // Returns maximum Bhattacharyya coefficient (== exp(-D) ) between components
+    double min_d = DBL_MAX;
+    
+    if (n_comp <2 )
+    {
+        return 1;
+    }
+    
+    // Get minimum distance between all pairs
+    for(unsigned i=0; i<n_comp-1; ++i)
+    {
+        for(unsigned j=i+1; j<n_comp; ++j)
+        {
+            double s = (Comps[i].Stdev*Comps[i].Stdev + Comps[j].Stdev*Comps[j].Stdev); // sigma_p^2 + sigma_q^2
+            double d = (Comps[i].Mean-Comps[j].Mean)*(Comps[i].Mean-Comps[j].Mean)/(4.0*s) + 0.5*log( 0.5 * s / (Comps[i].Stdev*Comps[j].Stdev));
+            if (d<min_d)
+            {
+                min_d = d;
+            }
+        }
+    }
+    return exp(-1.0*min_d);
 }
 
 
@@ -463,6 +531,21 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
             Comps[m].update();
         }
     }
+    for(int j=0; j<n_sample; ++j)
+    {
+        double l = 0;
+        for(int m=0; m<n_comp; ++m)
+        {
+            l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
+        }
+        if (l>0)
+        {
+            llk += log(l);
+        }
+    }
+    
+    bic = -2.0 * llk +  5*n_comp*log(n_sample);
+    p_overlap = BayesError();
 }
 
 
@@ -518,7 +601,7 @@ int GaussianMixture2::assign_copynumber(double x, double y)
         }
     }
     
-    ret = round(Comps[ret].Mean[0] + Comps[ret].Mean[1]);
+    ret = round(Comps[ret].Mean[0] + Comps[ret].Mean[1]); // TODO: what if only one of the dimensions cluster correctly? (0, 0.5, 1) + (1, 1, 1) = (1 1.5 2) 
     
     int up = ceil(x*2.0);
     int down = floor(x*2.0);
@@ -528,10 +611,77 @@ int GaussianMixture2::assign_copynumber(double x, double y)
         return -1;
     }
     
-    if (max_R > 0.1)
+    if (max_R > 0.2)
     {
         return -1;
     }
     
     return ret;
+}
+
+
+double GaussianMixture2::BIC(std::vector<double>& x, std::vector<double>& y)
+{
+    int n_sample = (int)x.size();
+    
+    double ret = 0;
+    
+    for(int j=0; j<n_sample; ++j)
+    {
+        double l = 0;
+        for(int m=0; m<n_comp; ++m)
+        {
+            l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
+        }
+        if (l>0)
+        {
+            llk += log(l);
+        }
+    }
+    
+    ret = -2.0 * llk +  5*n_comp*log(n_sample);
+    
+    return ret;
+}
+
+double GaussianMixture2::BayesError()
+{
+    double min_d = DBL_MAX;
+    
+    if (n_comp <2 )
+    {
+        return DBL_MAX;
+    }
+    
+    // Get minimum distance between all pairs
+    for(int i=0; i<n_comp-1; ++i)
+    {
+        for(int j=i+1; j<n_comp; ++j)
+        {
+            double C[4], P[4];
+            for(int k=0;k<4;++k)
+            {
+                C[k] = (Comps[i].Cov[k] + Comps[j].Cov[k])/2.0;
+            }
+            double D = det(C);
+            if (D>1e-10)
+            {
+                P[0] = C[3]/D;
+                P[3] = C[0]/D;
+                P[1] = P[2] = -1.0*C[1]/D;
+            }
+            else continue;
+            
+            double m1 = Comps[i].Mean[0] - Comps[j].Mean[0];
+            double m2 = Comps[i].Mean[1] - Comps[j].Mean[1];
+            
+            double d = 0.125*(m1 * P[0] + m2 * P[2])*m1 + (m1 * P[1] + m2 * P[3])*m2 + 0.5*log( D / sqrt(Comps[i].Det*Comps[j].Det));
+            
+            if (d<min_d)
+            {
+                min_d = d;
+            }
+        }
+    }
+    return exp(-1.0*min_d);
 }
