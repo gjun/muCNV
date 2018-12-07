@@ -255,7 +255,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
         if (n_inside <= 200)
         {
             seg_starts.push_back((curr_sv.pos / 100) - n_start + 1);
-            seg_ends.push_back((curr_sv.end + curr_sv.pos / 200) - n_start);
+            seg_ends.push_back(((curr_sv.end + curr_sv.pos) / 200) - n_start);
             seg_starts.push_back(seg_ends[0]);
             seg_ends.push_back((curr_sv.end/100) - n_start);
         }
@@ -263,9 +263,9 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
         else if (n_inside <= 400)
         {
             seg_starts.push_back((curr_sv.pos / 100) - n_start + 1);
-            seg_ends.push_back((curr_sv.end + curr_sv.pos / 400) - n_start);
+            seg_ends.push_back(((curr_sv.end + curr_sv.pos) / 400) - n_start);
             seg_starts.push_back(seg_ends[0]);
-            seg_ends.push_back((curr_sv.end + curr_sv.pos/ 200) - n_start);
+            seg_ends.push_back(((curr_sv.end + curr_sv.pos)/ 200) - n_start);
             seg_starts.push_back(seg_ends[1]);
             seg_ends.push_back(((curr_sv.end + curr_sv.pos)* 3 / 400) - n_start);
             seg_starts.push_back(seg_ends[2]);
@@ -275,8 +275,8 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
         else
         {
             seg_starts.push_back((curr_sv.pos / 100) - n_start + 1);
-            seg_starts.push_back((curr_sv.end + curr_sv.pos / 400) - n_start);
-            seg_starts.push_back((curr_sv.end + curr_sv.pos/ 200) - n_start);
+            seg_starts.push_back(((curr_sv.end + curr_sv.pos) / 400) - n_start);
+            seg_starts.push_back(((curr_sv.end + curr_sv.pos)/ 200) - n_start);
             seg_starts.push_back(((curr_sv.end + curr_sv.pos)* 3 / 400) - n_start);
             for(int j=0; j<4; ++j)
                 seg_ends.push_back(seg_starts[j] + 100);

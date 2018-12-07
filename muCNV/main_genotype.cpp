@@ -154,8 +154,8 @@ int main_genotype(int argc, char** argv)
     {
         std::string::size_type sz;   // alias of size_t
         
-        int n_start = std::stoi(range, &sz);
-        int n_end = std::stoi(range.substr(sz+1));
+        n_start = std::stoi(range, &sz);
+        n_end = std::stoi(range.substr(sz+1));
         std::cerr << "Variants index from " << n_start << " to " << n_end << " will be genotyepd" << std::endl;
     }
     
@@ -168,17 +168,20 @@ int main_genotype(int argc, char** argv)
         Genotyper gtyper;
         
         reader.read_depth100(vec_sv[i], D.dp2, gc, b_dumpstat);
+        std::vector<ReadStat> rdstats (n_sample);
+        reader.read_pair_split(vec_sv[i], D.rdstats, gc);
+        reader.read_var_depth(i, D.var_depth);
+        
+        
         for(int j=0; j<n_sample; ++j)
         {
             for(int k=0; k<D.dp2.size(); ++k)
             {
-                D.dp2[k][j] /= (double)stats[i].avg_dp;
+                D.dp2[k][j] /= (double)stats[j].avg_dp;
             }
-            D.var_depth[j] /= (double)stats[i].avg_dp;
+            D.var_depth[j] /= (double)stats[j].avg_dp;
         }
-		std::vector<ReadStat> rdstats (n_sample);
-        reader.read_pair_split(vec_sv[i], D.rdstats, gc);
-        reader.read_var_depth(i, D.var_depth);
+
         
         if (b_dumpstat)
         {

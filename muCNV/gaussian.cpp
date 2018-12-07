@@ -134,7 +134,7 @@ void Gaussian2::update()
 {
 	Det = det(Cov);
 	
-	if (Det>1e-8)
+	if (Det>1e-10)
 	{
 		Prc[0] = Cov[3]/Det;
 		Prc[3] = Cov[0]/Det;

@@ -42,6 +42,7 @@ GaussianMixture& GaussianMixture::operator = (const GaussianMixture& gmix)
     }
     bic = gmix.bic;
     llk = gmix.llk;
+    p_overlap = gmix.p_overlap;
     
     return *this;
 }
@@ -55,6 +56,14 @@ void GaussianMixture::EM(std::vector<double>& x)
     double p_val[n_comp];
     int zeroidx = -1;
     
+    if (n_comp == 1)
+    {
+        Comps[0].estimate(x);
+        Comps[0].Alpha = 1;
+        bic = BIC(x);
+        p_overlap = 0;
+        return;
+    }
     for(unsigned i=0; i<n_comp; ++i)
     {
         p_val[i] = Comps[i].Mean;
@@ -85,7 +94,7 @@ void GaussianMixture::EM(std::vector<double>& x)
                 sum_p += pr[m][j];
             }
             
-            if (sum_p > 1e-30)
+            if (sum_p < 1e-30)
                 b_include[j] = false; // if the value is an outlier, exclude it from calculations
             else
                 b_include[j] = true;
@@ -416,6 +425,7 @@ GaussianMixture2& GaussianMixture2::operator = (const GaussianMixture2& gmix)
     }
     bic = gmix.bic;
     llk = gmix.llk;
+    p_overlap = gmix.p_overlap;
     
     return *this;
 }
@@ -432,6 +442,15 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
     // pseudo-counts
     unsigned p_count= 5;
     double p_val[n_comp][2];
+    
+    if (n_comp == 1)
+    {
+        Comps[0].estimate(x, y);
+        Comps[0].Alpha = 1;
+        bic = BIC(x, y);
+        p_overlap = 0;
+        return;
+    }
     
     for(unsigned i=0; i<n_comp; ++i)
     {
