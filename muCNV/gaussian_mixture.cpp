@@ -50,7 +50,7 @@ GaussianMixture& GaussianMixture::operator = (const GaussianMixture& gmix)
 void GaussianMixture::EM(std::vector<double>& x)
 {
     unsigned n_sample = (unsigned) x.size();
-    unsigned n_iter = 10;
+    unsigned n_iter = 12;
     
     unsigned p_count= 1;
     double p_val[n_comp];
@@ -299,7 +299,7 @@ void GaussianMixture::wEM(std::vector<double>& x, std::vector<double> &w)
 {
     unsigned n_sample = (unsigned) x.size();
     unsigned n_comp = (unsigned) Comps.size();
-    unsigned n_iter = 10;
+    unsigned n_iter = 12;
     
     unsigned p_count= 1;
     double p_val[n_comp];
@@ -437,7 +437,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
     // Let's not consider half-normal distribution -- for now
     
     unsigned n_sample = (unsigned) x.size();
-    unsigned n_iter = 20;
+    unsigned n_iter = 12;
     
     // pseudo-counts
     unsigned p_count= 5;

@@ -190,20 +190,6 @@ int main_genotype(int argc, char** argv)
         
         gtyper.call(vec_sv[i], D, G);
         std::cout << gtyper.print(vec_sv[i], D, G);
-        
-        // 0. Cluster var_dp 1-D
-		// using var depth
-        
-        // 1. Cluster var_dp 2-D
-		// Using dp100  -- if SV length > 300bp
-      
-        
-        // 2. Readpair / splitread counting
-		// From individual genotyping, if RP/SP genotyped ones have expected avg. depth, they're genotyped
-		// If not, consider them missing
-        
-        // 3. dp100 filtering / clustering (?)
-		// median filtering and edge detection around breakpoint
     }
     
     return 0;

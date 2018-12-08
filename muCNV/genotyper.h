@@ -52,7 +52,7 @@ public:
 class Genotyper
 {
 public:
-    unsigned n_sample;
+    int n_sample;
     void call(sv&, SvData&, SvGeno &);
     void call_deletion(sv &, SvData &, SvGeno &);
     void call_cnv(sv &, SvData &, SvGeno &);

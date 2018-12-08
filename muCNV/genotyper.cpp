@@ -57,7 +57,7 @@ void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector
     double best_bic = DBL_MAX;
     
     // number of models
-    for(int m=0; m<means.size(); ++m)
+    for(int m=0; m<(int)means.size(); ++m)
     {
         std::vector<double> s (means[m].size(), 0.05);
         GaussianMixture gmix(means[m], s);
@@ -76,7 +76,7 @@ void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vect
     double best_bic = DBL_MAX;
     
     // number of models
-    for(int m=0; m<means.size(); ++m)
+    for(int m=0; m<(int)means.size(); ++m)
     {
         std::vector<double> s (means[m].size(), 0.05);
         GaussianMixture2 gmix2(means[m], s);
@@ -92,6 +92,7 @@ void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vect
 
 void Genotyper::call(sv &S, SvData &D, SvGeno &G)
 {
+	n_sample = D.n_sample;
     if (S.svtype == DEL)
         call_deletion(S, D, G);
     else if (S.svtype == DUP || S.svtype == CNV)
@@ -106,27 +107,10 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 	// Fit Gaussian mixture models with 1, 2, and 3 components, compare BIC
     GaussianMixture gmix;
     std::vector< std::vector<double> > means = { {1.0}, {1.0, 0.5}, {0.5, 0.0}, {1.0, 0.5, 0.0}};
-    select_model(gmix, means, D.var_depth);
     
     G.b_biallelic = true;
-    if (gmix.n_comp > 1)
-    {
-        // success
-        G.dp_flag = true;
-        // assign dp-genotypes
-        for(int i=0; i<n_sample; ++i)
-        {
-            G.cn[i] = gmix.assign_copynumber(D.var_depth[i]);
-            if (G.cn[i] == 2)
-                G.gt[i] = 0; // 0/0
-            else if (G.cn[i] == 1)
-                G.gt[i] = 1; // 0/1
-            else if (G.cn[i] == 0)
-                G.gt[i] = 0; // 1/1
-        }
-    }
 
-    if (D.dp2.size()>1) //dp2 has more than 2 vectors
+   if (D.dp2.size()>1) //dp2 has more than 2 vectors
     {
         // DP100 genotyping
         GaussianMixture2 gmix2;
@@ -151,11 +135,35 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
                 else if (G.cn[i] == 1)
                     G.gt[i] = 1; // 0/1
                 else if (G.cn[i] == 0)
-                    G.gt[i] = 0; // 1/1
+                    G.gt[i] = 2; // 1/1
             }
         }
     }
     
+	if (!G.dp2_flag)
+	{
+		// Try this only when 2-D clusteringg failed... 
+
+		select_model(gmix, means, D.var_depth);
+		if (gmix.n_comp > 1)
+		{
+			// success
+			G.dp_flag = true;
+			// assign dp-genotypes
+			for(int i=0; i<n_sample; ++i)
+			{
+				G.cn[i] = gmix.assign_copynumber(D.var_depth[i]);
+				if (G.cn[i] == 2)
+					G.gt[i] = 0; // 0/0
+				else if (G.cn[i] == 1)
+					G.gt[i] = 1; // 0/1
+				else if (G.cn[i] == 0)
+					G.gt[i] = 2; // 1/1
+			}
+		}
+	}
+
+ 
     // Readpair genotyping
     for(int i=0; i<n_sample; ++i)
     {
@@ -216,19 +224,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     
     std::vector< std::vector<double> > means = { {1.0}, {1.0, 1.5}, {1.0, 1.5, 2.0}, {1.0, 1.5, 2.0, 2.5}, {1.0, 1.5, 2.0, 2.5, 3.0}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0}};
     
-    select_model(gmix, means, D.var_depth);
-    
-    if (gmix.n_comp > 1)
-    {
-        // success
-        G.dp_flag = true;
-        // assign genotypes
-
-        for(int i=0; i<n_sample; ++i)
-            G.cn[i] = gmix.assign_copynumber(D.var_depth[i]);
-  
-    }
-    
     if (D.dp2.size()>1)
     {
         // DP100 genotyping
@@ -245,11 +240,29 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             // success
             G.dp2_flag = true;
             //assign dp2 genotypes
-            for(int i=0; i<n_sample; ++i)
+            for(int i=0; i<(int)n_sample; ++i)
                 G.cn[i] = gmix2.assign_copynumber(D.dp2[dp2_idx][i], D.dp2[dp2_idx+1][i]);
         }
     }
+
+	if (!G.dp2_flag)
+	{
+		select_model(gmix, means, D.var_depth);
+		
+		if (gmix.n_comp > 1)
+		{
+			// success
+			G.dp_flag = true;
+			// assign genotypes
+
+			for(int i=0; i<(int)n_sample; ++i)
+				G.cn[i] = gmix.assign_copynumber(D.var_depth[i]);
+	  
+		}
+	}
     
+
+
     // Readpair genotyping
     for(int i=0; i<n_sample; ++i)
     {
