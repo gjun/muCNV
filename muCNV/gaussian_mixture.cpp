@@ -689,7 +689,14 @@ double GaussianMixture2::BayesError()
                 P[3] = C[0]/D;
                 P[1] = P[2] = -1.0*C[1]/D;
             }
-            else continue;
+            else
+            {
+                // for singular cases, just use Cov = [0.01 0; 0 0.01]
+                P[0]=100;
+                P[1]=0;
+                P[2]=0;
+                P[3]=100;
+            }
             
             double m1 = Comps[i].Mean[0] - Comps[j].Mean[0];
             double m2 = Comps[i].Mean[1] - Comps[j].Mean[1];

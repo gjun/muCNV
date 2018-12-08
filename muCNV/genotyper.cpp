@@ -169,7 +169,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
                     G.cn[i] = 1;
                     G.gt[i] = 1;
                 }
-                else if (D.var_depth[i]<0.25 && G.gt[i] == -1)
+                else if (D.var_depth[i]<=0.25 && G.gt[i] == -1)
                 {
                     G.cn[i] = 0;
                     G.gt[i] = 2;
@@ -204,6 +204,8 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             G.ac += G.gt[i];
         }
     }
+    if (G.dp_flag || G.dp2_flag || G.read_flag)
+        G.b_pass = true;
     
 }
 
@@ -317,6 +319,8 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                 G.gt[i] = 0; // 1/1
         }
     }
+    if (G.dp_flag || G.dp2_flag || G.read_flag)
+        G.b_pass = true;
 }
 
 std::string Genotyper::print(sv &S, SvData &D, SvGeno &G)
@@ -348,7 +352,6 @@ std::string Genotyper::print(sv &S, SvData &D, SvGeno &G)
         ln += ";DP2";
     if (G.read_flag)
         ln += ";READ";
-
     
     ln += "\tGT:CN";
     
