@@ -438,7 +438,7 @@ void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y)
 
         Comps[m].update();
         
-        Comps[m].Alpha = cnt[m] / n_sample;
+        Comps[m].Alpha = (double)cnt[m] / n_sample;
     }
     print();
 
