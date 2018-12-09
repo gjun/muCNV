@@ -165,42 +165,46 @@ int main_genotype(int argc, char** argv)
     
     for(int i=n_start; i<=n_end; ++i)
     {
-        //vec_sv[i].print();
-
-        SvGeno G(n_sample);
-        SvData D(n_sample);
-        Genotyper gtyper;
-        
+//		fprintf(stderr, "%d, %d:%d-%d %s\n", i, vec_sv[i].chrnum, vec_sv[i].pos, vec_sv[i].end, svTypeName(vec_sv[i].svtype).c_str());
 		
-        std::vector<ReadStat> rdstats (n_sample);
-        reader.read_pair_split(vec_sv[i], D.rdstats, gc);
-        
-        if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
-        {
-            reader.read_depth100(vec_sv[i], D.dp2, gc, b_dumpstat);
-            reader.read_var_depth(i, D.var_depth);
-        }
-        
-        for(int j=0; j<n_sample; ++j)
-        {
-            for(int k=0; k<(int)D.dp2.size(); ++k)
-            {
-                D.dp2[k][j] /= (double)stats[j].avg_dp;
-            }
-            D.var_depth[j] /= (double)stats[j].avg_dp;
-        }
+		if (vec_sv[i].chrnum < 23) // chr X and Y calling not supported yet
+		{
+			SvGeno G(n_sample);
+			SvData D(n_sample);
+			Genotyper gtyper;
+			
+			std::vector<ReadStat> rdstats (n_sample);
+			reader.read_pair_split(vec_sv[i], D.rdstats, gc);
 
-        if (b_dumpstat)
-        {
-            write_varstat(vec_sv[i], stats, D.rdstats, D.var_depth);
-        }
-        
-        gtyper.call(vec_sv[i], D, G);
+			
+			if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
+			{
+				reader.read_depth100(vec_sv[i], D.dp2, gc, b_dumpstat);
+				reader.read_var_depth(i, D.var_depth);
+			}
+			
+			for(int j=0; j<n_sample; ++j)
+			{
+				for(int k=0; k<(int)D.dp2.size(); ++k)
+				{
+					D.dp2[k][j] /= (double)stats[j].avg_dp;
+				}
+				D.var_depth[j] /= (double)stats[j].avg_dp;
+			}
 
-        if (bFail || G.b_pass)
-        {
-            out_vcf.write_sv(vec_sv[i], D, G);
-        }
+			if (b_dumpstat)
+			{
+				write_varstat(vec_sv[i], stats, D.rdstats, D.var_depth);
+			}
+			
+			gtyper.call(vec_sv[i], D, G);
+			G.info = "var" + std::to_string(i);
+
+			if (bFail || G.b_pass)
+			{
+				out_vcf.write_sv(vec_sv[i], D, G);
+			}
+		}
     }
 	out_vcf.close();
     

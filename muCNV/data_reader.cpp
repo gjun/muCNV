@@ -259,11 +259,12 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
         // now do median filtering
         if (b_medfilt)
             median_filter(D, D_filt, n_samples[i], n_dp);
-        
+		
         // if n_inside < 200, make two
         // sample by sample sum
         std::vector<int> seg_starts;
         std::vector<int> seg_ends;
+
         if (n_inside <= 200)
         {
             seg_starts.push_back((curr_sv.pos / 100) - n_start + 1);
@@ -275,11 +276,11 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
         else if (n_inside <= 400)
         {
             seg_starts.push_back((curr_sv.pos / 100) - n_start + 1);
-            seg_ends.push_back(((curr_sv.end + curr_sv.pos) / 400) - n_start);
+            seg_ends.push_back( ((curr_sv.end - curr_sv.pos)/4.0+curr_sv.pos) / 100 - n_start);
             seg_starts.push_back(seg_ends[0]);
-            seg_ends.push_back(((curr_sv.end + curr_sv.pos)/ 200) - n_start);
+            seg_ends.push_back( ((curr_sv.end - curr_sv.pos)/2.0+curr_sv.pos) / 100 - n_start);
             seg_starts.push_back(seg_ends[1]);
-            seg_ends.push_back(((curr_sv.end + curr_sv.pos)* 3 / 400) - n_start);
+            seg_ends.push_back( ((curr_sv.end - curr_sv.pos)*0.75 + curr_sv.pos) / 100 - n_start);
             seg_starts.push_back(seg_ends[2]);
             seg_ends.push_back((curr_sv.end/100) - n_start);
         }
@@ -287,9 +288,9 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
         else
         {
             seg_starts.push_back((curr_sv.pos / 100) - n_start + 1);
-            seg_starts.push_back(((curr_sv.end + curr_sv.pos) / 400) - n_start);
-            seg_starts.push_back(((curr_sv.end + curr_sv.pos)/ 200) - n_start);
-            seg_starts.push_back(((curr_sv.end + curr_sv.pos)* 3 / 400) - n_start);
+            seg_starts.push_back( ((curr_sv.end - curr_sv.pos)/4.0+curr_sv.pos) / 100 - n_start);
+            seg_starts.push_back( ((curr_sv.end - curr_sv.pos)/2.0+curr_sv.pos) / 100 - n_start);
+            seg_starts.push_back( ((curr_sv.end - curr_sv.pos)*0.75 + curr_sv.pos) / 100 - n_start);
             for(int j=0; j<4; ++j)
                 seg_ends.push_back(seg_starts[j] + 100);
         }
@@ -300,10 +301,12 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
             std::vector<unsigned> dp_sum (n_samples[i], 0);
             std::vector<unsigned> dp_cnt (n_samples[i], 0);
             
+//			fprintf(stderr, "n_start %d, pos %d, end %d, n_dp %d, n_sample %d, segstart %d, segend %d\n", n_start, curr_sv.pos, curr_sv.end, n_dp, n_samples[i], seg_starts[k], seg_ends[k]);
             for(int j=seg_starts[k]; j<seg_ends[k]; ++j)
             {
                 for(int m=0; m<n_samples[i]; ++m)
                 {
+					//fprintf(stderr, "n_dp %d, n_sample %d, j %d, m %d\n", n_dp, n_samples[i], j, m);
                     dp_sum[m] += D[j*n_samples[i] + m];
                     dp_cnt[m] ++;
                 }
@@ -357,7 +360,7 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
             
             for(int k=0; k<n_samples[i]; ++k)
             {
-				//printf("\nSample %d\n", sample_idx+k);
+//				printf("\nSample %d\n", sample_idx+k);
                 uint32_t n_rp = 0;
                 pileups[i].read_uint32(n_rp);
  
@@ -390,7 +393,7 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
 						}
 						else
                             rdstats[sample_idx + k].n_pre_rp_missing ++;
-                        //printf("PRE_RP\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+//                        printf("PRE_RP\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
 
 					}
  					if (b_overlap && rp.selfpos >= start_pos2 && rp.selfpos <= end_pos2)
@@ -411,7 +414,7 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
 						}
 						else
                             rdstats[sample_idx+k].n_post_rp_missing ++;
-                        //printf("POST_RP\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+             //           printf("POST_RP\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
 
 					}
                 }

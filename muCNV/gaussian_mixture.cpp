@@ -175,6 +175,8 @@ void GaussianMixture::EM(std::vector<double>& x)
     
     bic = -2.0 * llk +  2*n_comp*log(n_sample);
     p_overlap = BayesError();
+
+//    std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
 }
 
 
@@ -313,7 +315,7 @@ int GaussianMixture::assign_copynumber(double x)
         return -1;
     }
     
-    if (max_R >= 0.5)
+    if (max_R >= 0.2)
     {
         return -1;
     }
@@ -416,7 +418,7 @@ GaussianMixture2::GaussianMixture2(std::vector<double> &m, std::vector<double> &
         Comps[i].Cov[3] = s[i];
         
         Comps[i].Alpha = 1.0/n_comp;
-		if (Comps[i].Mean[0] + Comps[i].Mean[1] < 0.01)
+		if (Comps[i].Mean[0] + Comps[i].Mean[1] < 0.1)
 			zeroidx = i;
     }
 }
@@ -604,10 +606,6 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
             for(int m=0;m<n_comp;++m)
             {
                 pr[m][j] = Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
-				if (m == zeroidx)
-				{
-					pr[m][j] *= 4.0;
-				}
                 sum_p += pr[m][j];
             }
             if (sum_p < 1e-10) b_include[j] = false;
@@ -663,21 +661,19 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
         
         for(int m=0;m<n_comp;++m)
         {
-			if (m != zeroidx)
-			{
-				double ex = p_val[m][0] - Comps[m].Mean[0];
-				double ey = p_val[m][1] - Comps[m].Mean[1];
-				
-				sum_e_xx[m] += ex * ex;
-				sum_e_xy[m] += ex * ey;
-				sum_e_yy[m] += ey * ey;
-				
-				// Wishart prior : S = [0.01 0; 0 0.01]
-				Comps[m].Cov[0] = (sum_e_xx[m]  + 0.001 * p_count) / sum_pr[m];
-				Comps[m].Cov[1] = Comps[m].Cov[2] = sum_e_xy[m] / sum_pr[m];
-				Comps[m].Cov[3] = (sum_e_yy[m] + 0.001 * p_count) / sum_pr[m];
-				Comps[m].update();
-			}
+
+			double ex = p_val[m][0] - Comps[m].Mean[0];
+			double ey = p_val[m][1] - Comps[m].Mean[1];
+			
+			sum_e_xx[m] += ex * ex;
+			sum_e_xy[m] += ex * ey;
+			sum_e_yy[m] += ey * ey;
+			
+			// Wishart prior : S = [0.01 0; 0 0.01]
+			Comps[m].Cov[0] = (sum_e_xx[m]  + 0.001 * p_count) / sum_pr[m];
+			Comps[m].Cov[1] = Comps[m].Cov[2] = sum_e_xy[m] / sum_pr[m];
+			Comps[m].Cov[3] = (sum_e_yy[m] + 0.001 * p_count) / sum_pr[m];
+			Comps[m].update();
             
             Comps[m].Alpha = sum_pr[m] / (n_sample + n_comp*p_count);
         }
@@ -689,10 +685,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
         double l = 0;
         for(int m=0; m<n_comp; ++m)
         {
-			if (m != zeroidx)
-				l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
-			else
-				l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]) * 4.0;
+			l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
         }
         if (l>0 && !isnan(l))
         {

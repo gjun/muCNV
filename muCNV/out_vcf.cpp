@@ -74,19 +74,37 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 
     double af = 0;
     if (G.ns>0)
+	{
         af = (double)G.ac/(2.0*G.ns);
+	}
     
 	fprintf(fp, "SVTYPE=%s;END=%d;SVLEN=%d;AC=%d;NS=%d;AF=%f",  svtype, S.end, S.len, G.ac, G.ns, af);
-	fprintf(fp, "%s", G.info.c_str());
+	fprintf(fp, ";%s", G.info.c_str());
 
     if (G.dp_flag)
-        fprintf(fp, ";DP");
+	{
+        fprintf(fp, ";DP=(%.2f:%.2f:%.2f", G.gmix.Comps[0].Mean, G.gmix.Comps[0].Stdev, G.gmix.Comps[0].Alpha);
+		for(int j=1;j<G.gmix.n_comp;++j)
+		{
+			fprintf(fp,"::%.2f:%.2f:%.2f", G.gmix.Comps[j].Mean, G.gmix.Comps[j].Stdev, G.gmix.Comps[j].Alpha);
+		}
+		fprintf(fp,")");
+	}
     if (G.dp2_flag)
-        fprintf(fp, ";DP2");
+	{
+        fprintf(fp, ";DP2=(%.2f,%.2f:%.2f,%.2f:%.2f", G.gmix2.Comps[0].Mean[0], G.gmix2.Comps[0].Mean[1], G.gmix2.Comps[0].Cov[0], G.gmix2.Comps[0].Cov[3], G.gmix2.Comps[0].Alpha);
+		for(int j=1;j<G.gmix.n_comp;++j)
+		{
+			fprintf(fp, "::%.2f,%.2f:%.2f,%.2f:%.2f", G.gmix2.Comps[j].Mean[0], G.gmix2.Comps[j].Mean[1], G.gmix2.Comps[j].Cov[0], G.gmix2.Comps[j].Cov[3], G.gmix2.Comps[j].Alpha);
+		}
+		fprintf(fp, ")");
+	}
     if (G.read_flag)
+	{
         fprintf(fp, ";READ");
+	}
 
-    fprintf(fp, "\tGT:CN");
+    fprintf(fp, "\tGT:CN:DP:RP:SP");
 
     for (int i=0; i<G.gt.size(); ++i)
     {
@@ -109,6 +127,24 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
             fprintf(fp, ":.");
         else
             fprintf(fp, ":%d",G.cn[i]);
+
+		fprintf(fp, ":%.2f",D.var_depth[i]);
+		if (S.svtype == DEL)
+		{
+			fprintf(fp, ":%d:%d", D.rdstats[i].n_pre_FR + D.rdstats[i].n_post_FR, D.rdstats[i].n_pre_split_out + D.rdstats[i].n_post_split_out);
+		}
+		else if (S.svtype == DUP || S.svtype==CNV)
+		{
+			fprintf(fp, ":%d:%d", D.rdstats[i].n_pre_FR + D.rdstats[i].n_post_FR, D.rdstats[i].n_pre_split_out + D.rdstats[i].n_post_split_out);
+		}
+		else if (S.svtype == INV)
+		{
+			fprintf(fp, ":%d:%d", D.rdstats[i].n_pre_FF + D.rdstats[i].n_post_RR, D.rdstats[i].n_pre_split_out + D.rdstats[i].n_post_split_out + D.rdstats[i].n_pre_split_in + D.rdstats[i].n_pre_split_out);
+		}
+		else if (S.svtype == INV)
+		{
+			fprintf(fp, ":%d:%d", D.rdstats[i].n_pre_INS, D.rdstats[i].n_pre_sp_missing);
+		}
 
     }
 	fprintf(fp, "\n");

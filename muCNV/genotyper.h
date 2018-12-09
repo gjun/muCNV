@@ -31,6 +31,8 @@ public:
     
     int ac;
     int ns;
+	GaussianMixture gmix;
+	GaussianMixture2 gmix2;
     
     std::vector<int> gt; // bi-allelic genotype
     std::vector<int> cn; // copy number

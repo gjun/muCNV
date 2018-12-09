@@ -82,7 +82,7 @@ void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vect
         std::vector<double> s (means[m].size(), 0.01);
         GaussianMixture2 gmix2(means[m], s);
         gmix2.KM2(x, y); // fit mixture model
-        if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP*2)
+        if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP)
         {
             best_bic = gmix2.bic;
             ret_gmix2 = gmix2; // assignment (copy operation)
@@ -105,21 +105,20 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G)
 void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 {
 	// Fit Gaussian mixture models with 1, 2, and 3 components, compare BIC
-	GaussianMixture gmix;
 	std::vector< std::vector<double> > means = { {1.0}, {1.0, 0.5}, {0.5, 0.0}, {1.0, 0.5, 0.0}};
 
 	G.b_biallelic = true;
 
 //	DMSG("Calling deletion");
-	select_model(gmix, means, D.var_depth);
-	if (gmix.n_comp > 1)
+	select_model(G.gmix, means, D.var_depth);
+	if (G.gmix.n_comp > 1)
 	{
 		// success
 		G.dp_flag = true;
 		// assign dp-genotypes
 		for(int i=0; i<n_sample; ++i)
 		{
-			int cn = gmix.assign_copynumber(D.var_depth[i]);
+			int cn = G.gmix.assign_copynumber(D.var_depth[i]);
 			if (cn == 2)
 			{
 				G.cn[i] = 2;
@@ -141,23 +140,22 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 	if (D.dp2.size()>1) //dp2 has more than 2 vectors
 	{
 		// DP100 genotyping
-		GaussianMixture2 gmix2;
 
 		int dp2_idx = 0;
 		if (D.dp2.size()==4)
 			dp2_idx = 1;
 
-		select_model(gmix2, means, D.dp2[dp2_idx], D.dp2[dp2_idx+1]);
+		select_model(G.gmix2, means, D.dp2[dp2_idx], D.dp2[dp2_idx+1]);
 
 		// 2-D genotyping
-		if (gmix2.n_comp>1)
+		if (G.gmix2.n_comp>1)
 		{
 			// success
 			G.dp2_flag = true;
 			//assign dp2 genotypes
 			for(int i=0; i<n_sample; ++i)
 			{
-				int cn = gmix2.assign_copynumber(D.dp2[dp2_idx][i], D.dp2[dp2_idx+1][i]);
+				int cn = G.gmix2.assign_copynumber(D.dp2[dp2_idx][i], D.dp2[dp2_idx+1][i]);
 				if (cn == 2)
 				{
 					G.cn[i] = 2;
@@ -244,48 +242,45 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 {
     // Fit Gaussian mixture models with 1, 2, and 3 components, compare BIC
-    GaussianMixture gmix;
     
-    std::vector< std::vector<double> > means = { {1.0}, {1.0, 1.5}, {1.0, 1.5, 2.0}, {1.0, 1.5, 2.0, 2.5}, {1.0, 1.5, 2.0, 2.5, 3.0}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0}};
+    std::vector< std::vector<double> > means = { {1.0}, {1.0, 1.5}, {1.0, 1.5, 2.0}, {1.0, 1.5, 2.0, 2.5}, {1.0, 1.5, 2.0, 2.5, 3.0}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0} };
     
+
+
+	select_model(G.gmix, means, D.var_depth);
+	
+	if (G.gmix.n_comp > 1)
+	{
+		// success
+		G.dp_flag = true;
+		// assign genotypes
+
+		for(int i=0; i<(int)n_sample; ++i)
+			G.cn[i] = G.gmix.assign_copynumber(D.var_depth[i]);
+  
+	}
+
     if (D.dp2.size()>1)
     {
         // DP100 genotyping
-        GaussianMixture2 gmix2;
         int dp2_idx = 0;
         if (D.dp2.size()==4)
             dp2_idx = 1;
         
-        select_model(gmix2, means, D.dp2[dp2_idx], D.dp2[dp2_idx+1]);
+        select_model(G.gmix2, means, D.dp2[dp2_idx], D.dp2[dp2_idx+1]);
         
         // 2-D genotyping
-        if (gmix2.n_comp>1)
+        if (G.gmix2.n_comp>1)
         {
             // success
             G.dp2_flag = true;
             //assign dp2 genotypes
             for(int i=0; i<(int)n_sample; ++i)
-                G.cn[i] = gmix2.assign_copynumber(D.dp2[dp2_idx][i], D.dp2[dp2_idx+1][i]);
+                G.cn[i] = G.gmix2.assign_copynumber(D.dp2[dp2_idx][i], D.dp2[dp2_idx+1][i]);
         }
     }
 
-	if (!G.dp2_flag)
-	{
-		select_model(gmix, means, D.var_depth);
-		
-		if (gmix.n_comp > 1)
-		{
-			// success
-			G.dp_flag = true;
-			// assign genotypes
-
-			for(int i=0; i<(int)n_sample; ++i)
-				G.cn[i] = gmix.assign_copynumber(D.var_depth[i]);
-	  
-		}
-	}
-    
-    // Readpair genotyping
+	    // Readpair genotyping
     for(int i=0; i<n_sample; ++i)
     {
         if (G.dp_flag || G.dp2_flag)
