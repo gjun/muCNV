@@ -22,7 +22,7 @@ void write_varstat(sv& curr_sv, std::vector<SampleStat> &stats, std::vector<Read
 {
     int n_sample = (int) stats.size();
     
-    std::string fname = svTypeName(curr_sv.svtype) + "_" + std::to_string(curr_sv.chrnum) + ":" + std::to_string(curr_sv.pos) + "-" + std::to_string(curr_sv.end) + ".stat.txt";
+    std::string fname = svTypeName(curr_sv.svtype) + "_" + std::to_string(curr_sv.chrnum) + "_" + std::to_string(curr_sv.pos) + "-" + std::to_string(curr_sv.end) + ".stat.txt";
     
     FILE* fp = fopen(fname.c_str(), "wt");
     
@@ -182,7 +182,6 @@ int main_genotype(int argc, char** argv)
             D.var_depth[j] /= (double)stats[j].avg_dp;
         }
 
-        
         if (b_dumpstat)
         {
             write_varstat(vec_sv[i], stats, D.rdstats, D.var_depth);

@@ -26,6 +26,8 @@ GaussianMixture::GaussianMixture(std::vector<double> &m, std::vector<double> &s)
         Comps[i].Mean = m[i];
         Comps[i].Stdev = s[i];
         Comps[i].Alpha = 1.0/n_comp;
+		if (m[i] < 0.01)
+			zeroidx = i;
     }
 }
 
@@ -41,20 +43,27 @@ GaussianMixture& GaussianMixture::operator = (const GaussianMixture& gmix)
         Comps[i].Alpha = gmix.Comps[i].Alpha;
     }
     bic = gmix.bic;
-    llk = gmix.llk;
     p_overlap = gmix.p_overlap;
+	zeroidx = gmix.zeroidx;
     
     return *this;
 }
 
+void GaussianMixture::print()
+{
+	for(int i=0; i<n_comp; ++i)
+	{
+		std::cerr << "Comp " << i <<  " (" << Comps[i].Mean << ", " << Comps[i].Stdev << "), " << Comps[i].Alpha << std::endl;
+	}
+}
+
 void GaussianMixture::EM(std::vector<double>& x)
 {
-    unsigned n_sample = (unsigned) x.size();
-    unsigned n_iter = 12;
+    int n_sample = (int) x.size();
+    int n_iter = 10;
     
-    unsigned p_count= 1;
+    int p_count= 1;
     double p_val[n_comp];
-    int zeroidx = -1;
     
     if (n_comp == 1)
     {
@@ -64,16 +73,12 @@ void GaussianMixture::EM(std::vector<double>& x)
         p_overlap = 0;
         return;
     }
-    for(unsigned i=0; i<n_comp; ++i)
+    for(int i=0; i<n_comp; ++i)
     {
         p_val[i] = Comps[i].Mean;
-        if (Comps[i].Mean < 0.01)
-        {
-            zeroidx = i;
-        }
     }
     
-    for(unsigned i=0; i<n_iter; ++i)
+    for(int i=0; i<n_iter; ++i)
     {
         std::vector<double> sum (n_comp,0);
         std::vector<double> sum_pr (n_comp,0);
@@ -83,10 +88,10 @@ void GaussianMixture::EM(std::vector<double>& x)
         bool b_include[n_sample];
         
         // E step
-        for(unsigned j=0; j<n_sample; ++j)
+        for(int j=0; j<n_sample; ++j)
         {
             double sum_p = 0;
-            for(unsigned m=0;m<n_comp;++m)
+            for(int m=0;m<n_comp;++m)
             {
                 pr[m][j] = Comps[m].Alpha * normpdf(x[j], Comps[m]);
                 if (zeroidx == (int)m)
@@ -94,14 +99,14 @@ void GaussianMixture::EM(std::vector<double>& x)
                 sum_p += pr[m][j];
             }
             
-            if (sum_p < 1e-30)
+            if (sum_p < 1e-10)
                 b_include[j] = false; // if the value is an outlier, exclude it from calculations
             else
                 b_include[j] = true;
             
             if (b_include[j])
             {
-                for(unsigned m=0;m<n_comp;++m)
+                for(int m=0;m<n_comp;++m)
                 {
                     pr[m][j] /= sum_p;
                     sum[m] += pr[m][j] * x[j];
@@ -113,14 +118,14 @@ void GaussianMixture::EM(std::vector<double>& x)
         
         double sumsum = 0;
         // Add pseudo-count values
-        for(unsigned m=0; m<n_comp; ++m)
+        for(int m=0; m<n_comp; ++m)
         {
             sum[m] += p_val[m] * p_count;
             sum_pr[m] += p_count;
             sumsum += sum_pr[m];
         }
         // M step
-        for(unsigned m=0;m<n_comp;++m)
+        for(int m=0;m<n_comp;++m)
         {
             if (m != zeroidx)   // Mean of '0' in truncated normal should always be 0
                 Comps[m].Mean = sum[m]/sum_pr[m];
@@ -136,28 +141,31 @@ void GaussianMixture::EM(std::vector<double>& x)
         
         // Pseudo-count for variance -- commented out
         /*
-        for(unsigned m=0; m<n_comp; ++m)
+        for(int m=0; m<n_comp; ++m)
         {
             sum_err[m] += (p_val[m] - Comps[m].Mean)*(p_val[m]-Comps[m].Mean) * p_count;
         }
         */
-        for(unsigned m=0; m<n_comp; ++m)
+        for(int m=0; m<n_comp; ++m)
         {
-            Comps[m].Stdev = sqrt(sum_err[m] / sum_pr[m]) ;
-            Comps[m].Alpha = sum_pr[m] / sumsum;
-            if (Comps[m].Stdev < 1e-10)
-                Comps[m].Stdev = 0.005;
+			Comps[m].Stdev = sqrt(sum_err[m] / sum_pr[m]) ;
+			Comps[m].Alpha = sum_pr[m] / sumsum;
         }
         //            cerr << "\t(" << Comps[m].Mean << "," << Comps[m].Stdev  << " : " << Comps[m].Alpha << ")";
             //        cerr << endl;
+//		print();
     }
     
+	double llk = 0;
     for(int j=0; j<n_sample; ++j)
     {
         double l = 0;
         for(int m=0; m<n_comp; ++m)
         {
-            l += Comps[m].Alpha * normpdf(x[j], Comps[m]);
+			if (m != zeroidx)
+				l += Comps[m].Alpha * normpdf(x[j], Comps[m]);
+			else
+				l += 2.0 * Comps[m].Alpha * normpdf(x[j], Comps[m]);
         }
         if (l>0)
         {
@@ -211,7 +219,7 @@ int GaussianMixture::assign_copynumber(double x)
         return -1;
     }
     
-    if (max_R > 0.2)
+    if (max_R >= 0.2)
     {
         return -1;
     }
@@ -222,7 +230,7 @@ int GaussianMixture::assign_copynumber(double x)
 
 bool GaussianMixture::ordered()
 {
-    for(unsigned i=0; i<n_comp-1;++i)
+    for(int i=0; i<n_comp-1;++i)
     {
         if (Comps[i].Mean<=Comps[i+1].Mean)
             return false;
@@ -232,7 +240,7 @@ bool GaussianMixture::ordered()
 
 bool GaussianMixture::r_ordered()
 {
-    for(unsigned i=0; i<Comps.size()-1;++i)
+    for(int i=0; i<(int)Comps.size()-1;++i)
     {
         if (Comps[i].Mean>=Comps[i+1].Mean)
             return false;
@@ -246,13 +254,17 @@ double GaussianMixture::BIC(std::vector<double>& x)
     int n_sample = (int)x.size();
 
     double ret = 0;
+	double llk = 0;
     
     for(int j=0; j<n_sample; ++j)
     {
         double l = 0;
         for(int m=0; m<n_comp; ++m)
         {
-            l += Comps[m].Alpha * normpdf(x[j], Comps[m]);
+			if (m != zeroidx)
+				l += Comps[m].Alpha * normpdf(x[j], Comps[m]);
+			else
+				l += 2.0 * Comps[m].Alpha * normpdf(x[j], Comps[m]);
         }
         if (l>0)
         {
@@ -277,9 +289,9 @@ double GaussianMixture::BayesError()
     }
     
     // Get minimum distance between all pairs
-    for(unsigned i=0; i<n_comp-1; ++i)
+    for(int i=0; i<n_comp-1; ++i)
     {
-        for(unsigned j=i+1; j<n_comp; ++j)
+        for(int j=i+1; j<n_comp; ++j)
         {
             double s = (Comps[i].Stdev*Comps[i].Stdev + Comps[j].Stdev*Comps[j].Stdev); // sigma_p^2 + sigma_q^2
             double d = (Comps[i].Mean-Comps[j].Mean)*(Comps[i].Mean-Comps[j].Mean)/(4.0*s) + 0.5*log( 0.5 * s / (Comps[i].Stdev*Comps[j].Stdev));
@@ -292,98 +304,6 @@ double GaussianMixture::BayesError()
     return exp(-1.0*min_d);
 }
 
-
-// 2-D EM with weights
-// EM with weights
-void GaussianMixture::wEM(std::vector<double>& x, std::vector<double> &w)
-{
-    unsigned n_sample = (unsigned) x.size();
-    unsigned n_comp = (unsigned) Comps.size();
-    unsigned n_iter = 12;
-    
-    unsigned p_count= 1;
-    double p_val[n_comp];
-    //    int zeroidx = -1;
-    
-    for(unsigned i=0; i<n_comp; ++i)
-    {
-        p_val[i] = Comps[i].Mean;
-        /*
-         if (Comps[i].Mean < 0.1)
-         {
-         zeroidx = i;
-         }
-         */
-    }
-    
-    
-    for(unsigned i=0; i<n_iter; ++i)
-    {
-        std::vector<double> sum (n_comp,0);
-        std::vector<double> sum_pr (n_comp,0);
-        std::vector<double> sum_err (n_comp,0);
-
-        
-        // E step
-        for(unsigned j=0; j<n_sample; ++j)
-        {
-            double sum_p = 0;
-            std::vector<double> pr(n_comp, 0);
-            for(unsigned m=0;m<n_comp;++m)
-            {
-                pr[m] = Comps[m].Alpha * normpdf(x[j], Comps[m]);
-                /*
-                 if (zeroidx == (int)m )
-                 {
-                 pr[m] *= 2.0;
-                 }
-                 */
-                sum_p += pr[m];
-            }
-            
-            if (sum_p > 1e-30) // if the value is an outlier, exclude it from calculations
-            {
-                for(unsigned m=0;m<n_comp;++m)
-                {
-                    pr[m] /= sum_p;
-                    sum[m] += pr[m] * x[j] * w[j];
-                    sum_err[m] += pr[m] * w[j] * (x[j] - Comps[m].Mean)*(x[j]-Comps[m].Mean);
-                    sum_pr[m] += pr[m] * w[j];
-                }
-            }
-        }
-        
-        double sumsum = 0;
-        // Add pseudo-count values
-        for(unsigned m=0; m<n_comp; ++m)
-        {
-            sum[m] += p_val[m] * p_count;
-            
-            sum_err[m] += (p_val[m] - Comps[m].Mean)*(p_val[m]-Comps[m].Mean) * p_count;
-            sum_pr[m] += p_count;
-            sumsum += sum_pr[m];
-        }
-        
-        // M step
-        for(unsigned m=0;m<n_comp;++m)
-        {
-            Comps[m].Mean = sum[m]/sum_pr[m];
-            Comps[m].Stdev = sqrt(sum_err[m] / sum_pr[m]) ;
-            Comps[m].Alpha = sum_pr[m] / sumsum;
-            if (Comps[m].Stdev < 1e-10)
-                Comps[m].Stdev = 0.005;
-            
-            //            cerr << "\t(" << Comps[m].Mean << "," << Comps[m].Stdev  << " : " << Comps[m].Alpha << ")" ;
-            /*
-             if (zeroidx == (int)m)
-             {
-             Comps[m].Mean = 0;
-             }
-             */
-        }
-        //        cerr << endl;
-    }
-}
 
 
 GaussianMixture2::GaussianMixture2(std::vector<double> &m, std::vector<double> &s)
@@ -405,6 +325,8 @@ GaussianMixture2::GaussianMixture2(std::vector<double> &m, std::vector<double> &
         Comps[i].Cov[3] = s[i];
         
         Comps[i].Alpha = 1.0/n_comp;
+		if (Comps[i].Mean[0] + Comps[i].Mean[1] < 0.01)
+			zeroidx = i;
     }
 }
 
@@ -424,8 +346,8 @@ GaussianMixture2& GaussianMixture2::operator = (const GaussianMixture2& gmix)
         Comps[i].Alpha = gmix.Comps[i].Alpha;
     }
     bic = gmix.bic;
-    llk = gmix.llk;
     p_overlap = gmix.p_overlap;
+	zeroidx = gmix.zeroidx;
     
     return *this;
 }
@@ -436,11 +358,11 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 {
     // Let's not consider half-normal distribution -- for now
     
-    unsigned n_sample = (unsigned) x.size();
-    unsigned n_iter = 12;
+    int n_sample = (int) x.size();
+    int n_iter = 20;
     
     // pseudo-counts
-    unsigned p_count= 5;
+    int p_count= 5;
     double p_val[n_comp][2];
     
     if (n_comp == 1)
@@ -452,7 +374,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
         return;
     }
     
-    for(unsigned i=0; i<n_comp; ++i)
+    for(int i=0; i<n_comp; ++i)
     {
         p_val[i][0] = Comps[i].Mean[0];
         p_val[i][1] = Comps[i].Mean[1];
@@ -461,7 +383,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
     // pseudo-means
     //    double p_val[3] = {1.0, 0.5, 0};
     
-    for(unsigned i=0; i<n_iter; ++i)
+    for(int i=0; i<n_iter; ++i)
     {
         std::vector<double> sum_x (n_comp,0);
         std::vector<double> sum_y (n_comp,0);
@@ -476,20 +398,24 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
         bool b_include[n_sample];
         
         // E step
-        for(unsigned j=0; j<n_sample; ++j)
+        for(int j=0; j<n_sample; ++j)
         {
             b_include[j] = true;
             double sum_p = 0;
-            for(unsigned m=0;m<n_comp;++m)
+            for(int m=0;m<n_comp;++m)
             {
                 pr[m][j] = Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
+				if (m == zeroidx)
+				{
+					pr[m][j] *= 4.0;
+				}
                 sum_p += pr[m][j];
             }
-            if (sum_p < 1e-30) b_include[j] = false;
+            if (sum_p < 1e-10) b_include[j] = false;
             
             if (b_include[j]) // if the value is an outlier, exclude it from calculations
             {
-                for(unsigned m=0;m<n_comp;++m)
+                for(int m=0;m<n_comp;++m)
                 {
                     pr[m][j] /= sum_p;
                     sum_x[m] += pr[m][j] * x[j];
@@ -500,7 +426,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
             }
         }
         // Add pseudo-count values
-        for(unsigned m=0; m<n_comp; ++m)
+        for(int m=0; m<n_comp; ++m)
         {
             sum_x[m] += p_val[m][0] * p_count;
             sum_y[m] += p_val[m][1] * p_count;
@@ -510,18 +436,21 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
         // M step
         
         // Update means
-        for(unsigned m=0;m<n_comp;++m)
+        for(int m=0;m<n_comp;++m)
         {
-            Comps[m].Mean[0] = sum_x[m]/sum_pr[m];
-            Comps[m].Mean[1] = sum_y[m]/sum_pr[m];
+			if (m != zeroidx)
+			{
+				Comps[m].Mean[0] = sum_x[m]/sum_pr[m];
+				Comps[m].Mean[1] = sum_y[m]/sum_pr[m];
+			}
         }
         
         // Update covariance
-        for(unsigned j=0; j<n_sample; ++j)
+        for(int j=0; j<n_sample; ++j)
         {
             if (b_include[j]) // if the value is an outlier, exclude it from calculations
             {
-                for(unsigned m=0;m<n_comp;++m)
+                for(int m=0;m<n_comp;++m)
                 {
                     double ex = x[j] - Comps[m].Mean[0];
                     double ey = y[j] - Comps[m].Mean[1];
@@ -533,44 +462,58 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
             }
         }
         
-        for(unsigned m=0;m<n_comp;++m)
+        for(int m=0;m<n_comp;++m)
         {
-            double ex = p_val[m][0] - Comps[m].Mean[0];
-            double ey = p_val[m][1] - Comps[m].Mean[1];
-            
-            sum_e_xx[m] += ex * ex;
-            sum_e_xy[m] += ex * ey;
-            sum_e_yy[m] += ey * ey;
-            
-            Comps[m].Cov[0] = sum_e_xx[m] / sum_pr[m];
-            Comps[m].Cov[1] = Comps[m].Cov[2] = sum_e_xy[m] / sum_pr[m];
-            Comps[m].Cov[3] = sum_e_yy[m] / sum_pr[m];
+			if (m != zeroidx)
+			{
+				double ex = p_val[m][0] - Comps[m].Mean[0];
+				double ey = p_val[m][1] - Comps[m].Mean[1];
+				
+				sum_e_xx[m] += ex * ex;
+				sum_e_xy[m] += ex * ey;
+				sum_e_yy[m] += ey * ey;
+				
+				// Wishart prior : S = [0.01 0; 0 0.01]
+				Comps[m].Cov[0] = (sum_e_xx[m]  + 0.001 * p_count) / sum_pr[m];
+				Comps[m].Cov[1] = Comps[m].Cov[2] = sum_e_xy[m] / sum_pr[m];
+				Comps[m].Cov[3] = (sum_e_yy[m] + 0.001 * p_count) / sum_pr[m];
+				Comps[m].update();
+			}
             
             Comps[m].Alpha = sum_pr[m] / (n_sample + n_comp*p_count);
-            Comps[m].update();
         }
+		print();
     }
+	double llk = 0;
     for(int j=0; j<n_sample; ++j)
     {
         double l = 0;
         for(int m=0; m<n_comp; ++m)
         {
-            l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
+			if (m != zeroidx)
+				l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
+			else
+				l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]) * 4.0;
         }
-        if (l>0)
+        if (l>0 && !isnan(l))
         {
             llk += log(l);
+			if (isnan(llk))
+			{
+				std::cerr << "isnan!" << std::endl;
+			}
         }
     }
     
-    bic = -2.0 * llk +  5*n_comp*log(n_sample);
+    bic = -2.0 * llk + 5*n_comp*log(n_sample);
     p_overlap = BayesError();
+	std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
 }
 
 
 bool GaussianMixture2::ordered()
 {
-    for(unsigned i=0; i<n_comp-1;++i)
+    for(int i=0; i<n_comp-1;++i)
     {
         if (Comps[i].Mean[0] + Comps[i].Mean[1] <= Comps[i+1].Mean[0] + Comps[i+1].Mean[1])
             return false;
@@ -580,7 +523,7 @@ bool GaussianMixture2::ordered()
 
 bool GaussianMixture2::r_ordered()
 {
-    for(unsigned i=0; i<Comps.size()-1;++i)
+    for(int i=0; i<(int)Comps.size()-1;++i)
     {
         if (Comps[i].Mean[0]+Comps[i].Mean[1] >= Comps[i+1].Mean[0]+Comps[i+1].Mean[1])
             return false;
@@ -622,16 +565,19 @@ int GaussianMixture2::assign_copynumber(double x, double y)
     
     ret = round(Comps[ret].Mean[0] + Comps[ret].Mean[1]); // TODO: what if only one of the dimensions cluster correctly? (0, 0.5, 1) + (1, 1, 1) = (1 1.5 2) 
     
-    int up = ceil(x*2.0);
-    int down = floor(x*2.0);
+    int up = ceil(x+y);
+    int down = floor(x+y);
     
     if (ret != up && ret != down)
     {
+		std::cerr << std::endl << "ret " << ret << " up " << up << " down " << down << std::endl;
+		std::cerr << "x " << x << " y " << y << std::endl;
         return -1;
     }
     
     if (max_R > 0.2)
     {
+		std::cerr << "max_R" << max_R <<  std::endl;
         return -1;
     }
     
@@ -644,13 +590,17 @@ double GaussianMixture2::BIC(std::vector<double>& x, std::vector<double>& y)
     int n_sample = (int)x.size();
     
     double ret = 0;
+	double llk = 0;
     
     for(int j=0; j<n_sample; ++j)
     {
         double l = 0;
         for(int m=0; m<n_comp; ++m)
         {
-            l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
+			if (m != zeroidx)
+				l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
+			else
+				l += 4.0*Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
         }
         if (l>0)
         {
@@ -683,22 +633,18 @@ double GaussianMixture2::BayesError()
                 C[k] = (Comps[i].Cov[k] + Comps[j].Cov[k])/2.0;
             }
             double D = det(C);
-            if (D>1e-10)
-            {
-                P[0] = C[3]/D;
-                P[3] = C[0]/D;
-                P[1] = P[2] = -1.0*C[1]/D;
-            }
-            else
-            {
-                // for singular cases, just use Cov = [0.01 0; 0 0.01]
-                P[0]=100;
-                P[1]=0;
-                P[2]=0;
-                P[3]=100;
-            }
-            
-            double m1 = Comps[i].Mean[0] - Comps[j].Mean[0];
+			/*
+            while (D<1e-20)
+			{
+				C[0] += 1e-10;
+				C[1] += 1e-10;
+				D = det(C);
+			}
+			*/
+			P[0] = C[3]/D;
+			P[3] = C[0]/D;
+			P[1] = P[2] = -1.0*C[1]/D;
+			double m1 = Comps[i].Mean[0] - Comps[j].Mean[0];
             double m2 = Comps[i].Mean[1] - Comps[j].Mean[1];
             
             double d = 0.125*(m1 * P[0] + m2 * P[2])*m1 + (m1 * P[1] + m2 * P[3])*m2 + 0.5*log( D / sqrt(Comps[i].Det*Comps[j].Det));
@@ -711,3 +657,13 @@ double GaussianMixture2::BayesError()
     }
     return exp(-1.0*min_d);
 }
+
+void GaussianMixture2::print()
+{
+	for(int i=0; i<n_comp; ++i)
+	{
+		std::cerr << "Comp " << i <<  " (" << Comps[i].Mean[0] << "," << Comps[i].Mean[1] << ";" << Comps[i].Cov[0] << "," << Comps[i].Cov[1] <<"." << Comps[i].Cov[3]  << "), " << Comps[i].Alpha << std::endl;
+	}
+}
+
+

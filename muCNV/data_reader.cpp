@@ -16,17 +16,17 @@ svType ReadStat::sv_support()
     bool b_dup = false;
     bool b_inv = false;
     
-    if (n_pre_FR + n_post_FR + n_pre_split_out + n_post_split_out > 6) // likely to be deletion, TODO: these cut-offs are arbitrary
+    if (n_pre_FR + n_post_FR + n_pre_split_out + n_post_split_out > 10) // likely to be deletion, TODO: these cut-offs are arbitrary
     {
         b_del = true;
     }
-    if (n_pre_RF + n_post_RF + n_pre_split_in + n_post_split_in > 6) // likely to be duplication or CNV
+    if (n_pre_RF + n_post_RF + n_pre_split_in + n_post_split_in > 10) // likely to be duplication or CNV
     {
         b_dup = true;
     }
-    if (n_pre_FF + n_post_RR > 4 ) // likely to be duplication or CNV
+    if (n_pre_FF + n_post_RR > 6 ) // likely to be duplication or CNV
     {
-        if (n_pre_FF + n_post_RR + n_pre_split_out + n_pre_split_in + n_post_split_out + n_post_split_in > 6)
+        if (n_pre_FF + n_post_RR + n_pre_split_out + n_pre_split_in + n_post_split_out + n_post_split_in > 10)
             b_inv = true;
     }
     if (b_del && !b_dup && !b_inv)
@@ -220,7 +220,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
         
         if (b_dumpstat)
         {
-            std::string fname = svTypeName(curr_sv.svtype) + "_" + std::to_string(curr_sv.chrnum) + ":" + std::to_string(curr_sv.pos) + "-" + std::to_string(curr_sv.end) + ".pileup" + std::to_string(i) +".dp100.txt";
+            std::string fname = svTypeName(curr_sv.svtype) + "_" + std::to_string(curr_sv.chrnum) + "_" + std::to_string(curr_sv.pos) + "-" + std::to_string(curr_sv.end) + ".pileup" + std::to_string(i) +".dp100.txt";
             FILE *fp = fopen(fname.c_str(), "wt");
             fprintf(fp, "index");
             for(int k=0; k<n_samples[i]; ++k)

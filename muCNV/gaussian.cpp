@@ -134,20 +134,15 @@ void Gaussian2::update()
 {
 	Det = det(Cov);
 	
-	if (Det>1e-10)
+	while (Det<1e-20)
 	{
-		Prc[0] = Cov[3]/Det;
-		Prc[3] = Cov[0]/Det;
-		Prc[1] = Prc[2] = -1.0*Cov[1]/Det;
+		Cov[0] += 1e-10;
+		Cov[3] += 1e-10;
+		Det = det(Cov);
 	}
-	else
-	{
-		// for singular cases, just use Cov = [0.01 0; 0 0.01]
-		Prc[0]=100;
-		Prc[1]=0;
-		Prc[2]=0;
-		Prc[3]=100;
-	}
+	Prc[0] = Cov[3]/Det;
+	Prc[3] = Cov[0]/Det;
+	Prc[1] = Prc[2] = -1.0*Cov[1]/Det;
 }
 
 void Gaussian2::estimate(std::vector<double> &x, std::vector<double> &y)

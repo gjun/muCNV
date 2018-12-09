@@ -22,8 +22,10 @@ SvGeno::SvGeno(int n)
     n_sample = n;
     ns = 0;
     ac = 0;
+
     gt.resize(n_sample, -1);
     cn.resize(n_sample, -1);
+		
     b_biallelic = false;
     b_pass = false;
     dp_flag = false;
@@ -59,7 +61,7 @@ void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector
     // number of models
     for(int m=0; m<(int)means.size(); ++m)
     {
-        std::vector<double> s (means[m].size(), 0.05);
+        std::vector<double> s (means[m].size(), 0.1);
         GaussianMixture gmix(means[m], s);
         gmix.EM(x); // fit mixture model
         if (gmix.bic < best_bic && gmix.p_overlap < MAX_P_OVERLAP)
@@ -78,10 +80,10 @@ void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vect
     // number of models
     for(int m=0; m<(int)means.size(); ++m)
     {
-        std::vector<double> s (means[m].size(), 0.05);
+        std::vector<double> s (means[m].size(), 0.01);
         GaussianMixture2 gmix2(means[m], s);
         gmix2.EM2(x, y); // fit mixture model
-        if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP )
+        if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP*2)
         {
             best_bic = gmix2.bic;
             ret_gmix2 = gmix2; // assignment (copy operation)
@@ -93,6 +95,7 @@ void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vect
 void Genotyper::call(sv &S, SvData &D, SvGeno &G)
 {
 	n_sample = D.n_sample;
+
     if (S.svtype == DEL)
         call_deletion(S, D, G);
     else if (S.svtype == DUP || S.svtype == CNV)
@@ -102,73 +105,90 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G)
 
 void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 {
-    int n_sample = D.n_sample;
-    
 	// Fit Gaussian mixture models with 1, 2, and 3 components, compare BIC
-    GaussianMixture gmix;
-    std::vector< std::vector<double> > means = { {1.0}, {1.0, 0.5}, {0.5, 0.0}, {1.0, 0.5, 0.0}};
-    
-    G.b_biallelic = true;
+	GaussianMixture gmix;
+	std::vector< std::vector<double> > means = { {1.0}, {1.0, 0.5}, {0.5, 0.0}, {1.0, 0.5, 0.0}};
 
-   if (D.dp2.size()>1) //dp2 has more than 2 vectors
-    {
-        // DP100 genotyping
-        GaussianMixture2 gmix2;
+	G.b_biallelic = true;
 
-        G.dp2_flag = true;
-        int dp2_idx = 0;
-        if (D.dp2.size()==4)
-            dp2_idx = 1;
-        
-        select_model(gmix2, means, D.dp2[dp2_idx], D.dp2[dp2_idx+1]);
-
-        // 2-D genotyping
-        if (gmix2.n_comp>1)
-        {
-            // success
-            //assign dp2 genotypes
-            for(int i=0; i<n_sample; ++i)
-            {
-                G.cn[i] = gmix2.assign_copynumber(D.dp2[dp2_idx][i], D.dp2[dp2_idx+1][i]);
-                if (G.cn[i] == 2)
-                    G.gt[i] = 0; // 0/0
-                else if (G.cn[i] == 1)
-                    G.gt[i] = 1; // 0/1
-                else if (G.cn[i] == 0)
-                    G.gt[i] = 2; // 1/1
-            }
-        }
-    }
-    
-	if (!G.dp2_flag)
+	select_model(gmix, means, D.var_depth);
+	if (gmix.n_comp > 1)
 	{
-		// Try this only when 2-D clusteringg failed... 
-
-		select_model(gmix, means, D.var_depth);
-		if (gmix.n_comp > 1)
+		// success
+		G.dp_flag = true;
+		// assign dp-genotypes
+		for(int i=0; i<n_sample; ++i)
 		{
-			// success
-			G.dp_flag = true;
-			// assign dp-genotypes
-			for(int i=0; i<n_sample; ++i)
+			int cn = gmix.assign_copynumber(D.var_depth[i]);
+			if (cn == 2)
 			{
-				G.cn[i] = gmix.assign_copynumber(D.var_depth[i]);
-				if (G.cn[i] == 2)
-					G.gt[i] = 0; // 0/0
-				else if (G.cn[i] == 1)
-					G.gt[i] = 1; // 0/1
-				else if (G.cn[i] == 0)
-					G.gt[i] = 2; // 1/1
+				G.cn[i] = 2;
+				G.gt[i] = 0; // 0/0
+			}
+			else if (cn == 1)
+			{
+				G.cn[i] = 1;
+				G.gt[i] = 1; // 0/1
+			}
+			else if (cn == 0)
+			{
+				G.cn[i] = 0;
+				G.gt[i] = 2; // 1/1
 			}
 		}
 	}
 
+	for(int i=0;i<n_sample;++i) std::cerr << " " <<G.cn[i];  std::cerr << std::endl;
+
+	if (D.dp2.size()>1) //dp2 has more than 2 vectors
+	{
+		// DP100 genotyping
+		GaussianMixture2 gmix2;
+
+		int dp2_idx = 0;
+		if (D.dp2.size()==4)
+			dp2_idx = 1;
+
+		select_model(gmix2, means, D.dp2[dp2_idx], D.dp2[dp2_idx+1]);
+
+		// 2-D genotyping
+		if (gmix2.n_comp>1)
+		{
+			// success
+			G.dp2_flag = true;
+			//assign dp2 genotypes
+			for(int i=0; i<n_sample; ++i)
+			{
+				int cn = gmix2.assign_copynumber(D.dp2[dp2_idx][i], D.dp2[dp2_idx+1][i]);
+				if (cn == 2)
+				{
+					G.cn[i] = 2;
+					G.gt[i] = 0; // 0/0
+				}
+				else if (cn == 1)
+				{
+					G.cn[i] = 1;
+					G.gt[i] = 1; // 0/1
+				}
+				else if (cn == 0)
+				{
+					G.cn[i] = 0;
+					G.gt[i] = 2; // 1/1
+				}
+				else
+					std::cerr << " " << G.cn[i];
+			}
+		}
+	}
+    
+	for(int i=0;i<n_sample;++i) std::cerr << " " <<G.cn[i];  std::cerr << std::endl;
  
     // Readpair genotyping
     for(int i=0; i<n_sample; ++i)
     {
         if (G.dp_flag || G.dp2_flag)
         {
+			std::cerr << D.var_depth[i] << " " ;
             if (D.rdstats[i].sv_support() == DEL)
             {
                 G.read_flag = true;
@@ -183,15 +203,16 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
                     G.gt[i] = 2;
                 }
             }
+            else if (D.var_depth[i] > 0.9 && D.var_depth[i] < 1.1 && G.gt[i]== -1)
+			{
+				std::cerr << "here " ;
+				G.cn[i] = 2;
+				G.gt[i] = 0;
+			}
         }
         else
         {
-            if (D.rdstats[i].sv_support() != DEL &&  D.var_depth[i] > 0.8 && D.var_depth[i] < 1.2)
-            {
-                G.cn[i] = 2;
-                G.gt[i] = 0;
-            }
-            else if (D.rdstats[i].sv_support() == DEL)
+            if (D.rdstats[i].sv_support() == DEL)
             {
                 G.read_flag = true;
                 if (D.var_depth[i] > 0.25 && D.var_depth[i] < 0.65) // TEMPORARY
@@ -205,6 +226,11 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
                     G.gt[i] = 2;
                 }
             }
+            else if (D.var_depth[i] > 0.8 && D.var_depth[i] < 1.2)
+            {
+                G.cn[i] = 2;
+                G.gt[i] = 0;
+            }
         }
         if (G.gt[i] >=0)
         {
@@ -212,6 +238,9 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             G.ac += G.gt[i];
         }
     }
+
+	for(int i=0;i<n_sample;++i) std::cerr << " " <<G.cn[i];  std::cerr << std::endl;
+
     if (G.dp_flag || G.dp2_flag || G.read_flag)
         G.b_pass = true;
     
