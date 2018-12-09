@@ -59,6 +59,8 @@ public:
     
     //2-D without weights
     void EM2(std::vector<double>&, std::vector<double>&);
+    // K-means
+    void KM2(std::vector<double>&, std::vector<double>&);
 
     int assign_copynumber(double, double);
     bool ordered();

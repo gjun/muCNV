@@ -354,6 +354,121 @@ GaussianMixture2& GaussianMixture2::operator = (const GaussianMixture2& gmix)
 
 
 // 2-D EM for general without weights
+void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y)
+{
+    // Let's not consider half-normal distribution -- for now
+    
+    int n_sample = (int) x.size();
+    int n_iter = 20;
+    
+    // pseudo-counts
+    int p_count= 5;
+    
+    if (n_comp == 1)
+    {
+        Comps[0].estimate(x, y);
+        Comps[0].Alpha = 1;
+        bic = BIC(x, y);
+        p_overlap = 0;
+        return;
+    }
+
+    std::vector<double> member (n_sample, 0);
+
+    for(int i=0; i<n_iter; ++i)
+    {
+
+        std::vector<double> sum_x (n_comp,0);
+        std::vector<double> sum_y (n_comp,0);
+        std::vector<int> cnt (n_comp,0);
+
+        // Hard assignment of samples to centroids (E step)
+        for(int j=0; j<n_sample; ++j)
+        {
+            double min_dist = DBL_MAX;
+            for(int m=0; m<n_comp; ++m)
+            {
+                double dx = (x[j] - Comps[m].Mean[0]);
+                double dy = (y[j] - Comps[m].Mean[1]);
+                double dist = dx*dx + dy*dy;
+                if (dist < min_dist)
+                {
+                    min_dist = dist;
+                    member[j] = m;
+                }
+            }
+            sum_x[member[j]] += x[j];
+            sum_y[member[j]] += y[j];
+            cnt[member[j]] ++;
+        }
+
+        // M step
+        
+        // Update means
+        for(int m=0;m<n_comp;++m)
+        {
+            Comps[m].Mean[0] = sum_x[m] / cnt[m];
+            Comps[m].Mean[1] = sum_y[m] / cnt[m];
+        }
+        print();
+
+    }
+    
+    std::vector<double> sum_xx(n_comp, 0);
+    std::vector<double> sum_yy(n_comp, 0);
+    std::vector<double> sum_xy(n_comp, 0);
+    std::vector<int> cnt(n_comp, 0);
+    for(int j=0; j<n_sample; ++j)
+    {
+        double dx = Comps[member[j]].Mean[0] - x[j];
+        double dy = Comps[member[j]].Mean[1] - y[j];
+        cnt[member[j]] ++;
+        sum_xx[member[j]] += dx * dx;
+        sum_yy[member[j]] += dy * dy;
+        sum_xy[member[j]] += dx * dy;
+    }
+    
+    for(int m=0;m<n_comp;++m)
+    {
+        // Wishart prior : S = [0.01 0; 0 0.01]
+        Comps[m].Cov[0] = (sum_xx[m] + 0.01*p_count) / (cnt[m] + p_count - 1);
+        Comps[m].Cov[1] = sum_xy[m] / (cnt[m] + p_count - 1);
+        Comps[m].Cov[2] = Comps[m].Cov[1];
+        Comps[m].Cov[3] = (sum_yy[m] + 0.01*p_count) / (cnt[m] + p_count - 1);
+
+        Comps[m].update();
+        
+        Comps[m].Alpha = cnt[m] / n_sample;
+    }
+    print();
+
+    double llk = 0;
+    for(int j=0; j<n_sample; ++j)
+    {
+        double l = 0;
+        for(int m=0; m<n_comp; ++m)
+        {
+            if (m != zeroidx)
+                l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
+            else
+                l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]) * 4.0;
+        }
+        if (l>0 && !isnan(l))
+        {
+            llk += log(l);
+            if (isnan(llk))
+            {
+                std::cerr << "isnan!" << std::endl;
+            }
+        }
+    }
+    
+    bic = -2.0 * llk + 5*n_comp*log(n_sample);
+    p_overlap = BayesError();
+    std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
+}
+
+// 2-D EM for general without weights
 void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 {
     // Let's not consider half-normal distribution -- for now
