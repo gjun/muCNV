@@ -26,11 +26,10 @@ public:
     double bic;
     double p_overlap;
     
-    //1-D with weights
-    void wEM(std::vector<double>&, std::vector<double>&);
-    
     //1-D without weights
     void EM(std::vector<double>&);
+	// 1-D K-Means
+    void KM(std::vector<double>&);
 
 	void print();
     

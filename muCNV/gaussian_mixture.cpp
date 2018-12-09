@@ -178,6 +178,100 @@ void GaussianMixture::EM(std::vector<double>& x)
 }
 
 
+// 1-D K-means
+void GaussianMixture::KM(std::vector<double>& x)
+{
+    int n_sample = (int) x.size();
+    int n_iter = 15;
+    
+    // pseudo-counts
+    int p_count= 5;
+    
+    if (n_comp == 1)
+    {
+        Comps[0].estimate(x);
+        Comps[0].Alpha = 1;
+        bic = BIC(x);
+        p_overlap = 0;
+        return;
+    }
+
+    std::vector<double> member (n_sample, 0);
+
+    for(int i=0; i<n_iter; ++i)
+    {
+
+        std::vector<double> sum_x (n_comp,0);
+        std::vector<int> cnt (n_comp,0);
+
+        // Hard assignment of samples to centroids (E step)
+        for(int j=0; j<n_sample; ++j)
+        {
+            double min_dist = DBL_MAX;
+            for(int m=0; m<n_comp; ++m)
+            {
+                double dist = abs(x[j] - Comps[m].Mean);
+
+                if (dist < min_dist)
+                {
+                    min_dist = dist;
+                    member[j] = m;
+                }
+            }
+            sum_x[member[j]] += x[j];
+            cnt[member[j]] ++;
+        }
+
+        // M step
+        
+        // Update means
+        for(int m=0;m<n_comp;++m)
+        {
+            Comps[m].Mean = sum_x[m] / cnt[m];
+        }
+        //print();
+
+    }
+    
+    std::vector<double> sum_xx(n_comp, 0);
+    std::vector<int> cnt(n_comp, 0);
+
+    for(int j=0; j<n_sample; ++j)
+    {
+        double dx = Comps[member[j]].Mean - x[j];
+        cnt[member[j]] ++;
+        sum_xx[member[j]] += dx * dx;
+    }
+    
+    for(int m=0;m<n_comp;++m)
+    {
+        // Wishart prior : S = [0.01 0; 0 0.01]
+        Comps[m].Stdev = sqrt((sum_xx[m] + 0.01*p_count) / (cnt[m] + p_count - 1));
+        Comps[m].Alpha = (double)cnt[m] / n_sample;
+    }
+ //   print();
+
+    double llk = 0;
+    for(int j=0; j<n_sample; ++j)
+    {
+        double l = 0;
+        for(int m=0; m<n_comp; ++m)
+        {
+			l += Comps[m].Alpha * Comps[m].pdf(x[j]);
+        }
+        if (l>0 && !isnan(l))
+        {
+            llk += log(l);
+        }
+    }
+    
+    bic = -2.0 * llk + 2*n_comp*log(n_sample);
+    p_overlap = BayesError();
+//    std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
+}
+
+
+
 int GaussianMixture::assign_copynumber(double x)
 {
     double p[n_comp];
@@ -219,7 +313,7 @@ int GaussianMixture::assign_copynumber(double x)
         return -1;
     }
     
-    if (max_R >= 0.2)
+    if (max_R >= 0.5)
     {
         return -1;
     }
@@ -261,10 +355,7 @@ double GaussianMixture::BIC(std::vector<double>& x)
         double l = 0;
         for(int m=0; m<n_comp; ++m)
         {
-			if (m != zeroidx)
-				l += Comps[m].Alpha * normpdf(x[j], Comps[m]);
-			else
-				l += 2.0 * Comps[m].Alpha * normpdf(x[j], Comps[m]);
+			l += Comps[m].Alpha * normpdf(x[j], Comps[m]);
         }
         if (l>0)
         {
@@ -359,7 +450,7 @@ void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y)
     // Let's not consider half-normal distribution -- for now
     
     int n_sample = (int) x.size();
-    int n_iter = 20;
+    int n_iter = 15;
     
     // pseudo-counts
     int p_count= 5;
@@ -410,7 +501,7 @@ void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y)
             Comps[m].Mean[0] = sum_x[m] / cnt[m];
             Comps[m].Mean[1] = sum_y[m] / cnt[m];
         }
-        print();
+        //print();
 
     }
     
@@ -440,7 +531,7 @@ void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y)
         
         Comps[m].Alpha = (double)cnt[m] / n_sample;
     }
-    print();
+    //print();
 
     double llk = 0;
     for(int j=0; j<n_sample; ++j)
@@ -448,24 +539,17 @@ void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y)
         double l = 0;
         for(int m=0; m<n_comp; ++m)
         {
-            if (m != zeroidx)
-                l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
-            else
-                l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]) * 4.0;
+			l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
         }
         if (l>0 && !isnan(l))
         {
             llk += log(l);
-            if (isnan(llk))
-            {
-                std::cerr << "isnan!" << std::endl;
-            }
         }
     }
     
     bic = -2.0 * llk + 5*n_comp*log(n_sample);
     p_overlap = BayesError();
-    std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
+//    std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
 }
 
 // 2-D EM for general without weights
@@ -597,7 +681,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
             
             Comps[m].Alpha = sum_pr[m] / (n_sample + n_comp*p_count);
         }
-		print();
+		//print();
     }
 	double llk = 0;
     for(int j=0; j<n_sample; ++j)
@@ -613,16 +697,12 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
         if (l>0 && !isnan(l))
         {
             llk += log(l);
-			if (isnan(llk))
-			{
-				std::cerr << "isnan!" << std::endl;
-			}
         }
     }
     
     bic = -2.0 * llk + 5*n_comp*log(n_sample);
     p_overlap = BayesError();
-	std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
+//	std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
 }
 
 
@@ -685,14 +765,14 @@ int GaussianMixture2::assign_copynumber(double x, double y)
     
     if (ret != up && ret != down)
     {
-		std::cerr << std::endl << "ret " << ret << " up " << up << " down " << down << std::endl;
-		std::cerr << "x " << x << " y " << y << std::endl;
+//		std::cerr << std::endl << "ret " << ret << " up " << up << " down " << down << std::endl;
+//		std::cerr << "x " << x << " y " << y << std::endl;
         return -1;
     }
     
-    if (max_R > 0.2)
+    if (max_R > 0.5)
     {
-		std::cerr << "max_R" << max_R <<  std::endl;
+//		std::cerr << "max_R" << max_R <<  std::endl;
         return -1;
     }
     
@@ -712,10 +792,7 @@ double GaussianMixture2::BIC(std::vector<double>& x, std::vector<double>& y)
         double l = 0;
         for(int m=0; m<n_comp; ++m)
         {
-			if (m != zeroidx)
-				l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
-			else
-				l += 4.0*Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
+			l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
         }
         if (l>0)
         {

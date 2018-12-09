@@ -13,8 +13,9 @@
 #include <vector>
 #include "gaussian.h"
 #include "sv.h"
+#include "genotyper.h"
 
-class outvcf
+class OutVcf
 {
 public:
     FILE *fp;
@@ -23,6 +24,9 @@ public:
     void close();
     void print(std::string &);
     void write_header(std::vector<std::string>&);
+
+	void print_sv(sv &, SvData &, SvGeno &);
+ 
     void write_del(sv&, std::vector<int>&, std::vector<int>&, int, int, std::vector<double>&, std::vector<double>&, std::vector<Gaussian>&, double, bool);
     void write_cnv(sv&, std::vector<int>&, std::vector<int>&, int, int, std::vector<double>&, std::vector<double>&, std::vector<Gaussian>&, double, bool);
 };

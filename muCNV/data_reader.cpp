@@ -312,6 +312,7 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
 {
     int sample_idx = 0;
 
+	if (curr_sv.len < 50) return;
     // Starting breakpoint
     int start_pos1 = curr_sv.pos - 500;
     int end_pos1 = curr_sv.pos + 500;

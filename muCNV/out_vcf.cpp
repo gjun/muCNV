@@ -9,18 +9,18 @@
 #include "out_vcf.h"
 #include <math.h>
 
-void outvcf::open(std::string &fname)
+void OutVcf::open(std::string &fname)
 {
 	fp = fopen(fname.c_str(), "w");
 	varcnt = 0;
 }
 
-void outvcf::close()
+void OutVcf::close()
 {
 	fclose(fp);
 }
 
-void outvcf::write_header(std::vector<std::string> &sampleIDs)
+void OutVcf::write_header(std::vector<std::string> &sampleIDs)
 {
 	fprintf(fp,"##fileformat=VCFv4.1\n");
 	fprintf(fp,"##source=UM_CGI_CNV_pipeline_v0.1\n");
@@ -54,12 +54,79 @@ void outvcf::write_header(std::vector<std::string> &sampleIDs)
 	
 }
 
-void outvcf::print(std::string &ln)
+
+void OutVcf::print_sv(sv &S, SvData &D, SvGeno &G)
+{
+	const char *svtype = svTypeName(S.svtype).c_str();
+
+	if (S.chrnum < 23)
+	{
+    	fprintf(fp, "%d",  S.chrnum);
+	}
+	else if (S.chrnum == 23)
+	{
+		fprintf(fp, "X");
+	}
+	else if (S.chrnum == 24)
+	{
+		fprintf(fp, "Y");
+	}
+
+	fprintf(fp, "\t%d\t%s_%d:%d-%d\t.\t<%s>\t.\t", S.pos, svtype, S.chrnum, S.pos, S.end, svtype);
+
+    if (G.b_pass)
+    {
+        fprintf(fp, "PASS\t");
+    }
+    else
+    {
+        fprintf(fp, "FAIL\t");
+    }
+
+	fprintf(fp, "SVTYPE=%s;END=%d;SVLEN=%d;AC=%d;NS=%d;AF=%f",  svtype, S.end, S.len, G.ac, G.ns, (double)G.ac/(2.0*G.ns));
+	fprintf(fp, "%s", G.info.c_str());
+
+    if (G.dp_flag)
+        fprintf(fp, ";DP");
+    if (G.dp2_flag)
+        fprintf(fp, ";DP2");
+    if (G.read_flag)
+        fprintf(fp, ";READ");
+
+    fprintf(fp, "\tGT:CN");
+
+    for (int i=0; i<G.gt.size(); ++i)
+    {
+        switch(G.gt[i])
+        {
+            case 0:
+                fprintf(fp, "\t0/0");
+                break;
+            case 1:
+                fprintf(fp, "\t0/1");
+                break;
+            case 2:
+                fprintf(fp, "\t1/1");
+                break;
+            default:
+                fprintf(fp, "\t.");
+                break;
+        }
+        if (G.cn[i]<0)
+            fprintf(fp, ":.");
+        else
+            fprintf(fp, ":%d",G.cn[i]);
+
+    }
+	fprintf(fp, "\n");
+}
+
+void OutVcf::print(std::string &ln)
 {
 	fprintf(fp, "%s\n", ln.c_str());
 }
 
-void outvcf::write_del(sv& interval, std::vector<int>& gt, std::vector<int>& GQ, int ac, int ns, std::vector<double>& X, std::vector<double>& AvgDepth, std::vector<Gaussian>& C, double be, bool bFilter)
+void OutVcf::write_del(sv& interval, std::vector<int>& gt, std::vector<int>& GQ, int ac, int ns, std::vector<double>& X, std::vector<double>& AvgDepth, std::vector<Gaussian>& C, double be, bool bFilter)
 {
 	// For Deletions
 	int n_comp=(int)C.size();
@@ -151,7 +218,7 @@ void outvcf::write_del(sv& interval, std::vector<int>& gt, std::vector<int>& GQ,
 }
 
 
-void outvcf::write_cnv(sv& interval, std::vector<int>& gt, std::vector<int>& GQ, int ac, int ns, std::vector<double>& X, std::vector<double>& AvgDepth, std::vector<Gaussian>& C, double be, bool bFilter)
+void OutVcf::write_cnv(sv& interval, std::vector<int>& gt, std::vector<int>& GQ, int ac, int ns, std::vector<double>& X, std::vector<double>& AvgDepth, std::vector<Gaussian>& C, double be, bool bFilter)
 {
 	int n_comp=(int)C.size();
     std::string chr = std::to_string(interval.chrnum);

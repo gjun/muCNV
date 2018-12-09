@@ -39,7 +39,6 @@ SvData::SvData(int n)
     n_sample = n;
     rdstats.resize(n);
     var_depth.resize(n);
-    dp2.resize(n);
 }
 
 
@@ -63,7 +62,7 @@ void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector
     {
         std::vector<double> s (means[m].size(), 0.1);
         GaussianMixture gmix(means[m], s);
-        gmix.EM(x); // fit mixture model
+        gmix.KM(x); // fit mixture model
         if (gmix.bic < best_bic && gmix.p_overlap < MAX_P_OVERLAP)
         {
             best_bic = gmix.bic;
@@ -111,6 +110,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
 	G.b_biallelic = true;
 
+//	DMSG("Calling deletion");
 	select_model(gmix, means, D.var_depth);
 	if (gmix.n_comp > 1)
 	{
@@ -137,8 +137,6 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 			}
 		}
 	}
-
-	for(int i=0;i<n_sample;++i) std::cerr << " " <<G.cn[i];  std::cerr << std::endl;
 
 	if (D.dp2.size()>1) //dp2 has more than 2 vectors
 	{
@@ -175,75 +173,72 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 					G.cn[i] = 0;
 					G.gt[i] = 2; // 1/1
 				}
-				else
-					std::cerr << " " << G.cn[i];
 			}
 		}
 	}
     
-	for(int i=0;i<n_sample;++i) std::cerr << " " <<G.cn[i];  std::cerr << std::endl;
  
     // Readpair genotyping
-    for(int i=0; i<n_sample; ++i)
-    {
-        if (G.dp_flag || G.dp2_flag)
-        {
-			std::cerr << D.var_depth[i] << " " ;
-            if (D.rdstats[i].sv_support() == DEL)
-            {
-                G.read_flag = true;
-                if (D.var_depth[i] > 0.25 && D.var_depth[i] < 0.65 && G.gt[i]== -1) // TEMPORARY
-                {
-                    G.cn[i] = 1;
-                    G.gt[i] = 1;
-                }
-                else if (D.var_depth[i]<=0.25 && G.gt[i] == -1)
-                {
-                    G.cn[i] = 0;
-                    G.gt[i] = 2;
-                }
-            }
-            else if (D.var_depth[i] > 0.9 && D.var_depth[i] < 1.1 && G.gt[i]== -1)
+	if (S.len >= 50)
+	{
+		for(int i=0; i<n_sample; ++i)
+		{
+			if (G.dp_flag || G.dp2_flag)
 			{
-				std::cerr << "here " ;
-				G.cn[i] = 2;
-				G.gt[i] = 0;
+				if (D.rdstats[i].sv_support() == DEL)
+				{
+					G.read_flag = true;
+					if (D.var_depth[i] > 0.25 && D.var_depth[i] < 0.65 && G.gt[i]== -1) // TEMPORARY
+					{
+						G.cn[i] = 1;
+						G.gt[i] = 1;
+					}
+					else if (D.var_depth[i]<=0.25 && G.gt[i] == -1)
+					{
+						G.cn[i] = 0;
+						G.gt[i] = 2;
+					}
+				}
+				else if (D.var_depth[i] > 0.9 && D.var_depth[i] < 1.1 && G.gt[i]== -1)
+				{
+					G.cn[i] = 2;
+					G.gt[i] = 0;
+				}
 			}
-        }
-        else
-        {
-            if (D.rdstats[i].sv_support() == DEL)
-            {
-                G.read_flag = true;
-                if (D.var_depth[i] > 0.25 && D.var_depth[i] < 0.65) // TEMPORARY
-                {
-                    G.cn[i] = 1;
-                    G.gt[i] = 1;
-                }
-                else if (D.var_depth[i]<0.25)
-                {
-                    G.cn[i] = 0;
-                    G.gt[i] = 2;
-                }
-            }
-            else if (D.var_depth[i] > 0.8 && D.var_depth[i] < 1.2)
-            {
-                G.cn[i] = 2;
-                G.gt[i] = 0;
-            }
-        }
-        if (G.gt[i] >=0)
-        {
-            G.ns += 1;
-            G.ac += G.gt[i];
-        }
-    }
+			else
+			{
+				if (D.rdstats[i].sv_support() == DEL)
+				{
+					G.read_flag = true;
+					if (D.var_depth[i] > 0.25 && D.var_depth[i] < 0.65) // TEMPORARY
+					{
+						G.cn[i] = 1;
+						G.gt[i] = 1;
+					}
+					else if (D.var_depth[i]<0.25)
+					{
+						G.cn[i] = 0;
+						G.gt[i] = 2;
+					}
+				}
+				else if (D.var_depth[i] > 0.8 && D.var_depth[i] < 1.2)
+				{
+					G.cn[i] = 2;
+					G.gt[i] = 0;
+				}
+			}
+			if (G.gt[i] >=0)
+			{
+				G.ns += 1;
+				G.ac += G.gt[i];
+			}
+		}
+	}
 
-	for(int i=0;i<n_sample;++i) std::cerr << " " <<G.cn[i];  std::cerr << std::endl;
+	double callrate = (double)G.ns / n_sample;
 
-    if (G.dp_flag || G.dp2_flag || G.read_flag)
+    if ((G.dp_flag || G.dp2_flag || G.read_flag ) && callrate>0.5 && G.ac > 0)
         G.b_pass = true;
-    
 }
 
 void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
@@ -290,8 +285,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 		}
 	}
     
-
-
     // Readpair genotyping
     for(int i=0; i<n_sample; ++i)
     {
@@ -309,6 +302,10 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                     G.cn[i] = round(D.var_depth[i] * 2.0);
                 }
             }
+			else if (D.var_depth[i] > 0.9 && D.var_depth[i] < 1.1 && G.gt[i]== -1)
+			{
+				G.cn[i] = 2.0;
+			}
         }
         else
         {
@@ -361,7 +358,10 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                 G.gt[i] = 0; // 1/1
         }
     }
-    if (G.dp_flag || G.dp2_flag || G.read_flag)
+
+	double callrate = G.ns / n_sample;
+
+    if ((G.dp_flag || G.dp2_flag || G.read_flag ) && callrate>0.5 && G.ac > 0)
         G.b_pass = true;
 }
 

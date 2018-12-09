@@ -14,6 +14,7 @@
 #include "tclap/Arg.h"
 
 #include "in_vcf.h"
+#include "out_vcf.h"
 #include "gc_content.h"
 #include "data_reader.h"
 #include "genotyper.h"
@@ -110,11 +111,7 @@ int main_genotype(int argc, char** argv)
     }
     
     // Multi-sample genotyping from summary VCFs
-    
-    std::vector<string> sample_ids;
-    std::vector<string> vcfs;
     std::vector<string> pileup_names;
-    std::vector<string> bam_names;
     
     GcContent gc;
     gc.initialize(gc_file);
@@ -158,6 +155,13 @@ int main_genotype(int argc, char** argv)
         n_end = std::stoi(range.substr(sz+1));
         std::cerr << "Variants index from " << n_start << " to " << n_end << " will be genotyepd" << std::endl;
     }
+
+	OutVcf out_vcf;
+	out_vcf.open(out_filename);
+	if (!bNoHeader)
+	{
+		out_vcf.write_header(reader.sample_ids);
+	}
     
     for(int i=n_start; i<=n_end; ++i)
     {
@@ -168,14 +172,14 @@ int main_genotype(int argc, char** argv)
         Genotyper gtyper;
         
         reader.read_depth100(vec_sv[i], D.dp2, gc, b_dumpstat);
+		
         std::vector<ReadStat> rdstats (n_sample);
         reader.read_pair_split(vec_sv[i], D.rdstats, gc);
         reader.read_var_depth(i, D.var_depth);
         
-        
         for(int j=0; j<n_sample; ++j)
         {
-            for(int k=0; k<D.dp2.size(); ++k)
+            for(int k=0; k<(int)D.dp2.size(); ++k)
             {
                 D.dp2[k][j] /= (double)stats[j].avg_dp;
             }
@@ -188,8 +192,10 @@ int main_genotype(int argc, char** argv)
         }
         
         gtyper.call(vec_sv[i], D, G);
-        std::cout << gtyper.print(vec_sv[i], D, G);
+//        std::cout << gtyper.print(vec_sv[i], D, G);
+		out_vcf.print_sv(vec_sv[i], D, G);
     }
+	out_vcf.close();
     
     return 0;
     
