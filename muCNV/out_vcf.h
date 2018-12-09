@@ -25,10 +25,7 @@ public:
     void print(std::string &);
     void write_header(std::vector<std::string>&);
 
-	void print_sv(sv &, SvData &, SvGeno &);
- 
-    void write_del(sv&, std::vector<int>&, std::vector<int>&, int, int, std::vector<double>&, std::vector<double>&, std::vector<Gaussian>&, double, bool);
-    void write_cnv(sv&, std::vector<int>&, std::vector<int>&, int, int, std::vector<double>&, std::vector<double>&, std::vector<Gaussian>&, double, bool);
+	void write_sv(sv &, SvData &, SvGeno &);
 };
 
 

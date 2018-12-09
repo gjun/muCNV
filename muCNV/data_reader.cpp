@@ -15,6 +15,7 @@ svType ReadStat::sv_support()
     bool b_del = false;
     bool b_dup = false;
     bool b_inv = false;
+    bool b_ins = false;
     
     if (n_pre_FR + n_post_FR + n_pre_split_out + n_post_split_out > 10) // likely to be deletion, TODO: these cut-offs are arbitrary
     {
@@ -29,6 +30,12 @@ svType ReadStat::sv_support()
         if (n_pre_FF + n_post_RR + n_pre_split_out + n_pre_split_in + n_post_split_out + n_post_split_in > 10)
             b_inv = true;
     }
+    
+    if (n_pre_INS + n_pre_rp_missing  + n_pre_sp_missing > 10)
+    {
+        b_ins = true;
+    }
+    
     if (b_del && !b_dup && !b_inv)
     {
         return DEL;
@@ -40,6 +47,10 @@ svType ReadStat::sv_support()
     else if (b_inv && !b_del && !b_dup)
     {
         return INV;
+    }
+    else if (b_ins)
+    {
+        return INS;
     }
     return BND;
 }
@@ -368,6 +379,13 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                                 else if (rp.pairstr == 0 && rp.selfpos <= rp.matepos)
                                     rdstats[sample_idx + k].n_pre_FF ++;
                                 
+                            }
+                            else if (rp.matepos >= start_pos1 && rp.matepos <= end_pos1)
+                            {
+                                if ((rp.pairstr == 1 && rp.selfpos < rp.matepos) || (rp.pairstr == 2 && rp.selfpos > rp.matepos))
+                                {
+                                    rdstats[sample_idx + k].n_pre_INS ++;
+                                }
                             }
 						}
 						else

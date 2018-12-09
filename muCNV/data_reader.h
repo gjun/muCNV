@@ -24,7 +24,8 @@ public:
     int n_post_RR; // INV
 	int n_post_FR; // DEL
 	int n_post_RF; // DUP
-
+    int n_pre_INS; // INS
+    
 	int n_pre_rp_missing; 
 	int n_post_rp_missing;
 
@@ -49,6 +50,8 @@ public:
         n_post_RR = 0;
 		n_post_FR = 0;
 		n_post_RF = 0;
+        n_pre_INS = 0;
+        
 		n_pre_rp_missing = 0;
 		n_post_rp_missing =0;
 

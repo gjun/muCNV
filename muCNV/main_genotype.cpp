@@ -171,11 +171,15 @@ int main_genotype(int argc, char** argv)
         SvData D(n_sample);
         Genotyper gtyper;
         
-        reader.read_depth100(vec_sv[i], D.dp2, gc, b_dumpstat);
 		
         std::vector<ReadStat> rdstats (n_sample);
         reader.read_pair_split(vec_sv[i], D.rdstats, gc);
-        reader.read_var_depth(i, D.var_depth);
+        
+        if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
+        {
+            reader.read_depth100(vec_sv[i], D.dp2, gc, b_dumpstat);
+            reader.read_var_depth(i, D.var_depth);
+        }
         
         for(int j=0; j<n_sample; ++j)
         {
@@ -192,8 +196,11 @@ int main_genotype(int argc, char** argv)
         }
         
         gtyper.call(vec_sv[i], D, G);
-//        std::cout << gtyper.print(vec_sv[i], D, G);
-		out_vcf.print_sv(vec_sv[i], D, G);
+
+        if (bFail || G.b_pass)
+        {
+            out_vcf.write_sv(vec_sv[i], D, G);
+        }
     }
 	out_vcf.close();
     

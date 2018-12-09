@@ -46,7 +46,9 @@
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "674"
-            endingLineNumber = "674">
+            endingLineNumber = "674"
+            landmarkName = "GaussianMixture2::assign_copynumber(double x, double y)"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>
