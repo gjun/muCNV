@@ -172,7 +172,7 @@ int main_genotype(int argc, char** argv)
     {
 //		fprintf(stderr, "%d, %d:%d-%d %s\n", i, vec_sv[i].chrnum, vec_sv[i].pos, vec_sv[i].end, svTypeName(vec_sv[i].svtype).c_str());
 		
-		if (vec_sv[i].chrnum < 23) // chr X and Y calling not supported yet
+		if (vec_sv[i].chrnum < 23 && !in_centrome(vec_sv[i])) // chr X and Y calling not supported yet
 		{
 			SvGeno G(n_sample);
 			SvData D(n_sample);
@@ -181,11 +181,10 @@ int main_genotype(int argc, char** argv)
 			std::vector<ReadStat> rdstats (n_sample);
 			reader.read_pair_split(vec_sv[i], D.rdstats, gc);
 
-			
 			if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
 			{
-				reader.read_depth100(vec_sv[i], D.dp2, gc, b_dumpstat);
-				reader.read_var_depth(i, D.var_depth);
+                reader.read_var_depth(i, D.var_depth);
+				reader.read_depth100(vec_sv[i], D.dp2, D.var_depth, gc, b_dumpstat);
 			}
 			
 			for(int j=0; j<n_sample; ++j)

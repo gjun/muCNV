@@ -317,6 +317,10 @@ bool in_centrome(sv &S)
         return true;
     if (S.end >= centro[S.chrnum-1][0] && S.end <= centro[S.chrnum-1][1])
         return true;
+    if (S.pos <= centro[S.chrnum-1][0] && S.end >= centro[S.chrnum-1][0])
+        return true;
+    if (S.pos <= centro[S.chrnum-1][1] && S.end >= centro[S.chrnum-1][1])
+        return true;
     //  if (S.chrnum == 7  && S.pos >= hetero[0] && S.pos <= hetero[1]+1000000)
     //      return true;
     //  if (S.chrnum == 7  && S.end >= hetero[0] && S.end <= hetero[1])
