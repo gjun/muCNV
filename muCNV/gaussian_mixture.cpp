@@ -322,7 +322,7 @@ int GaussianMixture::assign_copynumber(double x)
         return -1;
     }
     
-    if (max_R >= 0.2)
+    if (max_R > 0.1)
     {
         return -1;
     }
@@ -766,14 +766,11 @@ int GaussianMixture2::assign_copynumber(double x, double y)
     
     if (ret != up && ret != down)
     {
-//		std::cerr << std::endl << "ret " << ret << " up " << up << " down " << down << std::endl;
-//		std::cerr << "x " << x << " y " << y << std::endl;
         return -1;
     }
     
-    if (max_R > 0.5)
+    if (max_R > 0.1) 
     {
-//		std::cerr << "max_R" << max_R <<  std::endl;
         return -1;
     }
     

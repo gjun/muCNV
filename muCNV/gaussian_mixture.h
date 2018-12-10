@@ -9,8 +9,6 @@
 #ifndef gaussian_mixture_h
 #define gaussian_mixture_h
 
-#define MAX_P_OVERLAP 0.2
-
 #include <stdio.h>
 #include <vector>
 #include "gaussian.h"

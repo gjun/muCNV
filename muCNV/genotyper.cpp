@@ -82,7 +82,7 @@ void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vect
         std::vector<double> s (means[m].size(), 0.01);
         GaussianMixture2 gmix2(means[m], s);
         gmix2.KM2(x, y); // fit mixture model
-        if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP)
+        if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP * 2)
         {
             best_bic = gmix2.bic;
             ret_gmix2 = gmix2; // assignment (copy operation)
@@ -91,9 +91,10 @@ void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vect
     return;
 }
 
-void Genotyper::call(sv &S, SvData &D, SvGeno &G)
+void Genotyper::call(sv &S, SvData &D, SvGeno &G, double p)
 {
 	n_sample = D.n_sample;
+	MAX_P_OVERLAP = p;
 
     if (S.svtype == DEL)
         call_deletion(S, D, G);

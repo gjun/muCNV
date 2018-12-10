@@ -56,6 +56,7 @@ int main_genotype(int argc, char** argv)
     string sampID;
     string region;
     string range;
+	double max_p;
     bool b_dumpstat;
     
     // Parsing command-line arguments
@@ -73,6 +74,8 @@ int main_genotype(int argc, char** argv)
 
         TCLAP::ValueArg<string> argRegion("r", "region", "Genotype specific genomic region", false, "", "chr:startpos-endpos" );
 
+        TCLAP::ValueArg<double> argPoverlap("p","pmax","Maximum overlap between depth clusters",false,0.2,"number(0-1)");
+
         TCLAP::SwitchArg switchFail("a", "all", "Report filter failed variants", cmd, false);
         TCLAP::SwitchArg switchDumpstat("d", "dumpstat", "dump detailed statistics of variants (warning: large output)", cmd, false);
         TCLAP::SwitchArg switchNoHeader("l", "lessheader", "Do not print header in genoptyed VCF", cmd, false);
@@ -84,6 +87,7 @@ int main_genotype(int argc, char** argv)
         cmd.add(argIndex);
         cmd.add(argRegion);
         cmd.add(argRange);
+		cmd.add(argPoverlap);
         cmd.parse(argc, argv);
         
         range = argRange.getValue();
@@ -94,6 +98,7 @@ int main_genotype(int argc, char** argv)
         gc_file = argGcfile.getValue();
         bNoHeader = switchNoHeader.getValue();
         bFail = switchFail.getValue();
+		max_p = argPoverlap.getValue();
         b_dumpstat = switchDumpstat.getValue();
 
         region = argRegion.getValue();
@@ -197,7 +202,7 @@ int main_genotype(int argc, char** argv)
 				write_varstat(vec_sv[i], stats, D.rdstats, D.var_depth);
 			}
 			
-			gtyper.call(vec_sv[i], D, G);
+			gtyper.call(vec_sv[i], D, G, max_p);
 			G.info = "var" + std::to_string(i);
 
 			if (bFail || G.b_pass)

@@ -141,7 +141,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 		{
 			fprintf(fp, ":%d:%d", D.rdstats[i].n_pre_FF + D.rdstats[i].n_post_RR, D.rdstats[i].n_pre_split_out + D.rdstats[i].n_post_split_out + D.rdstats[i].n_pre_split_in + D.rdstats[i].n_pre_split_out);
 		}
-		else if (S.svtype == INV)
+		else if (S.svtype == INS)
 		{
 			fprintf(fp, ":%d:%d", D.rdstats[i].n_pre_INS, D.rdstats[i].n_pre_sp_missing);
 		}

@@ -55,12 +55,13 @@ class Genotyper
 {
 public:
     int n_sample;
-    void call( sv&,  SvData&, SvGeno &);
+    void call( sv&,  SvData&, SvGeno &, double);
     void call_deletion( sv &,  SvData &, SvGeno &);
     void call_cnv( sv &,  SvData &, SvGeno &);
     void call_inversion(sv &, SvData &, SvGeno &);
     void select_model(GaussianMixture &, std::vector< std::vector<double> > &, std::vector<double> &);
     void select_model(GaussianMixture2 &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<double>&);
+	double MAX_P_OVERLAP;
 
     std::string print(sv &, SvData&, SvGeno&);
 };
