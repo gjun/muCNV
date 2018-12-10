@@ -253,14 +253,17 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 					G.gt[i] = 0;
 				}
 			}
-			if (G.gt[i] >=0)
-			{
-				G.ns += 1;
-				G.ac += G.gt[i];
-			}
+
 		}
 	}
-
+    for(int i=0; i<n_sample; ++i)
+    {
+        if (G.gt[i] >=0)
+        {
+            G.ns += 1;
+            G.ac += G.gt[i];
+        }
+    }
 	double callrate = (double)G.ns / n_sample;
 
     if ((G.dp_flag || G.dp2_flag || G.read_flag ) && callrate>0.5 && G.ac > 0)

@@ -71,8 +71,8 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-n 466307-466307"
-            isEnabled = "NO">
+            argument = "-n 1021-1021"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-V /Users/gjun/data/pileup/selected.sites.withXY.interval"
