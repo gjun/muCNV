@@ -119,7 +119,8 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 		for(int i=0; i<n_sample; ++i)
 		{
 			int cn = G.gmix.assign_copynumber(D.var_depth[i]);
-			if (cn == 2)
+ 
+            if (cn == 2)
 			{
 				G.cn[i] = 2;
 				G.gt[i] = 0; // 0/0
@@ -245,19 +246,32 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     
     std::vector< std::vector<double> > means = { {1.0}, {1.0, 1.5}, {1.0, 1.5, 2.0}, {1.0, 1.5, 2.0, 2.5}, {1.0, 1.5, 2.0, 2.5, 3.0}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0} };
     
-
+    std::vector<int> dp_cn (n_sample, -1);
+    std::vector<int> dp2_cn (n_sample, -1);
 
 	select_model(G.gmix, means, D.var_depth);
 	
-	if (G.gmix.n_comp > 1)
+
+    int dp_ns = 0;
+    int dp2_ns = 0;
+    
+    if (G.gmix.n_comp > 1)
 	{
 		// success
 		G.dp_flag = true;
 		// assign genotypes
 
 		for(int i=0; i<(int)n_sample; ++i)
-			G.cn[i] = G.gmix.assign_copynumber(D.var_depth[i]);
-  
+        {
+            int cn = G.gmix.assign_copynumber(D.var_depth[i]);
+            
+            if (cn >=0 )
+            {
+                G.cn[i] = cn;
+                dp_ns++;
+            }
+        }
+
 	}
 
     if (D.dp2.size()>1)
@@ -276,9 +290,27 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             G.dp2_flag = true;
             //assign dp2 genotypes
             for(int i=0; i<(int)n_sample; ++i)
-                G.cn[i] = G.gmix2.assign_copynumber(D.dp2[dp2_idx][i], D.dp2[dp2_idx+1][i]);
+            {
+                int cn = G.gmix2.assign_copynumber(D.dp2[dp2_idx][i], D.dp2[dp2_idx+1][i]);
+                
+                if (cn >=0 )
+                {
+                    G.cn[i] = cn;
+                    dp2_ns++;
+                }
+            }
         }
     }
+//    if (dp2_ns > dp_ns)
+//    {
+//        for(int i=0; i<n_sample; ++i)
+//            G.cn[i] = dp2_cn[i];
+//    }
+//    else
+//    {
+//        for(int i=0; i<n_sample; ++i)
+//            G.cn[i] = dp_cn[i];
+//    }
 
 	    // Readpair genotyping
     for(int i=0; i<n_sample; ++i)
@@ -315,10 +347,9 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                     G.cn[i] = round(D.var_depth[i] * 2.0);
             }
         }
-        if (G.gt[i] >=0)
+        if (G.cn[i] >=0)
         {
             G.ns += 1;
-            G.ac += G.gt[i];
         }
     }
     
@@ -348,15 +379,32 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             if (G.cn[i] == 2)
                 G.gt[i] = 0; // 0/0
             else if (G.cn[i] == 3)
+            {
                 G.gt[i] = 1; // 0/1
+                G.ac++;
+            }
             else if (G.cn[i] == 4)
-                G.gt[i] = 0; // 1/1
+            {
+                G.gt[i] = 2; // 1/1
+                G.ac+=2;
+            }
+        }
+    }
+    else
+    {
+        for(int i=0; i<n_sample; ++i)
+        {
+            if (G.cn[i]>2)
+            {
+                G.gt[i] = 1; // need to encode CN2, CN3, CN4 ...
+                G.ac++;
+            }
         }
     }
 
 	double callrate = G.ns / n_sample;
 
-    if ((G.dp_flag || G.dp2_flag || G.read_flag ) && callrate>0.5 && G.ac > 0)
+    if ((G.dp_flag || G.dp2_flag || G.read_flag ) && callrate>0.5 && G.ac>0)
         G.b_pass = true;
 }
 

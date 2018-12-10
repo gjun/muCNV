@@ -188,6 +188,8 @@ void GaussianMixture::KM(std::vector<double>& x)
     
     // pseudo-counts
     int p_count= 5;
+    double p_val[n_comp];
+
     
     if (n_comp == 1)
     {
@@ -199,7 +201,12 @@ void GaussianMixture::KM(std::vector<double>& x)
     }
 
     std::vector<double> member (n_sample, 0);
-
+    
+    for(int i=0; i<n_comp; ++i)
+    {
+        p_val[i] = Comps[i].Mean;
+    }
+    
     for(int i=0; i<n_iter; ++i)
     {
 
@@ -229,7 +236,7 @@ void GaussianMixture::KM(std::vector<double>& x)
         // Update means
         for(int m=0;m<n_comp;++m)
         {
-            Comps[m].Mean = sum_x[m] / cnt[m];
+            Comps[m].Mean = (sum_x[m] + p_val[m]*p_count)/ (cnt[m] + p_count);
         }
         //print();
 
@@ -456,7 +463,8 @@ void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y)
     
     // pseudo-counts
     int p_count= 5;
-    
+    double p_val[n_comp][2];
+
     if (n_comp == 1)
     {
         Comps[0].estimate(x, y);
@@ -500,8 +508,8 @@ void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y)
         // Update means
         for(int m=0;m<n_comp;++m)
         {
-            Comps[m].Mean[0] = sum_x[m] / cnt[m];
-            Comps[m].Mean[1] = sum_y[m] / cnt[m];
+            Comps[m].Mean[0] = (sum_x[m] + p_val[m][0]*p_count )/ (cnt[m] + p_count);
+            Comps[m].Mean[1] = (sum_y[m] + p_val[m][1]*p_count )/ (cnt[m] + p_count);
         }
         //print();
 

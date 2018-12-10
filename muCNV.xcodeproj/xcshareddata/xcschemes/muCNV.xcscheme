@@ -67,11 +67,15 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-n 466307-466307"
+            argument = "-o /Users/gjun/data/pileup/output.vcf"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-V /Users/gjun/data/vcf/35K.merged.withXY.interval"
+            argument = "-n 466307-466307"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-V /Users/gjun/data/pileup/selected.sites.withXY.interval"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
