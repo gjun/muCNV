@@ -165,13 +165,12 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 		}
 	}
 
-	if (D.dp2.size()>1) //dp2 has more than 2 vectors
+	if (D.dp2.size()>2) //dp2 has more than 2 vectors
 	{
 		// DP100 genotyping
-
-		int dp2_idx = 0;
-		if (D.dp2.size()==4)
-			dp2_idx = 1;
+		int dp2_idx = 2;
+		if (D.dp2.size()==6)
+			dp2_idx = 4;
 
 		select_model(G.gmix2, means, D.dp2[dp2_idx], D.dp2[dp2_idx+1]);
 
@@ -301,12 +300,12 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 
 	}
 
-    if (D.dp2.size()>1)
+    if (D.dp2.size()>2)
     {
         // DP100 genotyping
-        int dp2_idx = 0;
-        if (D.dp2.size()==4)
-            dp2_idx = 1;
+        int dp2_idx = 2;
+        if (D.dp2.size()==6)
+            dp2_idx = 4;
         
         select_model(G.gmix2, means, D.dp2[dp2_idx], D.dp2[dp2_idx+1]);
         
