@@ -125,7 +125,7 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G)
     
     double callrate = (double)G.ns / n_sample;
     
-    if (callrate>0.5 && G.ac > 0)
+    if (callrate>0.5 && G.ac > 0 && G.ac < (G.ns*2))
         G.b_pass = true;
 }
 
@@ -266,7 +266,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     }
 	double callrate = (double)G.ns / n_sample;
 
-    if ((G.dp_flag || G.dp2_flag || G.read_flag ) && callrate>0.5 && G.ac > 0)
+    if ((G.dp_flag || G.dp2_flag || G.read_flag ) && callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
         G.b_pass = true;
 }
 
