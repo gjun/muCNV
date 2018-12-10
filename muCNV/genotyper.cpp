@@ -99,7 +99,33 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G)
         call_deletion(S, D, G);
     else if (S.svtype == DUP || S.svtype == CNV)
         call_cnv(S, D, G);
+    else if (S.svtype == INV)
+        call_inversion(S, D, G);
     // TODO: inversion and insertion
+}
+
+void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G)
+{
+    for(int i=0; i<n_sample; ++i)
+    {
+        if (D.rdstats[i].sv_support() == INV)
+        {
+            G.read_flag = true;
+            G.gt[i] = 1;
+            G.ac ++;
+            G.ns ++;
+        }
+        else if (D.rdstats[i].n_pre_FF == 0 && D.rdstats[i].n_post_RR == 0)
+        {
+            G.gt[i] = 0;
+            G.ns ++;
+        }
+    }
+    
+    double callrate = (double)G.ns / n_sample;
+    
+    if (callrate>0.5 && G.ac > 0)
+        G.b_pass = true;
 }
 
 void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
