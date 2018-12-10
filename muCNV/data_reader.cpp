@@ -264,21 +264,23 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
         }
         
         std::vector<unsigned> gc_sum (n_samples[i], 0);
+		std::vector<int> gc_n (n_samples[i], 0);
         
         for(int j=0; j<n_dp; ++j)
         {
             for(int k=0; k<n_samples[i]; ++k)
             {
-                D[j*n_samples[i] + k] = (uint16_t) correct_gc(gc, i, (double)D[j*n_samples[i] + k], curr_sv.chrnum, (startpos + 50 + j*100) );
+                D[j*n_samples[i] + k] = (uint16_t) correct_gc(gc, sample_idx+k, (double)D[j*n_samples[i] + k], curr_sv.chrnum, (startpos + 50 + j*100) );
                 if (j>=n_inside_start && j<n_inside_end)
                 {
                     gc_sum[k] += D[j*n_samples[i] + k];
+					gc_n[k] ++;
                 }
             }
         }
         for(int k=0; k<n_samples[i]; ++k)
         {
-            var_dp[k] = (double) gc_sum[k] / (n_inside_end - n_inside_start) / 32.0;
+            var_dp[k] = (double) gc_sum[k] / gc_n[k] / 32.0;
         }
         // now do median filtering
         if (b_medfilt)

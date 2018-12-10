@@ -93,7 +93,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
     if (G.dp2_flag)
 	{
         fprintf(fp, ";DP2=(%.2f,%.2f:%.2f,%.2f:%.2f", G.gmix2.Comps[0].Mean[0], G.gmix2.Comps[0].Mean[1], G.gmix2.Comps[0].Cov[0], G.gmix2.Comps[0].Cov[3], G.gmix2.Comps[0].Alpha);
-		for(int j=1;j<G.gmix.n_comp;++j)
+		for(int j=1;j<G.gmix2.n_comp;++j)
 		{
 			fprintf(fp, "::%.2f,%.2f:%.2f,%.2f:%.2f", G.gmix2.Comps[j].Mean[0], G.gmix2.Comps[j].Mean[1], G.gmix2.Comps[j].Cov[0], G.gmix2.Comps[j].Cov[3], G.gmix2.Comps[j].Alpha);
 		}
@@ -135,7 +135,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 		}
 		else if (S.svtype == DUP || S.svtype==CNV)
 		{
-			fprintf(fp, ":%d:%d", D.rdstats[i].n_pre_FR + D.rdstats[i].n_post_FR, D.rdstats[i].n_pre_split_out + D.rdstats[i].n_post_split_out);
+			fprintf(fp, ":%d:%d", D.rdstats[i].n_pre_RF + D.rdstats[i].n_post_RF, D.rdstats[i].n_pre_split_in + D.rdstats[i].n_post_split_in);
 		}
 		else if (S.svtype == INV)
 		{
