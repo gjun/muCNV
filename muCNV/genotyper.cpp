@@ -276,12 +276,10 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     std::vector<int> dp_cn (n_sample, -1);
     std::vector<int> dp2_cn (n_sample, -1);
 
-	select_model(G.gmix, means, D.var_depth);
-	
-
     int dp_ns = 0;
     int dp2_ns = 0;
     
+	select_model(G.gmix, means, D.var_depth);
     if (G.gmix.n_comp > 1)
 	{
 		// success
@@ -290,12 +288,11 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 
 		for(int i=0; i<(int)n_sample; ++i)
         {
-            int cn = G.gmix.assign_copynumber(D.var_depth[i]);
+            dp_cn[i] = G.gmix.assign_copynumber(D.var_depth[i]);
             
-            if (cn >=0 )
+            if (dp_cn[i] >=0 )
             {
-                G.cn[i] = cn;
-                dp_ns++;
+				dp_ns ++;
             }
         }
 
@@ -318,26 +315,26 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             //assign dp2 genotypes
             for(int i=0; i<(int)n_sample; ++i)
             {
-                int cn = G.gmix2.assign_copynumber(D.dp2[dp2_idx][i], D.dp2[dp2_idx+1][i]);
+                dp2_cn[i] = G.gmix2.assign_copynumber(D.dp2[dp2_idx][i], D.dp2[dp2_idx+1][i]);
                 
-                if (cn >=0 )
+                if (dp2_cn[i] >=0 )
                 {
-                    G.cn[i] = cn;
                     dp2_ns++;
                 }
             }
         }
     }
-//    if (dp2_ns > dp_ns)
-//    {
-//        for(int i=0; i<n_sample; ++i)
-//            G.cn[i] = dp2_cn[i];
-//    }
-//    else
-//    {
-//        for(int i=0; i<n_sample; ++i)
-//            G.cn[i] = dp_cn[i];
-//    }
+
+    if (dp2_ns > dp_ns)
+    {
+        for(int i=0; i<n_sample; ++i)
+            G.cn[i] = dp2_cn[i];
+    }
+    else
+    {
+        for(int i=0; i<n_sample; ++i)
+            G.cn[i] = dp_cn[i];
+    }
 
 	    // Readpair genotyping
     for(int i=0; i<n_sample; ++i)

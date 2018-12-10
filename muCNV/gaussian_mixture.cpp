@@ -187,7 +187,7 @@ void GaussianMixture::KM(std::vector<double>& x)
     int n_iter = 15;
     
     // pseudo-counts
-    int p_count= 5;
+    int p_count= 10;
     double p_val[n_comp];
 
     
@@ -462,7 +462,7 @@ void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y)
     int n_iter = 15;
     
     // pseudo-counts
-    int p_count= 5;
+    int p_count= 10;
     double p_val[n_comp][2];
 
     if (n_comp == 1)
@@ -474,6 +474,11 @@ void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y)
         return;
     }
 
+    for(int i=0; i<n_comp; ++i)
+    {
+        p_val[i][0] = Comps[i].Mean[0];
+        p_val[i][1] = Comps[i].Mean[1];
+    }
     std::vector<double> member (n_sample, 0);
 
     for(int i=0; i<n_iter; ++i)

@@ -21,7 +21,7 @@ svType ReadStat::sv_support()
     {
         b_del = true;
     }
-    if (n_pre_RF + n_post_RF + n_pre_split_in + n_post_split_in > 10) // likely to be duplication or CNV
+    if (n_pre_RF + n_post_RF + n_pre_split_in + n_post_split_in > 5) // likely to be duplication or CNV
     {
         b_dup = true;
     }
