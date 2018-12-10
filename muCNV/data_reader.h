@@ -38,9 +38,16 @@ public:
 	int n_pre_split_in; // left clipped
 	int n_post_split_out; // right clipped
 	int n_post_split_in; // left clipped
+    int n_pre_clip_in;
+    int n_pre_clip_out;
+    int n_post_clip_in;
+    int n_post_clip_out;
 
  
-    svType sv_support();
+    bool del_support();
+    bool dup_support();
+    bool inv_support();
+    bool ins_support();
     
 	ReadStat() 
 	{
@@ -61,6 +68,10 @@ public:
 		n_pre_split_in = 0;
 		n_post_split_out = 0;
 		n_post_split_in = 0;
+        n_pre_clip_in = 0;
+        n_pre_clip_out = 0;
+        n_post_clip_in = 0;
+        n_post_clip_out = 0;
     }
 };
 

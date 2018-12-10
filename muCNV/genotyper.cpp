@@ -109,7 +109,7 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G)
 {
     for(int i=0; i<n_sample; ++i)
     {
-        if (D.rdstats[i].sv_support() == INV)
+        if (D.rdstats[i].inv_support())
         {
             G.read_flag = true;
             G.gt[i] = 1;
@@ -210,7 +210,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 		{
 			if (G.dp_flag || G.dp2_flag)
 			{
-				if (D.rdstats[i].sv_support() == DEL)
+				if (D.rdstats[i].del_support())
 				{
 					G.read_flag = true;
 					if (D.var_depth[i] > 0.25 && D.var_depth[i] < 0.65 && G.gt[i]== -1) // TEMPORARY
@@ -232,7 +232,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 			}
 			else
 			{
-				if (D.rdstats[i].sv_support() == DEL)
+				if (D.rdstats[i].del_support())
 				{
 					G.read_flag = true;
 					if (D.var_depth[i] > 0.25 && D.var_depth[i] < 0.65) // TEMPORARY
@@ -343,7 +343,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     {
         if (G.dp_flag || G.dp2_flag)
         {
-            if (D.rdstats[i].sv_support() == DUP)
+            if (D.rdstats[i].dup_support())
             {
                 G.read_flag = true;
                 if (D.var_depth[i] > 1.35 && D.var_depth[i] < 1.75 && G.cn[i]== -1) // TEMPORARY
@@ -362,11 +362,11 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         }
         else
         {
-            if (D.rdstats[i].sv_support() != DUP &&  D.var_depth[i] > 0.75 && D.var_depth[i] <= 1.35)
+            if (!D.rdstats[i].dup_support() &&  D.var_depth[i] > 0.75 && D.var_depth[i] <= 1.35)
             {
                 G.cn[i] = 2;
             }
-            else if (D.rdstats[i].sv_support() == DUP)
+            else if (D.rdstats[i].dup_support())
             {
                 G.read_flag = true;
                 if (D.var_depth[i] > 1.35)

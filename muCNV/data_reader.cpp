@@ -10,49 +10,58 @@
 #include <math.h>
 #include <algorithm>
 
-svType ReadStat::sv_support()
+bool ReadStat::del_support()
 {
-    bool b_del = false;
-    bool b_dup = false;
-    bool b_inv = false;
-    bool b_ins = false;
+    int rp_cnt = n_pre_FR + n_post_FR;
+    int sp_cnt = n_pre_split_in + n_post_split_in;
+    int clip_cnt = n_pre_clip_in + n_post_clip_in;
     
-    if (n_pre_FR + n_post_FR + n_pre_split_out + n_post_split_out > 10) // likely to be deletion, TODO: these cut-offs are arbitrary
-    {
-        b_del = true;
-    }
-    if (n_pre_RF + n_post_RF + n_pre_split_in + n_post_split_in > 5) // likely to be duplication or CNV
-    {
-        b_dup = true;
-    }
-    if (n_pre_FF + n_post_RR > 6 ) // likely to be duplication or CNV
-    {
-        if (n_pre_FF + n_post_RR + n_pre_split_out + n_pre_split_in + n_post_split_out + n_post_split_in > 10)
-            b_inv = true;
-    }
+    if (rp_cnt > 6  && rp_cnt + sp_cnt + clip_cnt > 10)
+        return true;
+    else if (sp_cnt > 6 && rp_cnt + sp_cnt + clip_cnt > 10)
+        return true;
+    else if (sp_cnt + rp_cnt + clip_cnt > 15)
+        return true;
     
-    if (n_pre_INS + n_pre_rp_missing  + n_pre_sp_missing > 10)
-    {
-        b_ins = true;
-    }
+    return false;
+}
+bool ReadStat::dup_support()
+{
+    int rp_cnt = n_pre_RF + n_post_RF;
+    int sp_cnt = n_pre_split_out + n_post_split_out;
+    int clip_cnt = n_pre_clip_out + n_post_clip_out;
     
-    if (b_del && !b_dup && !b_inv)
-    {
-        return DEL;
-    }
-    else if (b_dup && !b_del && !b_inv)
-    {
-        return DUP;
-    }
-    else if (b_inv && !b_del && !b_dup)
-    {
-        return INV;
-    }
-    else if (b_ins)
-    {
-        return INS;
-    }
-    return BND;
+    if (rp_cnt > 6  && rp_cnt + sp_cnt + clip_cnt > 10)
+        return true;
+    else if (sp_cnt > 6 && rp_cnt + sp_cnt + clip_cnt > 10)
+        return true;
+    else if (sp_cnt + rp_cnt + clip_cnt > 15)
+        return true;
+    
+    return false;
+}
+
+bool ReadStat::inv_support()
+{
+    int rp_cnt = n_pre_FF + n_post_RR;
+    
+    // inversion can have both in and out clipping
+    int sp_cnt = n_pre_split_out + n_post_split_out + n_pre_split_in + n_post_split_in;
+    int clip_cnt = n_pre_clip_in + n_pre_clip_out + n_post_clip_in + n_post_clip_out;
+    
+    if (rp_cnt > 6 && rp_cnt+sp_cnt+clip_cnt>10)
+        return true;
+
+    return false;
+}
+
+bool ReadStat::ins_support()
+{
+    if (n_pre_INS > 3 && n_pre_INS + n_pre_clip_in + n_post_clip_in + n_pre_sp_missing > 10)
+        return true;
+    if (n_pre_INS + n_pre_rp_missing + n_pre_clip_in + n_post_clip_in + n_pre_sp_missing > 10 && !del_support() && !dup_support() && !inv_support())
+        return true;
+    return false;
 }
 
 void median_filter(uint16_t* D, uint16_t* D_filt, int n_sample, int n_dp)
@@ -329,17 +338,6 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
 			pileups[i].seekg(start_byte);
 			pileups[i].read_depth(D, n_dp_by_sample);
             
-            std::vector< std::vector<uint16_t>> TD;
-            TD.resize(n_dp);
-            
-            for(int j=0; j<n_dp; ++j)
-            {
-                TD[j].resize(n_samples[i]);
-                for(int k=0; k<n_samples[i]; ++k)
-                {
-                    TD[j][k] = D[j*n_samples[i] + k];
-                }
-            }
 			std::vector<unsigned> gc_sum (n_samples[i], 0);
 						
 			for(int j=0; j<n_dp; ++j)
@@ -398,7 +396,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
 					}
 				}
 				for(int m=0; m<n_samples[i]; ++m)
-					dvec_dp[k][m+sample_idx] = (double)dp_sum[m]/dp_cnt[m]/32.0 ;
+					dvec_dp[k+2][m+sample_idx] = (double)dp_sum[m]/dp_cnt[m]/32.0 ;
 			}
             
 			sample_idx += n_samples[i];
@@ -458,7 +456,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
 				}
 
 				for(int m=0; m<n_samples[i]; ++m)
-					dvec_dp[seg][m+sample_idx] = (double)dp_sum[m]/n_dp/32.0;
+					dvec_dp[seg+2][m+sample_idx] = (double)dp_sum[m]/n_dp/32.0;
 
 			} // seg : 4
 
@@ -599,6 +597,14 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                             }
 
                         }
+                        else if (sp.firstclip < 0 )
+                        {
+                            rdstats[sample_idx+k].n_pre_clip_in ++;
+                        }
+                        else if (sp.firstclip > 0 )
+                        {
+                            rdstats[sample_idx+k].n_pre_clip_out ++;
+                        }
                         else if (sp.sapos == 0)
                         {
                             rdstats[sample_idx+k].n_pre_sp_missing ++;
@@ -623,6 +629,14 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                                     rdstats[sample_idx+k].n_pre_split_in ++;
                                 }
                             }
+                        }
+                        else if (sp.firstclip > 0 )
+                        {
+                            rdstats[sample_idx+k].n_post_clip_in ++;
+                        }
+                        else if (sp.firstclip < 0 )
+                        {
+                            rdstats[sample_idx+k].n_post_clip_out ++;
                         }
                         else if (sp.sapos == 0)
                         {
