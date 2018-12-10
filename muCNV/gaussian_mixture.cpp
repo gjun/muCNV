@@ -62,7 +62,7 @@ void GaussianMixture::EM(std::vector<double>& x)
     int n_sample = (int) x.size();
     int n_iter = 10;
     
-    int p_count= 1;
+    int p_count= 10;
     double p_val[n_comp];
     
     if (n_comp == 1)
@@ -219,8 +219,8 @@ void GaussianMixture::KM(std::vector<double>& x)
             double min_dist = DBL_MAX;
             for(int m=0; m<n_comp; ++m)
             {
-       //         double dist = abs(x[j] - Comps[m].Mean);
-                double dist = abs(x[j]-Comps[m].Mean)/Comps[m].Stdev;
+               double dist = abs(x[j] - Comps[m].Mean);
+//                double dist = abs(x[j]-Comps[m].Mean)/Comps[m].Stdev;
                 if (dist < min_dist)
                 {
                     min_dist = dist;
@@ -457,8 +457,6 @@ GaussianMixture2& GaussianMixture2::operator = (const GaussianMixture2& gmix)
 // 2-D EM for general without weights
 void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y)
 {
-    // Let's not consider half-normal distribution -- for now
-    
     int n_sample = (int) x.size();
     int n_iter = 15;
     
@@ -497,9 +495,9 @@ void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y)
             {
                 double dx = (x[j] - Comps[m].Mean[0]);
                 double dy = (y[j] - Comps[m].Mean[1]);
-//                double dist = dx*dx + dy*dy;
+              double dist = dx*dx + dy*dy;
                 // Mahalanobis dist
-                double dist = (dx * Comps[m].Prc[0] + dy * Comps[m].Prc[2]) * dx + (dx * Comps[m].Prc[1] + dy * Comps[m].Prc[3]) * dy;
+           //     double dist = (dx * Comps[m].Prc[0] + dy * Comps[m].Prc[2]) * dx + (dx * Comps[m].Prc[1] + dy * Comps[m].Prc[3]) * dy;
                 if (dist < min_dist)
                 {
                     min_dist = dist;
@@ -578,7 +576,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
     int n_iter = 20;
     
     // pseudo-counts
-    int p_count= 5;
+    int p_count= 10;
     double p_val[n_comp][2];
     
     if (n_comp == 1)

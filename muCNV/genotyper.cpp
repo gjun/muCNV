@@ -62,7 +62,7 @@ void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector
     {
         std::vector<double> s (means[m].size(), 0.1);
         GaussianMixture gmix(means[m], s);
-        gmix.EM(x); // fit mixture model
+        gmix.KM(x); // fit mixture model
         if (gmix.bic < best_bic && gmix.p_overlap < MAX_P_OVERLAP)
         {
             best_bic = gmix.bic;
@@ -81,8 +81,8 @@ void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vect
     {
         std::vector<double> s (means[m].size(), 0.01);
         GaussianMixture2 gmix2(means[m], s);
-        gmix2.EM2(x, y); // fit mixture model
-        if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP * 2)
+        gmix2.KM2(x, y); // fit mixture model
+        if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP )
         {
             best_bic = gmix2.bic;
             ret_gmix2 = gmix2; // assignment (copy operation)
@@ -353,7 +353,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                     G.cn[i] = round(D.var_depth[i] * 2.0);
                 }
             }
-			else if (D.var_depth[i] > 0.9 && D.var_depth[i] < 1.1 && G.cn[i]== -1)
+			else if (D.var_depth[i] > 0.8 && D.var_depth[i] < 1.2 && G.cn[i]== -1)
 			{
 				G.cn[i] = 2.0;
 			}
@@ -396,39 +396,23 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     else
         G.b_biallelic = false;
     
-    if (G.b_biallelic)
-    {
-        for(int i=0; i<n_sample; ++i)
-        {
-            if (G.cn[i] == 2)
-                G.gt[i] = 0; // 0/0
-            else if (G.cn[i] == 3)
-            {
-                G.gt[i] = 1; // 0/1
-                G.ac++;
-            }
-            else if (G.cn[i] == 4)
-            {
-                G.gt[i] = 2; // 1/1
-                G.ac+=2;
-            }
-        }
-    }
-    else
-    {
-        for(int i=0; i<n_sample; ++i)
-        {
-			if (G.cn[i] ==2)
-			{
-				G.gt[i] = 0;
-			}
-            if (G.cn[i]>2)
-            {
-                G.gt[i] = 1; // TODO: encode CN2, CN3, CN4 ...
-                G.ac++;
-            }
-        }
-    }
+	for(int i=0; i<n_sample; ++i)
+	{
+		if (G.cn[i] == 2)
+		{
+			G.gt[i] = 0; // 0/0
+		}
+		else if (G.cn[i] == 3)
+		{
+			G.gt[i] = 1; // 0/1
+			G.ac++;
+		}
+		else if (G.cn[i] >3)
+		{
+			G.gt[i] = 2; // 1/1
+			G.ac+=2;
+		}
+	}
 
 	double callrate = (double)G.ns / n_sample;
 
