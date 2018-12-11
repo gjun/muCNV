@@ -6,17 +6,17 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            shouldBeEnabled = "No"
+            shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "muCNV/bamcram.cpp"
-            timestampString = "560903211.336521"
+            filePath = "muCNV/genotyper.cpp"
+            timestampString = "566160010.540679"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "189"
-            endingLineNumber = "189"
-            landmarkName = "read_bam(void *data, bam1_t *b)"
-            landmarkType = "9">
+            startingLineNumber = "431"
+            endingLineNumber = "431"
+            landmarkName = "Genotyper::print(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -25,14 +25,14 @@
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "muCNV/bamcram.cpp"
-            timestampString = "560903211.3370709"
+            filePath = "muCNV/genotyper.cpp"
+            timestampString = "566160010.541157"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "192"
-            endingLineNumber = "192"
-            landmarkName = "read_bam(void *data, bam1_t *b)"
-            landmarkType = "9">
+            startingLineNumber = "264"
+            endingLineNumber = "264"
+            landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

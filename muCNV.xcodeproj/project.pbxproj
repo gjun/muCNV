@@ -7,19 +7,29 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F114FEA7203B7D5100DE1FBC /* gtype_old.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F114FEA5203B7D5100DE1FBC /* gtype_old.cpp */; };
 		F119BC73216EB0FD000F1724 /* libhts.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F129E10D1EF90129007793FB /* libhts.a */; };
-		F13828731FCF36CC003ADE67 /* bamcram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F13828721FCF36CC003ADE67 /* bamcram.cpp */; };
+		F13828731FCF36CC003ADE67 /* bam_cram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F13828721FCF36CC003ADE67 /* bam_cram.cpp */; };
 		F138FD7D1CAD744A00CD5539 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD7C1CAD744A00CD5539 /* main.cpp */; };
 		F138FD8B1CAD74EE00CD5539 /* cluster.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD831CAD74EE00CD5539 /* cluster.cpp */; };
 		F138FD8C1CAD74EE00CD5539 /* common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD841CAD74EE00CD5539 /* common.cpp */; };
 		F138FD8F1CAD74EE00CD5539 /* Error.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD871CAD74EE00CD5539 /* Error.cpp */; };
-		F138FD901CAD74EE00CD5539 /* File.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD891CAD74EE00CD5539 /* File.cpp */; };
-		F194ED351F25A41400489E0C /* gtype.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED341F25A41400489E0C /* gtype.cpp */; };
+		F138FD901CAD74EE00CD5539 /* in_vcf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F138FD891CAD74EE00CD5539 /* in_vcf.cpp */; };
+		F194ED351F25A41400489E0C /* genotyper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED341F25A41400489E0C /* genotyper.cpp */; };
 		F194ED371F25B3C900489E0C /* sv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED361F25B3C900489E0C /* sv.cpp */; };
-		F194ED391F2623BB00489E0C /* vcf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED381F2623BB00489E0C /* vcf.cpp */; };
-		F194ED3B1F2708CC00489E0C /* Gaussian.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED3A1F2708CC00489E0C /* Gaussian.cpp */; };
-		F1FE1D90214F710F005673D3 /* gcContent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FE1D8F214F710F005673D3 /* gcContent.cpp */; };
+		F194ED391F2623BB00489E0C /* out_vcf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED381F2623BB00489E0C /* out_vcf.cpp */; };
+		F194ED3B1F2708CC00489E0C /* gaussian.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F194ED3A1F2708CC00489E0C /* gaussian.cpp */; };
+		F1DB7AD6219B7D7500CCA521 /* pileup.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1DB7AD5219B7D7500CCA521 /* pileup.cpp */; };
+		F1FE1D90214F710F005673D3 /* gc_content.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FE1D8F214F710F005673D3 /* gc_content.cpp */; };
+		F1FEF25621A79495007EF4D7 /* main_pileup.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FEF25521A79495007EF4D7 /* main_pileup.cpp */; };
+		F1FEF25821A796E3007EF4D7 /* main_vcf_to_int.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FEF25721A796E3007EF4D7 /* main_vcf_to_int.cpp */; };
+		F1FEF25A21A8A8ED007EF4D7 /* main_genotype.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FEF25921A8A8ED007EF4D7 /* main_genotype.cpp */; };
+		F1FEF25D21A8ABAE007EF4D7 /* main_print_pileup.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FEF25B21A8ABAE007EF4D7 /* main_print_pileup.cpp */; };
+		F1FEF25F21A9D0B8007EF4D7 /* main_filter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FEF25E21A9D0B8007EF4D7 /* main_filter.cpp */; };
+		F1FEF26121A9D320007EF4D7 /* main_merge_pileup.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FEF26021A9D320007EF4D7 /* main_merge_pileup.cpp */; };
+		F1FEF26321A9F207007EF4D7 /* main_gcidx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FEF26221A9F207007EF4D7 /* main_gcidx.cpp */; };
+		F1FEF26621AB0DFD007EF4D7 /* data_reader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FEF26421AB0DFD007EF4D7 /* data_reader.cpp */; };
+		F1FEF26921AB12CF007EF4D7 /* base_file.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FEF26721AB12CF007EF4D7 /* base_file.cpp */; };
+		F1FEF27121B609B8007EF4D7 /* gaussian_mixture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1FEF26F21B609B8007EF4D7 /* gaussian_mixture.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -35,53 +45,51 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		F114FEA5203B7D5100DE1FBC /* gtype_old.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = gtype_old.cpp; sourceTree = "<group>"; };
 		F129E10D1EF90129007793FB /* libhts.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libhts.a; path = lib/libhts.a; sourceTree = "<group>"; };
 		F129E10F1EF901CA007793FB /* liblzma.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = liblzma.tbd; path = usr/lib/liblzma.tbd; sourceTree = SDKROOT; };
 		F129E1111EF901D2007793FB /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
-		F13828721FCF36CC003ADE67 /* bamcram.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = bamcram.cpp; sourceTree = "<group>"; };
+		F13828721FCF36CC003ADE67 /* bam_cram.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = bam_cram.cpp; sourceTree = "<group>"; };
 		F138FD791CAD744A00CD5539 /* muCNV */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = muCNV; sourceTree = BUILT_PRODUCTS_DIR; };
 		F138FD7C1CAD744A00CD5539 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		F138FD831CAD74EE00CD5539 /* cluster.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cluster.cpp; sourceTree = "<group>"; };
 		F138FD841CAD74EE00CD5539 /* common.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = common.cpp; sourceTree = "<group>"; };
 		F138FD871CAD74EE00CD5539 /* Error.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Error.cpp; sourceTree = "<group>"; };
 		F138FD881CAD74EE00CD5539 /* Error.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Error.h; sourceTree = "<group>"; };
-		F138FD891CAD74EE00CD5539 /* File.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = File.cpp; sourceTree = "<group>"; };
-		F138FD8A1CAD74EE00CD5539 /* muCNV.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = muCNV.h; sourceTree = "<group>"; };
+		F138FD891CAD74EE00CD5539 /* in_vcf.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = in_vcf.cpp; sourceTree = "<group>"; };
+		F138FD8A1CAD74EE00CD5539 /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = common.h; sourceTree = "<group>"; };
 		F138FD911CAD74F600CD5539 /* pException.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pException.h; sourceTree = "<group>"; };
 		F138FDC21CAD7FB900CD5539 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
 		F138FDC41CAD844700CD5539 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		F138FDC51CAD844700CD5539 /* README */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
-		F154FC0D1ED2CDF7004E1629 /* bgzf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = bgzf.h; path = htslib/bgzf.h; sourceTree = "<group>"; };
-		F154FC0E1ED2CDF7004E1629 /* cram.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cram.h; path = htslib/cram.h; sourceTree = "<group>"; };
-		F154FC0F1ED2CDF7004E1629 /* faidx.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = faidx.h; path = htslib/faidx.h; sourceTree = "<group>"; };
-		F154FC101ED2CDF7004E1629 /* hfile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hfile.h; path = htslib/hfile.h; sourceTree = "<group>"; };
-		F154FC111ED2CDF7004E1629 /* hts_defs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hts_defs.h; path = htslib/hts_defs.h; sourceTree = "<group>"; };
-		F154FC121ED2CDF7004E1629 /* hts_endian.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hts_endian.h; path = htslib/hts_endian.h; sourceTree = "<group>"; };
-		F154FC131ED2CDF7004E1629 /* hts_log.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hts_log.h; path = htslib/hts_log.h; sourceTree = "<group>"; };
-		F154FC141ED2CDF7004E1629 /* hts.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = hts.h; path = htslib/hts.h; sourceTree = "<group>"; };
-		F154FC151ED2CDF7004E1629 /* kbitset.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = kbitset.h; path = htslib/kbitset.h; sourceTree = "<group>"; };
-		F154FC161ED2CDF7004E1629 /* kfunc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = kfunc.h; path = htslib/kfunc.h; sourceTree = "<group>"; };
-		F154FC171ED2CDF7004E1629 /* khash_str2int.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = khash_str2int.h; path = htslib/khash_str2int.h; sourceTree = "<group>"; };
-		F154FC181ED2CDF7004E1629 /* khash.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = khash.h; path = htslib/khash.h; sourceTree = "<group>"; };
-		F154FC191ED2CDF7004E1629 /* klist.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = klist.h; path = htslib/klist.h; sourceTree = "<group>"; };
-		F154FC1A1ED2CDF7004E1629 /* knetfile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = knetfile.h; path = htslib/knetfile.h; sourceTree = "<group>"; };
-		F154FC1B1ED2CDF7004E1629 /* kseq.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = kseq.h; path = htslib/kseq.h; sourceTree = "<group>"; };
-		F154FC1C1ED2CDF7004E1629 /* ksort.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ksort.h; path = htslib/ksort.h; sourceTree = "<group>"; };
-		F154FC1D1ED2CDF7004E1629 /* kstring.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = kstring.h; path = htslib/kstring.h; sourceTree = "<group>"; };
-		F154FC1E1ED2CDF7004E1629 /* regidx.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = regidx.h; path = htslib/regidx.h; sourceTree = "<group>"; };
-		F154FC1F1ED2CDF7004E1629 /* sam.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sam.h; path = htslib/sam.h; sourceTree = "<group>"; };
-		F154FC201ED2CDF7004E1629 /* synced_bcf_reader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = synced_bcf_reader.h; path = htslib/synced_bcf_reader.h; sourceTree = "<group>"; };
-		F154FC211ED2CDF7004E1629 /* tbx.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tbx.h; path = htslib/tbx.h; sourceTree = "<group>"; };
-		F154FC221ED2CDF7004E1629 /* thread_pool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = thread_pool.h; path = htslib/thread_pool.h; sourceTree = "<group>"; };
-		F154FC231ED2CDF7004E1629 /* vcf_sweep.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vcf_sweep.h; path = htslib/vcf_sweep.h; sourceTree = "<group>"; };
-		F154FC241ED2CDF7004E1629 /* vcf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vcf.h; path = htslib/vcf.h; sourceTree = "<group>"; };
-		F154FC251ED2CDF7004E1629 /* vcfutils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vcfutils.h; path = htslib/vcfutils.h; sourceTree = "<group>"; };
-		F194ED341F25A41400489E0C /* gtype.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = gtype.cpp; sourceTree = "<group>"; };
+		F194ED341F25A41400489E0C /* genotyper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = genotyper.cpp; sourceTree = "<group>"; };
 		F194ED361F25B3C900489E0C /* sv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sv.cpp; sourceTree = "<group>"; };
-		F194ED381F2623BB00489E0C /* vcf.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = vcf.cpp; sourceTree = "<group>"; };
-		F194ED3A1F2708CC00489E0C /* Gaussian.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Gaussian.cpp; sourceTree = "<group>"; };
-		F1FE1D8F214F710F005673D3 /* gcContent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = gcContent.cpp; sourceTree = "<group>"; };
+		F194ED381F2623BB00489E0C /* out_vcf.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = out_vcf.cpp; sourceTree = "<group>"; };
+		F194ED3A1F2708CC00489E0C /* gaussian.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = gaussian.cpp; sourceTree = "<group>"; };
+		F1DB7AD5219B7D7500CCA521 /* pileup.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = pileup.cpp; sourceTree = "<group>"; };
+		F1DB7AD7219B7E6500CCA521 /* sv.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sv.h; sourceTree = "<group>"; };
+		F1DB7AD8219B873A00CCA521 /* bam_cram.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bam_cram.h; sourceTree = "<group>"; };
+		F1DB7AD9219B877600CCA521 /* pileup.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = pileup.h; sourceTree = "<group>"; };
+		F1DB7ADA219B896000CCA521 /* gc_content.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = gc_content.h; sourceTree = "<group>"; };
+		F1DB7ADE219B9BAB00CCA521 /* debug.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = debug.h; sourceTree = "<group>"; };
+		F1FE1D8F214F710F005673D3 /* gc_content.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = gc_content.cpp; sourceTree = "<group>"; };
+		F1FEF25521A79495007EF4D7 /* main_pileup.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main_pileup.cpp; sourceTree = "<group>"; };
+		F1FEF25721A796E3007EF4D7 /* main_vcf_to_int.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main_vcf_to_int.cpp; sourceTree = "<group>"; };
+		F1FEF25921A8A8ED007EF4D7 /* main_genotype.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main_genotype.cpp; sourceTree = "<group>"; };
+		F1FEF25B21A8ABAE007EF4D7 /* main_print_pileup.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main_print_pileup.cpp; sourceTree = "<group>"; };
+		F1FEF25E21A9D0B8007EF4D7 /* main_filter.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main_filter.cpp; sourceTree = "<group>"; };
+		F1FEF26021A9D320007EF4D7 /* main_merge_pileup.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main_merge_pileup.cpp; sourceTree = "<group>"; };
+		F1FEF26221A9F207007EF4D7 /* main_gcidx.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main_gcidx.cpp; sourceTree = "<group>"; };
+		F1FEF26421AB0DFD007EF4D7 /* data_reader.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = data_reader.cpp; sourceTree = "<group>"; };
+		F1FEF26521AB0DFD007EF4D7 /* data_reader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = data_reader.h; sourceTree = "<group>"; };
+		F1FEF26721AB12CF007EF4D7 /* base_file.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = base_file.cpp; sourceTree = "<group>"; };
+		F1FEF26821AB12CF007EF4D7 /* base_file.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = base_file.h; sourceTree = "<group>"; };
+		F1FEF26A21B5F840007EF4D7 /* gaussian.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = gaussian.h; sourceTree = "<group>"; };
+		F1FEF26B21B5FC2A007EF4D7 /* out_vcf.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = out_vcf.h; sourceTree = "<group>"; };
+		F1FEF26C21B5FCE3007EF4D7 /* in_vcf.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = in_vcf.h; sourceTree = "<group>"; };
+		F1FEF26D21B5FE38007EF4D7 /* genotyper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = genotyper.h; sourceTree = "<group>"; };
+		F1FEF26E21B604BC007EF4D7 /* cluster.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = cluster.h; sourceTree = "<group>"; };
+		F1FEF26F21B609B8007EF4D7 /* gaussian_mixture.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = gaussian_mixture.cpp; sourceTree = "<group>"; };
+		F1FEF27021B609B8007EF4D7 /* gaussian_mixture.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = gaussian_mixture.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,7 +118,6 @@
 			isa = PBXGroup;
 			children = (
 				F138FD7B1CAD744A00CD5539 /* muCNV */,
-				F154FC0C1ED2CDE9004E1629 /* htslib */,
 				F138FDC41CAD844700CD5539 /* Makefile */,
 				F138FDC51CAD844700CD5539 /* README */,
 				F138FDC21CAD7FB900CD5539 /* libz.tbd */,
@@ -130,55 +137,46 @@
 		F138FD7B1CAD744A00CD5539 /* muCNV */ = {
 			isa = PBXGroup;
 			children = (
-				F138FD911CAD74F600CD5539 /* pException.h */,
+				F1DB7AD8219B873A00CCA521 /* bam_cram.h */,
+				F13828721FCF36CC003ADE67 /* bam_cram.cpp */,
+				F1FEF26E21B604BC007EF4D7 /* cluster.h */,
 				F138FD831CAD74EE00CD5539 /* cluster.cpp */,
+				F138FD8A1CAD74EE00CD5539 /* common.h */,
 				F138FD841CAD74EE00CD5539 /* common.cpp */,
 				F138FD871CAD74EE00CD5539 /* Error.cpp */,
+				F1DB7ADE219B9BAB00CCA521 /* debug.h */,
 				F138FD881CAD74EE00CD5539 /* Error.h */,
-				F138FD891CAD74EE00CD5539 /* File.cpp */,
-				F138FD8A1CAD74EE00CD5539 /* muCNV.h */,
+				F138FD891CAD74EE00CD5539 /* in_vcf.cpp */,
+				F1FEF26C21B5FCE3007EF4D7 /* in_vcf.h */,
+				F194ED3A1F2708CC00489E0C /* gaussian.cpp */,
+				F1FEF26A21B5F840007EF4D7 /* gaussian.h */,
+				F1DB7ADA219B896000CCA521 /* gc_content.h */,
+				F1FE1D8F214F710F005673D3 /* gc_content.cpp */,
+				F1FEF27021B609B8007EF4D7 /* gaussian_mixture.h */,
+				F1FEF26F21B609B8007EF4D7 /* gaussian_mixture.cpp */,
+				F1FEF26D21B5FE38007EF4D7 /* genotyper.h */,
+				F194ED341F25A41400489E0C /* genotyper.cpp */,
+				F1FEF26521AB0DFD007EF4D7 /* data_reader.h */,
+				F1FEF26421AB0DFD007EF4D7 /* data_reader.cpp */,
+				F1FEF26821AB12CF007EF4D7 /* base_file.h */,
+				F1FEF26721AB12CF007EF4D7 /* base_file.cpp */,
 				F138FD7C1CAD744A00CD5539 /* main.cpp */,
-				F194ED341F25A41400489E0C /* gtype.cpp */,
-				F114FEA5203B7D5100DE1FBC /* gtype_old.cpp */,
+				F1FEF25921A8A8ED007EF4D7 /* main_genotype.cpp */,
+				F1FEF25B21A8ABAE007EF4D7 /* main_print_pileup.cpp */,
+				F1FEF25521A79495007EF4D7 /* main_pileup.cpp */,
+				F1FEF25E21A9D0B8007EF4D7 /* main_filter.cpp */,
+				F1FEF25721A796E3007EF4D7 /* main_vcf_to_int.cpp */,
+				F1FEF26021A9D320007EF4D7 /* main_merge_pileup.cpp */,
+				F1FEF26221A9F207007EF4D7 /* main_gcidx.cpp */,
+				F138FD911CAD74F600CD5539 /* pException.h */,
+				F1DB7AD9219B877600CCA521 /* pileup.h */,
+				F1DB7AD5219B7D7500CCA521 /* pileup.cpp */,
+				F1DB7AD7219B7E6500CCA521 /* sv.h */,
 				F194ED361F25B3C900489E0C /* sv.cpp */,
-				F194ED381F2623BB00489E0C /* vcf.cpp */,
-				F194ED3A1F2708CC00489E0C /* Gaussian.cpp */,
-				F13828721FCF36CC003ADE67 /* bamcram.cpp */,
-				F1FE1D8F214F710F005673D3 /* gcContent.cpp */,
+				F1FEF26B21B5FC2A007EF4D7 /* out_vcf.h */,
+				F194ED381F2623BB00489E0C /* out_vcf.cpp */,
 			);
 			path = muCNV;
-			sourceTree = "<group>";
-		};
-		F154FC0C1ED2CDE9004E1629 /* htslib */ = {
-			isa = PBXGroup;
-			children = (
-				F154FC0D1ED2CDF7004E1629 /* bgzf.h */,
-				F154FC0E1ED2CDF7004E1629 /* cram.h */,
-				F154FC0F1ED2CDF7004E1629 /* faidx.h */,
-				F154FC101ED2CDF7004E1629 /* hfile.h */,
-				F154FC111ED2CDF7004E1629 /* hts_defs.h */,
-				F154FC121ED2CDF7004E1629 /* hts_endian.h */,
-				F154FC131ED2CDF7004E1629 /* hts_log.h */,
-				F154FC141ED2CDF7004E1629 /* hts.h */,
-				F154FC151ED2CDF7004E1629 /* kbitset.h */,
-				F154FC161ED2CDF7004E1629 /* kfunc.h */,
-				F154FC171ED2CDF7004E1629 /* khash_str2int.h */,
-				F154FC181ED2CDF7004E1629 /* khash.h */,
-				F154FC191ED2CDF7004E1629 /* klist.h */,
-				F154FC1A1ED2CDF7004E1629 /* knetfile.h */,
-				F154FC1B1ED2CDF7004E1629 /* kseq.h */,
-				F154FC1C1ED2CDF7004E1629 /* ksort.h */,
-				F154FC1D1ED2CDF7004E1629 /* kstring.h */,
-				F154FC1E1ED2CDF7004E1629 /* regidx.h */,
-				F154FC1F1ED2CDF7004E1629 /* sam.h */,
-				F154FC201ED2CDF7004E1629 /* synced_bcf_reader.h */,
-				F154FC211ED2CDF7004E1629 /* tbx.h */,
-				F154FC221ED2CDF7004E1629 /* thread_pool.h */,
-				F154FC231ED2CDF7004E1629 /* vcf_sweep.h */,
-				F154FC241ED2CDF7004E1629 /* vcf.h */,
-				F154FC251ED2CDF7004E1629 /* vcfutils.h */,
-			);
-			name = htslib;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -207,7 +205,7 @@
 		F138FD711CAD744A00CD5539 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0910;
+				LastUpgradeCheck = 1010;
 				ORGANIZATIONNAME = "Goo Jun";
 				TargetAttributes = {
 					F138FD781CAD744A00CD5539 = {
@@ -237,18 +235,28 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F194ED3B1F2708CC00489E0C /* Gaussian.cpp in Sources */,
+				F194ED3B1F2708CC00489E0C /* gaussian.cpp in Sources */,
+				F1FEF25A21A8A8ED007EF4D7 /* main_genotype.cpp in Sources */,
+				F1FEF26921AB12CF007EF4D7 /* base_file.cpp in Sources */,
+				F1FEF27121B609B8007EF4D7 /* gaussian_mixture.cpp in Sources */,
 				F138FD8F1CAD74EE00CD5539 /* Error.cpp in Sources */,
+				F1FEF25D21A8ABAE007EF4D7 /* main_print_pileup.cpp in Sources */,
+				F1DB7AD6219B7D7500CCA521 /* pileup.cpp in Sources */,
 				F138FD8B1CAD74EE00CD5539 /* cluster.cpp in Sources */,
 				F194ED371F25B3C900489E0C /* sv.cpp in Sources */,
-				F194ED351F25A41400489E0C /* gtype.cpp in Sources */,
-				F114FEA7203B7D5100DE1FBC /* gtype_old.cpp in Sources */,
-				F13828731FCF36CC003ADE67 /* bamcram.cpp in Sources */,
+				F194ED351F25A41400489E0C /* genotyper.cpp in Sources */,
+				F1FEF25F21A9D0B8007EF4D7 /* main_filter.cpp in Sources */,
+				F1FEF25621A79495007EF4D7 /* main_pileup.cpp in Sources */,
+				F13828731FCF36CC003ADE67 /* bam_cram.cpp in Sources */,
+				F1FEF26621AB0DFD007EF4D7 /* data_reader.cpp in Sources */,
 				F138FD8C1CAD74EE00CD5539 /* common.cpp in Sources */,
 				F138FD7D1CAD744A00CD5539 /* main.cpp in Sources */,
-				F138FD901CAD74EE00CD5539 /* File.cpp in Sources */,
-				F194ED391F2623BB00489E0C /* vcf.cpp in Sources */,
-				F1FE1D90214F710F005673D3 /* gcContent.cpp in Sources */,
+				F1FEF26321A9F207007EF4D7 /* main_gcidx.cpp in Sources */,
+				F138FD901CAD74EE00CD5539 /* in_vcf.cpp in Sources */,
+				F1FEF25821A796E3007EF4D7 /* main_vcf_to_int.cpp in Sources */,
+				F194ED391F2623BB00489E0C /* out_vcf.cpp in Sources */,
+				F1FEF26121A9D320007EF4D7 /* main_merge_pileup.cpp in Sources */,
+				F1FE1D90214F710F005673D3 /* gc_content.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -267,12 +275,14 @@
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
@@ -301,8 +311,9 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
-					"tclap-1.2.1/include",
+					/usr/local/include/,
 					tabix,
+					"tclap-1.2.1/include",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = YES;
@@ -324,12 +335,14 @@
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
@@ -352,8 +365,9 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
-					"tclap-1.2.1/include",
+					/usr/local/include/,
 					tabix,
+					"tclap-1.2.1/include",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -369,7 +383,7 @@
 				HEADER_SEARCH_PATHS = (
 					"tclap-1.2.1/include",
 					tabix,
-					htslib,
+					/usr/local/include,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -388,7 +402,7 @@
 				HEADER_SEARCH_PATHS = (
 					"tclap-1.2.1/include",
 					tabix,
-					htslib,
+					/usr/local/include,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",

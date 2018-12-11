@@ -6,8 +6,41 @@
 //  Copyright © 2017 Goo Jun. All rights reserved.
 //
 
-#include "muCNV.h"
+#include "sv.h"
+#include "common.h"
 #include <algorithm>
+
+svType svTypeNum(int t)
+{
+    switch(t)
+    {
+        case 0:
+            return DEL;
+            break;
+        case 1:
+            return DUP;
+            break;
+        case 2:
+            return INV;
+            break;
+        case 3:
+            return CNV;
+            break;
+        case 4:
+            return INS;
+            break;
+        case 5:
+            return BND;
+            break;
+    }
+    return DEL;
+}
+
+std::string svTypeName(svType t)
+{
+    std::string S[6] = {"DEL", "DUP", "INV", "CNV", "INS", "BND"};
+    return S[t];
+}
 
 breakpoint::breakpoint()
 {
@@ -56,7 +89,7 @@ int find_start(std::vector<sv> &L, int pos)
 {
 	// Assume list is sorted according to pos
 	int left = 0;
-	int right = L.size();
+	int right = (int) L.size();
 	int idx = (left+right)/2;
 
 	while(right > left)
@@ -93,7 +126,6 @@ sv::sv()
 //	ci_pos.second = 0;
 //	ci_end.first = 0;
 //	ci_end.second = 0;
-	
 }
 
 bool sv::operator == (const sv& s) const
@@ -103,7 +135,7 @@ bool sv::operator == (const sv& s) const
 
 void sv::print(void)
 {
-    printf("%d:%d-%d, %s\n", chrnum, pos, end, svTypeName(svtype).c_str());
+    printf("%d:%d-%d_%s", chrnum, pos, end, svTypeName(svtype).c_str());
 }
 
 
@@ -157,4 +189,141 @@ void pick_sv_from_merged(sv &picked, std::vector<sv> &merged)
 //	new_sv.ci_pos.second = pos[pos.size()-1] - new_sv.pos;
 //	new_sv.ci_end.first = end[0] - new_sv.end;
 //	new_sv.ci_end.second = end[pos.size()-1] - new_sv.end;
+}
+
+double RO(sv &x, sv &y)
+{
+    double l = 0;
+    double L = 0;
+    
+    if (y.pos > x.end)
+    {
+        return 0;
+    }
+    else if (x.pos > y.end)
+    {
+        return 0;
+    }
+    
+    bool bStart = (x.pos < y.pos);
+    bool bEnd = (x.end < y.end);
+    
+    l = (bEnd ? x.end : y.end) -  (bStart ? y.pos : x.pos);
+    L = (bEnd ? y.end : x.end) - (bStart ? x.pos : y.pos);
+    return (l/L);
+}
+
+int find_overlap_sv(sv &S , std::vector<sv>& dels)
+{
+    int idx = 0;
+    double max_RO = 0;
+    double max_idx = 0;
+    
+    if (S.pos > 5000000)
+    {
+        idx = find_start(dels, S.pos - 5000000);
+    }
+    while(dels[idx].pos < S.end && idx<(int)dels.size())
+    {
+        if (dels[idx].end > S.pos)
+        {
+            double r = RO(dels[idx], S);
+            if (r>max_RO)
+            {
+                max_RO = r;
+                max_idx = idx;
+            }
+        }
+        idx++;
+    }
+    if (max_RO>0.6)
+    {
+        return max_idx;
+    }
+    else
+    {
+        return -1;
+    }
+}
+
+bool in_centrome(int chrnum, int pos)
+{
+    // GRCh38 Centromere coordinates , hardcoded
+    int centro[24][2] = {
+        {121700000, 125100000},
+        {91800000, 96000000},
+        {87800000, 94000000},
+        {48200000, 51800000},
+        {46100000, 51400000},
+        {58500000, 62600000},
+        {58100000, 62100000},
+        {43200000, 47200000},
+        {42200000, 45500000},
+        {38000000, 41600000},
+        {51000000, 55800000},
+        {33200000, 37800000},
+        {16500000, 18900000},
+        {16100000, 18200000},
+        {17500000, 20500000},
+        {35300000, 38400000},
+        {22700000, 27400000},
+        {15400000, 21500000},
+        {24200000, 28100000},
+        {25700000, 30400000},
+        {10900000, 13000000},
+        {13700000, 17400000},
+        {58100000, 63800000},
+        {10300000, 10600000}
+    };
+    if (pos >= centro[chrnum-1][0] && pos <= centro[chrnum-1][1])
+        return true;
+    else
+        return false;
+}
+
+bool in_centrome(sv &S)
+{
+    // GRCh38 Centromere coordinates , hardcoded
+    int centro[24][2] = {
+        {121700000, 125100000},
+        {91800000, 96000000},
+        {87800000, 94000000},
+        {48200000, 51800000},
+        {46100000, 51400000},
+        {58500000, 62600000},
+        {58100000, 62100000},
+        {43200000, 47200000},
+        {42200000, 45500000},
+        {38000000, 41600000},
+        {51000000, 55800000},
+        {33200000, 37800000},
+        {16500000, 18900000},
+        {16100000, 18200000},
+        {17500000, 20500000},
+        {35300000, 38400000},
+        {22700000, 27400000},
+        {15400000, 21500000},
+        {24200000, 28100000},
+        {25700000, 30400000},
+        {10900000, 13000000},
+        {13700000, 17400000},
+        {58100000, 63800000},
+        {10300000, 10600000}
+    };
+    //  int hetero[2] = {51078349, 54425074};
+    
+    //  if (S.pos >= centro[S.chrnum-1][0]-300000 && S.pos <= centro[S.chrnum-1][1]+300000)
+    if (S.pos >= centro[S.chrnum-1][0] && S.pos <= centro[S.chrnum-1][1])
+        return true;
+    if (S.end >= centro[S.chrnum-1][0] && S.end <= centro[S.chrnum-1][1])
+        return true;
+    if (S.pos <= centro[S.chrnum-1][0] && S.end >= centro[S.chrnum-1][0])
+        return true;
+    if (S.pos <= centro[S.chrnum-1][1] && S.end >= centro[S.chrnum-1][1])
+        return true;
+    //  if (S.chrnum == 7  && S.pos >= hetero[0] && S.pos <= hetero[1]+1000000)
+    //      return true;
+    //  if (S.chrnum == 7  && S.end >= hetero[0] && S.end <= hetero[1])
+    //      return true;
+    return false;
 }

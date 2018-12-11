@@ -12,7 +12,7 @@ CFLAGS= -Wall -O3 -fPIC -std=c++0x
 DFLAGS= -D_FILE_OFFSET_BITS=64
 CC= gcc
 CXX= g++ 
-INCLUDES= -I./tclap-1.2.1/include -I../htslib/htslib 
+INCLUDES= -I./tclap-1.2.1/include -I/usr/local/include
 
 DEPS := $(OBJS:%.o=%.d)
 
