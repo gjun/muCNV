@@ -37,11 +37,11 @@ int main_pileup(int argc, char** argv)
     {
         TCLAP::CmdLine cmd("Command description message", ' ', "0.06");
         
-        TCLAP::ValueArg<std::string> argBam("b","bam","Input BAM/CRAM file name",true,"","std::string");
-        TCLAP::ValueArg<std::string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","std::string");
-        TCLAP::ValueArg<std::string> argInterval("V","interVal", "Binary interval file containing candidate SVs", false, "", "std::string");
-        TCLAP::ValueArg<std::string> argSampleID("s","sample","Sample ID for output filename base",false,"","std::string");
-        TCLAP::ValueArg<std::string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "std::string");
+        TCLAP::ValueArg<std::string> argBam("b","bam","Input BAM/CRAM file name",true,"","string");
+        TCLAP::ValueArg<std::string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
+        TCLAP::ValueArg<std::string> argInterval("V","interVal", "Binary interval file containing candidate SVs", false, "", "string");
+        TCLAP::ValueArg<std::string> argSampleID("s","sample","Sample ID for output filename base",false,"","string");
+        TCLAP::ValueArg<std::string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "string");
         
         cmd.add(argBam);
         cmd.add(argVcf);

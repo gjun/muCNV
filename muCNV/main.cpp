@@ -81,7 +81,7 @@ int main(int argc, char** argv)
     
     // muCNV filter
     //      Merge / filter SVs from VCF
-    else if (strcmp(argv[1], "gcidx") == 0)
+    else if (strcmp(argv[1], "filter") == 0)
         ret = main_filter(argc-1, argv+1);
 
     else
