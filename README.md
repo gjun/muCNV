@@ -10,7 +10,7 @@ muCNV has two-stages for multi-sample SV genotyping:
 
 There is also an optional 'pileup merging' step in-between, which is recommended for >300 samples.
 
-Basis usage:
+## Basis usage:
 
     $ mucnv [command] [options]
     $ mucnv [command] --help
@@ -47,7 +47,7 @@ List of commands:
  - GC content file for human reference genome build 38 is provided in resources/GRCh38.gc
  - Either VCF file (-v) or binary interval file (-V) is required
    
-  ## Merge
+## Merge
   
 
     $ muCNV merge -I [input.list] -o [output_name] -f GRCh38.gc
