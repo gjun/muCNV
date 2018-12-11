@@ -131,11 +131,11 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 		fprintf(fp, ":%.2f",D.var_depth[i]);
 		if (S.svtype == DEL)
 		{
-			fprintf(fp, ":%d:%d", D.rdstats[i].n_pre_FR + D.rdstats[i].n_post_FR, D.rdstats[i].n_pre_split_out + D.rdstats[i].n_post_split_out);
+			fprintf(fp, ":%d:%d", D.rdstats[i].n_pre_FR + D.rdstats[i].n_post_FR, D.rdstats[i].n_pre_clip_in + D.rdstats[i].n_post_clip_in + D.rdstats[i].n_pre_split_in + D.rdstats[i].n_post_split_in );
 		}
 		else if (S.svtype == DUP || S.svtype==CNV)
 		{
-			fprintf(fp, ":%d:%d", D.rdstats[i].n_pre_RF + D.rdstats[i].n_post_RF, D.rdstats[i].n_pre_split_in + D.rdstats[i].n_post_split_in);
+			fprintf(fp, ":%d:%d", D.rdstats[i].n_pre_RF + D.rdstats[i].n_post_RF, D.rdstats[i].n_pre_clip_out + D.rdstats[i].n_post_clip_out + D.rdstats[i].n_pre_split_out + D.rdstats[i].n_post_split_out);
 		}
 		else if (S.svtype == INV)
 		{

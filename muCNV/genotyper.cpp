@@ -112,7 +112,10 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G)
         if (D.rdstats[i].inv_support())
         {
             G.read_flag = true;
-            G.gt[i] = 1;
+            if (D.rdstats[i].n_pre_FF + D.rdstats[i].n_post_RR > 20) // TODO: arbitrary, maybe clustering?
+                G.gt[i] = 2;
+            else
+                G.gt[i] = 1;
             G.ac ++;
             G.ns ++;
         }
@@ -139,7 +142,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 //	DMSG("Calling deletion");
 	select_model(G.gmix, means, D.var_depth);
 
-	if (G.gmix.n_comp > 1)
+	if (G.gmix.n_comp > 1 && G.gmix.ordered())
 	{
 		// success
 		G.dp_flag = true;
@@ -176,7 +179,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 		select_model(G.gmix2, means, D.dp2[dp2_idx], D.dp2[dp2_idx+1]);
 
 		// 2-D genotyping
-		if (G.gmix2.n_comp>1)
+		if (G.gmix2.n_comp>1 && G.gmix2.ordered())
 		{
 			// success
 			G.dp2_flag = true;
@@ -283,7 +286,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     int dp2_ns = 0;
     
 	select_model(G.gmix, means, D.var_depth);
-    if (G.gmix.n_comp > 1)
+    if (G.gmix.n_comp > 1 && G.gmix.r_ordered() )
 	{
 		// success
 		G.dp_flag = true;
@@ -311,7 +314,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         select_model(G.gmix2, means, D.dp2[dp2_idx], D.dp2[dp2_idx+1]);
         
         // 2-D genotyping
-        if (G.gmix2.n_comp>1)
+        if (G.gmix2.n_comp>1 && G.gmix2.r_ordered() )
         {
             // success
             G.dp2_flag = true;
@@ -339,7 +342,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             G.cn[i] = dp_cn[i];
     }
 
-	    // Readpair genotyping
+    // Readpair genotyping
     for(int i=0; i<n_sample; ++i)
     {
         if (G.dp_flag || G.dp2_flag)

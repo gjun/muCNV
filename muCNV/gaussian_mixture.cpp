@@ -352,9 +352,11 @@ int GaussianMixture::assign_copynumber(double x)
 
 bool GaussianMixture::ordered()
 {
+    // For deletions, Means should be descending order with at least 0.3 difference
+    // TODO: 0.3 is arbitrary
 	for(int i=0; i<n_comp-1;++i)
 	{
-		if (Comps[i].Mean<=Comps[i+1].Mean)
+		if (Comps[i].Mean < Comps[i+1].Mean +0.3)
 			return false;
 	}
 	return true;
@@ -362,9 +364,11 @@ bool GaussianMixture::ordered()
 
 bool GaussianMixture::r_ordered()
 {
+    // For duplications, Means should be descending order with at least 0.3 difference
+
 	for(int i=0; i<(int)Comps.size()-1;++i)
 	{
-		if (Comps[i].Mean>=Comps[i+1].Mean)
+		if (Comps[i].Mean + 0.3 > Comps[i+1].Mean)
 			return false;
 	}
 	return true;
@@ -738,7 +742,7 @@ bool GaussianMixture2::ordered()
 {
 	for(int i=0; i<n_comp-1;++i)
 	{
-		if (Comps[i].Mean[0] + Comps[i].Mean[1] <= Comps[i+1].Mean[0] + Comps[i+1].Mean[1])
+		if (Comps[i].Mean[0] + Comps[i].Mean[1] < Comps[i+1].Mean[0] + Comps[i+1].Mean[1] + 0.6)
 			return false;
 	}
 	return true;
@@ -748,7 +752,7 @@ bool GaussianMixture2::r_ordered()
 {
 	for(int i=0; i<(int)Comps.size()-1;++i)
 	{
-		if (Comps[i].Mean[0]+Comps[i].Mean[1] >= Comps[i+1].Mean[0]+Comps[i+1].Mean[1])
+		if (Comps[i].Mean[0]+Comps[i].Mean[1] + 0.6 > Comps[i+1].Mean[0]+Comps[i+1].Mean[1])
 			return false;
 	}
 	return true;
