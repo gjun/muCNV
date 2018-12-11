@@ -181,7 +181,7 @@ void GaussianMixture::EM(std::vector<double>& x)
 
 
 // 1-D K-means
-void GaussianMixture::KM(std::vector<double>& x)
+void GaussianMixture::KM(std::vector<double>& x, bool b_mahalanobis)
 {
 	int n_sample = (int) x.size();
 	int n_iter = 15;
@@ -219,8 +219,18 @@ void GaussianMixture::KM(std::vector<double>& x)
 			double min_dist = DBL_MAX;
 			for(int m=0; m<n_comp; ++m)
 			{
-				double dist = abs(x[j] - Comps[m].Mean);
-				//               double dist = abs(x[j]-Comps[m].Mean)/Comps[m].Stdev;
+				double dist = 0;
+
+
+				if (b_mahalanobis)
+				{
+					dist = abs(x[j]-Comps[m].Mean)/Comps[m].Stdev;
+				}
+				else
+				{
+					dist = abs(x[j] - Comps[m].Mean);
+				}
+
 				if (dist < min_dist)
 				{
 					min_dist = dist;
@@ -239,45 +249,45 @@ void GaussianMixture::KM(std::vector<double>& x)
 			Comps[m].Mean = (sum_x[m] + p_val[m]*p_count)/ (cnt[m] + p_count);
 		}
 
-		/*
-		   std::vector<double> sum_xx(n_comp, 0);
+		if (b_mahalanobis)
+		{
+			std::vector<double> sum_xx(n_comp, 0);
+			for(int j=0; j<n_sample; ++j)
+			{
+				double dx = Comps[member[j]].Mean - x[j];
+				sum_xx[member[j]] += dx * dx;
+			}
 
-		   for(int j=0; j<n_sample; ++j)
-		   {
-		   double dx = Comps[member[j]].Mean - x[j];
-		   sum_xx[member[j]] += dx * dx;
-		   }
-
-		   for(int m=0;m<n_comp;++m)
-		   {
-		// Wishart prior : S = [0.01 0; 0 0.01]
-		Comps[m].Stdev = sqrt((sum_xx[m] + 0.01*p_count) / (cnt[m] + p_count - 1));
-		Comps[m].Alpha = (double)cnt[m] / n_sample;
+			for(int m=0;m<n_comp;++m)
+			{
+				// Wishart prior : S = [0.01 0; 0 0.01]
+				Comps[m].Stdev = sqrt((sum_xx[m] + 0.01*p_count) / (cnt[m] + p_count - 1));
+				Comps[m].Alpha = (double)cnt[m] / n_sample;
+			}
 		}
-		 */
 
 		//print();
-
 	}
 
-	std::vector<double> sum_xx(n_comp, 0);
-	std::vector<int> cnt(n_comp, 0);
-
-	for(int j=0; j<n_sample; ++j)
+	if (!b_mahalanobis)
 	{
-		double dx = Comps[member[j]].Mean - x[j];
-		sum_xx[member[j]] += dx * dx;
-		cnt[member[j]] += 1;
-	}
+		std::vector<double> sum_xx(n_comp, 0);
+		std::vector<int> cnt(n_comp, 0);
 
-	for(int m=0;m<n_comp;++m)
-	{
-		// Wishart prior : S = [0.01 0; 0 0.01]
-		Comps[m].Stdev = sqrt((sum_xx[m] + 0.01*p_count) / (cnt[m] + p_count - 1));
-		Comps[m].Alpha = (double)cnt[m] / n_sample;
-	}
+		for(int j=0; j<n_sample; ++j)
+		{
+			double dx = Comps[member[j]].Mean - x[j];
+			sum_xx[member[j]] += dx * dx;
+			cnt[member[j]] += 1;
+		}
 
-	//   print();
+		for(int m=0;m<n_comp;++m)
+		{
+			// Wishart prior : S = [0.01 0; 0 0.01]
+			Comps[m].Stdev = sqrt((sum_xx[m] + 0.01*p_count) / (cnt[m] + p_count - 1));
+			Comps[m].Alpha = (double)cnt[m] / n_sample;
+		}
+	}
 
 	double llk = 0;
 	for(int j=0; j<n_sample; ++j)
@@ -341,7 +351,7 @@ int GaussianMixture::assign_copynumber(double x)
 		return -1;
 	}
 
-	if (max_R > 0.2)
+	if (max_R > 0.1)
 	{
 		return -1;
 	}
@@ -352,8 +362,8 @@ int GaussianMixture::assign_copynumber(double x)
 
 bool GaussianMixture::ordered()
 {
-    // For deletions, Means should be descending order with at least 0.3 difference
-    // TODO: 0.3 is arbitrary
+	// For deletions, Means should be descending order with at least 0.3 difference
+	// TODO: 0.3 is arbitrary
 	for(int i=0; i<n_comp-1;++i)
 	{
 		if (Comps[i].Mean < Comps[i+1].Mean +0.3)
@@ -364,7 +374,7 @@ bool GaussianMixture::ordered()
 
 bool GaussianMixture::r_ordered()
 {
-    // For duplications, Means should be descending order with at least 0.3 difference
+	// For duplications, Means should be descending order with at least 0.3 difference
 
 	for(int i=0; i<(int)Comps.size()-1;++i)
 	{
@@ -477,7 +487,7 @@ GaussianMixture2& GaussianMixture2::operator = (const GaussianMixture2& gmix)
 
 
 // 2-D EM for general without weights
-void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y)
+void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y, bool b_mahalanobis)
 {
 	int n_sample = (int) x.size();
 	int n_iter = 15;
@@ -517,9 +527,18 @@ void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y)
 			{
 				double dx = (x[j] - Comps[m].Mean[0]);
 				double dy = (y[j] - Comps[m].Mean[1]);
-				double dist = dx*dx + dy*dy;
+
+				double dist = 0;
+
 				// Mahalanobis dist
-				//     double dist = (dx * Comps[m].Prc[0] + dy * Comps[m].Prc[2]) * dx + (dx * Comps[m].Prc[1] + dy * Comps[m].Prc[3]) * dy;
+				if (b_mahalanobis)
+				{
+					dist = (dx * Comps[m].Prc[0] + dy * Comps[m].Prc[2]) * dx + (dx * Comps[m].Prc[1] + dy * Comps[m].Prc[3]) * dy;
+				}
+				else
+				{
+					dist = dx*dx + dy*dy;
+				}
 				if (dist < min_dist)
 				{
 					min_dist = dist;
@@ -532,47 +551,72 @@ void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y)
 		}
 
 		// M step
-
 		// Update means
 		for(int m=0;m<n_comp;++m)
 		{
 			Comps[m].Mean[0] = (sum_x[m] + p_val[m][0]*p_count )/ (cnt[m] + p_count);
 			Comps[m].Mean[1] = (sum_y[m] + p_val[m][1]*p_count )/ (cnt[m] + p_count);
 		}
-		//print();
 
+		if (b_mahalanobis)
+		{
+			std::vector<double> sum_xx(n_comp, 0);
+			std::vector<double> sum_yy(n_comp, 0);
+			std::vector<double> sum_xy(n_comp, 0);
+			for(int j=0; j<n_sample; ++j)
+			{
+				double dx = Comps[member[j]].Mean[0] - x[j];
+				double dy = Comps[member[j]].Mean[1] - y[j];
+				sum_xx[member[j]] += dx * dx;
+				sum_yy[member[j]] += dy * dy;
+				sum_xy[member[j]] += dx * dy;
+			}
+
+			for(int m=0;m<n_comp;++m)
+			{
+				// Wishart prior : S = [0.01 0; 0 0.01]
+				Comps[m].Cov[0] = (sum_xx[m] + 0.01*p_count) / (cnt[m] + p_count - 1);
+				Comps[m].Cov[1] = sum_xy[m] / (cnt[m] + p_count - 1);
+				Comps[m].Cov[2] = Comps[m].Cov[1];
+				Comps[m].Cov[3] = (sum_yy[m] + 0.01*p_count) / (cnt[m] + p_count - 1);
+
+				Comps[m].update();
+
+				Comps[m].Alpha = (double)cnt[m] / n_sample;
+			}
+		}
 	}
 
-
-	std::vector<double> sum_xx(n_comp, 0);
-	std::vector<double> sum_yy(n_comp, 0);
-	std::vector<double> sum_xy(n_comp, 0);
-	std::vector<int> cnt(n_comp, 0);
-	for(int j=0; j<n_sample; ++j)
+	if (!b_mahalanobis)
 	{
-		double dx = Comps[member[j]].Mean[0] - x[j];
-		double dy = Comps[member[j]].Mean[1] - y[j];
-		sum_xx[member[j]] += dx * dx;
-		sum_yy[member[j]] += dy * dy;
-		sum_xy[member[j]] += dx * dy;
-		cnt[member[j]] ++;
+		std::vector<double> sum_xx(n_comp, 0);
+		std::vector<double> sum_yy(n_comp, 0);
+		std::vector<double> sum_xy(n_comp, 0);
+		std::vector<int> cnt(n_comp, 0);
+		for(int j=0; j<n_sample; ++j)
+		{
+			double dx = Comps[member[j]].Mean[0] - x[j];
+			double dy = Comps[member[j]].Mean[1] - y[j];
+			sum_xx[member[j]] += dx * dx;
+			sum_yy[member[j]] += dy * dy;
+			sum_xy[member[j]] += dx * dy;
+
+			cnt[member[j]] ++;
+		}
+
+		for(int m=0;m<n_comp;++m)
+		{
+			// Wishart prior : S = [0.01 0; 0 0.01]
+			Comps[m].Cov[0] = (sum_xx[m] + 0.01*p_count) / (cnt[m] + p_count - 1);
+			Comps[m].Cov[1] = sum_xy[m] / (cnt[m] + p_count - 1);
+			Comps[m].Cov[2] = Comps[m].Cov[1];
+			Comps[m].Cov[3] = (sum_yy[m] + 0.01*p_count) / (cnt[m] + p_count - 1);
+
+			Comps[m].update();
+
+			Comps[m].Alpha = (double)cnt[m] / n_sample;
+		}
 	}
-
-	for(int m=0;m<n_comp;++m)
-	{
-		// Wishart prior : S = [0.01 0; 0 0.01]
-		Comps[m].Cov[0] = (sum_xx[m] + 0.01*p_count) / (cnt[m] + p_count - 1);
-		Comps[m].Cov[1] = sum_xy[m] / (cnt[m] + p_count - 1);
-		Comps[m].Cov[2] = Comps[m].Cov[1];
-		Comps[m].Cov[3] = (sum_yy[m] + 0.01*p_count) / (cnt[m] + p_count - 1);
-
-		Comps[m].update();
-
-		Comps[m].Alpha = (double)cnt[m] / n_sample;
-	}
-
-
-	//print();
 
 	double llk = 0;
 	for(int j=0; j<n_sample; ++j)
@@ -800,7 +844,7 @@ int GaussianMixture2::assign_copynumber(double x, double y)
 		return -1;
 	}
 
-	if (max_R > 0.2) 
+	if (max_R > 0.1) 
 	{
 		return -1;
 	}

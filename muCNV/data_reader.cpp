@@ -16,12 +16,14 @@ bool ReadStat::del_support()
     int sp_cnt = n_pre_split_in + n_post_split_in;
     int clip_cnt = n_pre_clip_in + n_post_clip_in;
     
-    if (rp_cnt > 6  && rp_cnt + sp_cnt + clip_cnt > 10)
+    if (rp_cnt > 6   && rp_cnt + sp_cnt + clip_cnt > 10)
         return true;
+		/*
     else if (sp_cnt > 6 && rp_cnt + sp_cnt + clip_cnt > 10)
         return true;
     else if (sp_cnt + rp_cnt + clip_cnt > 15)
         return true;
+		*/
     
     return false;
 }
@@ -33,10 +35,12 @@ bool ReadStat::dup_support()
     
     if (rp_cnt > 6  && rp_cnt + sp_cnt + clip_cnt > 10)
         return true;
+		/*
     else if (sp_cnt > 6 && rp_cnt + sp_cnt + clip_cnt > 10)
         return true;
     else if (sp_cnt + rp_cnt + clip_cnt > 15)
         return true;
+		*/
     
     return false;
 }
@@ -324,7 +328,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
         }
     }
 
-	if (n_dp <= 1000)
+	if (n_dp <= 500)
 	{
 		for(int i=0; i<n_pileup; ++i)
 		{
@@ -364,18 +368,18 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
 			if (n_dp <= 40)
 			{
 				seg_starts.push_back(0);
-				seg_ends.push_back((int)n_dp/2+1);
+				seg_ends.push_back((int)n_dp/2);
 				seg_starts.push_back(seg_ends[0]);
 				seg_ends.push_back(n_dp);
 			}
 			else
 			{
                 seg_starts.push_back(0);
-                seg_ends.push_back((int)n_dp/4+1);
+                seg_ends.push_back((int)n_dp/4);
                 seg_starts.push_back(seg_ends[0]);
-                seg_ends.push_back((int)n_dp/2+1);
+                seg_ends.push_back((int)n_dp/2);
                 seg_starts.push_back(seg_ends[1]);
-                seg_ends.push_back((int)(n_dp*0.75)+1);
+                seg_ends.push_back((int)(n_dp*0.75));
                 seg_starts.push_back(seg_ends[2]);
                 seg_ends.push_back(n_dp);
 			}
@@ -418,7 +422,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
 			pos_starts.push_back(curr_sv.pos + (int)curr_sv.len*0.75);
 
 			std::vector<unsigned> gc_sum (n_samples[i], 0);
-			n_dp = 200;
+			n_dp = 100;
 			int n_dp_by_sample = n_samples[i] * n_dp;
 			uint16_t *D = new uint16_t[n_dp_by_sample];
 			uint16_t *D_filt = new uint16_t[n_dp_by_sample];

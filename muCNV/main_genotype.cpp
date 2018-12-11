@@ -58,6 +58,8 @@ int main_genotype(int argc, char** argv)
     string range;
 	double max_p;
     bool b_dumpstat;
+	bool b_kmeans;
+	bool b_mahalanobis;
     
     // Parsing command-line arguments
     try
@@ -74,11 +76,13 @@ int main_genotype(int argc, char** argv)
 
         TCLAP::ValueArg<string> argRegion("r", "region", "Genotype specific genomic region", false, "", "chr:startpos-endpos" );
 
-        TCLAP::ValueArg<double> argPoverlap("p","pmax","Maximum overlap between depth clusters",false,0.2,"number(0-1)");
+        TCLAP::ValueArg<double> argPoverlap("p","pmax","Maximum overlap between depth clusters",false,0.2,"number(0-1.0)");
 
         TCLAP::SwitchArg switchFail("a", "all", "Report filter failed variants", cmd, false);
         TCLAP::SwitchArg switchDumpstat("d", "dumpstat", "dump detailed statistics of variants (warning: large output)", cmd, false);
         TCLAP::SwitchArg switchNoHeader("l", "lessheader", "Do not print header in genoptyed VCF", cmd, false);
+        TCLAP::SwitchArg switchKmeans("k", "Kmeans", "Use K-Means instead of EM", cmd, false);
+        TCLAP::SwitchArg switchMahalanobis("m","Mahalanobis", "Use Mahalanobis distance (use with K-means)", cmd, false);
         
         cmd.add(argOut);
         cmd.add(argVcf);
@@ -100,6 +104,8 @@ int main_genotype(int argc, char** argv)
         bFail = switchFail.getValue();
 		max_p = argPoverlap.getValue();
         b_dumpstat = switchDumpstat.getValue();
+		b_kmeans = switchKmeans.getValue();
+		b_mahalanobis = switchMahalanobis.getValue();
 
         region = argRegion.getValue();
         
@@ -180,10 +186,10 @@ int main_genotype(int argc, char** argv)
 			
 			std::vector<ReadStat> rdstats (n_sample);
 			reader.read_pair_split(vec_sv[i], D.rdstats, gc);
+			reader.read_var_depth(i, D.var_depth);
 
 			if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
 			{
-                reader.read_var_depth(i, D.var_depth);
 				reader.read_depth100(vec_sv[i], D.dp2, D.var_depth, gc, b_dumpstat);
 			}
 			
@@ -201,7 +207,8 @@ int main_genotype(int argc, char** argv)
 				write_varstat(vec_sv[i], stats, D.rdstats, D.var_depth);
 			}
 			
-			gtyper.call(vec_sv[i], D, G, max_p);
+			gtyper.call(vec_sv[i], D, G, max_p, b_kmeans, b_mahalanobis);
+
 			G.info = "var" + std::to_string(i);
 
 			if (bFail || G.b_pass)

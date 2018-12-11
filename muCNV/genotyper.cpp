@@ -62,7 +62,14 @@ void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector
     {
         std::vector<double> s (means[m].size(), 0.1);
         GaussianMixture gmix(means[m], s);
-        gmix.KM(x); // fit mixture model
+		if (b_kmeans)
+		{
+			gmix.KM(x, b_mahalanobis);
+		}
+		else
+		{
+        	gmix.EM(x); // fit mixture model
+		}
         if (gmix.bic < best_bic && gmix.p_overlap < MAX_P_OVERLAP)
         {
             best_bic = gmix.bic;
@@ -81,7 +88,14 @@ void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vect
     {
         std::vector<double> s (means[m].size(), 0.01);
         GaussianMixture2 gmix2(means[m], s);
-        gmix2.KM2(x, y); // fit mixture model
+		if (b_kmeans)
+		{
+			gmix2.KM2(x, y, b_mahalanobis);
+		}
+		else
+		{
+        	gmix2.EM2(x, y); // fit mixture model
+		}
         if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP )
         {
             best_bic = gmix2.bic;
@@ -91,10 +105,13 @@ void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vect
     return;
 }
 
-void Genotyper::call(sv &S, SvData &D, SvGeno &G, double p)
+void Genotyper::call(sv &S, SvData &D, SvGeno &G, double p, bool bk, bool bm)
 {
 	n_sample = D.n_sample;
 	MAX_P_OVERLAP = p;
+
+	b_kmeans = bk;
+	b_mahalanobis = bm;
 
     if (S.svtype == DEL)
         call_deletion(S, D, G);
@@ -102,17 +119,18 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, double p)
         call_cnv(S, D, G);
     else if (S.svtype == INV)
         call_inversion(S, D, G);
-    // TODO: inversion and insertion
+    // todo: inversion and insertion
 }
 
 void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G)
 {
+	G.b_biallelic = true;
     for(int i=0; i<n_sample; ++i)
     {
         if (D.rdstats[i].inv_support())
         {
             G.read_flag = true;
-            if (D.rdstats[i].n_pre_FF + D.rdstats[i].n_post_RR > 20) // TODO: arbitrary, maybe clustering?
+            if (D.rdstats[i].n_pre_FF + D.rdstats[i].n_post_RR > 20) // todo: arbitrary, maybe clustering?
                 G.gt[i] = 2;
             else
                 G.gt[i] = 1;
@@ -134,12 +152,12 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G)
 
 void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 {
-	// Fit Gaussian mixture models with 1, 2, and 3 components, compare BIC
-	std::vector< std::vector<double> > means = { {1.0}, {1.0, 0.5}, {0.5, 0.0}, {1.0, 0.5, 0.0}};
+	// fit gaussian mixture models with 1, 2, and 3 components, compare bic
+	std::vector< std::vector<double> > means = { {1.0}, {1.0, 0.5}, {1.0, 0.5, 0.0}};
 
 	G.b_biallelic = true;
 
-//	DMSG("Calling deletion");
+//	dmsg("calling deletion");
 	select_model(G.gmix, means, D.var_depth);
 
 	if (G.gmix.n_comp > 1 && G.gmix.ordered())
@@ -171,14 +189,14 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
 	if (D.dp2.size()>2) //dp2 has more than 2 vectors
 	{
-		// DP100 genotyping
+		// dp100 genotyping
 		int dp2_idx = 2;
 		if (D.dp2.size()==6)
-			dp2_idx = 4;
+			dp2_idx = 3;
 
 		select_model(G.gmix2, means, D.dp2[dp2_idx], D.dp2[dp2_idx+1]);
 
-		// 2-D genotyping
+		// 2-d genotyping
 		if (G.gmix2.n_comp>1 && G.gmix2.ordered())
 		{
 			// success
@@ -207,7 +225,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 	}
     
  
-    // Readpair genotyping
+    // readpair genotyping
 	if (S.len >= 50)
 	{
 		for(int i=0; i<n_sample; ++i)
@@ -217,7 +235,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 				if (D.rdstats[i].del_support())
 				{
 					G.read_flag = true;
-					if (D.var_depth[i] > 0.25 && D.var_depth[i] < 0.65 && G.gt[i]== -1) // TEMPORARY
+					if (D.var_depth[i] > 0.25 && D.var_depth[i] < 0.65 && G.gt[i]== -1) // TODO: This is arbitrary - cluster read pair numbers to get genotypes
 					{
 						G.cn[i] = 1;
 						G.gt[i] = 1;
@@ -309,7 +327,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         // DP100 genotyping
         int dp2_idx = 2;
         if (D.dp2.size()==6)
-            dp2_idx = 4;
+            dp2_idx = 3;
         
         select_model(G.gmix2, means, D.dp2[dp2_idx], D.dp2[dp2_idx+1]);
         
