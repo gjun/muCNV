@@ -138,6 +138,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
 //	DMSG("Calling deletion");
 	select_model(G.gmix, means, D.var_depth);
+
 	if (G.gmix.n_comp > 1)
 	{
 		// success

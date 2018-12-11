@@ -143,7 +143,7 @@ int main_genotype(int argc, char** argv)
     int n_var = (int) vec_sv.size();
     
     int n_start = 0;
-    int n_end = n_var;
+    int n_end = n_var-1;
     
     std::cerr << n_pileup << " pileup files identified from index file" << std::endl;
     
