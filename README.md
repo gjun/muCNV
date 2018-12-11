@@ -46,7 +46,9 @@ List of commands:
 
  - GC content file for human reference genome build 38 is provided in resources/GRCh38.gc
  - Either VCF file (-v) or binary interval file (-V) is required
-   
+ 
+ 
+  
 ## Merge
   
 
