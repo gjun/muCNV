@@ -95,7 +95,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 
     if (G.dp_flag)
 	{
-        fprintf(fp, ";DP=(%.2f:%.2f:%.2f", G.gmix.Comps[0].Mean, G.gmix.Comps[0].Stdev, G.gmix.Comps[0].Alpha);
+        fprintf(fp, ";PD=(%.2f,%.2f);DP=(%.2f:%.2f:%.2f", G.dp_mean, G.dp_stdev, G.gmix.Comps[0].Mean, G.gmix.Comps[0].Stdev, G.gmix.Comps[0].Alpha);
 		for(int j=1;j<G.gmix.n_comp;++j)
 		{
 			fprintf(fp,"::%.2f:%.2f:%.2f:Err:%.2f:BIC:%.1f", G.gmix.Comps[j].Mean, G.gmix.Comps[j].Stdev, G.gmix.Comps[j].Alpha, G.gmix.p_overlap, G.gmix.bic);
@@ -104,7 +104,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 	}
     if (G.dp2_flag)
 	{
-        fprintf(fp, ";DP2=(%.2f,%.2f:%.2f,%.2f:%.2f", G.gmix2.Comps[0].Mean[0], G.gmix2.Comps[0].Mean[1], G.gmix2.Comps[0].Cov[0], G.gmix2.Comps[0].Cov[3], G.gmix2.Comps[0].Alpha);
+        fprintf(fp, ";PD2=(%.2f,%.2f);DP2=(%.2f,%.2f:%.2f,%.2f:%.2f", G.dp2_mean, G.dp2_stdev, G.gmix2.Comps[0].Mean[0], G.gmix2.Comps[0].Mean[1], G.gmix2.Comps[0].Cov[0], G.gmix2.Comps[0].Cov[3], G.gmix2.Comps[0].Alpha);
 		for(int j=1;j<G.gmix2.n_comp;++j)
 		{
 			fprintf(fp, "::%.2f,%.2f:%.2f,%.2f:%.2f", G.gmix2.Comps[j].Mean[0], G.gmix2.Comps[j].Mean[1], G.gmix2.Comps[j].Cov[0], G.gmix2.Comps[j].Cov[3], G.gmix2.Comps[j].Alpha);

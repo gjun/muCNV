@@ -58,6 +58,8 @@ List of commands:
     (required)  Text file containing list of pileup samples
     -f <string>,  --gcFile <string>
     File containing GC content information
+	-V <string>,  --interVal <string>
+	Binary interval file containing candidate SVs
 
 ## Genotype
 

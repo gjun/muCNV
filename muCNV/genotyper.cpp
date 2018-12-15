@@ -31,6 +31,11 @@ SvGeno::SvGeno(int n)
     dp_flag = false;
     dp2_flag = false;
     read_flag = false;
+	dp_mean = 1.0;
+	dp_stdev = 0.1;
+	dp2_mean = 1.0;
+	dp2_stdev = 0.1;
+
     info = "";
 }
 
@@ -160,10 +165,17 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 //	dmsg("calling deletion");
 	select_model(G.gmix, means, D.var_depth);
 
+	int dp2_idx = 2;
+	if (D.dp2.size()==6)
+		dp2_idx = 3;
+
 	if (G.gmix.n_comp > 1 && G.gmix.ordered())
 	{
 		// success
-		G.dp_flag = true;
+		double dp_sum = 0;
+		double dp_sumsq = 0;
+		int dp_cnt = 0;
+
 		// assign dp-genotypes
 		for(int i=0; i<n_sample; ++i)
 		{
@@ -178,29 +190,65 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 			{
 				G.cn[i] = 1;
 				G.gt[i] = 1; // 0/1
+
+				dp_sum += D.dp2[0][i] + D.dp2[1][i];
+				dp_sumsq += D.dp2[0][i]*D.dp2[0][i] + D.dp2[1][i]*D.dp2[1][i];
+				dp_cnt += 2;
 			}
 			else if (cn == 0)
 			{
 				G.cn[i] = 0;
 				G.gt[i] = 2; // 1/1
+
+				dp_sum += D.dp2[0][i] + D.dp2[1][i];
+				dp_sumsq += D.dp2[0][i]*D.dp2[0][i] + D.dp2[1][i]*D.dp2[1][i];
+				dp_cnt += 2;
+			}
+		}
+
+		if (dp_cnt > 0 )
+		{
+			G.dp_mean = dp_sum/dp_cnt;
+			G.dp_stdev = sqrt(dp_sumsq / dp_cnt - G.dp_mean*G.dp_mean);
+
+			// prevent stdev become too small 
+			if (G.dp_stdev < 0.1)
+			{
+				G.dp_stdev = 0.1;
+			}
+
+			for (int i=0;i<n_sample; ++i)
+			{
+				if (G.gt[i] >0)
+				{
+					// it's okay if peripheral depth is higher than mean
+					if (G.dp_mean - (D.dp2[0][i] +  D.dp2[1][i])/2.0 < G.dp_stdev && G.dp_mean - D.var_depth[i] > 2.0*G.dp_stdev)
+					{
+						G.dp_flag = true;
+					}
+					else
+					{
+						G.gt[i] = -1;
+					}
+				}
 			}
 		}
 	}
 
+
 	if (D.dp2.size()>2) //dp2 has more than 2 vectors
 	{
 		// dp100 genotyping
-		int dp2_idx = 2;
-		if (D.dp2.size()==6)
-			dp2_idx = 3;
-
 		select_model(G.gmix2, means, D.dp2[dp2_idx], D.dp2[dp2_idx+1]);
 
 		// 2-d genotyping
 		if (G.gmix2.n_comp>1 && G.gmix2.ordered())
 		{
 			// success
-			G.dp2_flag = true;
+			double dp_sum = 0;
+			double dp_sumsq = 0;
+			int dp_cnt = 0;
+
 			//assign dp2 genotypes
 			for(int i=0; i<n_sample; ++i)
 			{
@@ -214,11 +262,39 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 				{
 					G.cn[i] = 1;
 					G.gt[i] = 1; // 0/1
+
+					dp_sum += D.dp2[0][i] + D.dp2[1][i];
+					dp_sumsq += D.dp2[0][i]*D.dp2[0][i] + D.dp2[1][i]*D.dp2[1][i];
+					dp_cnt += 2;
 				}
 				else if (cn == 0)
 				{
 					G.cn[i] = 0;
 					G.gt[i] = 2; // 1/1
+
+					dp_sum += D.dp2[0][i] + D.dp2[1][i];
+					dp_sumsq += D.dp2[0][i]*D.dp2[0][i] + D.dp2[1][i]*D.dp2[1][i];
+					dp_cnt += 2;
+				}
+			}
+			if (dp_cnt > 0 )
+			{
+				G.dp2_mean = dp_sum/dp_cnt;
+				G.dp2_stdev = sqrt(dp_sumsq / dp_cnt - G.dp2_mean*G.dp2_mean);
+
+				for (int i=0;i<n_sample; ++i)
+				{
+					if (G.gt[i] >0)
+					{
+						if (abs( (D.dp2[0][i] + D.dp2[1][i])/2.0 - G.dp2_mean ) < G.dp2_stdev && 2*G.dp2_mean - (D.dp2[dp2_idx][i] + D.dp2[dp2_idx+1][i]) > 4.0*G.dp2_stdev)
+						{
+							G.dp2_flag = true;
+						}
+						else
+						{
+							G.gt[i] = -1;
+						}
+					}
 				}
 			}
 		}
@@ -235,18 +311,18 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 				if (D.rdstats[i].del_support())
 				{
 					G.read_flag = true;
-					if (D.var_depth[i] > 0.25 && D.var_depth[i] < 0.65 && G.gt[i]== -1) // TODO: This is arbitrary - cluster read pair numbers to get genotypes
+					if (D.var_depth[i] > 0.2 && D.var_depth[i] < 0.7) // TODO: This is arbitrary - cluster read pair numbers to get genotypes
 					{
 						G.cn[i] = 1;
 						G.gt[i] = 1;
 					}
-					else if (D.var_depth[i]<=0.25 && G.gt[i] == -1)
+					else if (D.var_depth[i]<=0.2)
 					{
 						G.cn[i] = 0;
 						G.gt[i] = 2;
 					}
 				}
-				else if (D.var_depth[i] > 0.9 && D.var_depth[i] < 1.1 && G.gt[i]== -1)
+				else if (D.var_depth[i] > 0.8 && D.var_depth[i] < 1.2)
 				{
 					G.cn[i] = 2;
 					G.gt[i] = 0;
@@ -257,12 +333,12 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 				if (D.rdstats[i].del_support())
 				{
 					G.read_flag = true;
-					if (D.var_depth[i] > 0.25 && D.var_depth[i] < 0.65) // TEMPORARY
+					if (D.var_depth[i] > 0.2 && D.var_depth[i] < 0.7) // TEMPORARY
 					{
 						G.cn[i] = 1;
 						G.gt[i] = 1;
 					}
-					else if (D.var_depth[i]<0.25)
+					else if (D.var_depth[i]<=0.2)
 					{
 						G.cn[i] = 0;
 						G.gt[i] = 2;
@@ -277,6 +353,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
 		}
 	}
+	
     for(int i=0; i<n_sample; ++i)
     {
         if (G.gt[i] >=0)
@@ -309,17 +386,46 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 		// success
 		G.dp_flag = true;
 		// assign genotypes
+		double dp_sum = 0;
+		double dp_sumsq = 0;
+		int dp_cnt = 0;
 
 		for(int i=0; i<(int)n_sample; ++i)
         {
             dp_cn[i] = G.gmix.assign_copynumber(D.var_depth[i]);
             
-            if (dp_cn[i] >=0 )
+            if (dp_cn[i] >=2 )
             {
 				dp_ns ++;
+
+				if (dp_cn[i] >= 3)
+				{
+					dp_sum += D.dp2[0][i] + D.dp2[1][i];
+					dp_sumsq += D.dp2[0][i]*D.dp2[0][i] + D.dp2[1][i]*D.dp2[1][i];
+					dp_cnt += 2;
+				}
             }
         }
+		if (dp_cnt > 0 )
+        {
+            G.dp_mean = dp_sum/dp_cnt;
+            G.dp_stdev = sqrt(dp_sumsq / dp_cnt - G.dp_mean*G.dp_mean);
 
+            for (int i=0;i<n_sample; ++i)
+            {
+                if (G.gt[i] >0)
+                {
+                    if (abs( (D.dp2[0][i] + D.dp2[1][i])/2.0 - G.dp_mean ) < G.dp_stdev && (D.var_depth[i] - G.dp_mean) > 2.0*G.dp_stdev)
+                    {
+                        G.dp_flag = true;
+                    }
+                    else
+                    {
+                        G.cn[i] = -1;
+                    }
+				}
+			}
+		}
 	}
 
     if (D.dp2.size()>2)
@@ -341,7 +447,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             {
                 dp2_cn[i] = G.gmix2.assign_copynumber(D.dp2[dp2_idx][i], D.dp2[dp2_idx+1][i]);
                 
-                if (dp2_cn[i] >=0 )
+                if (dp2_cn[i] >=2 )
                 {
                     dp2_ns++;
                 }
@@ -416,9 +522,13 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     }
     
     if (min_cn >=2 && max_cn <= 4)
+	{
         G.b_biallelic = true;
+	}
     else
+	{
         G.b_biallelic = false;
+	}
     
 	for(int i=0; i<n_sample; ++i)
 	{

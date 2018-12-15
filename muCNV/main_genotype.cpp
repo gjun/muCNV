@@ -60,6 +60,7 @@ int main_genotype(int argc, char** argv)
     bool b_dumpstat;
 	bool b_kmeans;
 	bool b_mahalanobis;
+	int chr;
     
     // Parsing command-line arguments
     try
@@ -75,6 +76,7 @@ int main_genotype(int argc, char** argv)
         TCLAP::ValueArg<string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "string");
 
         TCLAP::ValueArg<string> argRegion("r", "region", "Genotype specific genomic region", false, "", "chr:startpos-endpos" );
+        TCLAP::ValueArg<double> argChr("c","chr","Chromosome number (1-24) if pileup contains only a single chromosome",false,0,"ingetger (1-24)");
 
         TCLAP::ValueArg<double> argPoverlap("p","pmax","Maximum overlap between depth clusters",false,0.2,"number(0-1.0)");
 
@@ -89,6 +91,7 @@ int main_genotype(int argc, char** argv)
         cmd.add(argInterval);
         cmd.add(argGcfile);
         cmd.add(argIndex);
+		cmd.add(argChr);
         cmd.add(argRegion);
         cmd.add(argRange);
 		cmd.add(argPoverlap);
@@ -102,6 +105,7 @@ int main_genotype(int argc, char** argv)
         gc_file = argGcfile.getValue();
         bNoHeader = switchNoHeader.getValue();
         bFail = switchFail.getValue();
+		chr = argChr.getValue();
 		max_p = argPoverlap.getValue();
         b_dumpstat = switchDumpstat.getValue();
 		b_kmeans = switchKmeans.getValue();
@@ -147,16 +151,35 @@ int main_genotype(int argc, char** argv)
 
     int n_pileup = (int) pileup_names.size();
     int n_var = (int) vec_sv.size();
+	std::vector<int> n_vars (gc.num_chr+1, 0);
     
+	for(int i=0; i<(int)vec_sv.size(); ++i)
+	{
+		n_vars[vec_sv[i].chrnum] ++;
+	}
+
     int n_start = 0;
     int n_end = n_var-1;
     
+	if (chr>0)
+	{
+		std::cerr << "Processing chromosome " << chr << " only" << std::endl;
+	}
     std::cerr << n_pileup << " pileup files identified from index file" << std::endl;
     
     DataReader reader;
     std::vector<SampleStat> stats;
-    n_sample = reader.load(pileup_names, stats, gc);
-    std::cerr << n_sample << " samples identified from pileup files\n" << std::endl;
+
+	if (chr>0)
+	{
+		for(int i=0; i<pileup_names.size(); ++i)
+		{
+			pileup_names[i] += ".chr" + std::to_string(chr);
+		}
+	}
+	
+    n_sample = reader.load(pileup_names, stats, gc, chr);
+    std::cerr << n_sample << " samples identified from pileup files" << std::endl;
 
     if (range != "")
     {
@@ -174,11 +197,22 @@ int main_genotype(int argc, char** argv)
 		out_vcf.write_header(reader.sample_ids);
 	}
     
+	int vec_offset = 0;
+	if (chr > 0)
+	{
+        while(vec_sv[vec_offset].chrnum < chr)
+        {
+            vec_offset++;
+        }
+		n_start += vec_offset;
+		n_end += vec_offset + n_vars[chr] - 1;
+	}
+
     for(int i=n_start; i<=n_end; ++i)
     {
 //		fprintf(stderr, "%d, %d:%d-%d %s\n", i, vec_sv[i].chrnum, vec_sv[i].pos, vec_sv[i].end, svTypeName(vec_sv[i].svtype).c_str());
-		
-		if (vec_sv[i].chrnum < 23 && !in_centrome(vec_sv[i])) // chr X and Y calling not supported yet
+
+		if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr))  && !in_centrome(vec_sv[i])) // chr X and Y calling not supported yet
 		{
 			SvGeno G(n_sample);
 			SvData D(n_sample);
@@ -186,7 +220,7 @@ int main_genotype(int argc, char** argv)
 			
 			std::vector<ReadStat> rdstats (n_sample);
 			reader.read_pair_split(vec_sv[i], D.rdstats, gc);
-			reader.read_var_depth(i, D.var_depth);
+			reader.read_var_depth(i - vec_offset, D.var_depth); // TODO: make read_var_depth to check whether first argument is in range
 
 			if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
 			{
