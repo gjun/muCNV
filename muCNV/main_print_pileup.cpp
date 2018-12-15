@@ -24,6 +24,7 @@ int main_print_pileup(int argc, char** argv)
     std::string gc_file;
     std::string sampID;
     std::string region;
+	int chr;
     
     std::vector<std::string> sample_ids;
     
@@ -38,12 +39,14 @@ int main_print_pileup(int argc, char** argv)
         TCLAP::ValueArg<std::string> argInterval("V","interVal", "Binary interval file containing candidate SVs", false, "", "string");
         TCLAP::ValueArg<std::string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "string");
         TCLAP::ValueArg<std::string> argRegion("r", "region", "Genomic region (chr:start-end)", false, "", "string" );
+        TCLAP::ValueArg<int> argChr("c", "chr", "Pileup contains single chromosome", false, 0, "integer" );
         
         cmd.add(argVcf);
         cmd.add(argInterval);
         cmd.add(argGcfile);
         cmd.add(argSampleID);
         cmd.add(argRegion);
+		cmd.add(argChr);
         
         cmd.parse(argc, argv);
         
@@ -52,6 +55,7 @@ int main_print_pileup(int argc, char** argv)
         interval_file = argInterval.getValue();
         gc_file = argGcfile.getValue();
         region = argRegion.getValue();
+		chr = argChr.getValue();
        
     }
     catch (TCLAP::ArgException &e)
@@ -117,16 +121,19 @@ int main_print_pileup(int argc, char** argv)
         }
     }
 
+	fflush(stdout);
+
     idx_file.read_uint64(curr_idx);
     printf("index position %d, tellg position %lu\n", (int)curr_idx, (unsigned long)pup.tellg());
     
     std::vector<uint64_t> dpsum (n_sample, 0);
     std::vector<uint64_t> n_dp (n_sample, 0);
+
     uint16_t *dp100 = (uint16_t*) malloc(sizeof(uint16_t) * n_sample);
 
-    for(int c=1; c<=gc.num_chr; ++c)
-    {
-        int N = ceil((double)gc.chr_size[c] / 100.0) + 1;
+	if (chr>0)
+	{
+        int N = ceil((double)gc.chr_size[chr] / 100.0) + 1;
         for(int j=0;j<N;++j)
         {
             pup.read_depth(dp100, n_sample);
@@ -136,49 +143,102 @@ int main_print_pileup(int argc, char** argv)
                 n_dp[i] +=1;
             }
         }
-    }
+	}
+	else
+	{
+		for(int c=1; c<=gc.num_chr; ++c)
+		{
+			int N = ceil((double)gc.chr_size[c] / 100.0) + 1;
+			for(int j=0;j<N;++j)
+			{
+				pup.read_depth(dp100, n_sample);
+				for(int i=0; i<n_sample; ++i)
+				{
+					dpsum[i] += dp100[i];
+					n_dp[i] +=1;
+				}
+			}
+		}
+	}
     delete [] dp100;
     for(int i=0; i<n_sample; ++i)
     {
         printf("Sample %d, average DP100: %d\n", i, (int)round((double)dpsum[i]/n_dp[i]/32.0));
     }
     
-    
-    for(int c=1;c<=gc.num_chr; ++c)
-    {
-        int N = ceil((double)gc.chr_size[c] / 10000.0) ;
-        
-        for(int j=1;j<=N;++j)
-        {
-            idx_file.read_uint64(curr_idx);
-            printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pup.tellg());
-            
-            for(int i=0; i<n_sample; ++i)
-            {
-                uint32_t n_rp = 0;
-                pup.read_uint32(n_rp);
-                printf("Sample %d, %d readpairs\n", i, n_rp);
-                for(int k=0; k<n_rp; ++k)
-                {
-                    readpair rp;
-                    pup.read_readpair(rp);
-                    printf("\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
-                }
-                
-                uint32_t n_sp = 0;
-                pup.read_uint32(n_sp);
-                printf("Sample %d, %d split reads\n", i, n_sp);
-                for(int k=0; k<n_sp; ++k)
-                {
-                    splitread sp;
-                    pup.read_splitread(sp);
-                    printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
+	if (chr>0)
+	{
+		int N = ceil((double)gc.chr_size[chr] / 10000.0) ;
+		
+		for(int j=1;j<=N;++j)
+		{
+			idx_file.read_uint64(curr_idx);
+			printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pup.tellg());
+			
+			for(int i=0; i<n_sample; ++i)
+			{
+				uint32_t n_rp = 0;
+				pup.read_uint32(n_rp);
+				printf("Sample %d, %d readpairs\n", i, n_rp);
+				for(int k=0; k<(int)n_rp; ++k)
+				{
+					readpair rp;
+					pup.read_readpair(rp);
+					printf("\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+				}
+				
+				uint32_t n_sp = 0;
+				pup.read_uint32(n_sp);
+				printf("Sample %d, %d split reads\n", i, n_sp);
+				for(int k=0; k<(int)n_sp; ++k)
+				{
+					splitread sp;
+					pup.read_splitread(sp);
+					printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
 
-                }
+				}
 
-            }
-        }
-    }
+			}
+		}
+	}
+	else
+	{
+		for(int c=1;c<=gc.num_chr; ++c)
+		{
+			int N = ceil((double)gc.chr_size[c] / 10000.0) ;
+			
+			for(int j=1;j<=N;++j)
+			{
+				idx_file.read_uint64(curr_idx);
+				printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pup.tellg());
+				
+				for(int i=0; i<n_sample; ++i)
+				{
+					uint32_t n_rp = 0;
+					pup.read_uint32(n_rp);
+					printf("Sample %d, %d readpairs\n", i, n_rp);
+					for(int k=0; k<(int)n_rp; ++k)
+					{
+						readpair rp;
+						pup.read_readpair(rp);
+						printf("\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+					}
+					
+					uint32_t n_sp = 0;
+					pup.read_uint32(n_sp);
+					printf("Sample %d, %d split reads\n", i, n_sp);
+					for(int k=0; k<(int)n_sp; ++k)
+					{
+						splitread sp;
+						pup.read_splitread(sp);
+						printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
+
+					}
+
+				}
+			}
+		}
+	}
 
     pup.close();
     idx_file.close();
@@ -200,9 +260,18 @@ int main_print_pileup(int argc, char** argv)
     }
     printf("\n");
     
+	int vec_offset = 0;
+	if (chr>0)
+	{
+		while(vec_sv[vec_offset].chrnum < chr)
+		{
+			vec_offset++;
+		}
+		std::cerr << n_var << " variants from " << vec_offset  << std::endl;
+	}
     for(int j=0;j<n_var;++j)
     {
-        vec_sv[j].print();
+        vec_sv[vec_offset+j].print();
         for(int i=0; i<n_sample; ++i)
         {
             uint16_t dp;

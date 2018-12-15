@@ -31,6 +31,12 @@ public:
     
     int ac;
     int ns;
+	// Average depth around SVs in samples with possible het/hom genotypes
+	double dp_mean;
+	double dp_stdev;
+	double dp2_mean;
+	double dp2_stdev;
+
 	GaussianMixture gmix;
 	GaussianMixture2 gmix2;
     

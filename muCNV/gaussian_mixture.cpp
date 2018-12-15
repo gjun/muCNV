@@ -366,7 +366,7 @@ bool GaussianMixture::ordered()
 	// TODO: 0.3 is arbitrary
 	for(int i=0; i<n_comp-1;++i)
 	{
-		if (Comps[i].Mean < Comps[i+1].Mean +0.3)
+		if (Comps[i].Mean < Comps[i+1].Mean +0.4)
 			return false;
 	}
 	return true;
@@ -378,7 +378,7 @@ bool GaussianMixture::r_ordered()
 
 	for(int i=0; i<(int)Comps.size()-1;++i)
 	{
-		if (Comps[i].Mean + 0.3 > Comps[i+1].Mean)
+		if (Comps[i].Mean + 0.4 > Comps[i+1].Mean)
 			return false;
 	}
 	return true;
@@ -643,7 +643,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 	// Let's not consider half-normal distribution -- for now
 
 	int n_sample = (int) x.size();
-	int n_iter = 20;
+	int n_iter = 15;
 
 	// pseudo-counts
 	int p_count= 10;
@@ -786,7 +786,7 @@ bool GaussianMixture2::ordered()
 {
 	for(int i=0; i<n_comp-1;++i)
 	{
-		if (Comps[i].Mean[0] + Comps[i].Mean[1] < Comps[i+1].Mean[0] + Comps[i+1].Mean[1] + 0.6)
+		if (Comps[i].Mean[0] + Comps[i].Mean[1] < Comps[i+1].Mean[0] + Comps[i+1].Mean[1] + 0.8)
 			return false;
 	}
 	return true;
@@ -796,7 +796,7 @@ bool GaussianMixture2::r_ordered()
 {
 	for(int i=0; i<(int)Comps.size()-1;++i)
 	{
-		if (Comps[i].Mean[0]+Comps[i].Mean[1] + 0.6 > Comps[i+1].Mean[0]+Comps[i+1].Mean[1])
+		if (Comps[i].Mean[0]+Comps[i].Mean[1] + 0.8 > Comps[i+1].Mean[0]+Comps[i+1].Mean[1])
 			return false;
 	}
 	return true;

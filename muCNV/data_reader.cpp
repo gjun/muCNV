@@ -98,7 +98,7 @@ void median_filter(uint16_t* D, uint16_t* D_filt, int n_sample, int n_dp)
 	*/
 }
 
-int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &stats, GcContent &gc)
+int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &stats, GcContent &gc, int chr)
 {
     // base_names: list of base names for pileup/var/idx triples
     // return value: total number of samples
@@ -115,11 +115,23 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
     
     int idx_cnt = 1;
     chr_idx_rp.resize(gc.num_chr+1);
-    for(int i=1;i<=gc.num_chr; ++i)
-    {
-        chr_idx_rp[i] = idx_cnt; // chr_idx[1] contains the array index of pileup index of chr 1
-        idx_cnt += ceil((double)gc.chr_size[i] / 10000.0) ;
-    }
+	if (chr>0)
+	{
+		for(int i=1;i<=gc.num_chr; ++i)
+		{
+			chr_idx_rp[i] = -1; // make everything invalid 
+		}
+		chr_idx_rp[chr] = idx_cnt;
+		idx_cnt += ceil((double)gc.chr_size[chr] / 10000.0) ;
+	}
+	else
+	{
+		for(int i=1;i<=gc.num_chr; ++i)
+		{
+			chr_idx_rp[i] = idx_cnt; // chr_idx[1] contains the array index of pileup index of chr 1
+			idx_cnt += ceil((double)gc.chr_size[i] / 10000.0) ;
+		}
+	}
     
     std::cerr<< idx_cnt << " indices should be in index file" << std::endl;
  
@@ -187,10 +199,22 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
         chr_bytepos_dp100[i].resize(gc.num_chr +1);
         chr_bytepos_dp100[i][0]= 0;
         chr_bytepos_dp100[i][1] = multi_idx[i][0];
-        for(int c=2; c<=gc.num_chr; ++c)
-        {
-            chr_bytepos_dp100[i][c] = chr_bytepos_dp100[i][c-1] + (ceil((double)gc.chr_size[c-1] / 100.0) + 1) * n_samples[i] * sizeof(uint16_t);
-        }
+
+		if (chr>0)
+		{
+			for(int c=2; c<=gc.num_chr; ++c)
+			{
+				chr_bytepos_dp100[i][chr] = -1; // make everything out of range
+			}
+			chr_bytepos_dp100[i][chr] = multi_idx[i][0]; // just this chromosome
+		}
+		else
+		{
+			for(int c=2; c<=gc.num_chr; ++c)
+			{
+				chr_bytepos_dp100[i][c] = chr_bytepos_dp100[i][c-1] + (ceil((double)gc.chr_size[c-1] / 100.0) + 1) * n_samples[i] * sizeof(uint16_t);
+			}
+		}
     }
     return n_sample_total;
 }
@@ -208,7 +232,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
     int post_end = (curr_sv.end + 1500);
     
     if (pre_start<1) pre_start = 1 ;
-    if (post_end > gc.chr_size[curr_sv.chrnum]) post_end = gc.chr_size[curr_sv.chrnum];
+    if (post_end > (int)gc.chr_size[curr_sv.chrnum]) post_end = gc.chr_size[curr_sv.chrnum];
     
     dvec_dp.resize(2);
     dvec_dp[0].resize(n_sample_total);
@@ -328,7 +352,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
         }
     }
 
-	if (n_dp <= 500)
+	if (n_dp <= 200)
 	{
 		for(int i=0; i<n_pileup; ++i)
 		{
@@ -383,7 +407,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
                 seg_starts.push_back(seg_ends[2]);
                 seg_ends.push_back(n_dp);
 			}
-			for(int k=0; k<seg_starts.size(); ++k)
+			for(int k=0; k<(int)seg_starts.size(); ++k)
 			{
 				std::vector<unsigned> dp_sum (n_samples[i], 0);
 				std::vector<unsigned> dp_cnt (n_samples[i], 0);
@@ -408,8 +432,8 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
 			delete [] D;
 			delete [] D_filt;
 		}
-	} // if n_dp <= 1000
-	else // n_dp > 1000
+	} // if n_dp <= 200
+	else // n_dp >  200
 	{
 		for(int i=0; i<n_pileup; ++i)
 		{
@@ -422,7 +446,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
 			pos_starts.push_back(curr_sv.pos + (int)curr_sv.len*0.75);
 
 			std::vector<unsigned> gc_sum (n_samples[i], 0);
-			n_dp = 100;
+			n_dp = 50;
 			int n_dp_by_sample = n_samples[i] * n_dp;
 			uint16_t *D = new uint16_t[n_dp_by_sample];
 			uint16_t *D_filt = new uint16_t[n_dp_by_sample];
@@ -495,7 +519,7 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
     int end_pos2 = curr_sv.end + 500;
 
     if (start_pos2 <= curr_sv.pos) start_pos2 = curr_sv.pos+1;
-	if (end_pos2 > gc.chr_size[curr_sv.chrnum])  end_pos2 = gc.chr_size[curr_sv.chrnum]-1;
+	if (end_pos2 > (int)gc.chr_size[curr_sv.chrnum])  end_pos2 = gc.chr_size[curr_sv.chrnum]-1;
     
     uint64_t start_idx1 = chr_idx_rp[curr_sv.chrnum] + (int)start_pos1/10000;
     uint64_t end_idx1 = chr_idx_rp[curr_sv.chrnum] + (int)end_pos1/10000;
