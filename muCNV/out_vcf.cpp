@@ -106,7 +106,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 		{
 			fprintf(fp,"::%.2f:%.2f:%.2f", G.gmix.Comps[j].Mean, G.gmix.Comps[j].Stdev, G.gmix.Comps[j].Alpha);
 		}
-		fprintf(fp, ");Poverlap=%.2f", G.gmix.p_overlap);
+		fprintf(fp, ");DPoverlap=%.2f", G.gmix.p_overlap);
 	}
     if (G.dp2_flag)
 	{
@@ -115,7 +115,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 		{
 			fprintf(fp, "::%.2f,%.2f:%.2f,%.2f:%.2f", G.gmix2.Comps[j].Mean[0], G.gmix2.Comps[j].Mean[1], G.gmix2.Comps[j].Cov[0], G.gmix2.Comps[j].Cov[3], G.gmix2.Comps[j].Alpha);
 		}
-		fprintf(fp, "):DP2Err=%2f", G.gmix2.p_overlap);
+		fprintf(fp, "):DP2overlap=%2f", G.gmix2.p_overlap);
 	}
     if (G.read_flag)
 	{
