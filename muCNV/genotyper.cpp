@@ -217,8 +217,6 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     select_model(G.gmix, means, D.var_depth);
 
 	int dp2_idx = 2;
-	if (D.dp2.size()==6)
-		dp2_idx = 3;
 
     // depth clustering
 	if (G.gmix.n_comp > 1 && G.gmix.ordered())
@@ -468,8 +466,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     {
         // DP100 genotyping
         int dp2_idx = 2;
-        if (D.dp2.size()==6)
-            dp2_idx = 3;
         
         select_model(G.gmix2, means, D.dp2[dp2_idx], D.dp2[dp2_idx+1]);
         

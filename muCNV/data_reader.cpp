@@ -248,6 +248,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
     int n_post = idx_post_end - idx_end;
     
     // Read 'before start' depth and 'after end' depth
+    // TODO: can be merged, or reordered to pre/center/post order for faster processing
     for(int i=0; i<n_pileup; ++i)
     {
         if (n_pre>2)
@@ -332,9 +333,15 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
         }
         return 0;
     }
-    else if (n_dp < 10)
+    else if (n_dp <= 10)
         b_medfilt = false; // no median filtering
- 
+    
+    for(int k=0; k<2; ++k)
+    {
+        std::vector<double> x(n_sample_total, 0);
+        dvec_dp.push_back(x);
+    }
+    /*
     if (n_dp <= 40)
     {
         for(int k=0; k<2; ++k)
@@ -351,6 +358,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
             dvec_dp.push_back(x);
         }
     }
+     */
 
 	if (n_dp <= 200)
 	{
@@ -389,7 +397,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
 			std::vector<int> seg_starts;
 			std::vector<int> seg_ends;
 
-			if (n_dp <= 40)
+			if (n_dp <= 10)
 			{
 				seg_starts.push_back(0);
 				seg_ends.push_back((int)n_dp/2);
@@ -398,6 +406,11 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
 			}
 			else
 			{
+                seg_starts.push_back(2);
+                seg_ends.push_back((int)n_dp/2);
+                seg_starts.push_back(seg_ends[0]);
+                seg_ends.push_back(n_dp-2);
+                /*
                 seg_starts.push_back(0);
                 seg_ends.push_back((int)n_dp/4);
                 seg_starts.push_back(seg_ends[0]);
@@ -406,6 +419,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
                 seg_ends.push_back((int)(n_dp*0.75));
                 seg_starts.push_back(seg_ends[2]);
                 seg_ends.push_back(n_dp);
+                 */
 			}
 			for(int k=0; k<(int)seg_starts.size(); ++k)
 			{
@@ -440,18 +454,21 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
 			// if n_inside < 200, make two
 			// sample by sample sum
 			std::vector<int> pos_starts;
+            pos_starts.push_back(curr_sv.pos + (int)curr_sv.len / 8);
+            pos_starts.push_back(curr_sv.pos + (int)curr_sv.len * 0.625);
+            /*
 			pos_starts.push_back(curr_sv.pos + 101);
 			pos_starts.push_back(curr_sv.pos + (int)curr_sv.len / 4);
 			pos_starts.push_back(curr_sv.pos + (int)curr_sv.len / 2);
 			pos_starts.push_back(curr_sv.pos + (int)curr_sv.len*0.75);
-
+*/
 			std::vector<unsigned> gc_sum (n_samples[i], 0);
 			n_dp = 50;
 			int n_dp_by_sample = n_samples[i] * n_dp;
 			uint16_t *D = new uint16_t[n_dp_by_sample];
 			uint16_t *D_filt = new uint16_t[n_dp_by_sample];
 
-			for (int seg=0; seg<4; ++seg)
+			for (int seg=0; seg<2; ++seg)
 			{
 				uint64_t start_byte = multi_idx[i][0]; // This is the index position where dp100 record starts
 				start_byte = chr_bytepos_dp100[i][curr_sv.chrnum];
@@ -486,11 +503,11 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
 				for(int m=0; m<n_samples[i]; ++m)
 					dvec_dp[seg+2][m+sample_idx] = (double)dp_sum[m]/n_dp/32.0;
 
-			} // seg : 4
+			} // seg : 2
 
 			for(int k=0; k<n_samples[i]; ++k)
 			{
-				var_dp[k + sample_idx] = (double) gc_sum[k] / (n_dp * 4)/ 32.0;
+				var_dp[k + sample_idx] = (double) gc_sum[k] / (n_dp * 2)/ 32.0;
 			}
 			sample_idx += n_samples[i];
 
