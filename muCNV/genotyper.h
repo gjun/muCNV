@@ -23,6 +23,7 @@ public:
     bool b_pass;
     bool dp_flag;
     bool dp2_flag;
+    bool pd_flag;
     bool read_flag;
     
     std::string info;
@@ -32,17 +33,20 @@ public:
     int ac;
     int ns;
 	// Average depth around SVs in samples with possible het/hom genotypes
-	double dp_mean;
-	double dp_stdev;
-	double dp2_mean;
-	double dp2_stdev;
-
+	double dp_pre_mean;
+    double dp_pre_std;
+    double dp_post_mean;
+    double dp_post_std;
+    bool b_pre;
+    bool b_post;
+    
 	GaussianMixture gmix;
 	GaussianMixture2 gmix2;
     
     std::vector<int> gt; // bi-allelic genotype
     std::vector<int> cn; // copy number
 
+    std::vector<double> prepost_dp;
     SvGeno (int);
 };
 
@@ -64,6 +68,9 @@ public:
 	double MAX_P_OVERLAP;
 	bool b_kmeans;
 	bool b_mahalanobis;
+
+    void get_prepost_stat(SvData &, SvGeno &);
+
     void call( sv&,  SvData&, SvGeno &, double, bool, bool);
     void call_deletion( sv &,  SvData &, SvGeno &);
     void call_cnv( sv &,  SvData &, SvGeno &);
