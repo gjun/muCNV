@@ -191,26 +191,24 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 				G.cn[i] = 1;
 				G.gt[i] = 1; // 0/1
 
-				dp_sum += D.dp2[0][i] + D.dp2[1][i];
-				dp_sumsq += D.dp2[0][i]*D.dp2[0][i] + D.dp2[1][i]*D.dp2[1][i];
-				dp_cnt += 2;
 			}
 			else if (cn == 0)
 			{
 				G.cn[i] = 0;
 				G.gt[i] = 2; // 1/1
 
-				dp_sum += D.dp2[0][i] + D.dp2[1][i];
-				dp_sumsq += D.dp2[0][i]*D.dp2[0][i] + D.dp2[1][i]*D.dp2[1][i];
-				dp_cnt += 2;
 			}
+			dp_sum += D.dp2[0][i] + D.dp2[1][i];
+			dp_sumsq += D.dp2[0][i]*D.dp2[0][i] + D.dp2[1][i]*D.dp2[1][i];
+			dp_cnt += 2;
 		}
 
-		if (dp_cnt > 0 )
-		{
-			G.dp_mean = dp_sum/dp_cnt;
-			G.dp_stdev = sqrt(dp_sumsq / dp_cnt - G.dp_mean*G.dp_mean);
+		G.dp_mean = dp_sum/dp_cnt;
+		G.dp_stdev = sqrt(dp_sumsq / dp_cnt - G.dp_mean*G.dp_mean);
 
+		// depth distribution in normal range
+		if (G.dp_mean > 0.75 && G.dp_mean < 1.25)
+		{
 			// prevent stdev become too small 
 			if (G.dp_stdev < 0.1)
 			{
@@ -219,12 +217,30 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
 			for (int i=0;i<n_sample; ++i)
 			{
-				if (G.gt[i] >0)
+				if (G.gt[i] > 0)
 				{
 					// it's okay if peripheral depth is higher than mean
-					if (G.dp_mean - (D.dp2[0][i] +  D.dp2[1][i])/2.0 < G.dp_stdev && G.dp_mean - D.var_depth[i] > 2.0*G.dp_stdev)
+					if ( (D.dp2[0][i]+D.dp2[1][i])/2.0 - D.var_depth[i] > 2.0*G.dp_stdev )
 					{
 						G.dp_flag = true;
+						if (G.gt[i] < 0)
+						{
+							if (D.var_depth[i] < 0.15)
+							{
+								G.cn[i] = 0;
+								G.gt[i] = 2;
+							}
+							else
+							{
+								G.cn[i] = 1;
+								G.gt[i] = 1;
+							}
+						}
+					}
+					else if (abs (G.dp_mean - D.var_depth[i]) <  2.0 * G.dp_stdev)
+					{
+						G.cn[i] = 2;
+						G.gt[i] = 0;
 					}
 					else
 					{
@@ -281,18 +297,45 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 			{
 				G.dp2_mean = dp_sum/dp_cnt;
 				G.dp2_stdev = sqrt(dp_sumsq / dp_cnt - G.dp2_mean*G.dp2_mean);
-
-				for (int i=0;i<n_sample; ++i)
+				
+				if (G.dp2_mean > 0.75 && G.dp2_mean < 1.25)
 				{
-					if (G.gt[i] >0)
+					if (G.dp2_stdev < 0.1)
 					{
-						if (abs( (D.dp2[0][i] + D.dp2[1][i])/2.0 - G.dp2_mean ) < G.dp2_stdev && 2*G.dp2_mean - (D.dp2[dp2_idx][i] + D.dp2[dp2_idx+1][i]) > 4.0*G.dp2_stdev)
+						G.dp2_stdev = 0.1;
+					}
+
+					for (int i=0;i<n_sample; ++i)
+					{
+						if (G.gt[i] != 0)
 						{
-							G.dp2_flag = true;
-						}
-						else
-						{
-							G.gt[i] = -1;
+							if (G.gt[i] > 0 && G.dp2_mean - (D.dp2[0][i] +  D.dp2[1][i])/2.0 < 2.0*G.dp2_stdev && (D.dp2[0][i] + D.dp2[1][i]) - (D.dp2[dp2_idx][i]+D.dp2[dp2_idx+1][i])  > 4.0*G.dp2_stdev )
+							{
+								G.dp2_flag = true;
+
+								if (G.gt[i] < 0) // previously 'missing'
+								{
+									if (D.dp2[dp2_idx][i] + D.dp2[dp2_idx+1][i] < 0.3)
+									{
+										G.cn[i] = 0;
+										G.gt[i] = 2;
+									}
+									else
+									{
+										G.cn[i] = 1;
+										G.gt[i] = 1;
+									}
+								}
+							}
+							else if (abs (G.dp_mean - (D.dp2[dp2_idx][i] + D.dp2[dp2_idx+1][i])/2.0) <  2.0 * G.dp_stdev)
+							{
+								G.cn[i] = 2;
+								G.gt[i] = 0;
+							}
+							else
+							{
+								G.gt[i] = -1;
+							}
 						}
 					}
 				}
@@ -398,7 +441,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             {
 				dp_ns ++;
 
-				if (dp_cn[i] >= 3)
+				if (dp_cn[i] > 3)
 				{
 					dp_sum += D.dp2[0][i] + D.dp2[1][i];
 					dp_sumsq += D.dp2[0][i]*D.dp2[0][i] + D.dp2[1][i]*D.dp2[1][i];
@@ -411,18 +454,45 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             G.dp_mean = dp_sum/dp_cnt;
             G.dp_stdev = sqrt(dp_sumsq / dp_cnt - G.dp_mean*G.dp_mean);
 
-            for (int i=0;i<n_sample; ++i)
-            {
-                if (G.gt[i] >0)
-                {
-                    if (abs( (D.dp2[0][i] + D.dp2[1][i])/2.0 - G.dp_mean ) < G.dp_stdev && (D.var_depth[i] - G.dp_mean) > 2.0*G.dp_stdev)
-                    {
-                        G.dp_flag = true;
-                    }
-                    else
-                    {
-                        G.cn[i] = -1;
-                    }
+			if (G.dp_mean>0.75 && G.dp_mean < 1.25)
+			{
+				if (G.dp_stdev < 0.1)
+				{
+					G.dp_stdev = 0.1;
+				}
+
+				for (int i=0;i<n_sample; ++i)
+				{
+					if (dp_cn[i] != 2)
+					{
+						// it's okay if peripheral depth is higher than mean
+						if ( (D.dp2[0][i] +  D.dp2[1][i])/2.0 - G.dp_mean <  2.0*G.dp_stdev && D.var_depth[i] - (D.dp2[0][i] + D.dp2[1][i]) / 2.0 > 2.0*G.dp_stdev )
+						{
+							if (dp_cn[i] < 2) // previously missing
+							{
+								dp_ns ++;
+								dp_cn[i] = round(D.var_depth[i]*2.0);
+								if (dp_cn[i] == 2) // force het call
+								{
+									dp_cn[i] = 3;
+								}
+							}
+							G.dp_flag =true;
+						}
+						else if (abs (G.dp_mean - D.var_depth[i] ) <  2.0 * G.dp_stdev)
+						{
+							if (dp_cn[i] <= 2)
+							{
+								dp_ns ++;
+							}
+							dp_cn[i] = 2;
+						}
+						else
+						{
+							dp_cn[i] = -1;
+						}
+					}
+
 				}
 			}
 		}
@@ -441,8 +511,11 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         if (G.gmix2.n_comp>1 && G.gmix2.r_ordered() )
         {
             // success
-            G.dp2_flag = true;
             //assign dp2 genotypes
+			double dp_sum = 0;
+			double dp_sumsq = 0;
+			int dp_cnt = 0;
+
             for(int i=0; i<(int)n_sample; ++i)
             {
                 dp2_cn[i] = G.gmix2.assign_copynumber(D.dp2[dp2_idx][i], D.dp2[dp2_idx+1][i]);
@@ -450,8 +523,57 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                 if (dp2_cn[i] >=2 )
                 {
                     dp2_ns++;
+
+					if (dp2_cn[i] > 2)
+					{
+						dp_sum += D.dp2[0][i] + D.dp2[1][i];
+						dp_sumsq += D.dp2[0][i]*D.dp2[0][i] + D.dp2[1][i]*D.dp2[1][i];
+						dp_cnt += 2;
+					}
                 }
             }
+
+			if (dp_cnt > 0 )
+			{
+				G.dp2_mean = dp_sum/dp_cnt;
+				G.dp2_stdev = sqrt(dp_sumsq / dp_cnt - G.dp2_mean*G.dp2_mean);
+
+				if (G.dp2_mean > 0.75 && G.dp2_mean < 1.25)
+				{
+					if (G.dp2_stdev < 0.1)
+					{
+						G.dp2_stdev = 0.1;
+					}
+
+					for (int i=0;i<n_sample; ++i)
+					{
+						if (dp2_cn[i] != 0)
+						{
+							if (G.dp2_mean - (D.dp2[0][i] +  D.dp2[1][i])/2.0 < 2.0*G.dp2_stdev && (D.dp2[0][i]+D.dp2[1][i])-(D.dp2[dp2_idx][i]+D.dp2[dp2_idx+1][i])  > 4.0*G.dp2_stdev )
+							{
+								if (dp2_cn[i] < 2) // previously missing
+								{
+									dp2_ns ++;
+									dp2_cn[i] = round(D.dp2[dp2_idx][i] + D.dp2[dp2_idx+1][i]);
+									if (dp2_cn[i] == 2) // force het call
+									{
+										dp2_cn[i] = 3;
+									}
+								}
+								G.dp2_flag = true;
+							}
+							else if (abs (G.dp2_mean - (D.dp2[dp2_idx][i] + D.dp2[dp2_idx+1][i])/2.0) <  2.0 * G.dp2_stdev)
+							{
+								dp2_cn[i] = 2;
+							}
+							else
+							{
+								dp2_cn[i] = -1;
+							}
+						}
+					}
+				}
+			}
         }
     }
 
@@ -474,11 +596,11 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             if (D.rdstats[i].dup_support())
             {
                 G.read_flag = true;
-                if (D.var_depth[i] > 1.35 && D.var_depth[i] < 1.75 && G.cn[i]== -1) // TEMPORARY
+                if (D.var_depth[i] > 1.35 && D.var_depth[i] < 1.8) // TEMPORARY
                 {
                     G.cn[i] = 3;
                 }
-                else if (D.var_depth[i]>1.85 && G.cn[i] == -1)
+                else if (D.var_depth[i]>1.8)
                 {
                     G.cn[i] = round(D.var_depth[i] * 2.0);
                 }
@@ -490,7 +612,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         }
         else
         {
-            if (!D.rdstats[i].dup_support() &&  D.var_depth[i] > 0.75 && D.var_depth[i] <= 1.35)
+            if (!D.rdstats[i].dup_support() &&  D.var_depth[i] > 0.75 && D.var_depth[i] <= 1.3)
             {
                 G.cn[i] = 2;
             }

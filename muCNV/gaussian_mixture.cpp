@@ -366,7 +366,7 @@ bool GaussianMixture::ordered()
 	// TODO: 0.3 is arbitrary
 	for(int i=0; i<n_comp-1;++i)
 	{
-		if (Comps[i].Mean < Comps[i+1].Mean +0.4)
+		if (Comps[i].Mean < Comps[i+1].Mean + 0.35)
 			return false;
 	}
 	return true;
@@ -378,7 +378,7 @@ bool GaussianMixture::r_ordered()
 
 	for(int i=0; i<(int)Comps.size()-1;++i)
 	{
-		if (Comps[i].Mean + 0.4 > Comps[i+1].Mean)
+		if (Comps[i].Mean + 0.35 > Comps[i+1].Mean)
 			return false;
 	}
 	return true;
