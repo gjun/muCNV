@@ -499,7 +499,10 @@ GaussianMixture2& GaussianMixture2::operator = (const GaussianMixture2& gmix)
 		Comps[i].Mean[1] = gmix.Comps[i].Mean[1];
 
 		for(int j=0; j<4; ++j)
+        {
 			Comps[i].Cov[j] = gmix.Comps[i].Cov[j];
+            Comps[i].Prc[j] = gmix.Comps[i].Prc[j];
+        }
 		Comps[i].Alpha = gmix.Comps[i].Alpha;
 	}
 	bic = gmix.bic;
@@ -686,6 +689,11 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 	{
 		p_val[i][0] = Comps[i].Mean[0];
 		p_val[i][1] = Comps[i].Mean[1];
+        
+        if (Comps[i].Mean[0] < 0.01 && Comps[i].Mean[1] <0.01)
+        {
+            zeroidx = i;
+        }
 	}
 
 	// pseudo-means
