@@ -363,24 +363,30 @@ int GaussianMixture::assign_copynumber(double x)
 bool GaussianMixture::ordered()
 {
 	// For deletions, Means should be descending order with at least 0.3 difference
-	// TODO: 0.3 is arbitrary
-	for(int i=0; i<n_comp-1;++i)
-	{
-		if (Comps[i].Mean < Comps[i+1].Mean + 0.35)
+	// TODO: arbitrary
+
+    if (Comps[0].Mean < 0.8 || Comps[0].Mean > 1.2 )
+        return false;
+    if (Comps[1].Mean < 0.4 || Comps[1].Mean > 0.65)
+        return false;
+
+    if (Comps[0].Mean - Comps[1].Mean < 0.35)
 			return false;
-	}
+    
 	return true;
 }
 
 bool GaussianMixture::r_ordered()
 {
 	// For duplications, Means should be descending order with at least 0.3 difference
+    if (Comps[0].Mean < 0.8 || Comps[0].Mean > 1.2 )
+        return false;
+    if (Comps[1].Mean < 1.4)
+        return false;
+    
+    if (Comps[1].Mean - Comps[0].Mean < 0.3)
+        return false;
 
-	for(int i=0; i<(int)Comps.size()-1;++i)
-	{
-		if (Comps[i].Mean + 0.35 > Comps[i+1].Mean)
-			return false;
-	}
 	return true;
 }
 
@@ -784,21 +790,29 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 
 bool GaussianMixture2::ordered()
 {
-	for(int i=0; i<n_comp-1;++i)
-	{
-		if (Comps[i].Mean[0] + Comps[i].Mean[1] < Comps[i+1].Mean[0] + Comps[i+1].Mean[1] + 0.8)
+    if (Comps[0].Mean[0] + Comps[0].Mean[1] < 1.6 || Comps[0].Mean[0] + Comps[0].Mean[1] > 2.4 )
+        return false;
+    
+    if (Comps[1].Mean[0] + Comps[1].Mean[1] < 0.8 || Comps[1].Mean[0] + Comps[1].Mean[1] > 1.35 )
+        return false;
+    
+    if (Comps[0].Mean[0] + Comps[0].Mean[1] < Comps[1].Mean[0] + Comps[1].Mean[1] + 0.7)
 			return false;
-	}
+	
 	return true;
 }
 
 bool GaussianMixture2::r_ordered()
 {
-	for(int i=0; i<(int)Comps.size()-1;++i)
-	{
-		if (Comps[i].Mean[0]+Comps[i].Mean[1] + 0.8 > Comps[i+1].Mean[0]+Comps[i+1].Mean[1])
-			return false;
-	}
+    if (Comps[0].Mean[0] + Comps[0].Mean[1] < 1.6 || Comps[0].Mean[0] + Comps[0].Mean[1] > 2.4 )
+        return false;
+    
+    if (Comps[1].Mean[0] + Comps[1].Mean[1] < 2.7 )
+        return false;
+    
+    if (Comps[0].Mean[0] + Comps[0].Mean[1] > Comps[1].Mean[0] + Comps[1].Mean[1] - 0.7)
+        return false;
+    
 	return true;
 }
 
