@@ -139,21 +139,17 @@ void GaussianMixture::EM(std::vector<double>& x)
 			}
 		}
 
-		// Pseudo-count for variance -- commented out
-		/*
-		   for(int m=0; m<n_comp; ++m)
-		   {
-		   sum_err[m] += (p_val[m] - Comps[m].Mean)*(p_val[m]-Comps[m].Mean) * p_count;
-		   }
-		 */
+		for(int m=0; m<n_comp; ++m)
+		{
+			// Wishart prior
+			sum_err[m] += 0.01 * p_count;
+		}
 		for(int m=0; m<n_comp; ++m)
 		{
 			Comps[m].Stdev = sqrt(sum_err[m] / sum_pr[m]) ;
 			Comps[m].Alpha = sum_pr[m] / sumsum;
 		}
-		//            cerr << "\t(" << Comps[m].Mean << "," << Comps[m].Stdev  << " : " << Comps[m].Alpha << ")";
-		//        cerr << endl;
-		//		print();
+      //  print();
 	}
 
 	double llk = 0;
@@ -176,7 +172,7 @@ void GaussianMixture::EM(std::vector<double>& x)
 	bic = -2.0 * llk +  2*n_comp*log(n_sample);
 	p_overlap = BayesError();
 
-	//    std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
+	//std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
 }
 
 
@@ -187,7 +183,7 @@ void GaussianMixture::KM(std::vector<double>& x, bool b_mahalanobis)
 	int n_iter = 15;
 
 	// pseudo-counts
-	int p_count= 10;
+	int p_count= 5;
 	double p_val[n_comp];
 
 
@@ -363,24 +359,30 @@ int GaussianMixture::assign_copynumber(double x)
 bool GaussianMixture::ordered()
 {
 	// For deletions, Means should be descending order with at least 0.3 difference
-	// TODO: 0.3 is arbitrary
-	for(int i=0; i<n_comp-1;++i)
+	// TODO: arbitrary
+
+	if (Comps[0].Mean < 0.8 || Comps[0].Mean > 1.2 )
+		return false;
+	if (Comps[1].Mean < 0.4 || Comps[1].Mean > 0.65)
+		return false;
+
+	for(int i=0; i<n_comp-1; ++i)
 	{
-		if (Comps[i].Mean < Comps[i+1].Mean +0.4)
+		if (Comps[i].Mean - Comps[i+1].Mean < 0.35)
 			return false;
 	}
+
 	return true;
 }
 
 bool GaussianMixture::r_ordered()
 {
 	// For duplications, Means should be descending order with at least 0.3 difference
+	if (Comps[0].Mean < 0.7 || Comps[0].Mean > 1.3 )
+		return false;
+	if (Comps[1].Mean < 1.4)
+		return false;
 
-	for(int i=0; i<(int)Comps.size()-1;++i)
-	{
-		if (Comps[i].Mean + 0.4 > Comps[i+1].Mean)
-			return false;
-	}
 	return true;
 }
 
@@ -475,7 +477,10 @@ GaussianMixture2& GaussianMixture2::operator = (const GaussianMixture2& gmix)
 		Comps[i].Mean[1] = gmix.Comps[i].Mean[1];
 
 		for(int j=0; j<4; ++j)
+		{
 			Comps[i].Cov[j] = gmix.Comps[i].Cov[j];
+			Comps[i].Prc[j] = gmix.Comps[i].Prc[j];
+		}
 		Comps[i].Alpha = gmix.Comps[i].Alpha;
 	}
 	bic = gmix.bic;
@@ -493,7 +498,7 @@ void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y, bool 
 	int n_iter = 15;
 
 	// pseudo-counts
-	int p_count= 10;
+	int p_count= 5;
 	double p_val[n_comp][2];
 
 	if (n_comp == 1)
@@ -662,6 +667,11 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 	{
 		p_val[i][0] = Comps[i].Mean[0];
 		p_val[i][1] = Comps[i].Mean[1];
+
+		if (Comps[i].Mean[0] < 0.01 && Comps[i].Mean[1] <0.01)
+		{
+			zeroidx = i;
+		}
 	}
 
 	// pseudo-means
@@ -753,9 +763,9 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 			sum_e_yy[m] += ey * ey;
 
 			// Wishart prior : S = [0.01 0; 0 0.01]
-			Comps[m].Cov[0] = (sum_e_xx[m]  + 0.001 * p_count) / sum_pr[m];
+			Comps[m].Cov[0] = (sum_e_xx[m]  + 0.01 * p_count) / sum_pr[m];
 			Comps[m].Cov[1] = Comps[m].Cov[2] = sum_e_xy[m] / sum_pr[m];
-			Comps[m].Cov[3] = (sum_e_yy[m] + 0.001 * p_count) / sum_pr[m];
+			Comps[m].Cov[3] = (sum_e_yy[m] + 0.01 * p_count) / sum_pr[m];
 			Comps[m].update();
 
 			Comps[m].Alpha = sum_pr[m] / (n_sample + n_comp*p_count);
@@ -784,21 +794,29 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 
 bool GaussianMixture2::ordered()
 {
-	for(int i=0; i<n_comp-1;++i)
+	if (Comps[0].Mean[0] + Comps[0].Mean[1] < 1.6 || Comps[0].Mean[0] + Comps[0].Mean[1] > 2.4 )
+		return false;
+
+	if (Comps[1].Mean[0] + Comps[1].Mean[1] < 0.8 || Comps[1].Mean[0] + Comps[1].Mean[1] > 1.3)
+		return false;
+
+	for (int i=0; i<n_comp-1; ++i)
 	{
-		if (Comps[i].Mean[0] + Comps[i].Mean[1] < Comps[i+1].Mean[0] + Comps[i+1].Mean[1] + 0.8)
+		if (Comps[i].Mean[0] + Comps[i].Mean[1] - Comps[i+1].Mean[0] - Comps[i+1].Mean[1] < 0.6)
 			return false;
 	}
+
 	return true;
 }
 
 bool GaussianMixture2::r_ordered()
 {
-	for(int i=0; i<(int)Comps.size()-1;++i)
-	{
-		if (Comps[i].Mean[0]+Comps[i].Mean[1] + 0.8 > Comps[i+1].Mean[0]+Comps[i+1].Mean[1])
-			return false;
-	}
+	if (Comps[0].Mean[0] + Comps[0].Mean[1] < 1.4 || Comps[0].Mean[0] + Comps[0].Mean[1] > 2.6 )
+		return false;
+
+	if (Comps[1].Mean[0] + Comps[1].Mean[1] < 2.6 )
+		return false;
+
 	return true;
 }
 

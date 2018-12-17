@@ -18,6 +18,7 @@
 #include "gc_content.h"
 #include "data_reader.h"
 #include "genotyper.h"
+#include "common.h"
 
 void write_varstat(sv& curr_sv, std::vector<SampleStat> &stats, std::vector<ReadStat> &rdstats, std::vector<double> &var_dp)
 {
@@ -78,7 +79,7 @@ int main_genotype(int argc, char** argv)
         TCLAP::ValueArg<string> argRegion("r", "region", "Genotype specific genomic region", false, "", "chr:startpos-endpos" );
         TCLAP::ValueArg<double> argChr("c","chr","Chromosome number (1-24) if pileup contains only a single chromosome",false,0,"ingetger (1-24)");
 
-        TCLAP::ValueArg<double> argPoverlap("p","pmax","Maximum overlap between depth clusters",false,0.2,"number(0-1.0)");
+        TCLAP::ValueArg<double> argPoverlap("p","pmax","Maximum overlap between depth clusters",false,0.1,"number(0-1.0)");
 
         TCLAP::SwitchArg switchFail("a", "all", "Report filter failed variants", cmd, false);
         TCLAP::SwitchArg switchDumpstat("d", "dumpstat", "dump detailed statistics of variants (warning: large output)", cmd, false);
@@ -181,6 +182,15 @@ int main_genotype(int argc, char** argv)
     n_sample = reader.load(pileup_names, stats, gc, chr);
     std::cerr << n_sample << " samples identified from pileup files" << std::endl;
 
+    if (region != "" && range != "")
+    {
+        std::cerr << "Region (chr:start-end) and Range (from-to) cannot be set together" << std::endl;
+        exit(1);
+    }
+
+    int r_chr = 0;
+    int r_start = 0;
+    int r_end = 0;
     if (range != "")
     {
         std::string::size_type sz;   // alias of size_t
@@ -188,6 +198,26 @@ int main_genotype(int argc, char** argv)
         n_start = std::stoi(range, &sz);
         n_end = std::stoi(range.substr(sz+1));
         std::cerr << "Variants index from " << n_start << " to " << n_end << " will be genotyepd" << std::endl;
+    }
+    else if (region != "")
+    {
+        std::vector<std::string> C;
+        split(region.c_str(), ":", C);
+        r_chr = std::stoi(C[0]);
+        if (r_chr < 1 || r_chr > gc.num_chr)
+        {
+            std::cerr << "Cannot parse region " << region << std::endl;
+            exit(1);
+        }
+        std::vector<std::string> P;
+        split(C[1].c_str(), "-", P);
+        r_start = std::stoi(P[0]);
+        r_end = std::stoi(P[1]);
+        if (r_end <= r_start || r_start < 1 || r_end < 1)
+        {
+            std::cerr << "Cannot parse region " << region << std::endl;
+            exit(1);
+        }
     }
 
 	OutVcf out_vcf;
@@ -198,6 +228,7 @@ int main_genotype(int argc, char** argv)
 	}
     
 	int vec_offset = 0;
+    // TEMPORARY, whole chromosome 
 	if (chr > 0)
 	{
         while(vec_sv[vec_offset].chrnum < chr)
@@ -208,48 +239,98 @@ int main_genotype(int argc, char** argv)
 		n_end += vec_offset + n_vars[chr] - 1;
 	}
 
-    for(int i=n_start; i<=n_end; ++i)
+    if (region == "")
     {
-//		fprintf(stderr, "%d, %d:%d-%d %s\n", i, vec_sv[i].chrnum, vec_sv[i].pos, vec_sv[i].end, svTypeName(vec_sv[i].svtype).c_str());
+        for(int i=n_start; i<=n_end; ++i)
+        {
+    //		fprintf(stderr, "%d, %d:%d-%d %s\n", i, vec_sv[i].chrnum, vec_sv[i].pos, vec_sv[i].end, svTypeName(vec_sv[i].svtype).c_str());
 
-		if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr))  && !in_centrome(vec_sv[i])) // chr X and Y calling not supported yet
-		{
-			SvGeno G(n_sample);
-			SvData D(n_sample);
-			Genotyper gtyper;
-			
-			std::vector<ReadStat> rdstats (n_sample);
-			reader.read_pair_split(vec_sv[i], D.rdstats, gc);
-			reader.read_var_depth(i - vec_offset, D.var_depth); // TODO: make read_var_depth to check whether first argument is in range
+            if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr))  && !in_centrome(vec_sv[i])) // chr X and Y calling not supported yet
+            {
+                SvGeno G(n_sample);
+                SvData D(n_sample);
+                Genotyper gtyper;
+                
+                std::vector<ReadStat> rdstats (n_sample);
+                reader.read_pair_split(vec_sv[i], D.rdstats, gc);
+                reader.read_var_depth(i - vec_offset, D.var_depth); // TODO: make read_var_depth to check whether first argument is in range
 
-			if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
-			{
-				reader.read_depth100(vec_sv[i], D.dp2, D.var_depth, gc, b_dumpstat);
-			}
-			
-			for(int j=0; j<n_sample; ++j)
-			{
-				for(int k=0; k<(int)D.dp2.size(); ++k)
-				{
-					D.dp2[k][j] /= (double)stats[j].avg_dp;
-				}
-				D.var_depth[j] /= (double)stats[j].avg_dp;
-			}
+                if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
+                {
+                    reader.read_depth100(vec_sv[i], D.dp2, D.var_depth, gc, b_dumpstat);
+                }
+                
+                for(int j=0; j<n_sample; ++j)
+                {
+                    for(int k=0; k<(int)D.dp2.size(); ++k)
+                    {
+                        D.dp2[k][j] /= (double)stats[j].avg_dp;
+                    }
+                    D.var_depth[j] /= (double)stats[j].avg_dp;
+                }
 
-			if (b_dumpstat)
-			{
-				write_varstat(vec_sv[i], stats, D.rdstats, D.var_depth);
-			}
-			
-			gtyper.call(vec_sv[i], D, G, max_p, b_kmeans, b_mahalanobis);
+                if (b_dumpstat)
+                {
+                    write_varstat(vec_sv[i], stats, D.rdstats, D.var_depth);
+                }
+                
+                gtyper.call(vec_sv[i], D, G, max_p, b_kmeans, b_mahalanobis);
 
-			G.info = "var" + std::to_string(i);
+                G.info = "var" + std::to_string(i);
 
-			if (bFail || G.b_pass)
-			{
-				out_vcf.write_sv(vec_sv[i], D, G);
-			}
-		}
+                if (bFail || G.b_pass)
+                {
+                    out_vcf.write_sv(vec_sv[i], D, G);
+                }
+            }
+        }
+    }
+    else
+    {
+        for(int i=0; i<vec_sv.size(); ++i)
+        {
+            if (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)
+            {
+                if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr))  && !in_centrome(vec_sv[i])) // chr X and Y calling not supported yet
+                {
+                    SvGeno G(n_sample);
+                    SvData D(n_sample);
+                    Genotyper gtyper;
+                    
+                    std::vector<ReadStat> rdstats (n_sample);
+                    reader.read_pair_split(vec_sv[i], D.rdstats, gc);
+                    reader.read_var_depth(i - vec_offset, D.var_depth); // TODO: make read_var_depth to check whether first argument is in range
+
+                    if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
+                    {
+                        reader.read_depth100(vec_sv[i], D.dp2, D.var_depth, gc, b_dumpstat);
+                    }
+                    
+                    for(int j=0; j<n_sample; ++j)
+                    {
+                        for(int k=0; k<(int)D.dp2.size(); ++k)
+                        {
+                            D.dp2[k][j] /= (double)stats[j].avg_dp;
+                        }
+                        D.var_depth[j] /= (double)stats[j].avg_dp;
+                    }
+
+                    if (b_dumpstat)
+                    {
+                        write_varstat(vec_sv[i], stats, D.rdstats, D.var_depth);
+                    }
+                    
+                    gtyper.call(vec_sv[i], D, G, max_p, b_kmeans, b_mahalanobis);
+
+                    G.info = "var" + std::to_string(i);
+
+                    if (bFail || G.b_pass)
+                    {
+                        out_vcf.write_sv(vec_sv[i], D, G);
+                    }
+                }
+            }
+        }
     }
 	out_vcf.close();
     

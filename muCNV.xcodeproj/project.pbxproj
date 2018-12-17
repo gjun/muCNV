@@ -60,7 +60,6 @@
 		F138FD911CAD74F600CD5539 /* pException.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pException.h; sourceTree = "<group>"; };
 		F138FDC21CAD7FB900CD5539 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
 		F138FDC41CAD844700CD5539 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		F138FDC51CAD844700CD5539 /* README */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
 		F194ED341F25A41400489E0C /* genotyper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = genotyper.cpp; sourceTree = "<group>"; };
 		F194ED361F25B3C900489E0C /* sv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sv.cpp; sourceTree = "<group>"; };
 		F194ED381F2623BB00489E0C /* out_vcf.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = out_vcf.cpp; sourceTree = "<group>"; };
@@ -71,6 +70,7 @@
 		F1DB7AD9219B877600CCA521 /* pileup.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = pileup.h; sourceTree = "<group>"; };
 		F1DB7ADA219B896000CCA521 /* gc_content.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = gc_content.h; sourceTree = "<group>"; };
 		F1DB7ADE219B9BAB00CCA521 /* debug.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = debug.h; sourceTree = "<group>"; };
+		F1E7CEE221C6D99D00A4F8CC /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		F1FE1D8F214F710F005673D3 /* gc_content.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = gc_content.cpp; sourceTree = "<group>"; };
 		F1FEF25521A79495007EF4D7 /* main_pileup.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main_pileup.cpp; sourceTree = "<group>"; };
 		F1FEF25721A796E3007EF4D7 /* main_vcf_to_int.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main_vcf_to_int.cpp; sourceTree = "<group>"; };
@@ -119,8 +119,8 @@
 			children = (
 				F138FD7B1CAD744A00CD5539 /* muCNV */,
 				F138FDC41CAD844700CD5539 /* Makefile */,
-				F138FDC51CAD844700CD5539 /* README */,
 				F138FDC21CAD7FB900CD5539 /* libz.tbd */,
+				F1E7CEE221C6D99D00A4F8CC /* README.md */,
 				F138FD7A1CAD744A00CD5539 /* Products */,
 				F129E10C1EF90129007793FB /* Frameworks */,
 			);

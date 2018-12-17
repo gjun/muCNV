@@ -84,7 +84,6 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
     }
 
     double af = 0;
-	double callrate = 0;
     if (G.ns>0)
 	{
         af = (double)G.ac/(2.0*G.ns);
@@ -93,23 +92,30 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 	fprintf(fp, "SVTYPE=%s;END=%d;SVLEN=%d;AC=%d;NS=%d;CALLRATE=%.2f:AF=%f",  svtype, S.end, S.len, G.ac, G.ns, G.ns / (float)G.gt.size(), af);
 	fprintf(fp, ";%s", G.info.c_str());
 
+    if (G.pd_flag)
+    {
+        if (G.b_pre)
+            fprintf(fp, ";PD_PRE=(%.2f,%2f)", G.dp_pre_mean, G.dp_pre_std);
+        if (G.b_post)
+            fprintf(fp, ";PD_POST=(%.2f,%2f)", G.dp_post_mean, G.dp_post_std);
+    }
     if (G.dp_flag)
 	{
-        fprintf(fp, ";PD=(%.2f,%.2f);DP=(%.2f:%.2f:%.2f", G.dp_mean, G.dp_stdev, G.gmix.Comps[0].Mean, G.gmix.Comps[0].Stdev, G.gmix.Comps[0].Alpha);
+        fprintf(fp, ";DP=(%.2f:%.2f:%.2f", G.gmix.Comps[0].Mean, G.gmix.Comps[0].Stdev, G.gmix.Comps[0].Alpha);
 		for(int j=1;j<G.gmix.n_comp;++j)
 		{
-			fprintf(fp,"::%.2f:%.2f:%.2f:Err:%.2f:BIC:%.1f", G.gmix.Comps[j].Mean, G.gmix.Comps[j].Stdev, G.gmix.Comps[j].Alpha, G.gmix.p_overlap, G.gmix.bic);
+			fprintf(fp,"::%.2f:%.2f:%.2f", G.gmix.Comps[j].Mean, G.gmix.Comps[j].Stdev, G.gmix.Comps[j].Alpha);
 		}
-		fprintf(fp,")");
+		fprintf(fp, ");DPoverlap=%.2f", G.gmix.p_overlap);
 	}
     if (G.dp2_flag)
 	{
-        fprintf(fp, ";PD2=(%.2f,%.2f);DP2=(%.2f,%.2f:%.2f,%.2f:%.2f", G.dp2_mean, G.dp2_stdev, G.gmix2.Comps[0].Mean[0], G.gmix2.Comps[0].Mean[1], G.gmix2.Comps[0].Cov[0], G.gmix2.Comps[0].Cov[3], G.gmix2.Comps[0].Alpha);
+        fprintf(fp, ";DP2=(%.2f,%.2f:%.2f,%.2f:%.2f", G.gmix2.Comps[0].Mean[0], G.gmix2.Comps[0].Mean[1], G.gmix2.Comps[0].Cov[0], G.gmix2.Comps[0].Cov[3], G.gmix2.Comps[0].Alpha);
 		for(int j=1;j<G.gmix2.n_comp;++j)
 		{
 			fprintf(fp, "::%.2f,%.2f:%.2f,%.2f:%.2f", G.gmix2.Comps[j].Mean[0], G.gmix2.Comps[j].Mean[1], G.gmix2.Comps[j].Cov[0], G.gmix2.Comps[j].Cov[3], G.gmix2.Comps[j].Alpha);
 		}
-		fprintf(fp, ":Err:%.2f:BIC:%.1f)", G.gmix2.p_overlap, G.gmix2.bic);
+		fprintf(fp, "):DP2overlap=%2f", G.gmix2.p_overlap);
 	}
     if (G.read_flag)
 	{
