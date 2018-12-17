@@ -142,16 +142,14 @@ void GaussianMixture::EM(std::vector<double>& x)
 		for(int m=0; m<n_comp; ++m)
 		{
 			// Wishart prior
-			sum_err[m] += 0.1 * p_count;
+			sum_err[m] += 0.01 * p_count;
 		}
 		for(int m=0; m<n_comp; ++m)
 		{
 			Comps[m].Stdev = sqrt(sum_err[m] / sum_pr[m]) ;
 			Comps[m].Alpha = sum_pr[m] / sumsum;
 		}
-		//            cerr << "\t(" << Comps[m].Mean << "," << Comps[m].Stdev  << " : " << Comps[m].Alpha << ")";
-		//        cerr << endl;
-		//		print();
+      //  print();
 	}
 
 	double llk = 0;
@@ -174,7 +172,7 @@ void GaussianMixture::EM(std::vector<double>& x)
 	bic = -2.0 * llk +  2*n_comp*log(n_sample);
 	p_overlap = BayesError();
 
-	//    std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
+	//std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
 }
 
 

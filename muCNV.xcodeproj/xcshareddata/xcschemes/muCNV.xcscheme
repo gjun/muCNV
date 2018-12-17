@@ -67,8 +67,8 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-n 466307-466307"
-            isEnabled = "NO">
+            argument = "-n 3218-3218"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-o /Users/gjun/data/vcf/sample.vcf"

@@ -176,11 +176,19 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, double p, bool bk, bool bm)
 	b_mahalanobis = bm;
 
     if (S.svtype == DEL)
+    {
+        return;
         call_deletion(S, D, G);
+    }
     else if (S.svtype == DUP || S.svtype == CNV)
+    {
         call_cnv(S, D, G);
+    }
     else if (S.svtype == INV)
+    {
+        return;
         call_inversion(S, D, G);
+    }
     // todo: inversion and insertion
 }
 
