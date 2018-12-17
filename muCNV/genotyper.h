@@ -46,7 +46,6 @@ public:
     std::vector<int> gt; // bi-allelic genotype
     std::vector<int> cn; // copy number
 
-    std::vector<double> prepost_dp;
     SvGeno (int);
 };
 
@@ -57,6 +56,7 @@ public:
     std::vector<ReadStat> rdstats;
     std::vector<double> var_depth;
     std::vector< std::vector<double> > dp2;
+    std::vector<double> prepost_dp;
     
     SvData (int);
 };
