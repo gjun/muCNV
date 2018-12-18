@@ -83,11 +83,11 @@ void Genotyper::get_prepost_stat(SvData &D, SvGeno &G)
     G.dp_pre_std = sqrt(dp_pre_sumsq / dp_cnt - G.dp_pre_mean * G.dp_pre_mean);
     G.dp_post_std = sqrt(dp_post_sumsq / dp_cnt - G.dp_post_mean * G.dp_post_mean);
 
-    if (G.dp_pre_mean > 0.8 && G.dp_pre_mean < 1.2 && G.dp_pre_std < 0.2)
+    if (G.dp_pre_mean > 0.8 && G.dp_pre_mean < 1.2 && G.dp_pre_std < 0.25 )
     {
         G.b_pre = true;
     }
-    if (G.dp_post_mean > 0.8 && G.dp_post_mean < 1.2 && G.dp_post_std < 0.2)
+    if (G.dp_post_mean > 0.8 && G.dp_post_mean < 1.2 && G.dp_post_std < 0.25 )
     {
         G.b_post = true;
     }
@@ -108,9 +108,9 @@ void Genotyper::get_prepost_stat(SvData &D, SvGeno &G)
         }
 
         D.prepost_dp[i] = (double) sum / cnt;
-        if (G.b_pre && abs(D.prepost_dp[i] - G.dp_pre_mean)  > 0.25 )
+        if (G.b_pre && abs(D.prepost_dp[i] - G.dp_pre_mean)  > G.dp_pre_std * 2.5 )
             D.prepost_dp[i] = -1;
-        if (G.b_post && abs(D.prepost_dp[i] - G.dp_pre_mean)  > 0.25 )
+        if (G.b_post && abs(D.prepost_dp[i] - G.dp_post_mean)  > G.dp_post_std * 2.5 )
             D.prepost_dp[i] = -1;
     }
 }
@@ -182,14 +182,7 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, double p, bool bk, bool bm)
     else if (S.svtype == DUP || S.svtype == CNV)
     {
         // TODO: Temporary. P_overlap does not work well for dups
-        if (S.len < 300)
-        {
-            MAX_P_OVERLAP = 4.0*p;
-        }
-        else
-        {
-            MAX_P_OVERLAP = 3.0*p;
-        }
+        MAX_P_OVERLAP = 2.5*p;
         call_cnv(S, D, G);
     }
     else if (S.svtype == INV)
@@ -305,7 +298,9 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     // Genotyping based on 'variation' of depth: --__--
     get_prepost_stat(D, G);
 
-    if (G.b_pre && G.b_post)
+    // Let's use peripheral depth to identify 'false positve' only
+
+    if (G.b_pre && G.b_post && (G.dp_flag || G.dp2_flag))
     {
         // If clustered, filter false positive variants
         for (int i=0;i<n_sample; ++i)
@@ -327,7 +322,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
                 }
                 else if (D.prepost_dp[i] > 0 && D.prepost_dp[i] - D.var_depth[i] > 0.3)
                 {
-                    if (D.var_depth[i] >=0.15 && D.var_depth[i] < 0.65) // if there's a dip and depth is low
+                    if (D.var_depth[i] >=0.15 && D.var_depth[i] < 0.6) // if there's a dip and depth is low
                     {
                         G.pd_flag = true;
                         G.cn[i] = 1;
@@ -346,30 +341,6 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
                     G.gt[i] = -1;
                 }
             }
-            else if (D.prepost_dp[i] > 0 && G.b_pre && G.b_post) 
-            {
-                // TODO: arbtirary
-                if (D.prepost_dp[i] - D.var_depth[i] > 0.3) // if there's certain 'dip', 0/0
-                {
-                    if (D.var_depth[i] >=0.15 && D.var_depth[i] < 0.65 ) // if there's a dip and depth is low
-                    {
-                        G.pd_flag = true;
-                        G.cn[i] = 1;
-                        G.gt[i] = 1;
-                    }
-                    else if (D.var_depth[i] < 0.15) // if there's a dip and depth is very low
-                    {
-                        G.pd_flag = true;
-                        G.cn[i] = 0;
-                        G.gt[i] = 2;
-                    }
-                    else
-                    {
-                        G.cn[i] = -1;
-                        G.gt[i] = -1;
-                    }
-                }
-            }
         }
     }
     // readpair genotyping
@@ -377,7 +348,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     {
         for(int i=0; i<n_sample; ++i)
         {
-            if (G.dp_flag || G.dp2_flag || G.pd_flag)
+            if (G.dp_flag || G.dp2_flag)
             {
                 if (D.rdstats[i].del_support())
                 {
@@ -457,7 +428,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     if (G.gmix.n_comp > 1 && G.gmix.r_ordered() )
     {
         // success
-        G.dp_flag = true;
 
         for(int i=0; i<(int)n_sample; ++i)
         {
@@ -470,11 +440,13 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             }
             else if (D.var_depth[i] > 1.4 &&  D.var_depth[i] < 1.8)
             {
+                G.dp_flag = true;
                 dp_cn[i] = 3;
                 dp_ns ++;
             }
             else if (D.var_depth[i] >= 1.85)
             {
+                G.dp_flag = true;
                 dp_cn[i] = round(D.var_depth[i] * 2.0);
                 dp_ns++;
             }
@@ -491,9 +463,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         // 2-D genotyping
         if (G.gmix2.n_comp>1 && G.gmix2.r_ordered() )
         {
-            G.dp2_flag = true;
             //TODO : dp2 geotyping seems unstable, maybe make this to post-processing for variants with pd_flag && rd_flag
-            /*
             for(int i=0; i<(int)n_sample; ++i)
             {
 //                dp2_cn[i] = G.gmix2.assign_copynumber(D.dp2[dp2_idx][i], D.dp2[dp2_idx+1][i]);
@@ -506,16 +476,17 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                 }
                 else if (dp > 1.4 &&  dp < 1.8)
                 {
+                     G.dp2_flag = true;
                     dp2_cn[i] = 3;
                     dp2_ns ++;
                 }
                 else if (dp >= 1.85)
                 {
+                    G.dp2_flag = true;
                     dp2_cn[i] = round(D.var_depth[i] * 2.0);
                     dp2_ns++;
                 }
             }
-            */
         }
     }
 
@@ -532,7 +503,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 
     get_prepost_stat(D, G);
 
-    if (G.b_pre && G.b_post)
+    if (G.b_pre && G.b_post  && (G.dp_flag || G.dp2_flag))
     {
         // If clustered, filter false positive variants
         for (int i=0;i<n_sample; ++i)
@@ -569,32 +540,12 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                     G.cn[i] = -1;
                 }
             }
-            else if (D.prepost_dp[i] > 0)
-            {
-                if (D.var_depth[i]  - D.prepost_dp[i] > 0.3)
-                {
-                    if (D.var_depth[i] >= 1.4 && D.var_depth[i] < 1.85 )
-                    {
-                        G.pd_flag = true;
-                        G.cn[i] = 3;
-                    }
-                    else if (D.var_depth[i] > 1.85)
-                    {
-                        G.pd_flag = true;
-                        G.cn[i] = round(D.var_depth[i] * 2.0);
-                    }
-                    else
-                    {
-                        G.cn[i] = -1;
-                    }
-                }
-            }
         }
     }
     // Readpair genotyping
     for(int i=0; i<n_sample; ++i)
     {
-        if (G.dp_flag || G.dp2_flag || G.pd_flag)
+        if (G.dp_flag || G.dp2_flag)
         {
             if (D.rdstats[i].dup_support())
             {
