@@ -62,7 +62,7 @@ bool ReadStat::inv_support()
 bool ReadStat::ins_support()
 {
     if (n_pre_INS > 3 && n_pre_INS + n_pre_clip_in + n_post_clip_in + n_pre_sp_missing > 10)
-        return true;
+        return true; 
     if (n_pre_INS + n_pre_rp_missing + n_pre_clip_in + n_post_clip_in + n_pre_sp_missing > 10 && !del_support() && !dup_support() && !inv_support())
         return true;
     return false;
@@ -581,9 +581,9 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                                     rdstats[sample_idx + k].n_pre_FF ++;
                                 
                             }
-                            else if (rp.matepos >= start_pos1 && rp.matepos <= end_pos1)
+                            else if (rp.matepos >= start_pos1 && rp.matepos <= rp.selfpos + 300) // insert size 450 or below
                             {
-                                if ((rp.pairstr == 1 && rp.selfpos < rp.matepos) || (rp.pairstr == 2 && rp.selfpos > rp.matepos))
+                                if ((rp.pairstr == 1 && rp.selfpos < rp.matepos))
                                 {
                                     rdstats[sample_idx + k].n_pre_INS ++;
                                 }

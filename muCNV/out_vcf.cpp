@@ -94,11 +94,10 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 
     if (G.pd_flag)
     {
-        if (G.b_pre)
-            fprintf(fp, ";PD_PRE=(%.2f,%2f)", G.dp_pre_mean, G.dp_pre_std);
-        if (G.b_post)
-            fprintf(fp, ";PD_POST=(%.2f,%2f)", G.dp_post_mean, G.dp_post_std);
+        fprintf(fp, ";PD");
     }
+    fprintf(fp, ";PRE=(%.2f,%2f)", G.dp_pre_mean, G.dp_pre_std);
+    fprintf(fp, ";POST=(%.2f,%2f)", G.dp_post_mean, G.dp_post_std);
     if (G.dp_flag)
 	{
         fprintf(fp, ";DP=(%.2f:%.2f:%.2f", G.gmix.Comps[0].Mean, G.gmix.Comps[0].Stdev, G.gmix.Comps[0].Alpha);
@@ -128,7 +127,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 
     fprintf(fp, "\tGT:CN:DP:DD:RP:SP:SC");
 
-    for (int i=0; i<G.gt.size(); ++i)
+    for (int i=0; i<(int)G.gt.size(); ++i)
     {
         switch(G.gt[i])
         {
@@ -151,7 +150,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
             fprintf(fp, ":%d",G.cn[i]);
 		fprintf(fp, ":%.2f",D.var_depth[i]);
 
-		if (S.svtype == DEL || S.svtype == CNV || S.svtype == DUP)
+		if (D.dp2.size() > 1)
 		{
 			fprintf(fp, ":%.2f", D.dp2[0][i]);
 			if (D.dp2.size() == 4)
@@ -187,7 +186,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 		}
 		else if (S.svtype == INS)
 		{
-			fprintf(fp, ":%d:%d", D.rdstats[i].n_pre_INS, D.rdstats[i].n_pre_sp_missing);
+			fprintf(fp, ":%d:%d", D.rdstats[i].n_pre_INS, D.rdstats[i].n_pre_clip_in + D.rdstats[i].n_post_clip_in);
 		}
 
     }

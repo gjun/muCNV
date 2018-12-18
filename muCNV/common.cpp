@@ -49,6 +49,18 @@ void split(const char* s, const char* delims, std::vector<std::string>& tokens)
 	}
 }
 
+double average(std::vector<double> &L)
+{
+    if (L.size() == 0) return 0;
+    double sum = 0;
+
+    for(int i=0; i< L.size(); ++i)
+    {
+        sum += L[i];
+    }
+    return sum/L.size();
+}
+
 
 int median(std::vector<int> &L)
 {
