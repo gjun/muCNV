@@ -252,12 +252,12 @@ int main_genotype(int argc, char** argv)
                 Genotyper gtyper;
                 
                 std::vector<ReadStat> rdstats (n_sample);
-                reader.read_pair_split(vec_sv[i], D.rdstats, gc);
                 reader.read_var_depth(i - vec_offset, D.var_depth); // TODO: make read_var_depth to check whether first argument is in range
 
                 // TODO: Arbitrary
-                if (average(D.var_depth) < 200) 
+                if (average(D.var_depth) < 150) 
                 {
+                    reader.read_pair_split(vec_sv[i], D.rdstats, gc);
                     if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
                     {
                         // var_depth gets GC-correction here
@@ -301,12 +301,12 @@ int main_genotype(int argc, char** argv)
                     Genotyper gtyper;
                     
                     std::vector<ReadStat> rdstats (n_sample);
-                    reader.read_pair_split(vec_sv[i], D.rdstats, gc);
                     reader.read_var_depth(i - vec_offset, D.var_depth); // TODO: make read_var_depth to check whether first argument is in range
 
                     // TODO: Arbitrary
-                    if (average(D.var_depth) < 200) 
+                    if (average(D.var_depth) < 150) 
                     {
+                        reader.read_pair_split(vec_sv[i], D.rdstats, gc);
      
                         if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
                         {

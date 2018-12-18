@@ -378,10 +378,17 @@ bool GaussianMixture::ordered()
 bool GaussianMixture::r_ordered()
 {
 	// For duplications, Means should be descending order with at least 0.3 difference
-	if (Comps[0].Mean < 0.7 || Comps[0].Mean > 1.3 )
+	if (Comps[0].Mean < 0.8 || Comps[0].Mean > 1.2 )
 		return false;
 	if (Comps[1].Mean < 1.4)
 		return false;
+
+	for(int i=0; i<n_comp-1; ++i)
+	{
+		if (Comps[i+1].Mean - Comps[i].Mean < 0.35)
+			return false;
+	}
+
 
 	return true;
 }

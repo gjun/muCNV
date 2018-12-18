@@ -83,11 +83,11 @@ void Genotyper::get_prepost_stat(SvData &D, SvGeno &G)
     G.dp_pre_std = sqrt(dp_pre_sumsq / dp_cnt - G.dp_pre_mean * G.dp_pre_mean);
     G.dp_post_std = sqrt(dp_post_sumsq / dp_cnt - G.dp_post_mean * G.dp_post_mean);
 
-    if (G.dp_pre_mean > 0.8 && G.dp_pre_mean < 1.2 && G.dp_pre_std < 0.25 )
+    if (G.dp_pre_mean > 0.8 && G.dp_pre_mean < 1.2 && G.dp_pre_std < 0.2 )
     {
         G.b_pre = true;
     }
-    if (G.dp_post_mean > 0.8 && G.dp_post_mean < 1.2 && G.dp_post_std < 0.25 )
+    if (G.dp_post_mean > 0.8 && G.dp_post_mean < 1.2 && G.dp_post_std < 0.2 )
     {
         G.b_post = true;
     }
@@ -108,9 +108,9 @@ void Genotyper::get_prepost_stat(SvData &D, SvGeno &G)
         }
 
         D.prepost_dp[i] = (double) sum / cnt;
-        if (G.b_pre && abs(D.prepost_dp[i] - G.dp_pre_mean)  > G.dp_pre_std * 2.5 )
+        if (G.b_pre && abs(D.prepost_dp[i] - G.dp_pre_mean)  > G.dp_pre_std * 2.0 )
             D.prepost_dp[i] = -1;
-        if (G.b_post && abs(D.prepost_dp[i] - G.dp_post_mean)  > G.dp_post_std * 2.5 )
+        if (G.b_post && abs(D.prepost_dp[i] - G.dp_post_mean)  > G.dp_post_std * 2.0 )
             D.prepost_dp[i] = -1;
     }
 }
@@ -189,7 +189,12 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, double p, bool bk, bool bm)
     {
         call_inversion(S, D, G);
     }
-    // todo: inversion and insertion
+    /*
+    else if (S.svtype == INS)
+    {
+        call_insertion(S, D, G);
+    }
+    */  // TODO: insertion calling
 }
 
 void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G)
@@ -220,12 +225,43 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G)
         G.b_pass = true;
 }
 
+void Genotyper::call_insertion(sv &S, SvData &D, SvGeno &G)
+{
+    G.b_biallelic = true;
+    for(int i=0; i<n_sample; ++i)
+    {
+        if (D.rdstats[i].ins_support())
+        {
+            G.read_flag = true;
+            if (D.rdstats[i].n_pre_INS > 5 && D.rdstats[i].n_pre_INS + D.rdstats[i].n_post_clip_in + D.rdstats[i].n_pre_clip_in > 20) // todo: arbitrary, maybe clustering?
+                G.gt[i] = 2;
+            else
+                G.gt[i] = 1;
+            G.ac ++;
+            G.ns ++;
+        }
+        else if (D.rdstats[i].n_pre_INS == 0)
+        {
+            G.gt[i] = 0;
+            G.ns ++;
+        }
+    }
+
+    double callrate = (double)G.ns / n_sample;
+
+    if (callrate>0.5 && G.ac > 0 && G.ac < (G.ns*2))
+        G.b_pass = true;
+}
+
 void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 {
     // fit gaussian mixture models with 1, 2, and 3 components, compare bic
     std::vector< std::vector<double> > means = { {1.0}, {1.0, 0.5}, {1.0, 0.5, 0.0}};
 
     G.b_biallelic = true;
+
+
+    GaussianMixture dp_mix0;
 
     select_model(G.gmix, means, D.var_depth);
 
@@ -300,7 +336,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
     // Let's use peripheral depth to identify 'false positve' only
 
-    if (G.b_pre && G.b_post && (G.dp_flag || G.dp2_flag))
+    if ((G.b_pre || G.b_post) && (G.dp_flag || G.dp2_flag))
     {
         // If clustered, filter false positive variants
         for (int i=0;i<n_sample; ++i)
@@ -328,11 +364,16 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
                         G.cn[i] = 1;
                         G.gt[i] = 1;
                     }
-                    else if (D.prepost_dp[i] > 0 &&  D.var_depth[i] < 0.15) // if there's a dip and depth is very low
+                    else if (D.var_depth[i] < 0.15) // if there's a dip and depth is very low
                     {
                         G.pd_flag = true;
                         G.cn[i] = 0;
                         G.gt[i] = 2;
+                    }
+                    else // otherwise, missing
+                    {
+                        G.cn[i] = -1;
+                        G.gt[i] = -1;
                     }
                 }
                 else // otherwise, missing
@@ -348,7 +389,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     {
         for(int i=0; i<n_sample; ++i)
         {
-            if (G.dp_flag || G.dp2_flag)
+            if (G.dp_flag || G.dp2_flag || G.pd_flag)
             {
                 if (D.rdstats[i].del_support())
                 {
@@ -431,8 +472,9 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 
         for(int i=0; i<(int)n_sample; ++i)
         {
-           // dp_cn[i] = G.gmix.assign_copynumber(D.var_depth[i]);
+            //dp_cn[i] = G.gmix.assign_copynumber(D.var_depth[i]);
 
+            // TODO: arbitrary
             if (D.var_depth[i] > 0.7 && D.var_depth[i] < 1.25)
             {
                 dp_cn[i] = 2;
@@ -513,7 +555,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                 if (D.var_depth[i] - D.prepost_dp[i] < 0.2)
                 {
                     // TODO: arbitrary
-                    if (D.var_depth[i] < 1.3 && D.var_depth[i] > 0.7 )
+                    if (D.var_depth[i] < 1.2 && D.var_depth[i] > 0.8 )
                     {
                         G.cn[i] = 2;
                     }
@@ -524,6 +566,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                 }
                 else if (D.prepost_dp[i] > 0 && D.var_depth[i] - D.prepost_dp[i] > 0.3)
                 {
+                    // TODO: arbitrary
                     if (D.var_depth[i] >= 1.4 && D.var_depth[i] <= 1.85)
                     {
                         G.pd_flag = true;
@@ -533,6 +576,10 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                     {
                         G.pd_flag = true;
                         G.cn[i] = round(D.var_depth[i] * 2.0);
+                    }
+                    else
+                    {
+                        G.cn[i] = -1;
                     }
                 }
                 else
@@ -545,7 +592,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     // Readpair genotyping
     for(int i=0; i<n_sample; ++i)
     {
-        if (G.dp_flag || G.dp2_flag)
+        if (G.dp_flag || G.dp2_flag || G.pd_flag)
         {
             if (D.rdstats[i].dup_support())
             {
