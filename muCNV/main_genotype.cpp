@@ -246,9 +246,7 @@ int main_genotype(int argc, char** argv)
     for(int i=n_start; i<=n_end; ++i)
     {
         // chr X and Y calling not supported yet
-        // if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]))
-        // TEMPORARY
-        if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]) && vec_sv[i].svtype == DEL)
+        if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]))
         {
             SvGeno G(n_sample);
             SvData D(n_sample);
@@ -283,7 +281,7 @@ int main_genotype(int argc, char** argv)
                     }
                 }
 
-                gtyper.call(vec_sv[i], D, G, max_p, b_kmeans, b_mahalanobis);
+                gtyper.call(vec_sv[i], D, G, max_p, b_kmeans, b_mahalanobis, stats);
 
                 G.info = "var" + std::to_string(i);
 

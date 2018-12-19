@@ -166,7 +166,7 @@ void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vect
     return;
 }
 
-void Genotyper::call(sv &S, SvData &D, SvGeno &G, double p, bool bk, bool bm)
+void Genotyper::call(sv &S, SvData &D, SvGeno &G, double p, bool bk, bool bm, std::vector<SampleStat> &stats)
 {
     n_sample = D.n_sample;
     MAX_P_OVERLAP = p;
@@ -188,7 +188,7 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, double p, bool bk, bool bm)
     }
     else if (S.svtype == INV)
     {
-        call_inversion(S, D, G);
+        call_inversion(S, D, G, stats);
     }
     /*
     else if (S.svtype == INS)
@@ -198,32 +198,60 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, double p, bool bk, bool bm)
     */  // TODO: insertion calling
 }
 
-void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G)
+void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats)
 {
     G.b_biallelic = true;
+    
+    double sum_inv = 0;
+    double sumsq_inv = 0;
+    int n_inv= 0;
+    
     for(int i=0; i<n_sample; ++i)
     {
         if (D.rdstats[i].inv_support())
         {
             G.read_flag = true;
-            if (D.rdstats[i].n_pre_FF + D.rdstats[i].n_post_RR > 20) // todo: arbitrary, maybe clustering?
-                G.gt[i] = 2;
-            else
-                G.gt[i] = 1;
-            G.ac ++;
-            G.ns ++;
-        }
-        else if (D.rdstats[i].n_pre_FF == 0 && D.rdstats[i].n_post_RR == 0)
-        {
-            G.gt[i] = 0;
-            G.ns ++;
+            double d_support = (D.rdstats[i].n_pre_FF + D.rdstats[i].n_post_RR) / (double) stats[i].avg_dp;
+            sum_inv += d_support;
+            sumsq_inv = d_support*d_support;
+            n_inv ++;
         }
     }
+    
+    if (G.read_flag)
+    {
+        double mean_inv = sum_inv / n_inv;
+        double std_inv = sumsq_inv / n_inv - mean_inv*mean_inv;
+        
+        for(int i=0; i<n_sample; ++i)
+        {
+            if (D.rdstats[i].inv_support())
+            {
+                double x = (D.rdstats[i].n_pre_FF + D.rdstats[i].n_post_RR)/(double)stats[i].avg_dp;
+                
+                if ( x > mean_inv + std_inv*2.0)
+                    G.gt[i] = 2;
+                else
+                    G.gt[i] = 1;
+                G.ac ++;
+                G.ns ++;
+            }
+            else
+            {
+                double x = D.rdstats[i].n_pre_FF + D.rdstats[i].n_post_RR)/(double)stats[i].avg_dp;
+                if (x == 0 ||  x < mean_inv - std_inv * 2.0)
+                {
+                    G.gt[i] = 0;
+                    G.ns ++;
+                }
+            }
+        }
 
-    double callrate = (double)G.ns / n_sample;
+        double callrate = (double)G.ns / n_sample;
 
-    if (callrate>0.5 && G.ac > 0 && G.ac < (G.ns*2))
-        G.b_pass = true;
+        if (callrate>0.5 && G.ac > 0 && G.ac < (G.ns*2))
+            G.b_pass = true;
+    }
 }
 
 void Genotyper::call_insertion(sv &S, SvData &D, SvGeno &G)
@@ -789,6 +817,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 
     double callrate = (double)G.ns / n_sample;
 
-    if ((G.dp_flag || G.dp2_flag || G.read_flag ) && callrate>0.5 && G.ac>0)
+    if ((G.dp_flag || G.dp2_flag || G.read_flag ) && callrate>0.5 && G.ac>0 && G.ac<(G.ns*2)
         G.b_pass = true;
 }
