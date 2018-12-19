@@ -252,37 +252,6 @@ void Genotyper::call_insertion(sv &S, SvData &D, SvGeno &G)
         G.b_pass = true;
 }
 
-
-void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
-{
-    G.b_biallelic = true;
-    for(int i=0; i<n_sample; ++i)
-    {
-        if (D.rdstats[i].del_support())
-        {
-            G.read_flag = true;
-            if (D.rdstats[i].n_pre_FR + D.rdstats[i].n_post_FR > 20 && D.dps[2][i] < 0.15) // todo: arbitrary, maybe clustering?
-                G.gt[i] = 2;
-            else
-                G.gt[i] = 1;
-            G.ac ++;
-            G.ns ++;
-        }
-        else if (D.rdstats[i].n_pre_FR == 0 && D.rdstats[i].n_post_FR == 0)
-        {
-            G.gt[i] = 0;
-            G.ns ++;
-        }
-    }
-
-    double callrate = (double)G.ns / n_sample;
-
-    if (callrate>0.5 && G.ac > 0 && G.ac < (G.ns*2))
-        G.b_pass = true;
-}
-
-
-/*
 void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 {
     // fit gaussian mixture models with 1, 2, and 3 components, compare bic
@@ -495,7 +464,6 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     if ((G.dp_flag || G.dp2_flag || G.read_flag) && callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
         G.b_pass = true;
 }
-*/
 
 void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 {

@@ -337,6 +337,12 @@ int GaussianMixture::assign_copynumber(double x)
 		}
 	}
 
+    if (x - Comps[ret].Mean > 2.0 * Comps[ret].Stdev )
+    {
+        // Let's see how this works
+        return -1;
+    }
+
 	ret = round(Comps[ret].Mean * 2);
 
 	int up = ceil(x*2.0);
@@ -351,7 +357,6 @@ int GaussianMixture::assign_copynumber(double x)
 	{
 		return -1;
 	}
-
 	return ret;
 }
 
@@ -801,12 +806,12 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 
 bool GaussianMixture2::ordered()
 {
-	if (Comps[0].Mean[0] + Comps[0].Mean[1] < 1.6 || Comps[0].Mean[0] + Comps[0].Mean[1] > 2.4 )
+    if (Comps[0].Mean[0] < 0.8 || Comps[0].Mean[1] > 1.2 || Comps[0].Mean[1] < 0.8 || Comps[0].Mean[1] > 1.2 )
 		return false;
-
-	if (Comps[1].Mean[0] + Comps[1].Mean[1] < 0.8 || Comps[1].Mean[0] + Comps[1].Mean[1] > 1.3)
+/*
+    if (Comps[1].Mean[0] < 0.3 || Comps[1].Mean[1] > 0.7 || Comps[1].Mean[0] < 0.3 || Comps[1].Mean[1] > 0.7 )
 		return false;
-
+*/
 	for (int i=0; i<n_comp-1; ++i)
 	{
 		if (Comps[i].Mean[0] + Comps[i].Mean[1] - Comps[i+1].Mean[0] - Comps[i+1].Mean[1] < 0.6)
@@ -818,12 +823,21 @@ bool GaussianMixture2::ordered()
 
 bool GaussianMixture2::r_ordered()
 {
+    
+    if (Comps[0].Mean[0] < 0.8 || Comps[0].Mean[1] > 1.2 || Comps[0].Mean[1] < 0.8 || Comps[0].Mean[1] > 1.2 )
+        return false;
+    /*
 	if (Comps[0].Mean[0] + Comps[0].Mean[1] < 1.4 || Comps[0].Mean[0] + Comps[0].Mean[1] > 2.6 )
 		return false;
 
 	if (Comps[1].Mean[0] + Comps[1].Mean[1] < 2.6 )
 		return false;
-
+     */
+    for (int i=0; i<n_comp-1; ++i)
+    {
+        if (Comps[i].Mean[0] + Comps[i].Mean[1] - Comps[i+1].Mean[0] - Comps[i+1].Mean[1] < 0.6)
+            return false;
+    }
 	return true;
 }
 
@@ -858,6 +872,14 @@ int GaussianMixture2::assign_copynumber(double x, double y)
 			}
 		}
 	}
+    
+    double dx = (x - Comps[ret].Mean[0]);
+    double dy = (y - Comps[ret].Mean[1]);
+    
+    double dist = (dx * Comps[ret].Prc[0] + dy * Comps[ret].Prc[2]) * dx + (dx * Comps[ret].Prc[1] + dy * Comps[ret].Prc[3]) * dy;
+
+    if (dist > 2.0)
+        return -1;
 
 	ret = round(Comps[ret].Mean[0] + Comps[ret].Mean[1]); // TODO: what if only one of the dimensions cluster correctly? (0, 0.5, 1) + (1, 1, 1) = (1 1.5 2) 
 
