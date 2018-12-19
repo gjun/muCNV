@@ -219,7 +219,7 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
     return n_sample_total;
 }
 
-int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &dvec_dp, std::vector<double> & var_dp, GcContent& gc, bool b_dumpstat)
+int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &dvec_dp, GcContent& gc, bool b_dumpstat)
 {
     // this information is not useful when sv length is short
     // process only for >200bp SVs (or at include least two full 100-bp intervals)
@@ -233,10 +233,6 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
     
     if (pre_start<1) pre_start = 1 ;
     if (post_end > (int)gc.chr_size[curr_sv.chrnum]) post_end = gc.chr_size[curr_sv.chrnum];
-    
-    dvec_dp.resize(2);
-    dvec_dp[0].resize(n_sample_total);
-    dvec_dp[1].resize(n_sample_total);
 
     int idx_pre_start = pre_start / 100;
     int idx_post_end = (post_end/100);
@@ -329,7 +325,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
     {
         for(int i=0; i<n_sample_total; ++i)
         {
-            var_dp[i] = correct_gc(gc, i, var_dp[i], curr_sv.chrnum, (curr_sv.pos + curr_sv.end)/2);
+            dvec_dp[2][i] = correct_gc(gc, i, dvec_dp[2][i], curr_sv.chrnum, (curr_sv.pos + curr_sv.end)/2);
         }
         return 0;
     }
@@ -391,7 +387,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
 
 			for(int k=0; k<n_samples[i]; ++k)
 			{
-				var_dp[k + sample_idx] = (double) gc_sum[k] / n_dp / 32.0;
+				dvec_dp[2][k + sample_idx] = (double) gc_sum[k] / n_dp / 32.0;
 			}
 
 			std::vector<int> seg_starts;
@@ -438,7 +434,7 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
 					}
 				}
 				for(int m=0; m<n_samples[i]; ++m)
-					dvec_dp[k+2][m+sample_idx] = (double)dp_sum[m]/dp_cnt[m]/32.0 ;
+					dvec_dp[k+3][m+sample_idx] = (double)dp_sum[m]/dp_cnt[m]/32.0 ;
 			}
             
 			sample_idx += n_samples[i];
@@ -501,13 +497,13 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
 				}
 
 				for(int m=0; m<n_samples[i]; ++m)
-					dvec_dp[seg+2][m+sample_idx] = (double)dp_sum[m]/n_dp/32.0;
+					dvec_dp[seg+3][m+sample_idx] = (double)dp_sum[m]/n_dp/32.0;
 
 			} // seg : 2
 
 			for(int k=0; k<n_samples[i]; ++k)
 			{
-				var_dp[k + sample_idx] = (double) gc_sum[k] / (n_dp * 2)/ 32.0;
+				dvec_dp[2][k + sample_idx] = (double) gc_sum[k] / (n_dp * 2)/ 32.0;
 			}
 			sample_idx += n_samples[i];
 
