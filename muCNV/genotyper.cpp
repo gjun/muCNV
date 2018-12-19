@@ -183,7 +183,7 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, double p, bool bk, bool bm)
     else if (S.svtype == DUP || S.svtype == CNV)
     {
         // TODO: Temporary. P_overlap does not work well for dups
-        MAX_P_OVERLAP = 2.5*p;
+        MAX_P_OVERLAP = 2.0*p;
         call_cnv(S, D, G);
     }
     else if (S.svtype == INV)
@@ -462,7 +462,6 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         }
     }
  
-
     int n_het = 0;
     int n_hom = 0;
     int n_ref = 0;
@@ -501,20 +500,28 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
     if (n_ref == 0)
     {
+        G.b_pass = false;
         return;
     }
 
     if (n_hom >0 )
+    {
         hom_dp /= (double)n_hom;
+    }
 
     if (n_het >0 )
+    {
         het_dp /= (double)n_het;
+    }
 
     if (n_ref >0 )
+    {
         ref_dp /= (double)n_ref;
+    }
 
     if (het_dp < 0.3 || hom_dp > 0.2)
     {
+        G.b_pass = false;
         return;
     }
 

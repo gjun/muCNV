@@ -182,13 +182,6 @@ int main_genotype(int argc, char** argv)
     n_sample = reader.load(pileup_names, stats, gc, chr);
     std::cerr << n_sample << " samples identified from pileup files" << std::endl;
 
-
-//    printf("AVGDP\tSTDDP\tAVGIS\tSTDIS\n");
-//    for(int i=0; i<n_sample; ++i)
-//    {
-//        printf("%f\t%f\t%f\t%f\n", stats[i].avg_dp, stats[i].std_dp, stats[i].avg_isize, stats[i].std_isize);
-//    }
-
     if (region != "" && range != "")
     {
         std::cerr << "Region (chr:start-end) and Range (from-to) cannot be set together" << std::endl;
@@ -204,7 +197,7 @@ int main_genotype(int argc, char** argv)
         
         n_start = std::stoi(range, &sz);
         n_end = std::stoi(range.substr(sz+1));
-        std::cerr << "Variants index from " << n_start << " to " << n_end << " will be genotyepd" << std::endl;
+        std::cerr << "Variants index from " << n_start << " to " << n_end << " will be genotyped" << std::endl;
     }
     else if (region != "")
     {
@@ -297,11 +290,12 @@ int main_genotype(int argc, char** argv)
                 if (bFail || G.b_pass)
                 {
                     out_vcf.write_sv(vec_sv[i], D, G);
+
                     if (vec_sv[i].svtype == DEL)
                     {
                         del_count ++;
                     }
-                    else if (vec_sv[i].svtype == DUP)
+                    else if (vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV )
                     {
                         dup_count ++;
                     }
