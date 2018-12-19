@@ -54,8 +54,7 @@ class SvData
 public:
     int n_sample;
     std::vector<ReadStat> rdstats;
-    std::vector<double> var_depth;
-    std::vector< std::vector<double> > dp2;
+    std::vector< std::vector<double> > dps;
     std::vector<double> prepost_dp;
     
     SvData (int);
@@ -78,11 +77,6 @@ public:
     void call_insertion(sv &, SvData &, SvGeno &);
     void select_model(GaussianMixture &, std::vector< std::vector<double> > &, std::vector<double> &);
     void select_model(GaussianMixture2 &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<double>&);
-
-    std::string print(sv &, SvData&, SvGeno&);
 };
-
-bool ordered(std::vector<Gaussian> &);
-
 
 #endif /* genotyper_h */

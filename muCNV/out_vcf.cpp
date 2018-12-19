@@ -148,24 +148,20 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
             fprintf(fp, ":.");
         else
             fprintf(fp, ":%d",G.cn[i]);
-		fprintf(fp, ":%.2f",D.var_depth[i]);
+		fprintf(fp, ":%.2f",D.dps[2][i]);
 
-		if (D.dp2.size() > 1)
+		if (S.svtype == DEL || S.svtype == CNV || S.svtype == DUP )
 		{
-			fprintf(fp, ":%.2f", D.dp2[0][i]);
-			if (D.dp2.size() == 4)
+			fprintf(fp, ":%.2f", D.dps[0][i]);
+			if (D.dps.size() == 5)
 			{
-				fprintf(fp, ",%.2f,%.2f", D.dp2[2][i], D.dp2[3][i]);
-			}
-			else if (D.dp2.size() == 6)
-			{
-				fprintf(fp, ",%.2f,%.2f", D.dp2[3][i], D.dp2[4][i]);
+				fprintf(fp, ",%.2f,%.2f", D.dps[3][i], D.dps[4][i]);
 			}
 			else
 			{
 				fprintf(fp, ",.,.");
 			}
-			fprintf(fp, ",%.2f", D.dp2[1][i]);
+			fprintf(fp, ",%.2f", D.dps[1][i]);
 		}
 		else
 		{

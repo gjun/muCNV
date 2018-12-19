@@ -173,7 +173,7 @@ int main_genotype(int argc, char** argv)
 
 	if (chr>0)
 	{
-		for(int i=0; i<pileup_names.size(); ++i)
+		for(int i=0; i<(int)pileup_names.size(); ++i)
 		{
 			pileup_names[i] += ".chr" + std::to_string(chr);
 		}
@@ -182,6 +182,13 @@ int main_genotype(int argc, char** argv)
     n_sample = reader.load(pileup_names, stats, gc, chr);
     std::cerr << n_sample << " samples identified from pileup files" << std::endl;
 
+
+    printf("AVGDP\tSTDDP\tAVGIS\tSTDIS\n");
+    for(int i=0; i<n_sample; ++i)
+    {
+        printf("%f\t%f\t%f\t%f\n", stats[i].avg_dp, stats[i].std_dp, stats[i].avg_isize, stats[i].std_isize);
+    }
+    exit (0);
     if (region != "" && range != "")
     {
         std::cerr << "Region (chr:start-end) and Range (from-to) cannot be set together" << std::endl;
@@ -250,32 +257,38 @@ int main_genotype(int argc, char** argv)
                 SvGeno G(n_sample);
                 SvData D(n_sample);
                 Genotyper gtyper;
+
+                D.dps.resize(3);
+                for(int j=0;j<3;++j)
+                {
+                    // 0 : pre-depth
+                    // 1 : post-depth
+                    // 2 : 1-D depth (var_depth)
+
+                    D.dps[j].resize(n_sample, 0);
+                }
                 
                 std::vector<ReadStat> rdstats (n_sample);
-                reader.read_var_depth(i - vec_offset, D.var_depth); // TODO: make read_var_depth to check whether first argument is in range
+                reader.read_var_depth(i - vec_offset, D.dps[2]); // TODO: make read_var_depth to check whether first argument is in range
 
                 // TODO: Arbitrary
-                if (average(D.var_depth) < 150) 
+                if (average(D.dps[2]) < 150 && vec_sv[i].svtype == DEL) 
                 {
                     reader.read_pair_split(vec_sv[i], D.rdstats, gc);
-                    if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
+                    //if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
+                    if ( vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
                     {
                         // var_depth gets GC-correction here
-                        reader.read_depth100(vec_sv[i], D.dp2, D.var_depth, gc, b_dumpstat);
-                    
-                        for(int j=0; j<n_sample; ++j)
-                        {
-                            for(int k=0; k<(int)D.dp2.size(); ++k)
-                            {
-                                D.dp2[k][j] /= (double)stats[j].avg_dp;
-                            }
-                        }
-                    }
+                        reader.read_depth100(vec_sv[i], D.dps, gc, b_dumpstat);
+                   }
                     for(int j=0; j<n_sample; ++j)
                     {
-                        D.var_depth[j] /= (double)stats[j].avg_dp;
+                        for(int k=0; k<(int)D.dps.size(); ++k)
+                        {
+                            D.dps[k][j] /= (double)stats[j].avg_dp;
+                        }
                     }
-                    
+
                     gtyper.call(vec_sv[i], D, G, max_p, b_kmeans, b_mahalanobis);
 
                     G.info = "var" + std::to_string(i);
@@ -290,7 +303,7 @@ int main_genotype(int argc, char** argv)
     }
     else
     {
-        for(int i=0; i<vec_sv.size(); ++i)
+        for(int i=0; i<(int)vec_sv.size(); ++i)
         {
             if (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)
             {
@@ -299,31 +312,40 @@ int main_genotype(int argc, char** argv)
                     SvGeno G(n_sample);
                     SvData D(n_sample);
                     Genotyper gtyper;
+
+                    D.dps.resize(3);
+                    for(int j=0;j<3;++j)
+                    {
+                        // 0 : pre-depth
+                        // 1 : post-depth
+                        // 2 : 1-D depth (var_depth)
+
+                        D.dps[j].resize(n_sample);
+                    }
                     
+ 
                     std::vector<ReadStat> rdstats (n_sample);
-                    reader.read_var_depth(i - vec_offset, D.var_depth); // TODO: make read_var_depth to check whether first argument is in range
+                    // TODO: make read_var_depth to check whether first argument is in range
+                    reader.read_var_depth(i - vec_offset, D.dps[2]); 
 
                     // TODO: Arbitrary
-                    if (average(D.var_depth) < 150) 
+                    if (average(D.dps[2]) < 150) 
                     {
                         reader.read_pair_split(vec_sv[i], D.rdstats, gc);
      
-                        if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
+                        //if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
+                        if (vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
                         {
-                            reader.read_depth100(vec_sv[i], D.dp2, D.var_depth, gc, b_dumpstat);
+                            reader.read_depth100(vec_sv[i], D.dps, gc, b_dumpstat);
                             
-                            for(int j=0; j<n_sample; ++j)
-                            {
-                                for(int k=0; k<(int)D.dp2.size(); ++k)
-                                {
-                                    D.dp2[k][j] /= (double)stats[j].avg_dp;
-                                }
-                            }
                         }
 
                         for(int j=0; j<n_sample; ++j)
                         {
-                            D.var_depth[j] /= (double)stats[j].avg_dp;
+                            for(int k=0; k<(int)D.dps.size(); ++k)
+                            {
+                                D.dps[k][j] /= (double)stats[j].avg_dp;
+                            }
                         }
 
                         gtyper.call(vec_sv[i], D, G, max_p, b_kmeans, b_mahalanobis);
