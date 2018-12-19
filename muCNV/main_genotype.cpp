@@ -79,7 +79,7 @@ int main_genotype(int argc, char** argv)
         TCLAP::ValueArg<string> argRegion("r", "region", "Genotype specific genomic region", false, "", "chr:startpos-endpos" );
         TCLAP::ValueArg<double> argChr("c","chr","Chromosome number (1-24) if pileup contains only a single chromosome",false,0,"ingetger (1-24)");
 
-        TCLAP::ValueArg<double> argPoverlap("p","pmax","Maximum overlap between depth clusters",false,0.1,"number(0-1.0)");
+        TCLAP::ValueArg<double> argPoverlap("p","pmax","Maximum overlap between depth clusters",false,0.2,"number(0-1.0)");
 
         TCLAP::SwitchArg switchFail("a", "all", "Report filter failed variants", cmd, false);
         TCLAP::SwitchArg switchDumpstat("d", "dumpstat", "dump detailed statistics of variants (warning: large output)", cmd, false);
@@ -144,7 +144,7 @@ int main_genotype(int argc, char** argv)
         std::cerr << "Error, VCF or Interval file is required." << std::endl;
     
     //vec_bp is not necessary for genotyping, but let's keep it for simplicity now
-	std::cerr << vec_sv.size() << " SVs identified " << std::endl;
+	std::cerr << vec_sv.size() << " SVs loaded from input file" << std::endl;
     
 
     read_list(index_file, pileup_names);
@@ -246,10 +246,16 @@ int main_genotype(int argc, char** argv)
 		n_end += vec_offset + n_vars[chr] - 1;
 	}
 
+    int del_count = 0;
+    int dup_count = 0;
+    int inv_count = 0;
+
     for(int i=n_start; i<=n_end; ++i)
     {
         // chr X and Y calling not supported yet
-        if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]))
+        // if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]))
+        // TEMPORARY
+        if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]) && vec_sv[i].svtype == DEL)
         {
             SvGeno G(n_sample);
             SvData D(n_sample);
@@ -291,10 +297,23 @@ int main_genotype(int argc, char** argv)
                 if (bFail || G.b_pass)
                 {
                     out_vcf.write_sv(vec_sv[i], D, G);
+                    if (vec_sv[i].svtype == DEL)
+                    {
+                        del_count ++;
+                    }
+                    else if (vec_sv[i].svtype == DUP)
+                    {
+                        dup_count ++;
+                    }
+                    else if (vec_sv[i].svtype == INV)
+                    {
+                        inv_count ++;
+                    }
                 }
             }
         }
     }
+    std::cerr<< del_count << " deletions, " << dup_count << " duplications, and " << inv_count << " inversions written to the output file" << std::endl;
 	out_vcf.close();
     
     return 0;

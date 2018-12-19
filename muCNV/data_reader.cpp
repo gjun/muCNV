@@ -133,7 +133,7 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
 		}
 	}
     
-    std::cerr<< idx_cnt << " indices should be in index file" << std::endl;
+    DMSG(idx_cnt << " indices should be in index file");
  
     for(int i=0; i<n_pileup ; ++i)
     {
