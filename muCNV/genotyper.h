@@ -70,10 +70,10 @@ public:
 
     void get_prepost_stat(SvData &, SvGeno &);
 
-    void call( sv&,  SvData&, SvGeno &, double, bool, bool);
+    void call( sv&,  SvData&, SvGeno &, double, bool, bool, std::vector<SampleStat> &);
     void call_deletion( sv &,  SvData &, SvGeno &);
     void call_cnv( sv &,  SvData &, SvGeno &);
-    void call_inversion(sv &, SvData &, SvGeno &);
+    void call_inversion(sv &, SvData &, SvGeno &, std::vector<SampleStat> &);
     void call_insertion(sv &, SvData &, SvGeno &);
     void select_model(GaussianMixture &, std::vector< std::vector<double> > &, std::vector<double> &);
     void select_model(GaussianMixture2 &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<double>&);
