@@ -79,7 +79,7 @@ int main_genotype(int argc, char** argv)
         TCLAP::ValueArg<string> argRegion("r", "region", "Genotype specific genomic region", false, "", "chr:startpos-endpos" );
         TCLAP::ValueArg<double> argChr("c","chr","Chromosome number (1-24) if pileup contains only a single chromosome",false,0,"ingetger (1-24)");
 
-        TCLAP::ValueArg<double> argPoverlap("p","pmax","Maximum overlap between depth clusters",false,0.2,"number(0-1.0)");
+        TCLAP::ValueArg<double> argPoverlap("p","pmax","Maximum overlap between depth clusters",false,0.1,"number(0-1.0)");
 
         TCLAP::SwitchArg switchFail("a", "all", "Report filter failed variants", cmd, false);
         TCLAP::SwitchArg switchDumpstat("d", "dumpstat", "dump detailed statistics of variants (warning: large output)", cmd, false);
@@ -253,14 +253,23 @@ int main_genotype(int argc, char** argv)
     int dup_count = 0;
     int inv_count = 0;
 
+
     for(int i=n_start; i<=n_end; ++i)
     {
+
+        double sv_gc = gc.get_gc_content(vec_sv[i].chrnum, vec_sv[i].pos, vec_sv[i].end);
         // chr X and Y calling not supported yet
-        if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]) )
+        if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]) && sv_gc > 0.225 && sv_gc <= 0.65 )
         {
             SvGeno G(n_sample);
             SvData D(n_sample);
             Genotyper gtyper;
+
+            G.MAX_P_OVERLAP = max_p;
+            if (vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
+            {
+                G.MAX_P_OVERLAP *= 2.0;
+            }
 
             D.dps.resize(3);
             for(int j=0;j<3;++j)
@@ -291,7 +300,7 @@ int main_genotype(int argc, char** argv)
                     }
                 }
 
-                gtyper.call(vec_sv[i], D, G, max_p, b_kmeans, b_mahalanobis, stats);
+                gtyper.call(vec_sv[i], D, G, b_kmeans, b_mahalanobis, stats);
 
                 G.info = "var" + std::to_string(i);
 

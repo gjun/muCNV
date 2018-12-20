@@ -25,6 +25,7 @@ public:
     bool dp2_flag;
     bool pd_flag;
     bool read_flag;
+	double MAX_P_OVERLAP;
     
     std::string info;
     
@@ -64,13 +65,13 @@ class Genotyper
 {
 public:
     int n_sample;
-	double MAX_P_OVERLAP;
 	bool b_kmeans;
 	bool b_mahalanobis;
 
+
     void get_prepost_stat(SvData &, SvGeno &);
 
-    void call( sv&,  SvData&, SvGeno &, double, bool, bool, std::vector<SampleStat> &);
+    void call( sv&,  SvData&, SvGeno &, bool, bool, std::vector<SampleStat> &);
     void call_deletion( sv &,  SvData &, SvGeno &);
     void call_cnv( sv &,  SvData &, SvGeno &);
     void call_inversion(sv &, SvData &, SvGeno &, std::vector<SampleStat> &);

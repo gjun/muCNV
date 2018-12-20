@@ -38,6 +38,7 @@ SvGeno::SvGeno(int n)
     b_pre = false;
     b_post = false;
     info = "";
+    MAX_P_OVERLAP = 1.0;
 }
 
 SvData::SvData(int n)
@@ -132,7 +133,7 @@ void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector
             gmix.EM(x); // fit mixture model
     //        gmix.print();
         }
-        //if (gmix.bic < best_bic && gmix.p_overlap < MAX_P_OVERLAP)
+        //if (gmix.bic < best_bic && gmix.p_overlap < G.MAX_P_OVERLAP)
         if (gmix.bic < best_bic)
         {
             best_bic = gmix.bic;
@@ -159,7 +160,7 @@ void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vect
         {
             gmix2.EM2(x, y); // fit mixture model
         }
-       // if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP )
+       // if (gmix2.bic < best_bic && gmix2.p_overlap < G.MAX_P_OVERLAP )
         if (gmix2.bic < best_bic )
         {
             best_bic = gmix2.bic;
@@ -169,10 +170,9 @@ void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vect
     return;
 }
 
-void Genotyper::call(sv &S, SvData &D, SvGeno &G, double p, bool bk, bool bm, std::vector<SampleStat> &stats)
+void Genotyper::call(sv &S, SvData &D, SvGeno &G, bool bk, bool bm, std::vector<SampleStat> &stats)
 {
     n_sample = D.n_sample;
-    MAX_P_OVERLAP = p;
 
     b_kmeans = bk;
     b_mahalanobis = bm;
@@ -185,8 +185,6 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, double p, bool bk, bool bm, st
     }
     else if (S.svtype == DUP || S.svtype == CNV)
     {
-        // TODO: Temporary. P_overlap does not work well for dups
-        MAX_P_OVERLAP = 2.0*p;
         call_cnv(S, D, G);
     }
     else if (S.svtype == INV)
@@ -292,17 +290,17 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
     G.b_biallelic = true;
 
-    double best_BIC = DBL_MAX;
     double best_dp_idx = 2;
 
 /*
+    double best_BIC = DBL_MAX;
     if (D.dps.size()>3)
     {
         for(int i=2; i<5; ++i)
         {
             GaussianMixture gm;
             select_model(gm, means, D.dps[i]);
-            if (gm.bic < best_BIC && gm.p_overlap < MAX_P_OVERLAP)
+            if (gm.bic < best_BIC && gm.p_overlap < G.MAX_P_OVERLAP)
             {
                 best_BIC = gm.bic;
                 G.gmix = gm;
@@ -430,7 +428,17 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             }
         }
     }
-    
+    if (!G.pd_flag)
+    {
+        if (G.dp_flag && G.gmix.p_overlap > G.MAX_P_OVERLAP)
+        {
+            G.dp_flag = false;
+        }
+        if (G.dp2_flag && G.gmix2.p_overlap > G.MAX_P_OVERLAP)
+        {
+            G.dp2_flag = false;
+        }
+    }
 
    // readpair genotyping
     if (S.len >= 50)
@@ -578,17 +586,17 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     int dp2_ns = 0;
 
 
-    double best_BIC = DBL_MAX;
     double best_dp_idx = 2;
 
 /*
+    double best_BIC = DBL_MAX;
     if (D.dps.size() > 3)
     {
         for(int i=3; i<5; ++i)
         {
             GaussianMixture gm;
             select_model(gm, means, D.dps[i]);
-            if (gm.bic < best_BIC && gm.p_overlap < MAX_P_OVERLAP)
+            if (gm.bic < best_BIC && gm.p_overlap < G.MAX_P_OVERLAP)
             {
                 best_BIC = gm.bic;
                 G.gmix = gm;
@@ -683,7 +691,8 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             G.cn[i] = dp_cn[i];
     }
 
-    get_prepost_stat(D, G);
+
+   get_prepost_stat(D, G);
 
     if (G.b_pre && G.b_post  && (G.dp_flag || G.dp2_flag))
     {
@@ -729,6 +738,19 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             }
         }
     }
+
+    if (!G.pd_flag)
+    {
+        if (G.dp_flag && G.gmix.p_overlap > G.MAX_P_OVERLAP)
+        {
+            G.dp_flag = false;
+        }
+        if (G.dp2_flag && G.gmix2.p_overlap > G.MAX_P_OVERLAP)
+        {
+            G.dp2_flag = false;
+        }
+    }
+ 
     // Readpair genotyping
     for(int i=0; i<n_sample; ++i)
     {
