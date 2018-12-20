@@ -139,3 +139,26 @@ void GcContent::initialize(std::string &gcFile)
     readmagic(inFile);
     inFile.close();
 }
+
+double GcContent::get_gc_content(int c, int startpos, int endpos)
+{
+    if (c <= 1 || c > num_chr)
+    {
+        return -1;
+    }
+
+    if (round(startpos/200.0) == round(endpos/200.0))
+    {
+        return ((double)gc_array[c][(int)round(startpos/200.0)-1]/ 20.0 + 0.025);
+    }
+
+    double gc_sum = 0 ;
+    int gc_cnt = 0;
+
+    for(int i=round(startpos/200.0)-1; i <= round(endpos/200.0)-1; ++i)
+    {
+        gc_sum += (double)((gc_array[c][i]) / 20.0) + 0.025 ;
+        gc_cnt ++;
+    }
+    return ((double)gc_sum/gc_cnt);
+}
