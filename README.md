@@ -88,6 +88,12 @@ $ muCNV genotype [-i <string>] [-f <string>] [-V <string>] [-v <string>] [-o <st
 -v <string>,  --vcf <string>
   VCF file containing candidate SVs
 
+-p <number>, --pmax <number>
+  Maximum overlap between depth cluster PDFs
+
+-r <chr:startpos-endpos>,  --region <chr:startpos-endpos>
+  Genotype specific genomic region
+
 -o <string>,  --out <string>
   Output filename
 
