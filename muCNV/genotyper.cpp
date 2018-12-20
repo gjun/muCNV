@@ -115,7 +115,7 @@ void Genotyper::get_prepost_stat(SvData &D, SvGeno &G)
     }
 }
 
-void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector<double> > &means, std::vector<double> &x)
+void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector<double> > &means, std::vector<double> &x, double MAX_P_OVERLAP)
 {
     double best_bic = DBL_MAX;
 
@@ -133,8 +133,8 @@ void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector
             gmix.EM(x); // fit mixture model
     //        gmix.print();
         }
-        //if (gmix.bic < best_bic && gmix.p_overlap < G.MAX_P_OVERLAP)
-        if (gmix.bic < best_bic)
+       // if (gmix.bic < best_bic)
+        if (gmix.bic < best_bic && gmix.p_overlap < MAX_P_OVERLAP)
         {
             best_bic = gmix.bic;
             ret_gmix = gmix; // assignment
@@ -143,7 +143,7 @@ void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector
     return;
 }
 
-void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vector<double> > &means, std::vector<double> &x, std::vector<double> &y)
+void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vector<double> > &means, std::vector<double> &x, std::vector<double> &y, double MAX_P_OVERLAP)
 {
     double best_bic = DBL_MAX;
 
@@ -160,8 +160,8 @@ void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vect
         {
             gmix2.EM2(x, y); // fit mixture model
         }
-       // if (gmix2.bic < best_bic && gmix2.p_overlap < G.MAX_P_OVERLAP )
-        if (gmix2.bic < best_bic )
+        //if (gmix2.bic < best_bic )
+        if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP )
         {
             best_bic = gmix2.bic;
             ret_gmix2 = gmix2; // assignment (copy operation)
@@ -310,7 +310,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     }
     */
 
-    select_model(G.gmix, means, D.dps[best_dp_idx]);
+    select_model(G.gmix, means, D.dps[best_dp_idx], G.MAX_P_OVERLAP);
 
     std::vector<double> &var_depth = D.dps[best_dp_idx];
 
@@ -347,7 +347,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     if (D.dps.size()>3) //dp2 has more than 2 vectors
     {
         // dp100 genotyping
-        select_model(G.gmix2, means, D.dps[dp2_idx], D.dps[dp2_idx+1]);
+        select_model(G.gmix2, means, D.dps[dp2_idx], D.dps[dp2_idx+1], G.MAX_P_OVERLAP);
 
         // 2-d genotyping
         if (G.gmix2.n_comp>1 && G.gmix2.ordered())
@@ -607,7 +607,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         }
     }
     */
-    select_model(G.gmix, means, D.dps[best_dp_idx]);
+    select_model(G.gmix, means, D.dps[best_dp_idx], G.MAX_P_OVERLAP);
 
     std::vector<double> &var_depth = D.dps[best_dp_idx];
 
@@ -650,7 +650,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         // DP100 genotyping
         int dp2_idx = 2;
 
-        select_model(G.gmix2, means, D.dps[dp2_idx], D.dps[dp2_idx+1]);
+        select_model(G.gmix2, means, D.dps[dp2_idx], D.dps[dp2_idx+1], G.MAX_P_OVERLAP);
 
         // 2-D genotyping
         if (G.gmix2.n_comp>1 && G.gmix2.r_ordered() )
