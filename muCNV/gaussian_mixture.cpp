@@ -51,6 +51,7 @@ GaussianMixture& GaussianMixture::operator = (const GaussianMixture& gmix)
 
 void GaussianMixture::print()
 {
+    std::cerr << n_comp << " comps, BIC: " << bic << ", P_overlap: " << p_overlap << std::endl;
 	for(int i=0; i<n_comp; ++i)
 	{
 		std::cerr << "Comp " << i <<  " (" << Comps[i].Mean << ", " << Comps[i].Stdev << "), " << Comps[i].Alpha << std::endl;
@@ -62,7 +63,7 @@ void GaussianMixture::EM(std::vector<double>& x)
 	int n_sample = (int) x.size();
 	int n_iter = 15;
 
-	int p_count= 10;
+	int p_count= (n_sample/500) + 2;
 	double p_val[n_comp];
 
 	if (n_comp == 1)
@@ -684,7 +685,8 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 	int n_iter = 15;
 
 	// pseudo-counts
-	int p_count= 10;
+	int p_count= (n_sample/500) + 2;
+
 	double p_val[n_comp][2];
 
 	if (n_comp == 1)
@@ -823,7 +825,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 		}
 	}
 
-	bic = -2.0 * llk + 5*n_comp*log(n_sample);
+	bic = -2.0 * llk + (5*n_comp-1.0)*log(n_sample);
 	p_overlap = BayesError();
 	//	std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
 }
@@ -897,6 +899,7 @@ int GaussianMixture2::assign_copynumber(double x, double y)
 			ret = i;
 		}
 	}
+
 	for(int i=0;i<n_comp; ++i)
 	{
 		if (ret != i)
@@ -917,7 +920,7 @@ int GaussianMixture2::assign_copynumber(double x, double y)
 
     if (dist > 2.0)
         return -1;
-    */
+        */
 
 	ret = round(Comps[ret].Mean[0] + Comps[ret].Mean[1]); // TODO: what if only one of the dimensions cluster correctly? (0, 0.5, 1) + (1, 1, 1) = (1 1.5 2) 
 
@@ -929,7 +932,7 @@ int GaussianMixture2::assign_copynumber(double x, double y)
 		return -1;
 	}
 
-	if (max_R > 0.1) 
+	if (max_R > 0.1)
 	{
 		return -1;
 	}

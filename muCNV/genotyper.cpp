@@ -130,8 +130,10 @@ void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector
         else
         {
             gmix.EM(x); // fit mixture model
+    //        gmix.print();
         }
-        if (gmix.bic < best_bic && gmix.p_overlap < MAX_P_OVERLAP)
+        //if (gmix.bic < best_bic && gmix.p_overlap < MAX_P_OVERLAP)
+        if (gmix.bic < best_bic)
         {
             best_bic = gmix.bic;
             ret_gmix = gmix; // assignment
@@ -157,7 +159,8 @@ void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vect
         {
             gmix2.EM2(x, y); // fit mixture model
         }
-        if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP )
+       // if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP )
+        if (gmix2.bic < best_bic )
         {
             best_bic = gmix2.bic;
             ret_gmix2 = gmix2; // assignment (copy operation)
@@ -221,7 +224,7 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
     if (G.read_flag)
     {
         double mean_inv = sum_inv / n_inv;
-        double std_inv = sumsq_inv / n_inv - mean_inv*mean_inv;
+        double std_inv = sqrt(sumsq_inv / n_inv - mean_inv*mean_inv);
         
         for(int i=0; i<n_sample; ++i)
         {
@@ -238,7 +241,7 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
             }
             else
             {
-                double x = D.rdstats[i].n_pre_FF + D.rdstats[i].n_post_RR)/(double)stats[i].avg_dp;
+                double x = (D.rdstats[i].n_pre_FF + D.rdstats[i].n_post_RR)/(double)stats[i].avg_dp;
                 if (x == 0 ||  x < mean_inv - std_inv * 2.0)
                 {
                     G.gt[i] = 0;
@@ -292,8 +295,6 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     double best_BIC = DBL_MAX;
     double best_dp_idx = 2;
 
-    // Genotyping based on 'variation' of depth: --__--
-
 /*
     if (D.dps.size()>3)
     {
@@ -309,8 +310,8 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             }
         }
     }
+    */
 
-*/
     select_model(G.gmix, means, D.dps[best_dp_idx]);
 
     std::vector<double> &var_depth = D.dps[best_dp_idx];
@@ -379,6 +380,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     }
 
     // Let's use peripheral depth to identify 'false positve' only
+    // Genotyping based on 'variation' of depth: --__--
 
     if ((G.b_pre && G.b_post) && (G.dp_flag || G.dp2_flag))
     {
@@ -402,7 +404,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
                 }
                 else if (D.prepost_dp[i] > 0 && D.prepost_dp[i] - var_depth[i] > 0.3)
                 {
-                    if (var_depth[i] >=0.15 && var_depth[i] < 0.6) // if there's a dip and depth is low
+                    if (var_depth[i] >=0.15 && var_depth[i] < 0.65) // if there's a dip and depth is low
                     {
                         G.pd_flag = true;
                         G.cn[i] = 1;
@@ -605,14 +607,15 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 
         for(int i=0; i<(int)n_sample; ++i)
         {
+            /*
             dp_cn[i] = G.gmix.assign_copynumber(var_depth[i]);
             if (dp_cn[i] >= 2)
             {
                 dp_ns++;
             }
+            */
 
             // TODO: arbitrary
-            /*
             if (var_depth[i] > 0.7 && var_depth[i] < 1.25)
             {
                 dp_cn[i] = 2;
@@ -630,11 +633,8 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                 dp_cn[i] = round(var_depth[i] * 2.0);
                 dp_ns++;
             }
-            */
         }
     }
-
-/*
     if (D.dps.size()>3)
     {
         // DP100 genotyping
@@ -671,7 +671,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             }
         }
     }
-    */
 
     if (dp2_ns > dp_ns)
     {
@@ -817,6 +816,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 
     double callrate = (double)G.ns / n_sample;
 
-    if ((G.dp_flag || G.dp2_flag || G.read_flag ) && callrate>0.5 && G.ac>0 && G.ac<(G.ns*2)
+    if ( (G.dp_flag || G.dp2_flag || G.read_flag ) && callrate>0.5 && G.ac>0 && G.ac<(G.ns*2))
         G.b_pass = true;
 }

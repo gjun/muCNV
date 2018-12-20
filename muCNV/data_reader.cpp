@@ -53,7 +53,7 @@ bool ReadStat::inv_support()
     int sp_cnt = n_pre_split_out + n_post_split_out + n_pre_split_in + n_post_split_in;
     int clip_cnt = n_pre_clip_in + n_pre_clip_out + n_post_clip_in + n_post_clip_out;
     
-    if (rp_cnt >= 5 && rp_cnt+sp_cnt+clip_cnt>10)
+    if (rp_cnt > 5 && rp_cnt+sp_cnt+clip_cnt>15)
         return true;
 
     return false;

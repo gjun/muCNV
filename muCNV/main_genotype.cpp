@@ -180,7 +180,17 @@ int main_genotype(int argc, char** argv)
 	}
 	
     n_sample = reader.load(pileup_names, stats, gc, chr);
+
     std::cerr << n_sample << " samples identified from pileup files" << std::endl;
+
+/*
+    printf("SAMPLE\tAVG_DP\tSTD_DP\tAVG_ISIZE\tSTD_ISIZE\n");
+    for(int i=0 ;i<n_sample; ++i)
+    {
+        printf("%s\t%.2f\t%.2f\t%.2f\t%.2f\n", reader.sample_ids[i].c_str(), stats[i].avg_dp, stats[i].std_dp, stats[i].avg_isize, stats[i].std_isize);
+    }
+    exit (0);
+    */
 
     if (region != "" && range != "")
     {
@@ -246,7 +256,7 @@ int main_genotype(int argc, char** argv)
     for(int i=n_start; i<=n_end; ++i)
     {
         // chr X and Y calling not supported yet
-        if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]))
+        if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]) )
         {
             SvGeno G(n_sample);
             SvData D(n_sample);
