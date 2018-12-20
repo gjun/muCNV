@@ -142,7 +142,7 @@ void GcContent::initialize(std::string &gcFile)
 
 double GcContent::get_gc_content(int c, int startpos, int endpos)
 {
-    if (c <= 1 || c > num_chr)
+    if (c < 1 || c > num_chr)
     {
         return -1;
     }
