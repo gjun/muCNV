@@ -428,6 +428,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             }
         }
     }
+    /*
     if (!G.pd_flag)
     {
         if (G.dp_flag && G.gmix.p_overlap > G.MAX_P_OVERLAP)
@@ -439,6 +440,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             G.dp2_flag = false;
         }
     }
+    */
 
    // readpair genotyping
     if (S.len >= 50)
@@ -739,6 +741,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         }
     }
 
+/*
     if (!G.pd_flag)
     {
         if (G.dp_flag && G.gmix.p_overlap > G.MAX_P_OVERLAP)
@@ -750,6 +753,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             G.dp2_flag = false;
         }
     }
+    */
  
     // Readpair genotyping
     for(int i=0; i<n_sample; ++i)

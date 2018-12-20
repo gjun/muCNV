@@ -837,7 +837,7 @@ bool GaussianMixture2::ordered()
     if (Comps[0].Mean[0] < 0.8 || Comps[0].Mean[1] > 1.2 || Comps[0].Mean[1] < 0.8 || Comps[0].Mean[1] > 1.2 )
 		return false;
 
-    if ((Comps[1].Mean[0] < 0.4 && Comps[1].Mean[1] < 0.4) || (Comps[1].Mean[0] > 0.65 && Comps[1].Mean[1] > 0.65))
+    if ((Comps[1].Mean[0] < 0.35 && Comps[1].Mean[1] < 0.35) || (Comps[1].Mean[0] > 0.65 && Comps[1].Mean[1] > 0.65))
 		return false;
 
 	for (int i=0; i<n_comp-1; ++i)
