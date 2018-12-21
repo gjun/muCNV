@@ -33,7 +33,7 @@ public:
     {
         len = end - pos + 1;
     };
-    void print(void);
+    void print(FILE *);
     bool operator < (const sv&) const;
     bool operator == (const sv&) const;
     

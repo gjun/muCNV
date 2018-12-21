@@ -119,7 +119,7 @@ int main_print_pileup(int argc, char** argv)
     
     for(int i=0; i<n_sample; ++i)
     {
-        printf("GC-factors for sapmle %d:\n", i);
+        printf("GC-factors for sample %d:\n", i);
         std::vector<double> gc_factor (gc.num_bin);
         pup.read_gc_factor(gc_factor, gc.num_bin);
         for(int j=0; j<gc.num_bin; ++j)
@@ -278,7 +278,7 @@ int main_print_pileup(int argc, char** argv)
 	}
     for(int j=0;j<n_var;++j)
     {
-        vec_sv[vec_offset+j].print();
+        vec_sv[vec_offset+j].print(stdout);
         for(int i=0; i<n_sample; ++i)
         {
             uint16_t dp;

@@ -226,7 +226,12 @@ int main_genotype(int argc, char** argv)
             vec_offset++;
         }
 		n_start += vec_offset;
-		n_end += vec_offset + n_vars[chr] - 1;
+		n_end = vec_offset + n_vars[chr] - 1;
+        std::cerr << n_vars[chr] - 1 << " variants from " << n_start << ", ";
+        vec_sv[n_start].print(stderr);
+        std::cerr << " to " << n_end << ", ";
+        vec_sv[n_end].print(stderr);
+        std::cerr << " identified in the chromosome." << std::endl;
 	}
 
     int del_count = 0;
