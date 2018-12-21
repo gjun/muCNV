@@ -73,6 +73,13 @@ int main_print_pileup(int argc, char** argv)
     std::string pileup_name = sampID + ".pileup";
     std::string varfile_name = sampID + ".var";
     std::string idxfile_name = sampID + ".idx";
+
+    if (chr>0)
+    {
+        pileup_name = sampID + ".chr" + std::to_string(chr) + ".pileup";
+        varfile_name = sampID +".chr" + std::to_string(chr) +  ".var";
+        idxfile_name = sampID +".chr" + std::to_string(chr) +  ".idx";
+    }
     
     // TODO: make this also work with VCF file
     // read out and print pileup info
