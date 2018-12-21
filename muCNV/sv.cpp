@@ -39,7 +39,10 @@ svType svTypeNum(int t)
 std::string svTypeName(svType t)
 {
     std::string S[6] = {"DEL", "DUP", "INV", "CNV", "INS", "BND"};
-    return S[t];
+    if (t>=0 && t<6)
+        return S[t];
+    else
+        return std::string("");
 }
 
 breakpoint::breakpoint()
@@ -133,7 +136,7 @@ bool sv::operator == (const sv& s) const
 	return (chrnum == s.chrnum && pos == s.pos && end==s.end && svtype == s.svtype);
 }
 
-void sv::print(void)
+void sv::print(FILE *fp)
 {
     printf("%d:%d-%d_%s", chrnum, pos, end, svTypeName(svtype).c_str());
 }

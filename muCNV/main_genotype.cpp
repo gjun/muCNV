@@ -20,26 +20,6 @@
 #include "genotyper.h"
 #include "common.h"
 
-void write_varstat(sv& curr_sv, std::vector<SampleStat> &stats, std::vector<ReadStat> &rdstats, std::vector<double> &var_dp)
-{
-    int n_sample = (int) stats.size();
-    
-    std::string fname = svTypeName(curr_sv.svtype) + "_" + std::to_string(curr_sv.chrnum) + "_" + std::to_string(curr_sv.pos) + "-" + std::to_string(curr_sv.end) + ".stat.txt";
-    
-    FILE* fp = fopen(fname.c_str(), "wt");
-    
-    fprintf(fp, "index\tavgdp\tstddp\tavgisz\tstdisz\tprefr\tprerf\tpostfr\tpostrf\tprerpmiss\tpostrpmiss\tprespmiss\tpostspmiss\tpresplitout\tpresplitin\tpostsplitout\tpostsplitin\tdpvar\n");
-    for(int j=0; j<n_sample; ++j)
-    {
-        fprintf(fp, "%d\t%f\t%f\t%f\t%f", j, stats[j].avg_dp, stats[j].std_dp, stats[j].avg_isize, stats[j].std_isize);
-        fprintf(fp, "\t%d\t%d\t%d\t%d", rdstats[j].n_pre_FR, rdstats[j].n_pre_RF, rdstats[j].n_post_FR, rdstats[j].n_post_RF);
-        fprintf(fp, "\t%d\t%d\t%d\t%d", rdstats[j].n_pre_rp_missing, rdstats[j].n_post_rp_missing, rdstats[j].n_pre_sp_missing, rdstats[j].n_post_sp_missing);
-        fprintf(fp, "\t%d\t%d\t%d\t%d", rdstats[j].n_pre_split_out, rdstats[j].n_pre_split_in, rdstats[j].n_post_split_out, rdstats[j].n_post_split_in);
-        fprintf(fp, "\t%f\n", var_dp[j]);
-    }
-    fclose(fp);
-}
-
 int main_genotype(int argc, char** argv)
 {
     bool bNoHeader = false;
@@ -246,7 +226,12 @@ int main_genotype(int argc, char** argv)
             vec_offset++;
         }
 		n_start += vec_offset;
-		n_end += vec_offset + n_vars[chr] - 1;
+		n_end = vec_offset + n_vars[chr] - 1;
+        std::cerr << n_vars[chr] - 1 << " variants from " << n_start << ", ";
+        vec_sv[n_start].print(stderr);
+        std::cerr << " to " << n_end << ", ";
+        vec_sv[n_end].print(stderr);
+        std::cerr << " identified in the chromosome." << std::endl;
 	}
 
     int del_count = 0;

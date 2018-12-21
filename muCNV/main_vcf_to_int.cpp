@@ -54,7 +54,7 @@ int main_vcf_to_int(int argc, char** argv)
         for(int i=0; i<(int)vec_sv.size(); ++i)
         {
 			printf("%d\t", i);
-            vec_sv[i].print();
+            vec_sv[i].print(stdout);
             printf("\n");
         }
 
