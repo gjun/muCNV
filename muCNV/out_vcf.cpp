@@ -89,7 +89,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
         af = (double)G.ac/(2.0*G.ns);
 	}
     
-	fprintf(fp, "SVTYPE=%s;END=%d;SVLEN=%d;AC=%d;NS=%d;CALLRATE=%.2f:AF=%f",  svtype, S.end, S.len, G.ac, G.ns, G.ns / (float)G.gt.size(), af);
+	fprintf(fp, "SVTYPE=%s;END=%d;SVLEN=%d;AC=%d;NS=%d;CALLRATE=%.2f;AF=%f",  svtype, S.end, S.len, G.ac, G.ns, G.ns / (float)G.gt.size(), af);
 	fprintf(fp, ";%s", G.info.c_str());
 
     if (G.pd_flag)
