@@ -255,6 +255,13 @@ int main_genotype(int argc, char** argv)
             {
                 G.MAX_P_OVERLAP *= 2.0;
             }
+            if (vec_sv[i].len<50)
+            {
+                // Short ones
+                G.MAX_P_OVERLAP *= 2.5;
+            }
+
+
 
             D.dps.resize(3);
             for(int j=0;j<3;++j)
