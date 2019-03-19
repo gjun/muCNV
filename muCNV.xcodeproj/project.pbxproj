@@ -45,6 +45,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		F11FEE9A22412D62003F7215 /* fasta.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fasta.h; sourceTree = "<group>"; };
 		F129E10D1EF90129007793FB /* libhts.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libhts.a; path = lib/libhts.a; sourceTree = "<group>"; };
 		F129E10F1EF901CA007793FB /* liblzma.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = liblzma.tbd; path = usr/lib/liblzma.tbd; sourceTree = SDKROOT; };
 		F129E1111EF901D2007793FB /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
@@ -149,6 +150,7 @@
 				F138FD881CAD74EE00CD5539 /* Error.h */,
 				F138FD891CAD74EE00CD5539 /* in_vcf.cpp */,
 				F1FEF26C21B5FCE3007EF4D7 /* in_vcf.h */,
+				F11FEE9A22412D62003F7215 /* fasta.h */,
 				F194ED3A1F2708CC00489E0C /* gaussian.cpp */,
 				F1FEF26A21B5F840007EF4D7 /* gaussian.h */,
 				F1DB7ADA219B896000CCA521 /* gc_content.h */,
