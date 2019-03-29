@@ -832,7 +832,7 @@ void DataReader::read_var_depth(int var_i, std::vector<double> &var_dp)
 // GC-correction of n-th sample at chr:pos
 double DataReader::correct_gc(GcContent& gc, int n, double depth, int chr, int pos)
 {
-    int p = pos*2 / gc.binsize;
+    int p = pos / gc.bin_dist;
     //    std::cerr << "pos " << pos << " p " << p << std::endl;
     int bin = gc.gc_array[chr][p];
     

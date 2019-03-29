@@ -30,6 +30,13 @@ public:
     // pairstr: 00b, 01b, 10b, 11b
 };
 
+class sclip
+{
+public:
+    int8_t chrnum;
+    int32_t pos;
+};
+
 class splitread
 {
 public:
@@ -60,12 +67,14 @@ public:
     int write_depth(uint16_t*, int);
     int write_readpair(readpair&);
     int write_splitread(splitread&);
+    int write_softclip(sclip&);
 
     int read_sample_stat(SampleStat &);
     int read_gc_factor(std::vector<double>&, int);
     int read_depth(uint16_t*, int);
     int read_readpair(readpair&);
     int read_splitread(splitread&);
+    int read_softclip(sclip&);
 };
 
 

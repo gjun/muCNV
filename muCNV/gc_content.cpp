@@ -26,6 +26,21 @@ void readmagic(std::ifstream &F)
     }
 }
 
+// GC_Content File Structure
+// ----------
+// MAGIC
+// uint8_t : Number of Chr
+// uint32_t * (Number of Chr) : Size of each Chr.
+// uint16_t : bin width (how much bp used to average GC content), 400bp
+// uint16_t : bin_dist (how much distance in bp between recorded GC contents, 100bp
+// uint16_t : number of bins in GC content curve, default: 100 (0 means GC content from 0 to 1%)
+// MAGIC
+// (# Chr)
+//  | (Chr Size) * uint8_t : GC content for each genomic position (every bin_dist-th bp)
+//  | MAGIC
+// double * (number of bins) : fraction of genomic bin_dist intervals in each GC-bin
+// MAGIC
+
 void GcContent::initialize(std::string &gcFile)
 {
 	// gcFile: filename for GC content file
@@ -59,20 +74,22 @@ void GcContent::initialize(std::string &gcFile)
     }
     
     // read size of GC-interval bin
-    inFile.read(reinterpret_cast <char *> (&binsize), sizeof(uint16_t));
-    DMSG( "Bin size: " << (int) binsize);
+    inFile.read(reinterpret_cast <char *> (&bin_width), sizeof(uint16_t));
+    DMSG( "Length of genomic regions that GC content is averaged over: " << (int) bin_width);
     
-    // read number of GC bins
+    // read distance between GC sampling points
+    inFile.read(reinterpret_cast <char *> (&bin_dist), sizeof(uint16_t));
+    DMSG( "Distance between GC content measuring points: " << bin_dist);
+
+    // read number of total sampled intervals
     inFile.read(reinterpret_cast <char *> (&num_bin), sizeof(uint16_t));
     DMSG( "Num_bin : " << num_bin );
     
-    // read number of total sampled intervals
-    inFile.read(reinterpret_cast <char *> (&num_interval), sizeof(uint16_t));
-    DMSG( "Num_interval : " << num_interval);
-    
+    readmagic(inFile);
+
+    /*
     regions.resize(num_interval);
     
-    readmagic(inFile);
     
     // read 'sampled' intervals (chr, start, end)
     for(int i=0; i<num_interval; ++i)
@@ -93,7 +110,7 @@ void GcContent::initialize(std::string &gcFile)
     
 	DMSG("Sampled intervals read"); 
     readmagic(inFile);
-
+*/
     // read GC content for each (bin size)-bp interval for each chromosome
     // Current : 400-bp with 200bp overlap
     // std::cerr << "Currnet position : " << inFile.tellg() << std::endl;
@@ -104,15 +121,16 @@ void GcContent::initialize(std::string &gcFile)
     for(int i=1; i<=num_chr; ++i)
     {
 		// Fixed binsize
-        int num_bins_in_chr = ceil(chr_size[i] / 200.0);
-
-        gc_array[i] = (uint8_t *) calloc(num_bins_in_chr + 1, sizeof(uint8_t));
+        int num_bins_in_chr = ceil((chr_size[i] + 1.0)/ (double)bin_dist); // Number of intervals in a chromosome
+        gc_array[i] = (uint8_t *) calloc(num_bins_in_chr, sizeof(uint8_t));
+        
 		DMSG("GC array " << i << " is allocated");
 
         inFile.read(reinterpret_cast<char *>(gc_array[i]), sizeof(uint8_t)*num_bins_in_chr);
-        // TEMPORARY, TODO: update GC-content file to include end-of-chr bin
-		gc_array[i][num_bins_in_chr] = 0;
         readmagic(inFile);
+
+        // TEMPORARY, TODO: update GC-content file to include end-of-chr bin
+		// gc_array[i][num_bins_in_chr] = 0;
         
         if (!inFile.good())
         {

@@ -28,10 +28,10 @@ public:
     double get_gc_content(int, int, int);
     uint16_t num_bin; // Number of GC bin
     uint8_t num_chr; //number of chrs
-    uint16_t binsize; // Size of GC intervals (bp)
-    uint16_t num_interval; // number of GC intervals
+    uint16_t bin_width; // Size of GC averaged over region (bp)
+    uint16_t bin_dist; // distance between GC content measured points
     std::vector<size_t> chr_offset;
-    std::vector<gcint> regions; // Double array to store list of regions for each GC bin -- non-overlapping
+//    std::vector<gcint> regions; // Double array to store list of regions for each GC bin -- non-overlapping
     std::vector<double> gc_dist; // Array to store proportion of Ref genome for each GC content bin
     std::vector<uint32_t> chr_size; // size of chromosomes (bp)
     std::vector<uint8_t *> gc_array; // Array to store "GC bin number" for every 400-bp (?) interval of reference genome

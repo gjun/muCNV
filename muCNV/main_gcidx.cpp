@@ -54,32 +54,67 @@ void writemagic(std::ofstream &F)
     F.write(reinterpret_cast<char *>(magic), 7);
 }
 
+// GC_Content File Structure
+// ----------
+// MAGIC
+// uint8_t : Number of Chr
+// uint32_t * (Number of Chr) : Size of each Chr.
+// uint16_t : bin width (how much bp used to average GC content), 400bp
+// uint16_t : bin_dist (how much distance in bp between recorded GC contents, 100bp
+// uint16_t : number of bins in GC content curve, default: 100 (0 means GC content from 0 to 1%)
+// MAGIC
+// (# Chr)
+//  | (Chr Size) * uint8_t : GC content for each genomic position (every bin_dist-th bp)
+//  | MAGIC
+// double * (number of bins) : fraction of genomic bin_dist intervals in each GC-bin
+// MAGIC
+
 int main_gcidx(int argc, char** argv)
 {
     fasta F;
-    std::string fastaFileName;
-    std::string faidxFileName;
-    std::string gcOutFileName = "GRCh38.gc";
+    std::string fasta_file;
+    std::string fai_file;
+    std::string GC_file;
     
-    //    fastaFileName = getenv("HOME");
-    fastaFileName = "/data/ref/GRCh38/GRCh38_full_analysis_set_plus_decoy_hla.fa";
-    faidxFileName = fastaFileName + ".fai";
-    
-    F.load(fastaFileName.c_str(), faidxFileName.c_str());
-    //    F.printIndex();
-    
-    std::ofstream outFile(gcOutFileName.c_str(), std::ios::out | std::ios::binary);
-    if (!outFile.is_open())
+    try
     {
-        std::cerr << "Error: Cannot open " << gcOutFileName << " for output."  << std::endl;
-        exit(0);
+        TCLAP::CmdLine cmd("Command description message", ' ', "0.06");
+        
+        TCLAP::ValueArg<std::string> argFasta("f","fasta","Genome reference FASTA file",false,"/data/ref/GRCh38/GRCh38_full_analysis_set_plus_decoy_hla.fa","string");
+        TCLAP::ValueArg<std::string> argGCout("o","out", "Output GC-content filename", false, "GRCh38.gc", "string");
+        TCLAP::SwitchArg switchPrint("p","print", "Print out SV variants", cmd, false);
+        
+        cmd.add(argFasta);
+        cmd.add(argGCout);
+        
+        cmd.parse(argc, argv);
+        
+        fasta_file = argFasta.getValue();
+        GC_file = argGCout.getValue();
+    }
+    catch (TCLAP::ArgException &e)
+    {
+        std::cerr << "Error: " << e.error() << " for arg " << e.argId() << std::endl;
+        abort();
     }
     
+    //    fastaFileName = getenv("HOME");
+    fai_file= fasta_file + ".fai";
+    
+    F.load(fasta_file.c_str(), fai_file.c_str());
+    //    F.printIndex();
+    
+    std::ofstream outFile(GC_file.c_str(), std::ios::out | std::ios::binary);
+    if (!outFile.is_open())
+    {
+        std::cerr << "Error: Cannot open " << GC_file << " for output."  << std::endl;
+        exit(0);
+    }
     writemagic(outFile);
     
     uint8_t n_chr = 24;
     outFile.write(reinterpret_cast <char*> (&n_chr), sizeof(uint8_t));
-    for(int i=1;i<25;++i)
+    for(int i=1;i<=n_chr;++i)
     {
         std::ostringstream sStr;
         uint32_t L = 0;
@@ -101,58 +136,62 @@ int main_gcidx(int argc, char** argv)
         outFile.write(reinterpret_cast <char*> (&L), sizeof(uint32_t));
     }
     
-    uint16_t binsize = 400;
+    uint16_t bin_width = 400; // Averaged over 400bp
+    uint16_t bin_dist = 100; // One bin for every 100-bp point, approx. 30M bins
     // size of GC bins
-    outFile.write(reinterpret_cast <char *> (&binsize), sizeof(uint16_t));
-    
-    uint16_t num_bin = 20;
-    // number of GC bins
+    outFile.write(reinterpret_cast <char *> (&bin_width), sizeof(uint16_t));
+    outFile.write(reinterpret_cast <char *> (&bin_dist), sizeof(uint16_t));
+
+    uint16_t num_bin = 100;
+    // number of GC bins, changed to 100 from 20 on Mar 20, 2019, for GC contents 0-1% bin to 99-100% bin
     outFile.write(reinterpret_cast <char *> (&num_bin), sizeof(uint16_t));
     
-    uint16_t total_bin = 1800;
-    // number of intervals per GC bin
-    outFile.write(reinterpret_cast <char *> (&total_bin), sizeof(uint16_t));
-    
-    writemagic(outFile);
-    int cnt = 0;
-    std::ifstream inFile("sorted.selected.txt", std::ios::in);
-    while(inFile.good())
-    {
-        int chr = 0;
-        uint32_t pos = 0;
-        double val = 0;
-        
-        if (inFile>>chr)
-        {
-            //        cerr << chr << "\t";
-            uint8_t c = (uint8_t)chr;
-            outFile.write(reinterpret_cast <char *> (&c), sizeof(uint8_t));
-            
-            inFile >> pos;
-            
-            pos -= 200;
-            outFile.write(reinterpret_cast <char *> (&pos), sizeof(uint32_t));
-            //        cerr << pos << "-";
-            
-            pos += 399;
-            outFile.write(reinterpret_cast <char *> (&pos), sizeof(uint32_t));
-            //        cerr << pos << "\t";
-            
-            inFile >> val;
-            uint8_t gcbin = (uint8_t)floor(val*20);
-            outFile.write(reinterpret_cast <char *> (&gcbin), sizeof(uint8_t));
-            //        cerr <<val << endl;
-            cnt++;
-        }
-    }
-    inFile.close();
+    // This part has been commented out on Mar 20, 2019
+//
+//    uint16_t total_bin = 1800;
+//    // number of intervals per GC bin, for sampling
+//    outFile.write(reinterpret_cast <char *> (&total_bin), sizeof(uint16_t));
+//
+//    writemagic(outFile);
+//    int cnt = 0;
+//    std::ifstream inFile("sorted.selected.txt", std::ios::in);
+//    while(inFile.good())
+//    {
+//        int chr = 0;
+//        uint32_t pos = 0;
+//        double val = 0;
+//
+//        if (inFile>>chr)
+//        {
+//            //        cerr << chr << "\t";
+//            uint8_t c = (uint8_t)chr;
+//            outFile.write(reinterpret_cast <char *> (&c), sizeof(uint8_t));
+//
+//            inFile >> pos;
+//
+//            pos -= 200;
+//            outFile.write(reinterpret_cast <char *> (&pos), sizeof(uint32_t));
+//            //        cerr << pos << "-";
+//
+//            pos += 399;
+//            outFile.write(reinterpret_cast <char *> (&pos), sizeof(uint32_t));
+//            //        cerr << pos << "\t";
+//
+//            inFile >> val;
+//            uint8_t gcbin = (uint8_t)floor(val*20);
+//            outFile.write(reinterpret_cast <char *> (&gcbin), sizeof(uint8_t));
+//            //        cerr <<val << endl;
+//            cnt++;
+//        }
+//    }
+//    inFile.close();
     
     //    cerr << "Current position: " << outFile.tellp() << endl;
     
     writemagic(outFile);
     
-    double gc_dist[20];
-    for(int j=0;j<20;++j)
+    double gc_dist[num_bin];
+    for(int j=0;j<num_bin;++j)
     {
         gc_dist[j] = 0;
     }
@@ -167,38 +206,66 @@ int main_gcidx(int argc, char** argv)
             chr = "chrY";
         
         F.seek(chr, 1);
-        double prev_g = -1;
-        
-        int N = ceil(F.chrlen(chr) / 200.0);
+        double g_buf[4] = {-1.0};
+        int cnt = 0;
+
+        int N = ceil((F.chrlen(chr)+1.0) / (double)bin_dist); // Number of intervals in a chromosome
         uint8_t* gc_array = (uint8_t *) calloc(N, sizeof(uint8_t));
+        
         std::cerr << "Current position: " << outFile.tellp() << std::endl;
         
         //        for(size_t pos=1; pos<F.chrlen(chr); pos+=200)
-        for(int j=0, pos=1;j<N;++j, pos+=200)
+        for(int j=0, pos=1; j<N; ++j, pos+=bin_dist)
         {
-            
             std::string S;
-            F.read(200, S);
-            double g = gc(S);
-            //            if (g>=0 && prev_g>=0)
+            F.read(bin_dist, S);
+            int idx = j%4;
+            g_buf[idx] = gc(S);
+
+            if (j>2)
             {
-                //                printf("%d\t%d\t%f\n", i, pos, (g+prev_g)/2.0);
+                double sum_gc = 0;
+                double n_gc = 0;
+                int curr = cnt+2;
+                for(int k=curr; k<curr+2; ++k)
+                {
+                    if (g_buf[k%4]>=0)
+                    {
+                        sum_gc += g_buf[k%4];
+                        n_gc +=1;
+                    }
+                }
+                for(int k=curr+2; k<curr+4; ++k)
+                {
+                    if (g_buf[k%4]>=0)
+                    {
+                        sum_gc += g_buf[k%4]*0.5;
+                        n_gc += 0.5;
+                    }
+                }
+                
+                if (n_gc>0)
+                {
+                    // gc_array[2] = 0-400bp average, center at 200, gc_array[3] = 100-500bp average, center at 300 ...
+                    gc_array[j-2] = (uint8_t) floor(sum_gc / n_gc * (double)num_bin);
+                    if (gc_array[j-2] == 100)
+                        gc_array[j-2] = 99;
+                    
+                    if (gc_array[j-2] < 0 || gc_array[j-2] > 99)
+                        std::cerr << " gc_array error : " << gc_array[j-2] << std::endl;
+                    
+                    gc_dist[gc_array[j-2]] += 1;
+                }
+                else
+                {
+                    gc_array[j-1] = 255;
+                }
             }
-            
-            uint8_t gcbin = (uint8_t)floor((g+prev_g) * 10.0);
-            if (gcbin == 20) gcbin = 19;
-            if (g<=0 || prev_g<=0)
-            {
-                gcbin=255;
-            }
-            else
-            {
-                gc_dist[gcbin] += 1;
-            }
-            gc_array[j] = gcbin;
             //outFile.write(reinterpret_cast <char *>(&gcbin), sizeof(uint8_t));
-            prev_g = g;
         }
+        gc_array[0] = gc_array[1] = gc_array[2];
+        gc_array[N-1] = gc_array[N-2] = gc_array[N-3];
+        
         outFile.write(reinterpret_cast <char*>(gc_array), sizeof(uint8_t) * N);
         writemagic(outFile);
         std::cerr << N << " written." << std::endl;
@@ -209,18 +276,18 @@ int main_gcidx(int argc, char** argv)
     std::cerr << "Current position: " << outFile.tellp() << std::endl;
     
     double sum = 0;
-    for (int i=0;i<20;++i)
+    for (int i=0;i<num_bin;++i)
     {
         sum += gc_dist[i];
     }
-    for (int i=0;i<20;++i)
+    for (int i=0;i<num_bin;++i)
     {
         gc_dist[i] /= sum;
         std::cerr << "bin " << i << " gc dist " << gc_dist[i] << std::endl;
     }
     std::cerr << "Current position: " << outFile.tellp() << std::endl;
     
-    outFile.write(reinterpret_cast <char *>(gc_dist), sizeof(double)*20);
+    outFile.write(reinterpret_cast <char *>(gc_dist), sizeof(double)*num_bin);
     writemagic(outFile);
     
     outFile.close();

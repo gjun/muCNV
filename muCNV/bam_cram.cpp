@@ -393,7 +393,8 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
 			std::cerr << "n_isz : " << data[0]->n_isz << ", sum_isz : " << data[0]->sum_isz << ", sumsq_isz : " << data[0]->sumsq_isz << std::endl;
 
             // TODO: encapsulate this code
-			uint8_t bin = gc.gc_array[prev_chrnum][(int)prev_pos * 2 / gc.binsize];
+            // gc_array[chr][1] would contain 
+			uint8_t bin = gc.gc_array[prev_chrnum][(int) prev_pos / gc.bin_dist];
 			if (bin<gc.num_bin)
 			{
 				gc_sum[bin] += sum100;
@@ -416,7 +417,7 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
             }
             
             // TODO: encapsulate this code
-			uint8_t bin = gc.gc_array[chrnum][(int)prev_pos * 2 / gc.binsize];
+			uint8_t bin = gc.gc_array[chrnum][(int)prev_pos / gc.bin_dist];
 			if (bin<gc.num_bin)
 			{
 				gc_sum[bin] += sum100;
