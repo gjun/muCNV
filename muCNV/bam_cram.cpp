@@ -599,7 +599,7 @@ void BamCram::flag_softclips(std::vector<sclip> &vec_clip)
                 if (vec_clip[i].b_end == false)
                     vec_clip[i].b_drop = false;
             }
-            if (vec_clip[i].b_drop != true)
+            if (vec_clip[i].b_drop == true)
             {
                 for(int j=i+1; j<vec_clip.size() && vec_clip[j].pos<= vec_clip[i].pos + 10 && vec_clip[j].chrnum == vec_clip[i].chrnum ; ++j)
                 {
