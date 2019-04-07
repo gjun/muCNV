@@ -217,7 +217,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
         int16_t rclip = 0;
         
         // Check whether there's soft clip for all reads with >1 cigar ops
-        if ((b->core.n_cigar > 1))
+        if ((b->core.n_cigar > 1) && b->core.qual >= 10) // min_MAPQ 10 for softclips
         {
             uint32_t *cigar  = bam_get_cigar(b);
             int ncigar = b->core.n_cigar;
