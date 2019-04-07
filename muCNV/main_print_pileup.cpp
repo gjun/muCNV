@@ -111,7 +111,7 @@ int main_print_pileup(int argc, char** argv)
     {
         SampleStat s;
         pup.read_sample_stat(s);
-        printf("Sample %d, AVG DP: %f, STdev: %f, AVG ISIZE: %f, STdev: %f \n", i, s.avg_dp, s.std_dp, s.avg_isize, s.std_isize);
+        printf("Sample %d, AVG DP: %f, STdev: %f, AVG ISIZE: %f, StdDev: %f \n", i, s.avg_dp, s.std_dp, s.avg_isize, s.std_isize);
     }
     
     GcContent gc;
@@ -140,7 +140,7 @@ int main_print_pileup(int argc, char** argv)
 
 	if (chr>0)
 	{
-        int N = ceil((double)gc.chr_size[chr] / 100.0) + 1;
+        int N = gc.n_interval[chr];
         for(int j=0;j<N;++j)
         {
             pup.read_depth(dp100, n_sample);
@@ -155,7 +155,7 @@ int main_print_pileup(int argc, char** argv)
 	{
 		for(int c=1; c<=gc.num_chr; ++c)
 		{
-			int N = ceil((double)gc.chr_size[c] / 100.0) + 1;
+			int N = gc.n_interval[c];
 			for(int j=0;j<N;++j)
 			{
 				pup.read_depth(dp100, n_sample);
@@ -204,6 +204,26 @@ int main_print_pileup(int argc, char** argv)
 					printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
 
 				}
+                
+                uint32_t n_lclip = 0;
+                pup.read_uint32(n_lclip);
+                printf("Sample %d, %d left clips\n", i, n_lclip);
+                for(int k=0; k<(int)n_lclip; ++k)
+                {
+                    sclip myclip;
+                    pup.read_softclip(myclip);
+                    printf("\t%d\t%d\n", myclip.chrnum, myclip.pos);
+                }
+
+                uint32_t n_rclip = 0;
+                pup.read_uint32(n_rclip);
+                printf("Sample %d, %d right clips\n", i, n_rclip);
+                for(int k=0; k<(int)n_rclip; ++k)
+                {
+                    sclip myclip;
+                    pup.read_softclip(myclip);
+                    printf("\t%d\t%d\n", myclip.chrnum, myclip.pos);
+                }
 
 			}
 		}
@@ -238,9 +258,28 @@ int main_print_pileup(int argc, char** argv)
 					{
 						splitread sp;
 						pup.read_splitread(sp);
-						printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
-
+                        printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
 					}
+                    
+                    uint32_t n_lclip = 0;
+                    pup.read_uint32(n_lclip);
+                    printf("Sample %d, %d left clips\n", i, n_lclip);
+                    for(int k=0; k<(int)n_lclip; ++k)
+                    {
+                        sclip myclip;
+                        pup.read_softclip(myclip);
+                        printf("\t%d\t%d\n", myclip.chrnum, myclip.pos);
+                    }
+                    
+                    uint32_t n_rclip = 0;
+                    pup.read_uint32(n_rclip);
+                    printf("Sample %d, %d right clips\n", i, n_rclip);
+                    for(int k=0; k<(int)n_rclip; ++k)
+                    {
+                        sclip myclip;
+                        pup.read_softclip(myclip);
+                        printf("\t%d\t%d\n", myclip.chrnum, myclip.pos);
+                    }
 
 				}
 			}

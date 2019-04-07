@@ -58,7 +58,9 @@ void writemagic(std::ofstream &F)
 // ----------
 // MAGIC
 // uint8_t : Number of Chr
-// uint32_t * (Number of Chr) : Size of each Chr.
+// (# Chr)
+//  | uint32_t : Size of each Chr.
+//  | uint32_t : Number of bins in each chr, ceil( (chrssize + 1.0) / bin_dist )
 // uint16_t : bin width (how much bp used to average GC content), 400bp
 // uint16_t : bin_dist (how much distance in bp between recorded GC contents, 100bp
 // uint16_t : number of bins in GC content curve, default: 100 (0 means GC content from 0 to 1%)
@@ -113,6 +115,15 @@ int main_gcidx(int argc, char** argv)
     writemagic(outFile);
     
     uint8_t n_chr = 24;
+    
+    uint16_t interval_width = 400; // Averaged over 400bp
+    uint16_t interval_dist = 100; // One bin for every 100-bp point, approx. 30M bins
+    
+    std::vector<uint32_t> n_interval;
+    
+    n_interval.resize(n_chr+1);
+    n_interval[0] = 0;
+    
     outFile.write(reinterpret_cast <char*> (&n_chr), sizeof(uint8_t));
     for(int i=1;i<=n_chr;++i)
     {
@@ -134,13 +145,13 @@ int main_gcidx(int argc, char** argv)
             L = (uint32_t)F.chrlen(s);
         }
         outFile.write(reinterpret_cast <char*> (&L), sizeof(uint32_t));
+        n_interval[i] = ceil(((double)L+1.0) / (double)interval_dist); // Number of intervals in a chromosome
+        outFile.write(reinterpret_cast <char*> (&n_interval[i]), sizeof(uint32_t));
     }
-    
-    uint16_t bin_width = 400; // Averaged over 400bp
-    uint16_t bin_dist = 100; // One bin for every 100-bp point, approx. 30M bins
+
     // size of GC bins
-    outFile.write(reinterpret_cast <char *> (&bin_width), sizeof(uint16_t));
-    outFile.write(reinterpret_cast <char *> (&bin_dist), sizeof(uint16_t));
+    outFile.write(reinterpret_cast <char *> (&interval_width), sizeof(uint16_t));
+    outFile.write(reinterpret_cast <char *> (&interval_dist), sizeof(uint16_t));
 
     uint16_t num_bin = 100;
     // number of GC bins, changed to 100 from 20 on Mar 20, 2019, for GC contents 0-1% bin to 99-100% bin
@@ -209,16 +220,15 @@ int main_gcidx(int argc, char** argv)
         double g_buf[4] = {-1.0};
         int cnt = 0;
 
-        int N = ceil((F.chrlen(chr)+1.0) / (double)bin_dist); // Number of intervals in a chromosome
-        uint8_t* gc_array = (uint8_t *) calloc(N, sizeof(uint8_t));
+        uint8_t* gc_array = (uint8_t *) calloc(n_interval[i], sizeof(uint8_t));
         
         std::cerr << "Current position: " << outFile.tellp() << std::endl;
         
         //        for(size_t pos=1; pos<F.chrlen(chr); pos+=200)
-        for(int j=0, pos=1; j<N; ++j, pos+=bin_dist)
+        for(int j=0, pos=1; j<n_interval[i]; ++j, pos+=interval_dist)
         {
             std::string S;
-            F.read(bin_dist, S);
+            F.read(interval_dist, S);
             int idx = j%4;
             g_buf[idx] = gc(S);
 
@@ -264,11 +274,11 @@ int main_gcidx(int argc, char** argv)
             //outFile.write(reinterpret_cast <char *>(&gcbin), sizeof(uint8_t));
         }
         gc_array[0] = gc_array[1] = gc_array[2];
-        gc_array[N-1] = gc_array[N-2] = gc_array[N-3];
+        gc_array[n_interval[i]-1] = gc_array[n_interval[i]-2] = gc_array[n_interval[i]-3];
         
-        outFile.write(reinterpret_cast <char*>(gc_array), sizeof(uint8_t) * N);
+        outFile.write(reinterpret_cast <char*>(gc_array), sizeof(uint8_t) * n_interval[i]);
         writemagic(outFile);
-        std::cerr << N << " written." << std::endl;
+        std::cerr << n_interval[i] << " written." << std::endl;
         
         free(gc_array);
     }

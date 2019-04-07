@@ -128,16 +128,23 @@ int main_pileup(int argc, char** argv)
     // Write DP100
     for(int i=1; i<=gc.num_chr; ++i)
     {
-        curr_pos += pup.write_depth(b.depth100[i], b.nbin_100[i]);
+        curr_pos += pup.write_depth(b.depth_interval[i], gc.n_interval[i]);
     }
     
     int sp_idx = 0;
     int rp_idx = 0;
+    int lclip_idx = 0;
+    int rclip_idx = 0;
+    
     int prev_sp = 0;
     int prev_rp = 0;
+    int prev_lclip = 0;
+    int prev_rclip = 0;
     
     int cnt_rp = 0;
     int cnt_sp = 0;
+    int cnt_lclip = 0;
+    int cnt_rclip = 0;
     
     for(int i=1;i<=gc.num_chr; ++i)
     {
@@ -145,6 +152,9 @@ int main_pileup(int argc, char** argv)
         
         for(int j=1;j<=N;++j)
         {
+            // TODO: Write chr:pos at the beginning of each interval, both in the pileup and index file?
+            // 5 byte * 3G / 10K = 1.5 MB, negligible increase in file size
+            
             idx_file.write_uint64(curr_pos); // where each 10,000-bp interval starts;
             // RP
             while(rp_idx < (int)b.vec_rp.size() && b.vec_rp[rp_idx].chrnum == i && b.vec_rp[rp_idx].selfpos <= j*10000)
@@ -193,6 +203,55 @@ int main_pileup(int argc, char** argv)
                 cnt_sp ++;
             }
             prev_sp = sp_idx;
+            
+            //TODO: Templatize these...
+            
+            // L-Clip
+            while(lclip_idx < (int)b.vec_lclip.size() && b.vec_lclip[lclip_idx].chrnum == i && b.vec_lclip[lclip_idx].pos <= j*10000)
+            {
+                lclip_idx ++;
+            }
+            uint32_t n_lclip = 0;
+            if (lclip_idx - prev_lclip < 0)
+            {
+                std::cerr << "Wrong lclip index while writing... " << std::endl;
+                exit(1);
+            }
+            else
+            {
+                n_lclip = (uint32_t) lclip_idx - prev_lclip;
+            }
+            curr_pos += pup.write_uint32(n_lclip);
+            for(int k=prev_lclip; k<lclip_idx; ++k)
+            {
+                curr_pos += pup.write_softclip(b.vec_lclip[k]);
+                cnt_lclip ++;
+            }
+            prev_lclip = lclip_idx;
+            
+            // R-Clip
+            while(rclip_idx < (int)b.vec_rclip.size() && b.vec_rclip[rclip_idx].chrnum == i && b.vec_rclip[rclip_idx].pos <= j*10000)
+            {
+                rclip_idx ++;
+            }
+            uint32_t n_rclip = 0;
+            if (rclip_idx - prev_rclip < 0)
+            {
+                std::cerr << "Wrong rclip index while writing... " << std::endl;
+                exit(1);
+            }
+            else
+            {
+                n_rclip = (uint32_t) rclip_idx - prev_rclip;
+            }
+            curr_pos += pup.write_uint32(n_rclip);
+            for(int k=prev_rclip; k<rclip_idx; ++k)
+            {
+                curr_pos += pup.write_softclip(b.vec_rclip[k]);
+                cnt_rclip ++;
+            }
+            prev_rclip = rclip_idx;
+            
         }
         // fprintf(stderr, "\rChr %d, Index %d, cnt_rp %d, cnt_sp %d\n", i, (int)curr_pos, cnt_rp, cnt_sp);
     }

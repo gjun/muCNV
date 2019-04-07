@@ -28,6 +28,8 @@ typedef struct {     // auxiliary data structure
     
     std::vector<readpair> *p_vec_rp;
     std::vector<splitread> *p_vec_sp;
+    std::vector<sclip> *p_vec_rclip;
+    std::vector<sclip> *p_vec_lclip;
     
     int min_mapQ, min_len; // mapQ filter; length filter
 } aux_t;
@@ -41,12 +43,14 @@ public:
    // GcContent& GC;
     
     std::vector<double> gc_factor;
-    std::vector< uint16_t * > depth100; // to store depth for every 100bp interval
-    std::vector<int> nbin_100;
+    std::vector< std::vector<int>> gc_count;
+    std::vector< uint16_t * > depth_interval; // to store depth for every 100bp interval
     
     SampleStat stat;
     std::vector<readpair> vec_rp;
     std::vector<splitread> vec_sp;
+    std::vector<sclip> vec_rclip;
+    std::vector<sclip> vec_lclip;
     
     //    void read_depth(std::vector<sv> &, std::vector<string> &);
     

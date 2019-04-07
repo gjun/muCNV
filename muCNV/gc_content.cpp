@@ -64,6 +64,8 @@ void GcContent::initialize(std::string &gcFile)
     chr_size[0] = 0;
     chr_offset.resize(num_chr+1);
     chr_offset[0] = 0;
+    n_interval.resize(num_chr+1);
+    n_interval[0] = 0;
     
     
     for(int i=1;i<=num_chr;++i)
@@ -71,15 +73,16 @@ void GcContent::initialize(std::string &gcFile)
         inFile.read(reinterpret_cast <char *> (&chr_size[i]), sizeof(uint32_t));
         chr_offset[i] = chr_offset[i-1] + chr_size[i-1];
         DMSG("Chr " << i << " size: " << chr_size[i] <<  " offset: " << chr_offset[i]);
+        inFile.read(reinterpret_cast <char *> (&n_interval[i]), sizeof(uint32_t));
     }
     
     // read size of GC-interval bin
-    inFile.read(reinterpret_cast <char *> (&bin_width), sizeof(uint16_t));
-    DMSG( "Length of genomic regions that GC content is averaged over: " << (int) bin_width);
+    inFile.read(reinterpret_cast <char *> (&interval_width), sizeof(uint16_t));
+    DMSG( "Length of genomic regions that GC content is averaged over: " << (int) interval_width);
     
     // read distance between GC sampling points
-    inFile.read(reinterpret_cast <char *> (&bin_dist), sizeof(uint16_t));
-    DMSG( "Distance between GC content measuring points: " << bin_dist);
+    inFile.read(reinterpret_cast <char *> (&interval_dist), sizeof(uint16_t));
+    DMSG( "Distance between GC content measuring points: " << interval_dist);
 
     // read number of total sampled intervals
     inFile.read(reinterpret_cast <char *> (&num_bin), sizeof(uint16_t));
@@ -121,7 +124,7 @@ void GcContent::initialize(std::string &gcFile)
     for(int i=1; i<=num_chr; ++i)
     {
 		// Fixed binsize
-        int num_bins_in_chr = ceil((chr_size[i] + 1.0)/ (double)bin_dist); // Number of intervals in a chromosome
+        int num_bins_in_chr = ceil((chr_size[i] + 1.0)/ (double)interval_dist); // Number of intervals in a chromosome
         gc_array[i] = (uint8_t *) calloc(num_bins_in_chr, sizeof(uint8_t));
         
 		DMSG("GC array " << i << " is allocated");
@@ -151,8 +154,8 @@ void GcContent::initialize(std::string &gcFile)
         }
         double v;
         inFile.read(reinterpret_cast<char *>(&v), sizeof(double));
-        DMSG("Bin " << i << " GC content proportion: "<< v);
-        gc_dist.push_back(v);
+        DMSG("Bin " << i << " Fraction : "<< v);
+        bin_fraction.push_back(v);
     }
     readmagic(inFile);
     inFile.close();
@@ -164,7 +167,9 @@ double GcContent::get_gc_content(int c, int startpos, int endpos)
     {
         return -1;
     }
-
+    
+    // TODO: fix hardcoded (200.0)
+    
     if (round(startpos/200.0) == round(endpos/200.0))
     {
         return ((double)gc_array[c][(int)round(startpos/200.0)-1]/ 20.0 + 0.025);

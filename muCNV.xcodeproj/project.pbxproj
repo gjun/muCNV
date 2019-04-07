@@ -145,6 +145,8 @@
 				F138FD831CAD74EE00CD5539 /* cluster.cpp */,
 				F138FD8A1CAD74EE00CD5539 /* common.h */,
 				F138FD841CAD74EE00CD5539 /* common.cpp */,
+				F1FEF26521AB0DFD007EF4D7 /* data_reader.h */,
+				F1FEF26421AB0DFD007EF4D7 /* data_reader.cpp */,
 				F138FD871CAD74EE00CD5539 /* Error.cpp */,
 				F1DB7ADE219B9BAB00CCA521 /* debug.h */,
 				F138FD881CAD74EE00CD5539 /* Error.h */,
@@ -159,8 +161,6 @@
 				F1FEF26F21B609B8007EF4D7 /* gaussian_mixture.cpp */,
 				F1FEF26D21B5FE38007EF4D7 /* genotyper.h */,
 				F194ED341F25A41400489E0C /* genotyper.cpp */,
-				F1FEF26521AB0DFD007EF4D7 /* data_reader.h */,
-				F1FEF26421AB0DFD007EF4D7 /* data_reader.cpp */,
 				F1FEF26821AB12CF007EF4D7 /* base_file.h */,
 				F1FEF26721AB12CF007EF4D7 /* base_file.cpp */,
 				F138FD7C1CAD744A00CD5539 /* main.cpp */,
@@ -222,6 +222,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = F138FD701CAD744A00CD5539;

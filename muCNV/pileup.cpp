@@ -61,11 +61,9 @@ int Pileup::write_splitread(splitread& sp)
     fs.write(reinterpret_cast<char*>(&(sp.pos)), sizeof(int32_t));
     fs.write(reinterpret_cast<char*>(&(sp.sapos)), sizeof(int32_t));
     
-    // softclips are separate entries now, 03/27/19
-    // fs.write(reinterpret_cast<char*>(&(sp.firstclip)), sizeof(int16_t));
-    // fs.write(reinterpret_cast<char*>(&(sp.secondclip)), sizeof(int16_t));
-    // ret += sizeof(int8_t) + sizeof(int32_t) + sizeof(int32_t) + sizeof(int16_t) + sizeof(int16_t);
-    ret += sizeof(int8_t) + sizeof(int32_t) + sizeof(int32_t);
+    fs.write(reinterpret_cast<char*>(&(sp.firstclip)), sizeof(int16_t));
+    fs.write(reinterpret_cast<char*>(&(sp.secondclip)), sizeof(int16_t));
+    ret += sizeof(int8_t) + sizeof(int32_t) + sizeof(int32_t) + sizeof(int16_t) + sizeof(int16_t);
     
     return ret;
 }

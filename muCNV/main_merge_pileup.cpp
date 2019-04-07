@@ -156,7 +156,7 @@ int main_merge_pileup(int argc, char** argv)
 	{
 		std::vector<uint16_t*> dp100 (n_sample, NULL);
 			
-		int N = ceil((double)gc.chr_size[chr] / 100.0) + 1;
+		int N = gc.n_interval[chr];
 
 		for(int i=0; i<n_sample; ++i)
 		{
@@ -211,6 +211,30 @@ int main_merge_pileup(int argc, char** argv)
 					pileups[i].read_splitread(sp);
 					curr_pos[chr] += mpups[chr].write_splitread(sp);
 				}
+                
+                uint32_t n_lclip = 0;
+                sclip myclip;
+                
+                pileups[i].read_uint32(n_lclip);
+                curr_pos[chr] += mpups[chr].write_uint32(n_lclip);
+                
+                for(int k=0; k<(int)n_lclip; ++k)
+                {
+                    pileups[i].read_softclip(myclip);
+                    curr_pos[chr] += mpups[chr].write_softclip(myclip);
+                }
+                
+                uint32_t n_rclip = 0;
+                
+                pileups[i].read_uint32(n_rclip);
+                curr_pos[chr] += mpups[chr].write_uint32(n_rclip);
+                
+                for(int k=0; k<(int)n_rclip; ++k)
+                {
+                    pileups[i].read_softclip(myclip);
+                    curr_pos[chr] += mpups[chr].write_softclip(myclip);
+                }
+                
 			}
 
 		}
