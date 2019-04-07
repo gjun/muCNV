@@ -74,11 +74,14 @@ int Pileup::write_splitread(splitread& sp)
 int Pileup::write_softclip(sclip &sc)
 {
     int ret = 0;
+    uint16_t pos16 = (uint16_t)(sc.pos % 10000); // from the offset
     
  //   fs.write(reinterpret_cast<char*>(&(sc.chrnum)), sizeof(int8_t));
-    fs.write(reinterpret_cast<char*>(&(sc.pos)), sizeof(int32_t)); // The position where M and S divides left/right will be recoreded in separate lists
+ //   fs.write(reinterpret_cast<char*>(&(sc.pos)), sizeof(int32_t)); // The position where M and S divides left/right will be recoreded in separate lists
+    fs.write(reinterpret_cast<char*>(&pos16), sizeof(uint16_t));
  //   ret += sizeof(int8_t) + sizeof(int32_t);
-    ret += sizeof(int32_t);
+ //   ret += sizeof(int32_t);
+    ret += sizeof(uint16_t);
 
     return ret;
 }
@@ -145,11 +148,16 @@ int Pileup::read_splitread(splitread& sp)
 int Pileup::read_softclip(sclip &sc)
 {
     int ret = 0;
+    uint16_t pos16;
     
 //    fs.read(reinterpret_cast<char*>(&(sc.chrnum)), sizeof(int8_t));
-    fs.read(reinterpret_cast<char*>(&(sc.pos)), sizeof(int32_t)); // The position where M and S divides, and also direction by the sign
- //   ret += sizeof(int8_t) + sizeof(int32_t);
-    ret += sizeof(int32_t);
+//    fs.read(reinterpret_cast<char*>(&(sc.pos)), sizeof(int32_t)); // The position where M and S divides, and also direction by the sign
+    fs.read(reinterpret_cast<char*>(&(pos16)), sizeof(uint16_t)); // The position where M and S divides, and also direction by the sign
 
+ //   ret += sizeof(int8_t) + sizeof(int32_t);
+  //  ret += sizeof(int32_t);
+    ret += sizeof(uint16_t);
+    sc.pos = (int32_t) pos16;
+    
     return ret;
 }

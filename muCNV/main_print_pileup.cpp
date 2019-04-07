@@ -191,6 +191,7 @@ int main_print_pileup(int argc, char** argv)
 				{
 					readpair rp;
 					pup.read_readpair(rp);
+                    rp.chrnum = chr;
 					printf("\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
 				}
 				
@@ -201,6 +202,7 @@ int main_print_pileup(int argc, char** argv)
 				{
 					splitread sp;
 					pup.read_splitread(sp);
+                    sp.chrnum = chr;
 					printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
 
 				}
@@ -212,6 +214,8 @@ int main_print_pileup(int argc, char** argv)
                 {
                     sclip myclip;
                     pup.read_softclip(myclip);
+                    myclip.chrnum = chr;
+                    myclip.pos += N*10000;
                     printf("\t%d\t%d\n", myclip.chrnum, myclip.pos);
                 }
 
@@ -222,6 +226,8 @@ int main_print_pileup(int argc, char** argv)
                 {
                     sclip myclip;
                     pup.read_softclip(myclip);
+                    myclip.chrnum = chr;
+                    myclip.pos += N*10000;
                     printf("\t%d\t%d\n", myclip.chrnum, myclip.pos);
                 }
 
@@ -248,6 +254,7 @@ int main_print_pileup(int argc, char** argv)
 					{
 						readpair rp;
 						pup.read_readpair(rp);
+                        rp.chrnum = c;
 						printf("\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
 					}
 					
@@ -258,6 +265,7 @@ int main_print_pileup(int argc, char** argv)
 					{
 						splitread sp;
 						pup.read_splitread(sp);
+                        sp.chrnum = c;
                         printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
 					}
                     
@@ -268,6 +276,8 @@ int main_print_pileup(int argc, char** argv)
                     {
                         sclip myclip;
                         pup.read_softclip(myclip);
+                        myclip.chrnum = c;
+                        myclip.pos += N*10000;
                         printf("\t%d\t%d\n", myclip.chrnum, myclip.pos);
                     }
                     
@@ -278,6 +288,8 @@ int main_print_pileup(int argc, char** argv)
                     {
                         sclip myclip;
                         pup.read_softclip(myclip);
+                        myclip.chrnum = c;
+                        myclip.pos += N*10000;
                         printf("\t%d\t%d\n", myclip.chrnum, myclip.pos);
                     }
 
