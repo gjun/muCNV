@@ -517,11 +517,15 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
     stat.avg_dp = (double) sum_dp / n_dp;
     stat.std_dp = sqrt(((double)sumsq_dp / n_dp - (stat.avg_dp * stat.avg_dp)));
     
+    // Sort lclip & rclip
+    // We can assume readpairs and splitreads are sorted, because they're added according to the read orders
+    sort(vec_lclip.begin(), vec_lclip.end());
+    sort(vec_rclip.begin(), vec_rclip.end());
     
     // Calculate GC-curve and save it with original DP to maximize information preservation instead of storing GC-corrected depths only
     for(int i=0;i<gc.num_bin;++i)
     {
-        if (gc_cnt[i]>20)
+        if (gc_cnt[i]>100)
         {
             gc_factor[i] = stat.avg_dp / ((double)gc_sum[i] / gc_cnt[i]) ; // multiplication factor
         }

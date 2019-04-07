@@ -35,6 +35,10 @@ class sclip
 public:
     int8_t chrnum;
     int32_t pos;
+    
+    bool operator < (const sclip&) const;
+    bool operator == (const sclip&) const;
+    bool operator <= (const sclip&) const;
 };
 
 class splitread
