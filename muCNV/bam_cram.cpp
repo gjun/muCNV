@@ -221,22 +221,39 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
         {
             uint32_t *cigar  = bam_get_cigar(b);
             int ncigar = b->core.n_cigar;
+            if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP || bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP)
+            {
+                
+                uint8_t *aux_nm = bam_aux_get(b, "NM");
+                int nm = (int)bam_aux2i(aux_nm); // edit distance of the read from reference
+                
+                if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP && nm<5)
+                {
+                    lclip = bam_cigar_oplen(cigar[0]);
+                    if (lclip >= 5)
+                    {
+                        sclip new_clip;
+                        new_clip.chrnum = b->core.tid + 1;
+                        new_clip.pos = b->core.pos + lclip;
+                        new_clip.b_end = (bool)(b->core.flag & BAM_FREVERSE);
+                        (*(aux->p_vec_lclip)).push_back(new_clip);
+                        fprintf(stderr,"left clip ncigar %d, lclip %d, pos %d", b->core.n_cigar, lclip, b->core.pos);
 
-            if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP)
-            {
-                lclip = bam_cigar_oplen(cigar[0]);
-                sclip new_clip;
-                new_clip.chrnum = b->core.tid + 1;
-                new_clip.pos = b->core.pos + lclip;
-                (*(aux->p_vec_lclip)).push_back(new_clip);
-            }
-            if (bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP)
-            {
-                rclip = bam_cigar_oplen(cigar[ncigar-1]);
-                sclip new_clip;
-                new_clip.chrnum = b->core.tid + 1;
-                new_clip.pos = bam_endpos(b) - rclip;
-                (*(aux->p_vec_rclip)).push_back(new_clip);
+                    }
+                }
+                if (bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP && nm<5)
+                {
+                    rclip = bam_cigar_oplen(cigar[ncigar-1]);
+                    if (rclip >= 5)
+                    {
+                        sclip new_clip;
+                        new_clip.chrnum = b->core.tid + 1;
+                        new_clip.pos = bam_endpos(b) - rclip;
+                        new_clip.b_end = !((bool)(b->core.flag & BAM_FREVERSE));
+                        (*(aux->p_vec_rclip)).push_back(new_clip);
+                        fprintf(stderr,"right clip ncigar %d, lclip %d, pos %d", b->core.n_cigar, rclip, b->core.pos);
+                    }
+                }
             }
         }
         
@@ -512,7 +529,7 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
 		}
     }
     
-    // TODO: refactor this..
+    // TODO: refactor these post-processing lines...
 
     stat.avg_dp = (double) sum_dp / n_dp;
     stat.std_dp = sqrt(((double)sumsq_dp / n_dp - (stat.avg_dp * stat.avg_dp)));
@@ -522,6 +539,11 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
     sort(vec_lclip.begin(), vec_lclip.end());
     sort(vec_rclip.begin(), vec_rclip.end());
     
+    // Check whether there're cycle-end clips without cycle-start clips around and drop them
+    flag_softclips(vec_lclip);
+    flag_softclips(vec_rclip);
+    
+    // Calculate GC-curve
     std::vector<double> gc_avg (gc.num_bin, 0);
     
     for(int i=2; i<gc.num_bin-2; ++i)
@@ -565,6 +587,29 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
     bam_mplp_destroy(mplp);
 }
 
+void BamCram::flag_softclips(std::vector<sclip> &vec_clip)
+{
+    for(int i=0; i<vec_clip.size(); ++i)
+    {
+        if (vec_clip[i].b_end)
+        {
+            vec_clip[i].b_drop = true;
+            for(int j=i-1; j>=0&& vec_clip[j].pos >= vec_clip[i].pos - 10 && vec_clip[j].chrnum == vec_clip[i].chrnum ; --j)
+            {
+                if (vec_clip[i].b_end == false)
+                    vec_clip[i].b_drop = false;
+            }
+            if (vec_clip[i].b_drop != true)
+            {
+                for(int j=i+1; j<vec_clip.size() && vec_clip[j].pos<= vec_clip[i].pos + 10 && vec_clip[j].chrnum == vec_clip[i].chrnum ; ++j)
+                {
+                    if (vec_clip[i].b_end == false)
+                        vec_clip[i].b_drop = false;
+                }
+            }
+        }
+    }
+}
 
 void BamCram::postprocess_depth(std::vector<sv> &vec_sv)
 {

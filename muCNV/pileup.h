@@ -35,6 +35,8 @@ class sclip
 public:
     int8_t chrnum;
     int32_t pos;
+    bool b_end; // to indiciate whether the clip is at the cycle end or not
+    bool b_drop;
     
     bool operator < (const sclip&) const;
     bool operator == (const sclip&) const;

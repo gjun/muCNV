@@ -56,6 +56,7 @@ public:
     
     void read_depth_sequential(Pileup &, GcContent&, std::vector<breakpoint> &, std::vector<sv> &);
     
+    void flag_softclips(std::vector<sclip> &);
     //    void process_readpair(sv &, std::vector<int> &, string &);
     //    void get_avg_depth();
     
