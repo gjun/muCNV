@@ -240,7 +240,7 @@ int main_pileup(int argc, char** argv)
             uint32_t n_rdrop = 0;
             while(rclip_idx < (int)b.vec_rclip.size() && b.vec_rclip[rclip_idx].chrnum == i && b.vec_rclip[rclip_idx].pos <= j*10000)
             {
-                if (b.vec_lclip[rclip_idx].b_drop == true)
+                if (b.vec_rclip[rclip_idx].b_drop == true)
                     n_rdrop++;
                 rclip_idx ++;
             }
