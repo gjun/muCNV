@@ -522,12 +522,30 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
     sort(vec_lclip.begin(), vec_lclip.end());
     sort(vec_rclip.begin(), vec_rclip.end());
     
+    std::vector<double> gc_avg (gc.num_bin, 0);
+    
+    for(int i=2; i<gc.num_bin-2; ++i)
+    {
+        if (gc_cnt[i] + (gc_cnt[i-1] + gc_cnt[i+1])/2.0 + (gc_cnt[i-2]+gc_cnt[i+2])/4.0 > 100)
+        {
+            gc_avg[i] = ((double)gc_sum[i] + 0.5*((double)gc_sum[i-1] + gc_sum[i+1]) + 0.25 * ((double)gc_sum[i-2] + gc_sum[i+2])) / (gc_cnt[i] +0.5*(gc_cnt[i-1]+gc_cnt[i+1]) + 0.25*(gc_cnt[i-2] + gc_cnt[i+2])) ;
+        }
+        else
+        {
+            gc_avg[i] = -1;
+        }
+    }
+    // padding at the end
+    gc_avg[0] = gc_avg[1] = gc_avg[2];
+    gc_avg[gc.num_bin-1] = gc_avg[gc.num_bin-2] = gc_avg[gc.num_bin-3];
+    
     // Calculate GC-curve and save it with original DP to maximize information preservation instead of storing GC-corrected depths only
     for(int i=0;i<gc.num_bin;++i)
     {
-        if (gc_cnt[i]>100)
+        if (gc_avg[i]>0)
         {
-            gc_factor[i] = stat.avg_dp / ((double)gc_sum[i] / gc_cnt[i]) ; // multiplication factor
+            gc_factor[i] = stat.avg_dp / gc_avg[i];
+ //           stat.avg_dp / ((double)gc_sum[i] / gc_cnt[i]) ; // multiplication factor
         }
         else
         {
