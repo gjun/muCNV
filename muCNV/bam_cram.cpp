@@ -237,7 +237,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                         new_clip.pos = b->core.pos + lclip;
                         new_clip.b_end = (bool)(b->core.flag & BAM_FREVERSE);
                         (*(aux->p_vec_lclip)).push_back(new_clip);
-                        fprintf(stderr,"left clip ncigar %d, lclip %d, pos %d", b->core.n_cigar, lclip, b->core.pos);
+                        //fprintf(stderr,"left clip ncigar %d, lclip %d, pos %d", b->core.n_cigar, lclip, b->core.pos);
 
                     }
                 }
@@ -251,7 +251,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                         new_clip.pos = bam_endpos(b) - rclip;
                         new_clip.b_end = !((bool)(b->core.flag & BAM_FREVERSE));
                         (*(aux->p_vec_rclip)).push_back(new_clip);
-                        fprintf(stderr,"right clip ncigar %d, lclip %d, pos %d", b->core.n_cigar, rclip, b->core.pos);
+                       // fprintf(stderr,"right clip ncigar %d, lclip %d, pos %d", b->core.n_cigar, rclip, b->core.pos);
                     }
                 }
             }
