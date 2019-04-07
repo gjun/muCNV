@@ -207,48 +207,60 @@ int main_pileup(int argc, char** argv)
             //TODO: Templatize these...
             
             // L-Clip
+            uint32_t n_lclip = 0;
+            uint32_t n_ldrop = 0;
             while(lclip_idx < (int)b.vec_lclip.size() && b.vec_lclip[lclip_idx].chrnum == i && b.vec_lclip[lclip_idx].pos <= j*10000)
             {
+                if (b.vec_lclip[lclip_idx].b_drop == true)
+                    n_ldrop++;
                 lclip_idx ++;
             }
-            uint32_t n_lclip = 0;
-            if (lclip_idx - prev_lclip < 0)
+            if (lclip_idx - prev_lclip - n_ldrop < 0)
             {
                 std::cerr << "Wrong lclip index while writing... " << std::endl;
                 exit(1);
             }
             else
             {
-                n_lclip = (uint32_t) lclip_idx - prev_lclip;
+                n_lclip = (uint32_t) lclip_idx - prev_lclip - n_ldrop;
             }
             curr_pos += pup.write_uint32(n_lclip);
             for(int k=prev_lclip; k<lclip_idx; ++k)
             {
-                curr_pos += pup.write_softclip(b.vec_lclip[k]);
-                cnt_lclip ++;
+                if (b.vec_lclip[k].b_drop == false)
+                {
+                    curr_pos += pup.write_softclip(b.vec_lclip[k]);
+                    cnt_lclip ++;
+                }
             }
             prev_lclip = lclip_idx;
             
             // R-Clip
+            uint32_t n_rclip = 0;
+            uint32_t n_rdrop = 0;
             while(rclip_idx < (int)b.vec_rclip.size() && b.vec_rclip[rclip_idx].chrnum == i && b.vec_rclip[rclip_idx].pos <= j*10000)
             {
+                if (b.vec_lclip[rclip_idx].b_drop == true)
+                    n_rdrop++;
                 rclip_idx ++;
             }
-            uint32_t n_rclip = 0;
-            if (rclip_idx - prev_rclip < 0)
+            if (rclip_idx - prev_rclip - n_rdrop < 0)
             {
                 std::cerr << "Wrong rclip index while writing... " << std::endl;
                 exit(1);
             }
             else
             {
-                n_rclip = (uint32_t) rclip_idx - prev_rclip;
+                n_rclip = (uint32_t) rclip_idx - prev_rclip - n_rdrop;
             }
             curr_pos += pup.write_uint32(n_rclip);
             for(int k=prev_rclip; k<rclip_idx; ++k)
             {
-                curr_pos += pup.write_softclip(b.vec_rclip[k]);
-                cnt_rclip ++;
+                if (b.vec_rclip[k].b_drop == false)
+                {
+                    curr_pos += pup.write_softclip(b.vec_rclip[k]);
+                    cnt_rclip ++;
+                }
             }
             prev_rclip = rclip_idx;
             
