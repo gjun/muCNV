@@ -540,8 +540,10 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
     sort(vec_rclip.begin(), vec_rclip.end());
     
     // Check whether there're cycle-end clips without cycle-start clips around and drop them
-    flag_softclips(vec_lclip);
-    flag_softclips(vec_rclip);
+    int n_lclip = flag_softclips(vec_lclip);
+    int n_rclip = flag_softclips(vec_rclip);
+	std::cerr << n_lclip << " left clips" << std::endl;
+	std::cerr << n_rclip << " right clips" << std::endl;
     
     // Calculate GC-curve
     std::vector<double> gc_avg (gc.num_bin, 0);
@@ -587,8 +589,9 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
     bam_mplp_destroy(mplp);
 }
 
-void BamCram::flag_softclips(std::vector<sclip> &vec_clip)
+int BamCram::flag_softclips(std::vector<sclip> &vec_clip)
 {
+	int cnt = 0;
     for(int i=0; i<vec_clip.size(); ++i)
     {
         if (vec_clip[i].b_end)
@@ -597,18 +600,29 @@ void BamCram::flag_softclips(std::vector<sclip> &vec_clip)
             for(int j=i-1; j>=0&& vec_clip[j].pos >= vec_clip[i].pos - 10 && vec_clip[j].chrnum == vec_clip[i].chrnum ; --j)
             {
                 if (vec_clip[i].b_end == false)
+				{
                     vec_clip[i].b_drop = false;
+					cnt++;
+				}
             }
             if (vec_clip[i].b_drop == true)
             {
                 for(int j=i+1; j<vec_clip.size() && vec_clip[j].pos<= vec_clip[i].pos + 10 && vec_clip[j].chrnum == vec_clip[i].chrnum ; ++j)
                 {
                     if (vec_clip[i].b_end == false)
+					{
                         vec_clip[i].b_drop = false;
+						cnt++;
+					}
                 }
             }
         }
+		else
+		{
+			cnt++;
+		}
     }
+	return cnt;
 }
 
 void BamCram::postprocess_depth(std::vector<sv> &vec_sv)
