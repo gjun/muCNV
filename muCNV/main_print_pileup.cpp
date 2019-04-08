@@ -205,8 +205,8 @@ int main_print_pileup(int argc, char** argv)
 					splitread sp;
 					pup.read_splitread(sp);
                     sp.chrnum = chr;
-                    sp.pos = (j-1)*10000;
-                    sp.sapos = (j-1)*10000;
+                    sp.pos += (j-1)*10000;
+                    sp.sapos += (j-1)*10000;
 					printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
 
 				}
