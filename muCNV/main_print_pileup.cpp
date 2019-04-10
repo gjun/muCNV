@@ -181,7 +181,8 @@ int main_print_pileup(int argc, char** argv)
 		{
 			idx_file.read_uint64(curr_idx);
 			printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pup.tellg());
-			
+            printf("chr%d:%d-%d\n", chr, (j-1)*10000, j*10000);
+
 			for(int i=0; i<n_sample; ++i)
 			{
 				uint32_t n_rp = 0;
@@ -248,7 +249,8 @@ int main_print_pileup(int argc, char** argv)
 			{
 				idx_file.read_uint64(curr_idx);
 				printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pup.tellg());
-				
+                printf("chr%d:%d-%d\n", c, (j-1)*10000, j*10000);
+
 				for(int i=0; i<n_sample; ++i)
 				{
 					uint32_t n_rp = 0;
