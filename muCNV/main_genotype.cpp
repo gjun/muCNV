@@ -209,6 +209,12 @@ int main_genotype(int argc, char** argv)
             exit(1);
         }
     }
+    else
+    {
+        r_chr = chr;
+        r_start = n_start;
+        r_end = n_end;
+    }
 
 	OutVcf out_vcf;
 	out_vcf.open(out_filename);
