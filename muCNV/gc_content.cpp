@@ -168,19 +168,19 @@ double GcContent::get_gc_content(int c, int startpos, int endpos)
         return -1;
     }
     
-    // TODO: fix hardcoded (200.0)
+    // TODO: check this logic
     
-    if (round(startpos/200.0) == round(endpos/200.0))
+    if (round(startpos/(double)interval_width) == round(endpos/(double)interval_width))
     {
-        return ((double)gc_array[c][(int)round(startpos/200.0)-1]/ 20.0 + 0.025);
+        return ((double)gc_array[c][(int)round(startpos/(double)interval_width)-1]/ (double)num_bin + 0.005);
     }
 
     double gc_sum = 0 ;
     int gc_cnt = 0;
 
-    for(int i=round(startpos/200.0)-1; i <= round(endpos/200.0)-1; ++i)
+    for(int i=round(startpos/(double)interval_width)-1; i <= round(endpos/(double)interval_width)-1; ++i)
     {
-        gc_sum += (double)((gc_array[c][i]) / 20.0) + 0.025 ;
+        gc_sum += (double)((gc_array[c][i]) / (double)num_bin) + 0.005 ;
         gc_cnt ++;
     }
     return ((double)gc_sum/gc_cnt);
