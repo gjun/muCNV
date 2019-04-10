@@ -237,14 +237,16 @@ int main_genotype(int argc, char** argv)
     int del_count = 0;
     int dup_count = 0;
     int inv_count = 0;
-
+    double min_GC = 0.225;
+    double max_GC = 0.7;
 
     for(int i=n_start; i<=n_end; ++i)
     {
+        // GC content of the candidate variant region.
         double sv_gc = gc.get_gc_content(vec_sv[i].chrnum, vec_sv[i].pos, vec_sv[i].end);
 
         // chr X and Y calling not supported yet
-        if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]) && sv_gc > 0.225 && sv_gc <= 0.65 )
+        if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]) && sv_gc > min_GC && sv_gc < max_GC)
         {
             SvGeno G(n_sample);
             SvData D(n_sample);
@@ -268,7 +270,7 @@ int main_genotype(int argc, char** argv)
             std::vector<ReadStat> rdstats (n_sample);
             reader.read_var_depth(i - vec_offset, D.dps[2]); // TODO: make read_var_depth to check whether first argument is in range
 
-            // TODO: Arbitrary threshold to filter out centromere region
+            // TODO: This is arbitrary threshold to filter out centromere region, add more systematic way to filter out problematic regions, by checking within-sample variance of regions
             if (average(D.dps[2]) < 150)
             {
                 reader.read_pair_split(vec_sv[i], D.rdstats, gc);
@@ -276,7 +278,8 @@ int main_genotype(int argc, char** argv)
                 {
                     // var_depth gets GC-correction here
                     reader.read_depth100(vec_sv[i], D.dps, gc, b_dumpstat);
-               }
+                    
+                }
                 for(int j=0; j<n_sample; ++j)
                 {
                     for(int k=0; k<(int)D.dps.size(); ++k)

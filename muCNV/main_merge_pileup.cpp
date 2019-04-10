@@ -33,21 +33,18 @@ int main_merge_pileup(int argc, char** argv)
         TCLAP::ValueArg<std::string> argOut("o","output","Output base filename for merged pileup",true,"","string");
         TCLAP::ValueArg<std::string> argGcfile("f","gcFile","File containing GC content information",true, "GRCh38.gc", "string");
 		TCLAP::ValueArg<std::string> argInterval("V","interVal", "Binary interval file containing candidate SVs", true, "", "string");
-
-        std::cerr << "Error, VCF or Interval file is required." << std::endl;
         
         cmd.add(argGcfile);
         cmd.add(argIndex);
         cmd.add(argOut);
 		cmd.add(argInterval);
-        
+    
         cmd.parse(argc, argv);
         
         index_file = argIndex.getValue();
         output_name = argOut.getValue();
         gc_file = argGcfile.getValue();
 		interval_file = argInterval.getValue();
-        
     }
     catch (TCLAP::ArgException &e)
     {
@@ -75,13 +72,18 @@ int main_merge_pileup(int argc, char** argv)
         
         pileups[i].open(pileup_name, std::ios::in | std::ios::binary);
         
+        if (!pileups[i].good() )
+        {
+            std::cerr << "Error: Cannot open " << pileup_name << std::endl;
+            exit(1);
+        }
         int n = 0;
         
         pileups[i].read_int32(n); // number of samples (should be all 1)
         
         if (n!=1)
         {
-            std::cerr << "Wrong number of samples in " << pileup_name << " : " << n << std::endl;
+            std::cerr << "Error: Wrong number of samples in " << pileup_name << " : " << n << std::endl;
             exit(1);
         }
     }
@@ -100,10 +102,18 @@ int main_merge_pileup(int argc, char** argv)
 	{
 		filename = output_name + ".chr" + std::to_string(chr) + ".pileup";
 		mpups[chr].open(filename, std::ios::out | std::ios::binary);
-
+        if (!mpups[chr].good() )
+        {
+            std::cerr << "Error: Cannot open " << filename << " to write " << std::endl;
+            exit(1);
+        }
 		filename = output_name + ".chr" + std::to_string(chr) +  ".idx";
 		midxs[chr].open(filename, std::ios::out | std::ios::binary);
-		
+        if (!midxs[chr].good() )
+        {
+            std::cerr << "Error: Cannot open " << filename << " to write " << std::endl;
+            exit(1);
+        }
 		curr_pos[chr] += mpups[chr].write_int32(n_sample);
 	}
 		
@@ -259,7 +269,11 @@ int main_merge_pileup(int argc, char** argv)
 	{
 		std::string var_name = samples[i] + ".var";
 		varfiles[i].open(var_name, std::ios::in | std::ios::binary);
-		
+        if (!varfiles[i].good() )
+        {
+            std::cerr << "Error: Cannot open " << var_name << std::endl;
+            exit(1);
+        }
 		int n = 0;
 		
 		varfiles[i].read_int32(n); // number of samples (should be all 1)
@@ -321,7 +335,11 @@ int main_merge_pileup(int argc, char** argv)
 	{
 		filename = output_name + ".chr" + std::to_string(chr) + ".var";
 		mvars[chr].open(filename, std::ios::out | std::ios::binary);
-		
+        if (!mvars[chr].good() )
+        {
+            std::cerr << "Error: Cannot open " << filename << " to write" << std::endl;
+            exit(1);
+        }
 		mvars[chr].write_int32(n_sample);
 		mvars[chr].write_int32(n_vars[chr]);
 	}

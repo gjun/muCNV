@@ -585,6 +585,10 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                 {
                     readpair rp;
                     pileups[i].read_readpair(rp);
+                    rp.chrnum = curr_sv.chrnum;
+                    rp.selfpos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                    rp.matepos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+
 					if (rp.selfpos >= start_pos1 && rp.selfpos <= end_pos1)
 					{
 						if (rp.matequal>0)
@@ -642,6 +646,10 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                 {
                     splitread sp;
                     pileups[i].read_splitread(sp);
+                    sp.chrnum = curr_sv.chrnum;
+                    sp.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                    sp.sapos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                    
 					if (sp.pos >=start_pos1 && sp.pos <= end_pos1)
                     {
                         if (sp.sapos >= start_pos2 && sp.sapos <= end_pos2)
@@ -711,6 +719,25 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                     }
                 }
                 
+                uint32_t n_lclip = 0;
+                pileups[i].read_uint32(n_lclip);
+                for(uint32_t l=0; l<n_lclip; ++l)
+                {
+                    sclip myclip;
+                    pileups[i].read_softclip(myclip);
+                    myclip.chrnum = curr_sv.chrnum;
+                    myclip.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                }
+                
+                uint32_t n_rclip = 0;
+                pileups[i].read_uint32(n_rclip);
+                for(uint32_t l=0; l<n_rclip; ++l)
+                {
+                    sclip myclip;
+                    pileups[i].read_softclip(myclip);
+                    myclip.chrnum = curr_sv.chrnum;
+                    myclip.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                }
             }
         }
 
@@ -719,6 +746,8 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
     
     if (b_overlap) return;
     
+    
+    // TODO: REFACTOR THIS
     // Non-overlapping case
     start_idx = start_idx2;
     end_idx = end_idx2;
@@ -741,7 +770,11 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                 {
                     readpair rp;
                     pileups[i].read_readpair(rp);
-     
+                    rp.chrnum = curr_sv.chrnum;
+                    rp.selfpos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                    rp.matepos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                    
+                    // THIS CANNOT HAPPEN BECAUSE ONLY + ISIZE READ PAIRS ARE WRITTEN
                     if (rp.selfpos >= start_pos2 && rp.selfpos <= end_pos2)
                     {
                         //printf(">>>");
@@ -770,6 +803,10 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                 {
                     splitread sp;
                     pileups[i].read_splitread(sp);
+                    sp.chrnum = curr_sv.chrnum;
+                    sp.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                    sp.sapos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                    
       
                     if (sp.pos >=start_pos2 && sp.pos <= end_pos2)
                     {
@@ -795,6 +832,26 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                         //printf("POST_SP\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
 
                     }
+                }
+                
+                uint32_t n_lclip = 0;
+                pileups[i].read_uint32(n_lclip);
+                for(uint32_t l=0; l<n_lclip; ++l)
+                {
+                    sclip myclip;
+                    pileups[i].read_softclip(myclip);
+                    myclip.chrnum = curr_sv.chrnum;
+                    myclip.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                }
+                
+                uint32_t n_rclip = 0;
+                pileups[i].read_uint32(n_rclip);
+                for(uint32_t l=0; l<n_rclip; ++l)
+                {
+                    sclip myclip;
+                    pileups[i].read_softclip(myclip);
+                    myclip.chrnum = curr_sv.chrnum;
+                    myclip.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
                 }
                 
             }
@@ -836,7 +893,7 @@ double DataReader::correct_gc(GcContent& gc, int n, double depth, int chr, int p
     //    std::cerr << "pos " << pos << " p " << p << std::endl;
     int bin = gc.gc_array[chr][p];
     
-    if (bin<19 && gc_factors[n][bin]>0.1)
+    if (bin<(gc.num_bin-1) && gc_factors[n][bin]>0.1)
     {
         //        std::cerr << D << " at " << chr << ":" << pos << " is adjusted to " << D/gc_factor[bin] << " by gc Factor "<< gc_factor[bin] << std::endl;
         return depth * gc_factors[n][bin];
