@@ -61,8 +61,8 @@ int Pileup::write_readpair(readpair &rp)
 {
     int ret = 0;
     //fs.write(reinterpret_cast<char*>(&(rp.chrnum)), sizeof(int8_t));
-    int16_t selfpos = (int16_t) rp.selfpos % 10000;
-    int16_t matepos = (int16_t) rp.matepos % 10000;
+    int16_t selfpos = (int16_t) (rp.selfpos % 10000);
+    int16_t matepos = (int16_t) (rp.matepos % 10000);
     
     fs.write(reinterpret_cast<char*>(&(selfpos)), sizeof(int16_t));
     fs.write(reinterpret_cast<char*>(&(matepos)), sizeof(int16_t));
@@ -78,8 +78,8 @@ int Pileup::write_readpair(readpair &rp)
 int Pileup::write_splitread(splitread& sp)
 {
     int ret = 0;
-    int16_t pos = (int16_t) sp.pos % 10000;
-    int16_t sapos = (int16_t) sp.sapos % 10000;
+    int16_t pos = (int16_t) (sp.pos % 10000);
+    int16_t sapos = (int16_t) (sp.sapos % 10000);
     
  //   fs.write(reinterpret_cast<char*>(&(sp.chrnum)), sizeof(int8_t));
     fs.write(reinterpret_cast<char*>(&(pos)), sizeof(int16_t));
@@ -193,4 +193,52 @@ int Pileup::read_softclip(sclip &sc)
     sc.pos = (int32_t) pos16;
     
     return ret;
+}
+
+int Pileup::fix_offset_pos(int32_t j, int32_t r)
+{
+    int ans = 0;
+    
+    if (j<30000)
+    {
+        ans = r;
+    }
+    else
+    {
+        if ( ((j+10000) + 32768) / 65536 > (j + 32768) / 65536)
+        {
+            int32_t kk = (int32_t)((j+10000+32768)/65536)*65536 - 32768 - j;
+            
+            if (r>=0 && r<2768)
+            {
+                ans = kk - (2768-r);
+            }
+            else if (r>2767)
+            {
+                ans = kk - (2768-(r-10000));
+            }
+            else if (r<0 && r>= -2768)
+            {
+                ans = kk + (r+2768);
+            }
+            else
+            {
+                ans = kk + 10000 + r + 2768;
+            }
+        }
+        else
+        {
+            int16_t mm = (int16_t) j;
+            int16_t rr = mm % 10000;
+            if (r >= rr)
+            {
+                ans = r-rr;
+            }
+            else
+            {
+                ans = r-rr+10000;
+            }
+        }
+    }
+    return ans;
 }

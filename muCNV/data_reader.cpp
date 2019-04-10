@@ -585,9 +585,15 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                 {
                     readpair rp;
                     pileups[i].read_readpair(rp);
+                    
+                    int32_t curr_block = (int32_t)(j-chr_idx_rp[curr_sv.chrnum]);
+                    
                     rp.chrnum = curr_sv.chrnum;
-                    rp.selfpos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
-                    rp.matepos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                    rp.selfpos = pileups[i].fix_offset_pos(curr_block*10000, rp.selfpos);
+                    rp.matepos = pileups[i].fix_offset_pos(curr_block*10000, rp.matepos);
+                    
+                    rp.selfpos += curr_block * 10000;
+                    rp.matepos += curr_block * 10000;
 
 					if (rp.selfpos >= start_pos1 && rp.selfpos <= end_pos1)
 					{
@@ -646,7 +652,11 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                 {
                     splitread sp;
                     pileups[i].read_splitread(sp);
+                    int32_t curr_block = (int32_t)(j-chr_idx_rp[curr_sv.chrnum]);
+                    
                     sp.chrnum = curr_sv.chrnum;
+                    sp.pos = pileups[i].fix_offset_pos(curr_block*10000, sp.pos);
+                    sp.sapos = pileups[i].fix_offset_pos(curr_block*10000, sp.sapos);
                     sp.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
                     sp.sapos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
                     
@@ -770,7 +780,12 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                 {
                     readpair rp;
                     pileups[i].read_readpair(rp);
+                    int32_t curr_block = (int32_t)(j-chr_idx_rp[curr_sv.chrnum]);
+                    
                     rp.chrnum = curr_sv.chrnum;
+                    rp.selfpos = pileups[i].fix_offset_pos(curr_block*10000, rp.selfpos);
+                    rp.matepos = pileups[i].fix_offset_pos(curr_block*10000, rp.matepos);
+                    
                     rp.selfpos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
                     rp.matepos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
                     
@@ -803,6 +818,13 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                 {
                     splitread sp;
                     pileups[i].read_splitread(sp);
+                    
+                    int32_t curr_block = (int32_t)(j-chr_idx_rp[curr_sv.chrnum]);
+                    
+                    sp.chrnum = curr_sv.chrnum;
+                    sp.pos = pileups[i].fix_offset_pos(curr_block*10000, sp.pos);
+                    sp.sapos = pileups[i].fix_offset_pos(curr_block*10000, sp.sapos);
+                    
                     sp.chrnum = curr_sv.chrnum;
                     sp.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
                     sp.sapos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;

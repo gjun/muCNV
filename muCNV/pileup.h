@@ -81,6 +81,7 @@ public:
     int read_readpair(readpair&);
     int read_splitread(splitread&);
     int read_softclip(sclip&);
+    int fix_offset_pos(int32_t, int32_t);
 };
 
 
