@@ -58,6 +58,15 @@ public:
     std::vector< std::vector<double> > dps;
     std::vector<double> prepost_dp;
     
+    // Vectors to store total # rp/sp across all samples per every 10 bp in +/- 500bp of the SV
+    std::vector<int32_t> all_rps;
+    std::vector<int32_t> all_sps;
+    // Vector to store total # clips cross all samples per every bp in +/- 100bp of the SV
+    // + : clip in forward direction (rclip)
+    // - : clip in reverse direction (lclip)
+    std::vector<int32_t> all_clips;
+    
+
     SvData (int);
 };
 

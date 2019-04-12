@@ -49,6 +49,15 @@ public:
     bool inv_support();
     bool ins_support();
     
+    // Vectors to store total # rp/sp in each sample per every 10 bp in +/- 500bp of the SV
+    std::vector<int16_t> rps;
+    std::vector<int16_t> sps;
+    // Vector to store total # clips in each sample per every bp in +/- 100bp of the SV
+    // + : clip in forward direction (rclip)
+    // - : clip in reverse direction (lclip)
+    std::vector<int16_t> clips;
+    
+    
 	ReadStat() 
 	{
 		n_pre_FR = 0;

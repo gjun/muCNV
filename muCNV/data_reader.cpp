@@ -595,6 +595,11 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                     rp.selfpos += curr_block * 10000;
                     rp.matepos += curr_block * 10000;
 
+                    if (rp.selfpos >= curr_sv.pos - 500 && rp.selfpos < curr_sv.pos + 500)
+                    {
+                        rdstats[sample_idx_k].rp[(rp.selfpos - curr_sv.pos + 500 ) /10] ++;
+                        
+                    }
 					if (rp.selfpos >= start_pos1 && rp.selfpos <= end_pos1)
 					{
 						if (rp.matequal>0)
@@ -625,6 +630,12 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
 					}
  					if (b_overlap && rp.selfpos >= start_pos2 && rp.selfpos <= end_pos2)
 					{
+                        if (rp.selfpos >= curr_sv.pos - 500 && rp.selfpos < curr_sv.pos + 500)
+                        {
+                            rdstats[(rp.selfpos - curr_sv.pos + 500 ) /10] ++;
+                        }
+
+                        
 						if (rp.matequal > 0)
 						{
                             if (rp.matepos >= start_pos1 && rp.matepos <= end_pos1)
