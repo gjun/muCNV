@@ -18,31 +18,10 @@ using std::string;
 class ReadStat
 {
 public:
-	int n_pre_FR;  // DEL
-	int n_pre_RF;  // DUP
-    int n_pre_FF;  // INV
-    int n_post_RR; // INV
-	int n_post_FR; // DEL
-	int n_post_RF; // DUP
-    int n_pre_INS; // INS
-    
-	int n_pre_rp_missing; 
-	int n_post_rp_missing;
-
-	int n_pre_sp_missing; 
-	int n_post_sp_missing;
-
-    //  ---------(sclip)                  (sclip)-------- split_in, DEL
-    //  (sclip)---------                  ----------(sclip) split_out, DUP
-	int n_pre_split_out; // right clipped
-	int n_pre_split_in; // left clipped
-	int n_post_split_out; // right clipped
-	int n_post_split_in; // left clipped
-    int n_pre_clip_in;
-    int n_pre_clip_out;
-    int n_post_clip_in;
-    int n_post_clip_out;
-
+    std::vector<int> n_rp; // indexed by pairstr
+    std::vector<int> n_sp;
+    int n_clip_inward;
+    int n_clip_outward;
  
     bool del_support();
     bool dup_support();
@@ -50,37 +29,43 @@ public:
     bool ins_support();
     
     // Vectors to store total # rp/sp in each sample per every 10 bp in +/- 500bp of the SV
-    std::vector<int16_t> rps;
-    std::vector<int16_t> sps;
+    std::vector< std::vector<uint16_t>> rp_seq;
+    std::vector<uint16_t> sp_seq_in;
+    std::vector<uint16_t> sp_seq_out;
+
+    
     // Vector to store total # clips in each sample per every bp in +/- 100bp of the SV
     // + : clip in forward direction (rclip)
     // - : clip in reverse direction (lclip)
-    std::vector<int16_t> clips;
-    
+    std::vector<int16_t> lclips;
+    std::vector<int16_t> rclips;
     
 	ReadStat() 
 	{
-		n_pre_FR = 0;
-		n_pre_RF = 0;
-        n_pre_FF = 0;
-        n_post_RR = 0;
-		n_post_FR = 0;
-		n_post_RF = 0;
-        n_pre_INS = 0;
+        n_rp.resize(4);
+        n_sp.resize(4);
+        std::fill(n_rp.begin(), n_rp.end(), 0);
+        std::fill(n_sp.begin(), n_sp.end(), 0);
         
-		n_pre_rp_missing = 0;
-		n_post_rp_missing =0;
-
-		n_pre_sp_missing = 0;
-		n_post_sp_missing =0;
-		n_pre_split_out = 0;
-		n_pre_split_in = 0;
-		n_post_split_out = 0;
-		n_post_split_in = 0;
-        n_pre_clip_in = 0;
-        n_pre_clip_out = 0;
-        n_post_clip_in = 0;
-        n_post_clip_out = 0;
+        n_clip_inward = 0;
+        n_clip_outward = 0;
+        
+        rp_seq.resize(4);
+        for(int i=0; i<4; ++i)
+        {
+            rp_seq[i].resize(200);
+            std::fill(rp_seq[i].begin(), rp_seq[i].end(), 0);
+        }
+        sp_seq_out.resize(400);
+        sp_seq_in.resize(400);
+        std::fill(sp_seq_out.begin(), sp_seq_out.end(), 0);
+        std::fill(sp_seq_in.begin(), sp_seq_in.end(), 0);
+        
+        lclips.resize(400);
+        rclips.resize(400);
+        std::fill(lclips.begin(), lclips.end(), 0);
+        std::fill(rclips.begin(), rclips.end(), 0);
+        
     }
 };
 
@@ -95,6 +80,7 @@ public:
     void read_var_depth(int, std::vector<double>&);
     void read_pair_split(sv&, std::vector<ReadStat> &, GcContent &);
     double correct_gc(GcContent &, int, double, int, int);
+    bool around_breakpoint(readpair &, sv &);
     void close();
 
 private:
