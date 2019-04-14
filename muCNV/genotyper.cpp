@@ -20,11 +20,20 @@
 SvGeno::SvGeno(int n)
 {
     n_sample = n;
-    ns = 0;
-    ac = 0;
 
     gt.resize(n_sample, -1);
     cn.resize(n_sample, -1);
+
+}
+
+void SvGeno::reset()
+{
+    std::fill(gt.begin(), gt.end(), -1);
+    std::fill(cn.begin(), cn.end(), -1);
+    
+    ns = 0;
+    ac = 0;
+
     b_biallelic = false;
     b_pass = false;
     dp_flag = false;
@@ -46,8 +55,35 @@ SvData::SvData(int n)
     n_sample = n;
     rdstats.resize(n);
     prepost_dp.resize(n_sample, 1);
+    dps.resize(5);
+    multi_dp = false;
+    
+    for(int j=0;j<5;++j)
+    {
+        // 0 : pre-depth
+        // 1 : post-depth
+        // 2 : 1-D depth (var_depth)
+        // 3 : avg depth in some place of first half
+        // 4 : avg depth in some place of second half
+        dps[j].resize(n_sample, 0);
+        
+    }
+    
 }
 
+void SvData::reset()
+{
+    for(int i=0;i<n_sample;++i)
+        rdstats[i].reset();
+    multi_dp = false;
+    
+    for(int j=0;j<5;++j)
+    {
+        std::fill(dps[j].begin(), dps[j].end(), 0);
+    }
+    
+    std::fill(prepost_dp.begin(), prepost_dp.end(), 1);
+}
 
 void copyComps(std::vector<Gaussian> &C, std::vector<Gaussian> &C0)
 {
@@ -344,7 +380,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     }
 
     int dp2_idx = 3;
-    if (D.dps.size()>3) //dp2 has more than 2 vectors
+    if (D.multi_dp) //dp2 has more than 2 vectors
     {
         // dp100 genotyping
         select_model(G.gmix2, means, D.dps[dp2_idx], D.dps[dp2_idx+1], G.MAX_P_OVERLAP);
@@ -645,7 +681,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             }
         }
     }
-    if (D.dps.size()>3)
+    if (D.multi_dp)
     {
         // DP100 genotyping
         int dp2_idx = 2;

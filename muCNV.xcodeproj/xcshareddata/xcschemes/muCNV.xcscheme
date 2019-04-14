@@ -68,10 +68,10 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-V /Users/gjun/data/vcf/35K.merged.withXY.interval"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-n 3218-3218"
+            argument = "-n 192879-192879"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
@@ -84,7 +84,7 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-V /Users/gjun/data/vcf/selected.sites.withXY.interval"
-            isEnabled = "NO">
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-f /Users/gjun/code/mucnv/resource/GRCh38.v2.gc"

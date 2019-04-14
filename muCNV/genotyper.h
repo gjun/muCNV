@@ -48,6 +48,8 @@ public:
     std::vector<int> cn; // copy number
 
     SvGeno (int);
+    
+    void reset();
 };
 
 class SvData
@@ -65,7 +67,9 @@ public:
     // + : clip in forward direction (rclip)
     // - : clip in reverse direction (lclip)
     std::vector<int32_t> all_clips;
+    bool multi_dp;
     
+    void reset();
 
     SvData (int);
 };
@@ -76,7 +80,6 @@ public:
     int n_sample;
 	bool b_kmeans;
 	bool b_mahalanobis;
-
 
     void get_prepost_stat(SvData &, SvGeno &);
 

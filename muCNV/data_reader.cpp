@@ -220,7 +220,7 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
     return n_sample_total;
 }
 
-int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &dvec_dp, GcContent& gc, bool b_dumpstat)
+bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &dvec_dp, GcContent& gc, bool b_dumpstat)
 {
     // this information is not useful when sv length is short
     // process only for >200bp SVs (or at include least two full 100-bp intervals)
@@ -569,7 +569,6 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
 
             for(uint64_t j=start_idx; j<=end_idx; ++j)
             {
-                
                 for(int k=0; k<n_samples[i]; ++k)
                 {
                     uint32_t n_rp = 0;
@@ -589,6 +588,12 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                         rp.selfpos += curr_block * 10000;
                         rp.matepos += curr_block * 10000;
                         
+                        // TEMPORARY REMEDY for MATEPOS
+                        if (n_rp>5 && rp.matequal == 60 && abs(rp.selfpos- curr_sv.pos)<350 && abs(rp.matepos%10000 - curr_sv.end%10000) < 350)
+                        {
+                            rp.matepos = rp.matepos%10000 + int(curr_sv.end/10000)*10000;
+                        }
+                            
                         if (rp.matepos < rp.selfpos)
                         {
                             // swap them

@@ -40,31 +40,41 @@ public:
     std::vector<int16_t> lclips;
     std::vector<int16_t> rclips;
     
-	ReadStat() 
-	{
-        n_rp.resize(4);
+    void reset()
+    {
         std::fill(n_rp.begin(), n_rp.end(), 0);
         
         n_split_inward = 0;
         n_split_outward = 0;
-        
-        rp_seq.resize(4);
         for(int i=0; i<4; ++i)
         {
-            rp_seq[i].resize(200);
             std::fill(rp_seq[i].begin(), rp_seq[i].end(), 0);
         }
-        sp_seq_out.resize(400);
-        sp_seq_in.resize(400);
+
         std::fill(sp_seq_out.begin(), sp_seq_out.end(), 0);
         std::fill(sp_seq_in.begin(), sp_seq_in.end(), 0);
         
-        lclips.resize(400);
-        rclips.resize(400);
         std::fill(lclips.begin(), lclips.end(), 0);
         std::fill(rclips.begin(), rclips.end(), 0);
+    };
+    
+	ReadStat() 
+	{
+        n_rp.resize(4);
         
-    }
+        rp_seq.resize(4);
+
+        for(int i=0; i<4; ++i)
+        {
+            rp_seq[i].resize(200);
+        }
+        sp_seq_out.resize(400);
+        sp_seq_in.resize(400);
+        
+        lclips.resize(400);
+        rclips.resize(400);
+    };
+    
 };
 
 class DataReader
@@ -74,7 +84,7 @@ public:
 
     // Initialize all multi-pileups, load number of samples & sapmle ids & gc factors
     int load(std::vector<string> &, std::vector<SampleStat>&, GcContent &, int );
-    int read_depth100(sv&, std::vector< std::vector<double> > &, GcContent& gc, bool);
+    bool read_depth100(sv&, std::vector< std::vector<double> > &, GcContent& gc, bool);
     void read_var_depth(int, std::vector<double>&);
     void read_pair_split(sv&, std::vector<ReadStat> &, GcContent &);
     double correct_gc(GcContent &, int, double, int, int);

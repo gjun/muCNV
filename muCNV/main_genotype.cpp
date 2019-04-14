@@ -226,8 +226,10 @@ int main_genotype(int argc, char** argv)
         {
             vec_offset++;
         }
-		n_start += vec_offset;
-		n_end = vec_offset + n_vars[chr] - 1;
+        if (n_start == 0)
+            n_start += vec_offset;
+        if (n_end > vec_offset + n_vars[chr - 1])
+            n_end = vec_offset + n_vars[chr] - 1;
         std::cerr << n_vars[chr] - 1 << " variants from " << n_start << ", ";
         vec_sv[n_start].print(stderr);
         std::cerr << " to " << n_end << ", ";
@@ -241,6 +243,9 @@ int main_genotype(int argc, char** argv)
     double min_GC = 0.225;
     double max_GC = 0.7;
 
+    SvGeno G(n_sample);
+    SvData D(n_sample);
+    
     for(int i=n_start; i<=n_end; ++i)
     {
         // GC content of the candidate variant region.
@@ -249,26 +254,19 @@ int main_genotype(int argc, char** argv)
         // chr X and Y calling not supported yet
         if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]) && sv_gc > min_GC && sv_gc < max_GC)
         {
-            SvGeno G(n_sample);
-            SvData D(n_sample);
-            Genotyper gtyper;
 
+            Genotyper gtyper;
+            G.reset();
+            D.reset();
+            
             G.MAX_P_OVERLAP = max_p;
             if (vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
             {
                 G.MAX_P_OVERLAP *= 2.0;
             }
 
-            D.dps.resize(3);
-            for(int j=0;j<3;++j)
-            {
-                // 0 : pre-depth
-                // 1 : post-depth
-                // 2 : 1-D depth (var_depth)
-                D.dps[j].resize(n_sample, 0);
-            }
+
             
-            std::vector<ReadStat> rdstats (n_sample);
             reader.read_var_depth(i - vec_offset, D.dps[2]); // TODO: make read_var_depth to check whether first argument is in range
 
             // TODO: This is arbitrary threshold to filter out centromere region, add more systematic way to filter out problematic regions, by checking within-sample variance of regions
@@ -278,7 +276,7 @@ int main_genotype(int argc, char** argv)
                 if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
                 {
                     // var_depth gets GC-correction here
-                    reader.read_depth100(vec_sv[i], D.dps, gc, b_dumpstat);
+                    D.multi_dp = reader.read_depth100(vec_sv[i], D.dps, gc, b_dumpstat);
                     
                 }
                 for(int j=0; j<n_sample; ++j)
