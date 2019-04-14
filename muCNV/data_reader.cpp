@@ -12,61 +12,39 @@
 
 bool ReadStat::del_support()
 {
-    int rp_cnt = n_pre_FR + n_post_FR;
-    int sp_cnt = n_pre_split_in + n_post_split_in;
-    int clip_cnt = n_pre_clip_in + n_post_clip_in;
+    int rp_cnt = n_rp[1]; // FR
+    int clip_cnt = n_split_inward;
     
-    if (rp_cnt >=6   && rp_cnt + sp_cnt + clip_cnt > 10)
+    if (rp_cnt > 4 || rp_cnt + clip_cnt > 7)
         return true;
-		/*
-    else if (sp_cnt > 6 && rp_cnt + sp_cnt + clip_cnt > 10)
-        return true;
-    else if (sp_cnt + rp_cnt + clip_cnt > 15)
-        return true;
-		*/
-    
-    return false;
+    else
+        return false;
 }
+
 bool ReadStat::dup_support()
 {
-    int rp_cnt = n_pre_RF + n_post_RF;
-    int sp_cnt = n_pre_split_out + n_post_split_out;
-    int clip_cnt = n_pre_clip_out + n_post_clip_out;
+    int rp_cnt = n_rp[2]; // RF
+    int sp_cnt = n_split_outward;
     
-    if (rp_cnt >= 4  && rp_cnt + sp_cnt + clip_cnt > 10)
+    if (rp_cnt > 4  || rp_cnt + sp_cnt > 7)
         return true;
-		/*
-    else if (sp_cnt > 6 && rp_cnt + sp_cnt + clip_cnt > 10)
-        return true;
-    else if (sp_cnt + rp_cnt + clip_cnt > 15)
-        return true;
-		*/
-    
-    return false;
+    else
+        return false;
 }
 
 bool ReadStat::inv_support()
 {
-    int rp_cnt = n_pre_FF + n_post_RR;
+    int rp_cnt = n_rp[0] + n_rp[3];
     
     // inversion can have both in and out clipping
-    int sp_cnt = n_pre_split_out + n_post_split_out + n_pre_split_in + n_post_split_in;
-    int clip_cnt = n_pre_clip_in + n_pre_clip_out + n_post_clip_in + n_post_clip_out;
+    int sp_cnt = n_split_inward + n_split_outward;
     
-    if (rp_cnt >= 5 && rp_cnt+sp_cnt+clip_cnt>=15)
+    if (rp_cnt > 4 && rp_cnt + sp_cnt> 7)
         return true;
-
-    return false;
+    else
+        return false;
 }
 
-bool ReadStat::ins_support()
-{
-    if (n_pre_INS > 3 && n_pre_INS + n_pre_clip_in + n_post_clip_in + n_pre_sp_missing > 10)
-        return true; 
-    if (n_pre_INS + n_pre_rp_missing + n_pre_clip_in + n_post_clip_in + n_pre_sp_missing > 10 && !del_support() && !dup_support() && !inv_support())
-        return true;
-    return false;
-}
 
 void median_filter(uint16_t* D, uint16_t* D_filt, int n_sample, int n_dp)
 {
@@ -638,10 +616,10 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                                 exit(1);
                                 
                             }
-                            rdstats[sample_idx + k].n_rp ++;
+                            rdstats[sample_idx + k].n_rp[rp.pairstr] ++;
                             
-                            rdstats[sample_idx + k].rp_seq[self_idx]++;
-                            rdstats[sample_idx + k].rp_seq[mate_idx]++;
+                            rdstats[sample_idx + k].rp_seq[rp.pairstr][self_idx]++;
+                            rdstats[sample_idx + k].rp_seq[rp.pairstr][mate_idx]++;
                         }
                     }
                     //printf("\n");
@@ -658,7 +636,7 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                         sp.sapos = pileups[i].fix_offset_pos(curr_block*10000, sp.sapos);
                         sp.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
                         sp.sapos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
-            
+                        
                         if (sp.pos > sp.sapos)
                         {
                             int pos = sp.pos;
@@ -673,19 +651,19 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                         {
                             if (sp.pos >= curr_sv.pos - 100 && sp.pos < curr_sv.pos + 100 && (sp.sapos + 151 + sp.secondclip) >= curr_sv.end-100 && (sp.sapos + 151 + sp.secondclip) < curr_sv.end + 100)
                             {
-                                n_clip_outward ++;
-                                sp_seq_out[sp.pos-curr_sv.pos + 100] ++;
-                                sp_seq_out[sp.sapos+151+sp.secondclip - curr_sv.end + 300] ++;
+                                rdstats[sample_idx+k].n_split_outward ++;
+                                rdstats[sample_idx+k].sp_seq_out[sp.pos-curr_sv.pos + 100] ++;
+                                rdstats[sample_idx+k].sp_seq_out[sp.sapos+151+sp.secondclip - curr_sv.end + 300] ++;
                             }
                         }
                         else if (sp.firstclip < 0 && sp.secondclip > 0)
                         {
                             if ( (sp.pos + 151 + sp.firstclip) >= curr_sv.pos - 100 && (sp.pos + 151 + sp.firstclip) < curr_sv.pos + 100 && sp.sapos >= curr_sv.end-100 && sp.sapos < curr_sv.end + 100)
                             {
-                                n_clip_inward ++;
+                                rdstats[sample_idx+k].n_split_inward ++;
                                 
-                                sp_seq_in[sp.pos+151+sp.firstclip-curr_sv.pos + 100] ++;
-                                sp_seq_in[sp.sapos - curr_sv.end + 300] ++;
+                                rdstats[sample_idx+k].sp_seq_in[sp.pos+151+sp.firstclip-curr_sv.pos + 100] ++;
+                                rdstats[sample_idx+k].sp_seq_in[sp.sapos - curr_sv.end + 300] ++;
                             }
                         }
                     }

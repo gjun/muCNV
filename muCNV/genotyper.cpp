@@ -212,7 +212,7 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
         if (D.rdstats[i].inv_support())
         {
             G.read_flag = true;
-            double d_support = (D.rdstats[i].n_pre_FF + D.rdstats[i].n_post_RR) / (double) stats[i].avg_dp;
+            double d_support = (D.rdstats[i].n_rp[0] + D.rdstats[i].n_rp[2]) / (double) stats[i].avg_dp;
             sum_inv += d_support;
             sumsq_inv = d_support*d_support;
             n_inv ++;
@@ -228,7 +228,7 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
         {
             if (D.rdstats[i].inv_support())
             {
-                double x = (D.rdstats[i].n_pre_FF + D.rdstats[i].n_post_RR)/(double)stats[i].avg_dp;
+                double x = (D.rdstats[i].n_rp[0] + D.rdstats[i].n_rp[2])/(double)stats[i].avg_dp;
                 
                 if ( x > mean_inv + std_inv*2.0)
                     G.gt[i] = 2;
@@ -239,7 +239,7 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
             }
             else
             {
-                double x = (D.rdstats[i].n_pre_FF + D.rdstats[i].n_post_RR)/(double)stats[i].avg_dp;
+                double x = (D.rdstats[i].n_rp[0] + D.rdstats[i].n_rp[2])/(double)stats[i].avg_dp;
                 if (x == 0 ||  x < mean_inv - std_inv * 2.0)
                 {
                     G.gt[i] = 0;
@@ -254,7 +254,7 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
             G.b_pass = true;
     }
 }
-
+/*
 void Genotyper::call_insertion(sv &S, SvData &D, SvGeno &G)
 {
     G.b_biallelic = true;
@@ -282,7 +282,7 @@ void Genotyper::call_insertion(sv &S, SvData &D, SvGeno &G)
     if (callrate>0.5 && G.ac > 0 && G.ac < (G.ns*2))
         G.b_pass = true;
 }
-
+*/
 void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 {
     // fit gaussian mixture models with 1, 2, and 3 components, compare bic

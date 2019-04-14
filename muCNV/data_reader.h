@@ -19,9 +19,9 @@ class ReadStat
 {
 public:
     std::vector<int> n_rp; // indexed by pairstr
-    std::vector<int> n_sp;
-    int n_clip_inward;
-    int n_clip_outward;
+
+    int n_split_inward;
+    int n_split_outward;
  
     bool del_support();
     bool dup_support();
@@ -29,7 +29,7 @@ public:
     bool ins_support();
     
     // Vectors to store total # rp/sp in each sample per every 10 bp in +/- 500bp of the SV
-    std::vector< std::vector<uint16_t>> rp_seq;
+    std::vector< std::vector<uint16_t> > rp_seq;
     std::vector<uint16_t> sp_seq_in;
     std::vector<uint16_t> sp_seq_out;
 
@@ -43,12 +43,10 @@ public:
 	ReadStat() 
 	{
         n_rp.resize(4);
-        n_sp.resize(4);
         std::fill(n_rp.begin(), n_rp.end(), 0);
-        std::fill(n_sp.begin(), n_sp.end(), 0);
         
-        n_clip_inward = 0;
-        n_clip_outward = 0;
+        n_split_inward = 0;
+        n_split_outward = 0;
         
         rp_seq.resize(4);
         for(int i=0; i<4; ++i)
