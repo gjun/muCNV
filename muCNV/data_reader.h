@@ -29,16 +29,22 @@ public:
     bool ins_support();
     
     // Vectors to store total # rp/sp in each sample per every 10 bp in +/- 500bp of the SV
-    std::vector< std::vector<uint16_t> > rp_seq;
-    std::vector<uint16_t> sp_seq_in;
-    std::vector<uint16_t> sp_seq_out;
+    std::vector< std::vector<int> > rp_seq;
+    std::vector<int> sp_seq_in;
+    std::vector<int> sp_seq_out;
 
     
     // Vector to store total # clips in each sample per every bp in +/- 100bp of the SV
     // + : clip in forward direction (rclip)
     // - : clip in reverse direction (lclip)
-    std::vector<int16_t> lclips;
-    std::vector<int16_t> rclips;
+    std::vector<int> lclips;
+    std::vector<int> rclips;
+    
+    int n_lclip_start;
+    int n_lclip_end;
+    
+    int n_rclip_start;
+    int n_rclip_end;
     
     void reset()
     {
@@ -56,6 +62,10 @@ public:
         
         std::fill(lclips.begin(), lclips.end(), 0);
         std::fill(rclips.begin(), rclips.end(), 0);
+        n_lclip_start = 0;
+        n_rclip_start = 0;
+        n_lclip_end = 0;
+        n_rclip_end = 0;
     };
     
 	ReadStat() 
@@ -86,7 +96,7 @@ public:
     int load(std::vector<string> &, std::vector<SampleStat>&, GcContent &, int );
     bool read_depth100(sv&, std::vector< std::vector<double> > &, GcContent& gc, bool);
     void read_var_depth(int, std::vector<double>&);
-    void read_pair_split(sv&, std::vector<ReadStat> &, GcContent &);
+    void read_pair_split(sv&, std::vector<ReadStat> &, GcContent &, std::vector< std::vector<int> >&, std::vector<int> &, std::vector<int> &);
     double correct_gc(GcContent &, int, double, int, int);
     bool around_breakpoint(readpair &, sv &);
     void close();

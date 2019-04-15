@@ -265,14 +265,12 @@ int main_genotype(int argc, char** argv)
                 G.MAX_P_OVERLAP *= 2.0;
             }
 
-
-            
             reader.read_var_depth(i - vec_offset, D.dps[2]); // TODO: make read_var_depth to check whether first argument is in range
 
             // TODO: This is arbitrary threshold to filter out centromere region, add more systematic way to filter out problematic regions, by checking within-sample variance of regions
             if (average(D.dps[2]) < 150)
             {
-                reader.read_pair_split(vec_sv[i], D.rdstats, gc);
+                reader.read_pair_split(vec_sv[i], D.rdstats, gc, D.all_rps, D.all_lclips, D.all_rclips);
                 if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
                 {
                     // var_depth gets GC-correction here

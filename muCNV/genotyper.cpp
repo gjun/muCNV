@@ -23,6 +23,10 @@ SvGeno::SvGeno(int n)
 
     gt.resize(n_sample, -1);
     cn.resize(n_sample, -1);
+    rp_gt.resize(n_sample, -1);
+    rp_cn.resize(n_sample, -1);
+    clip_gt.resize(n_sample, -1);
+    clip_cn.resize(n_sample, -1);
 
 }
 
@@ -30,6 +34,10 @@ void SvGeno::reset()
 {
     std::fill(gt.begin(), gt.end(), -1);
     std::fill(cn.begin(), cn.end(), -1);
+    std::fill(rp_gt.begin(), rp_gt.end(), -1);
+    std::fill(rp_cn.begin(), rp_cn.end(), -1);
+    std::fill(clip_gt.begin(), clip_gt.end(), -1);
+    std::fill(clip_cn.begin(), clip_cn.end(), -1);
     
     ns = 0;
     ac = 0;
@@ -40,6 +48,8 @@ void SvGeno::reset()
     dp2_flag = false;
     pd_flag = false;
     read_flag = false;
+    clip_flag = false;
+    
     dp_pre_mean = 1.0;
     dp_pre_std = 0.1;
     dp_post_mean = 1.0;
@@ -48,6 +58,10 @@ void SvGeno::reset()
     b_post = false;
     info = "";
     MAX_P_OVERLAP = 1.0;
+    rp_pos = -1;
+    rp_end = -1;
+    clip_pos = -1;
+    clip_end = -1;
 }
 
 SvData::SvData(int n)
@@ -58,6 +72,13 @@ SvData::SvData(int n)
     dps.resize(5);
     multi_dp = false;
     
+    all_rps.resize(4);
+    for(int i=0; i<4; ++i)
+        all_rps[i].resize(200, 0);
+    all_sps.resize(200, 0);
+    all_lclips.resize(400, 0);
+    all_rclips.resize(400, 0);
+    
     for(int j=0;j<5;++j)
     {
         // 0 : pre-depth
@@ -66,7 +87,6 @@ SvData::SvData(int n)
         // 3 : avg depth in some place of first half
         // 4 : avg depth in some place of second half
         dps[j].resize(n_sample, 0);
-        
     }
     
 }
@@ -77,6 +97,13 @@ void SvData::reset()
         rdstats[i].reset();
     multi_dp = false;
     
+    for(int i=0; i<4; ++i)
+        std::fill(all_rps[i].begin(), all_rps[i].end(), 0);
+    
+    std::fill(all_sps.begin(), all_sps.end(), 0);
+    std::fill(all_lclips.begin(), all_lclips.end(), 0);
+    std::fill(all_rclips.begin(), all_rclips.end(), 0);
+
     for(int j=0;j<5;++j)
     {
         std::fill(dps[j].begin(), dps[j].end(), 0);
@@ -178,6 +205,35 @@ void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector
     }
     return;
 }
+
+void Genotyper::select_model_mask(GaussianMixture &ret_gmix, std::vector< std::vector<double> > &means, std::vector<double> &x, std::vector<bool> &mask, double MAX_P_OVERLAP)
+{
+    double best_bic = DBL_MAX;
+    
+    // number of models
+    for(int m=0; m<(int)means.size(); ++m)
+    {
+        std::vector<double> s (means[m].size(), 0.1);
+        GaussianMixture gmix(means[m], s);
+        if (b_kmeans)  //should not be true for this version (04/13/2019)
+        {
+            gmix.KM(x, b_mahalanobis);
+        }
+        else
+        {
+            gmix.EM_select(x, mask); // fit mixture model
+                        //        gmix.print();
+        }
+        // if (gmix.bic < best_bic)
+        if (gmix.bic < best_bic && gmix.p_overlap < MAX_P_OVERLAP)
+        {
+            best_bic = gmix.bic;
+            ret_gmix = gmix; // assignment
+        }
+    }
+    return;
+}
+
 
 void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vector<double> > &means, std::vector<double> &x, std::vector<double> &y, double MAX_P_OVERLAP)
 {
@@ -290,62 +346,245 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
             G.b_pass = true;
     }
 }
-/*
-void Genotyper::call_insertion(sv &S, SvData &D, SvGeno &G)
+
+int Genotyper::find_peak(std::vector<int> &seq, int start, int end)
 {
-    G.b_biallelic = true;
-    for(int i=0; i<n_sample; ++i)
+    static std::vector<double> peak_vec (seq.size(), 0);
+    double max_peak;
+    int peak_idx  = -1;
+    
+    int sumsq = seq[start]*seq[start] + seq[end-1]*seq[end-1];
+    
+    for(int i=start+1; i<end-1; ++i)
     {
-        if (D.rdstats[i].ins_support())
+        sumsq += seq[i] * seq[i];
+        peak_vec[i] = (seq[i] + (double)(seq[i-1]) * 0.5 + (double)(seq[i+1]) * 0.5) / 2.0;
+    }
+    double stdev =sqrt( (double)(sumsq)/ (double)(end-start));
+    
+    max_peak = 0;
+    for(int i=start+1; i<end-1; ++i)
+    {
+        if (peak_vec[i] >= peak_vec[i-1] && peak_vec[i] >= peak_vec[i+1] && peak_vec[i] >= stdev && peak_vec[i] > max_peak)
         {
-            G.read_flag = true;
-            if (D.rdstats[i].n_pre_INS > 5 && D.rdstats[i].n_pre_INS + D.rdstats[i].n_post_clip_in + D.rdstats[i].n_pre_clip_in > 20) // todo: arbitrary, maybe clustering?
-                G.gt[i] = 2;
-            else
-                G.gt[i] = 1;
-            G.ac ++;
-            G.ns ++;
-        }
-        else if (D.rdstats[i].n_pre_INS == 0)
-        {
-            G.gt[i] = 0;
-            G.ns ++;
+            max_peak = peak_vec[i];
+            peak_idx = i;
         }
     }
-
-    double callrate = (double)G.ns / n_sample;
-
-    if (callrate>0.5 && G.ac > 0 && G.ac < (G.ns*2))
-        G.b_pass = true;
+    return peak_idx;
 }
-*/
+
+bool Genotyper::find_consensus_rp(SvData &D, int pairstr, int &start_peak, int &end_peak)
+{
+    std::vector<int> &seq = D.all_rps[pairstr];
+    int N = (int) seq.size();
+
+    start_peak = find_peak(seq, 0, N/2);
+    end_peak = find_peak(seq, N/2, N);
+    
+    if (start_peak>=0 && seq[start_peak]>=5 && end_peak>=0 && seq[end_peak]>=5)
+    {
+        return true;
+    }
+    else
+    {
+        int start_sum = 0;
+        int start_sumsq = 0;
+        
+        int end_sum = 0;
+        int end_sumsq = 0;
+        
+        int cnt = 0;
+        
+        // From each sample
+        for(int i=0; i<n_sample; ++i)
+        {
+            if (D.rdstats[i].n_rp[1] > 4)
+            {
+                // Supporting read pairs in F-R, in first 100
+                int peak1 = find_peak(D.rdstats[i].rp_seq[pairstr], 0, 100);
+                
+                // Supporting read pairs in F-R, in last 100
+                int peak2 = find_peak(D.rdstats[i].rp_seq[pairstr], 100, 200);
+                
+                if (peak1>=0 && D.rdstats[i].rp_seq[1][peak1]>2 && peak2>=0 && D.rdstats[i].rp_seq[1][peak2]>2)
+                {
+                    start_sum += peak1;
+                    start_sumsq += peak1*peak1;
+                    end_sum += peak2;
+                    end_sumsq += peak2*peak2;
+                    cnt ++;
+                }
+            }
+        }
+        
+        if (cnt>0)
+        {
+            double mean_start = start_sum/(double)cnt;
+            double std_start = sqrt(start_sumsq/(double)cnt - mean_start*mean_start);
+            
+            double mean_end = end_sum/(double)cnt;
+            double std_end = sqrt(end_sumsq/(double)cnt - mean_end*mean_end);
+            
+            if (std_start<10 && std_end<10) // maybe too loose...
+            {
+                start_peak= round(mean_start);
+                end_peak = round(mean_end);
+                return true;
+            }
+            else
+            {
+                start_peak = -1;
+                end_peak = -1;
+            }
+        }
+    }
+    return false;
+}
+
+bool Genotyper::find_consensus_clip(SvData &D, int pairstr, int &start_peak, int &end_peak)
+{
+    std::vector<int> &lseq = D.all_lclips;
+    std::vector<int> &rseq = D.all_rclips;
+    
+    int N = (int) lseq.size();
+    
+    start_peak = find_peak(D.all_rclips, 0, N/2);
+    end_peak = find_peak(D.all_lclips, N/2, N);
+    
+    if (start_peak>=0 && rseq[start_peak]>=5 && end_peak>=0 && lseq[end_peak]>=5)
+    {
+        return true;
+    }
+    else
+    {
+        int start_sum = 0;
+        int start_sumsq = 0;
+        
+        int end_sum = 0;
+        int end_sumsq = 0;
+        
+        int cnt = 0;
+        
+        // From each sample
+        for(int i=0; i<n_sample; ++i)
+        {
+            if (D.rdstats[i].n_lclip_start >= 2 && D.rdstats[i].n_rclip_end >= 2)
+            {
+                int peak1 = find_peak(D.rdstats[i].rclips, 0, N/2);
+                int peak2 = find_peak(D.rdstats[i].lclips, N/2, N);
+                
+                if (peak1>=0 && D.rdstats[i].rclips[peak1]>=2 && peak2>=0 && D.rdstats[i].lclips[peak2]>=2)
+                {
+                    start_sum += peak1;
+                    start_sumsq += peak1*peak1;
+                    end_sum += peak2;
+                    end_sumsq += peak2*peak2;
+                    cnt ++;
+                }
+            }
+        }
+        
+        if (cnt>0)
+        {
+            double mean_start = start_sum/(double)cnt;
+            double std_start = sqrt(start_sumsq/(double)cnt - mean_start*mean_start);
+            
+            double mean_end = end_sum/(double)cnt;
+            double std_end = sqrt(end_sumsq/(double)cnt - mean_end*mean_end);
+            
+            if (std_start<5 && std_end<5)
+            {
+                start_peak= round(mean_start);
+                end_peak = round(mean_end);
+                return true;
+            }
+            else
+            {
+                start_peak = -1;
+                end_peak = -1;
+            }
+        }
+    }
+    return false;
+}
+
+
 void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 {
     // fit gaussian mixture models with 1, 2, and 3 components, compare bic
     std::vector< std::vector<double> > means = { {1.0}, {1.0, 0.5}, {1.0, 0.5, 0.0}};
-
     G.b_biallelic = true;
 
-    double best_dp_idx = 2;
-
-/*
-    double best_BIC = DBL_MAX;
-    if (D.dps.size()>3)
+    int start_peak = -1;
+    int end_peak = -1;
+    
+    if (find_consensus_rp(D, 1, start_peak, end_peak) && ( start_peak >=5 && start_peak<50 ) && (end_peak>=150 && end_peak <= 190) )
     {
-        for(int i=2; i<5; ++i)
+        G.rp_pos = S.pos + start_peak*10 - 500;
+        G.rp_end = S.end + end_peak*10 - 1500;
+        
+        for(int i=0; i<n_sample; ++i)
         {
-            GaussianMixture gm;
-            select_model(gm, means, D.dps[i]);
-            if (gm.bic < best_BIC && gm.p_overlap < G.MAX_P_OVERLAP)
+            if ( (D.rdstats[i].rp_seq[1][start_peak] + D.rdstats[i].rp_seq[1][start_peak-1] + D.rdstats[i].rp_seq[1][start_peak+1]) > 10 &&
+                (D.rdstats[i].rp_seq[1][end_peak] + D.rdstats[i].rp_seq[1][end_peak-1] + D.rdstats[i].rp_seq[1][end_peak+1]) > 10 && D.dps[2][i] < 0.15)
             {
-                best_BIC = gm.bic;
-                G.gmix = gm;
-                best_dp_idx = i;
+                G.rp_gt[i] = 2;
+                G.rp_cn[i] = 0;
+            }
+            else if ( (D.rdstats[i].rp_seq[1][start_peak] + D.rdstats[i].rp_seq[1][start_peak-1] + D.rdstats[i].rp_seq[1][start_peak+1]) > 5 &&
+                 (D.rdstats[i].rp_seq[1][end_peak] + D.rdstats[i].rp_seq[1][end_peak-1] + D.rdstats[i].rp_seq[1][end_peak+1]) > 5 && D.dps[2][i] < 0.75)
+            {
+                G.rp_gt[i] = 1;
+                G.rp_cn[i] = 1;
+            }
+            else
+            {
+                if (D.dps[2][i]>0.85 && D.dps[2][i] <= 1.5)
+                {
+                    G.rp_gt[i] = 0;
+                    G.rp_cn[i] = 2;
+                }
             }
         }
+        G.read_flag = true;
     }
-    */
-
+    
+    int start_clip = -1;
+    int end_clip = -1;
+    
+    if (find_consensus_clip(D, 1, start_clip, end_clip) && (S.pos + start_clip - 100) < (S.end + end_clip - 300))
+    {
+        G.clip_pos = S.pos + start_clip - 100;
+        G.clip_end = S.end + end_clip - 300;
+        for(int i=0; i<n_sample; ++i)
+        {
+            if ( (D.rdstats[i].rclips[start_peak] + D.rdstats[i].lclips[start_peak-1] + D.rdstats[i].lclips[start_peak+1]) >= 5&&
+                (D.rdstats[i].lclips[end_peak] + D.rdstats[i].lclips[end_peak-1] + D.rdstats[i].lclips[end_peak+1]) >=5 && D.dps[2][i] < 0.15 )
+            {
+                G.clip_gt[i] = 2;
+                G.clip_cn[i] = 0;
+            }
+            else if ((D.rdstats[i].rclips[start_peak] + D.rdstats[i].lclips[start_peak-1] + D.rdstats[i].lclips[start_peak+1]) >=2 &&
+                     (D.rdstats[i].lclips[end_peak] + D.rdstats[i].lclips[end_peak-1] + D.rdstats[i].lclips[end_peak+1]) >=2 && D.dps[2][i] < 0.75 )
+            {
+                G.clip_gt[i] = 1;
+                G.clip_cn[i] = 1;
+            }
+            else
+            {
+                if (D.dps[2][i]>0.85 && D.dps[2][i] <= 1.5)
+                {
+                    G.clip_gt[i] = 0;
+                    G.clip_cn[i] = 2;
+                }
+            }
+        }
+        G.clip_flag = true;
+    }
+    
+    // Depth-based clustering genotyping
+    double best_dp_idx = 2;
     select_model(G.gmix, means, D.dps[best_dp_idx], G.MAX_P_OVERLAP);
 
     std::vector<double> &var_depth = D.dps[best_dp_idx];
@@ -359,7 +598,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         for(int i=0; i<n_sample; ++i)
         {
             int cn = G.gmix.assign_copynumber(var_depth[i]);
-
+            
             if (cn == 2)
             {
                 G.cn[i] = 2;
@@ -369,7 +608,6 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             {
                 G.cn[i] = 1;
                 G.gt[i] = 1; // 0/1
-
             }
             else if (cn == 0)
             {
@@ -477,66 +715,6 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         }
     }
     */
-
-   // readpair genotyping
-    if (S.len >= 50)
-    {
-        for(int i=0; i<n_sample; ++i)
-        {
-            if (G.dp_flag || G.dp2_flag || G.pd_flag)
-            {
-                if (D.rdstats[i].del_support())
-                {
-                    if (var_depth[i] > 0.15 && var_depth[i] < 0.7) // TODO: This is arbitrary - cluster read pair numbers to get genotypes
-                    {
-                        G.read_flag = true;
-                        G.cn[i] = 1;
-                        G.gt[i] = 1;
-                    }
-                    else if (var_depth[i]<=0.15)
-                    {
-                        G.read_flag = true;
-                        G.cn[i] = 0;
-                        G.gt[i] = 2;
-                    }
-                    else if (var_depth[i]>0.8)
-                    {
-                        G.cn[i] = -1;
-                        G.gt[i] = -1;
-                    }
-                }
-                else if (var_depth[i] > 0.8 && var_depth[i] < 1.2)
-                {
-                    G.cn[i] = 2;
-                    G.gt[i] = 0;
-                }
-            }
-            else
-            {
-                if (D.rdstats[i].del_support())
-                {
-                    if (var_depth[i] > 0.2 && var_depth[i] < 0.7) // TEMPORARY
-                    {
-                        G.read_flag = true;
-                        G.cn[i] = 1;
-                        G.gt[i] = 1;
-                    }
-                    else if (var_depth[i]<=0.2)
-                    {
-                        G.read_flag = true;
-                        G.cn[i] = 0;
-                        G.gt[i] = 2;
-                    }
-                }
-                else if (var_depth[i] > 0.8 && var_depth[i] < 1.2)
-                {
-                    G.cn[i] = 2;
-                    G.gt[i] = 0;
-                }
-            }
-
-        }
-    }
  
     int n_het = 0;
     int n_hom = 0;
@@ -549,6 +727,36 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
     for(int i=0; i<n_sample; ++i)
     {
+        int sum_cn = 0;
+        int cnt_cn = 0;
+        // get consensus
+        if (G.cn[i] >= 0)
+        {
+            sum_cn += G.cn[i];
+            cnt_cn ++;
+        }
+        if (G.rp_cn[i] >= 0)
+        {
+            sum_cn += G.rp_cn[i];
+            cnt_cn ++;
+        }
+        if (G.clip_cn[i] >= 0)
+        {
+            sum_cn += G.clip_cn[i];
+            cnt_cn ++;
+        }
+        if (cnt_cn>0)
+        {
+            G.cn[i] = round(sum_cn / (double)cnt_cn);
+            G.gt[i] = 2-G.cn[i];
+        }
+        else
+        {
+            G.cn[i] = -1;
+            G.gt[i] = -1;
+        }
+
+        
         if (G.gt[i] >=0)
         {
             G.ns += 1;

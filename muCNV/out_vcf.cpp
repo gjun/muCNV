@@ -118,14 +118,18 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 	}
     if (G.read_flag)
 	{
-        fprintf(fp, ";READ");
+        fprintf(fp, ";READ=(%d,%d)", G.rp_pos, G.rp_end);
 	}
+    if (G.clip_flag)
+    {
+        fprintf(fp, ";CLIP=(%d,%d)", G.clip_pos, G.clip_end);
+    }
 	if (G.b_biallelic)
 	{
 		fprintf(fp, ";Biallelic");
 	}
 
-    fprintf(fp, "\tGT:CN:DP:DD:RP:SP:SC");
+    fprintf(fp, "\tGT:CN:DP:DD:RP:SC");
 
     for (int i=0; i<(int)G.gt.size(); ++i)
     {
@@ -170,15 +174,15 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 
 		if (S.svtype == DEL)
 		{
-			fprintf(fp, ":%d:%d", D.rdstats[i].n_rp[1], D.rdstats[i].n_split_inward);
+            fprintf(fp, ":%d:%d", D.rdstats[i].n_rp[1], D.rdstats[i].n_lclip_end + D.rdstats[i].n_rclip_start);
 		}
 		else if (S.svtype == DUP || S.svtype==CNV)
 		{
-			fprintf(fp, ":%d:%d", D.rdstats[i].n_rp[2], D.rdstats[i].n_split_outward);
+            fprintf(fp, ":%d:%d", D.rdstats[i].n_rp[2], D.rdstats[i].n_rclip_end + D.rdstats[i].n_lclip_start);
 		}
 		else if (S.svtype == INV)
 		{
-			fprintf(fp, ":%d:%d", D.rdstats[i].n_rp[0] + D.rdstats[i].n_rp[2], D.rdstats[i].n_split_inward+ D.rdstats[i].n_split_outward);
+			fprintf(fp, ":%d:%d", D.rdstats[i].n_rp[0] + D.rdstats[i].n_rp[2], D.rdstats[i].n_lclip_end + D.rdstats[i].n_rclip_start + D.rdstats[i].n_rclip_end + D.rdstats[i].n_lclip_start);
 		}
 		else if (S.svtype == INS)
 		{

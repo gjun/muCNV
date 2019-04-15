@@ -91,6 +91,24 @@ void Gaussian::estimate(std::vector<double> &x)
 	Stdev = stdev(x, Mean);
 }
 
+void Gaussian::estimate_select(std::vector<double> &x, std::vector<bool> &mask)
+{
+    double sum = 0;
+    double cnt = 0;
+    double sumsq = 0;
+    
+    for(int i=0; i< x.size(); ++i)
+    {
+        if (mask[i])
+        {
+            sum += x[i];
+            sumsq += x[i]*x[i];
+            cnt ++;
+        }
+    }
+    Mean = sum / cnt;
+    Stdev = sqrt ( (sumsq - (Mean*Mean) / cnt)) ;
+}
 
 double Gaussian::pdf(const double& x)
 {

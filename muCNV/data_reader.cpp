@@ -333,11 +333,12 @@ bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &
     else if (n_dp <= 10)
         b_medfilt = false; // no median filtering
     
-    for(int k=0; k<2; ++k)
-    {
-        std::vector<double> x(n_sample_total, 0);
-        dvec_dp.push_back(x);
-    }
+    // deprecated 4/13/19
+   // for(int k=0; k<2; ++k)
+    //{
+     //   std::vector<double> x(n_sample_total, 0);
+      //  dvec_dp.push_back(x);
+ //   }
     /*
     if (n_dp <= 40)
     {
@@ -532,7 +533,7 @@ bool DataReader::around_breakpoint(readpair &rp, sv &curr_sv)
 }
 
 
-void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, GcContent &gc)
+void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, GcContent &gc, std::vector< std::vector<int> > &all_rps, std::vector<int> &all_lclips, std::vector<int> &all_rclips)
 {
     int sample_idx = 0;
 
@@ -617,14 +618,33 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                             
                             if (self_idx <0 || self_idx>99 || mate_idx<100 || mate_idx>199)
                             {
+                                // sanity check
                                 std::cerr << "Something wrong with read pair indices selfidx " << self_idx << " mate idx " << mate_idx << std::endl;
                                 exit(1);
                                 
                             }
                             rdstats[sample_idx + k].n_rp[rp.pairstr] ++;
                             
-                            rdstats[sample_idx + k].rp_seq[rp.pairstr][self_idx]++;
-                            rdstats[sample_idx + k].rp_seq[rp.pairstr][mate_idx]++;
+                            int buf_start = self_idx-5;
+                            int buf_end = self_idx+5;
+                            if (buf_start<0) buf_start = 0;
+                            if (buf_end>99) buf_end = 99;
+                            
+                            for(int m=buf_start; m<=buf_end;++m)
+                            {
+                                // frequency in 100-bp window
+                                rdstats[sample_idx + k].rp_seq[rp.pairstr][m]++;
+                                all_rps[rp.pairstr][m] ++;
+                            }
+                            buf_start = mate_idx - 5;
+                            buf_end = mate_idx + 5;
+                            if (buf_start<100) buf_start = 100;
+                            if (buf_end>199) buf_end = 199;
+                            for(int m=buf_start;m<=buf_end; ++m)
+                            {
+                                rdstats[sample_idx + k].rp_seq[rp.pairstr][m]++;
+                                all_rps[rp.pairstr][m] ++;
+                            }
                         }
                     }
                     //printf("\n");
@@ -681,6 +701,19 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                         pileups[i].read_softclip(myclip);
                         myclip.chrnum = curr_sv.chrnum;
                         myclip.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                        
+                        if (myclip.pos >= curr_sv.pos - 100 && myclip.pos < curr_sv.pos + 100)
+                        {
+                            rdstats[sample_idx+k].lclips[myclip.pos - curr_sv.pos + 100] ++;
+                            rdstats[sample_idx+k].n_lclip_start ++;
+                            all_lclips[myclip.pos - curr_sv.pos + 100] ++;
+                        }
+                        if (myclip.pos >= curr_sv.end - 100 && myclip.pos < curr_sv.end + 100 )
+                        {
+                            rdstats[sample_idx+k].lclips[myclip.pos - curr_sv.end + 300] ++;
+                            rdstats[sample_idx+k].n_lclip_end ++;
+                            all_lclips[myclip.pos - curr_sv.end + 300] ++;
+                        }
                     }
                     
                     uint32_t n_rclip = 0;
@@ -691,6 +724,18 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                         pileups[i].read_softclip(myclip);
                         myclip.chrnum = curr_sv.chrnum;
                         myclip.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                        if (myclip.pos >= curr_sv.pos - 100 && myclip.pos < curr_sv.pos + 100)
+                        {
+                            rdstats[sample_idx+k].rclips[myclip.pos - curr_sv.pos + 100] ++;
+                            rdstats[sample_idx+k].n_rclip_start ++;
+                            all_rclips[myclip.pos - curr_sv.pos + 100] ++;
+                        }
+                        if (myclip.pos >= curr_sv.end - 100 && myclip.pos < curr_sv.end + 100 )
+                        {
+                            rdstats[sample_idx+k].rclips[myclip.pos - curr_sv.end + 300] ++;
+                            rdstats[sample_idx+k].n_rclip_end ++;
+                            all_rclips[myclip.pos - curr_sv.end + 300] ++;
+                        }
                     }
                 }
             }
