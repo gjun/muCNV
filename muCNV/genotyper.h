@@ -48,10 +48,8 @@ public:
     int clip_end;
     
 	GaussianMixture gmix;
-    GaussianMixture rp_gmix;
     
 	GaussianMixture2 gmix2;
-    GaussianMixture2 rp_gmix2;
     
     std::vector<int> gt; // bi-allelic genotype
     std::vector<int> rp_gt;

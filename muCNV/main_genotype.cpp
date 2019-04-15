@@ -275,7 +275,6 @@ int main_genotype(int argc, char** argv)
                 {
                     // var_depth gets GC-correction here
                     D.multi_dp = reader.read_depth100(vec_sv[i], D.dps, gc, b_dumpstat);
-                    
                 }
                 for(int j=0; j<n_sample; ++j)
                 {

@@ -20,11 +20,15 @@
 SvGeno::SvGeno(int n)
 {
     n_sample = n;
+    
+    MAX_P_OVERLAP = 1.0;
 
     gt.resize(n_sample, -1);
     cn.resize(n_sample, -1);
+    
     rp_gt.resize(n_sample, -1);
     rp_cn.resize(n_sample, -1);
+    
     clip_gt.resize(n_sample, -1);
     clip_cn.resize(n_sample, -1);
 
@@ -34,8 +38,10 @@ void SvGeno::reset()
 {
     std::fill(gt.begin(), gt.end(), -1);
     std::fill(cn.begin(), cn.end(), -1);
+    
     std::fill(rp_gt.begin(), rp_gt.end(), -1);
     std::fill(rp_cn.begin(), rp_cn.end(), -1);
+    
     std::fill(clip_gt.begin(), clip_gt.end(), -1);
     std::fill(clip_cn.begin(), clip_cn.end(), -1);
     
@@ -57,7 +63,6 @@ void SvGeno::reset()
     b_pre = false;
     b_post = false;
     info = "";
-    MAX_P_OVERLAP = 1.0;
     rp_pos = -1;
     rp_end = -1;
     clip_pos = -1;
@@ -69,26 +74,33 @@ SvData::SvData(int n)
     n_sample = n;
     rdstats.resize(n);
     prepost_dp.resize(n_sample, 1);
+    
     dps.resize(5);
+    
     multi_dp = false;
     
     all_rps.resize(4);
+    
     for(int i=0; i<4; ++i)
+    {
         all_rps[i].resize(200, 0);
+    }
+    
     all_sps.resize(200, 0);
+    
     all_lclips.resize(400, 0);
     all_rclips.resize(400, 0);
     
+    // ??
     for(int j=0;j<5;++j)
     {
+        dps[j].resize(n_sample, 0);
         // 0 : pre-depth
         // 1 : post-depth
         // 2 : 1-D depth (var_depth)
         // 3 : avg depth in some place of first half
         // 4 : avg depth in some place of second half
-        dps[j].resize(n_sample, 0);
     }
-    
 }
 
 void SvData::reset()
@@ -349,7 +361,7 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
 
 int Genotyper::find_peak(std::vector<int> &seq, int start, int end)
 {
-    static std::vector<double> peak_vec (seq.size(), 0);
+    std::vector<double> peak_vec (seq.size(), 0);
     double max_peak;
     int peak_idx  = -1;
     
@@ -399,7 +411,7 @@ bool Genotyper::find_consensus_rp(SvData &D, int pairstr, int &start_peak, int &
         // From each sample
         for(int i=0; i<n_sample; ++i)
         {
-            if (D.rdstats[i].n_rp[1] > 4)
+            if (D.rdstats[i].n_rp[pairstr] > 4)
             {
                 // Supporting read pairs in F-R, in first 100
                 int peak1 = find_peak(D.rdstats[i].rp_seq[pairstr], 0, 100);
@@ -407,7 +419,7 @@ bool Genotyper::find_consensus_rp(SvData &D, int pairstr, int &start_peak, int &
                 // Supporting read pairs in F-R, in last 100
                 int peak2 = find_peak(D.rdstats[i].rp_seq[pairstr], 100, 200);
                 
-                if (peak1>=0 && D.rdstats[i].rp_seq[1][peak1]>2 && peak2>=0 && D.rdstats[i].rp_seq[1][peak2]>2)
+                if (peak1>=0 && D.rdstats[i].rp_seq[pairstr][peak1]>2 && peak2>=0 && D.rdstats[i].rp_seq[pairstr][peak2]>2)
                 {
                     start_sum += peak1;
                     start_sumsq += peak1*peak1;
@@ -449,8 +461,8 @@ bool Genotyper::find_consensus_clip(SvData &D, int pairstr, int &start_peak, int
     
     int N = (int) lseq.size();
     
-    start_peak = find_peak(D.all_rclips, 0, N/2);
-    end_peak = find_peak(D.all_lclips, N/2, N);
+    start_peak = find_peak(lseq, 0, N/2);
+    end_peak = find_peak(rseq, N/2, N);
     
     if (start_peak>=0 && rseq[start_peak]>=5 && end_peak>=0 && lseq[end_peak]>=5)
     {
@@ -493,7 +505,7 @@ bool Genotyper::find_consensus_clip(SvData &D, int pairstr, int &start_peak, int
             double mean_end = end_sum/(double)cnt;
             double std_end = sqrt(end_sumsq/(double)cnt - mean_end*mean_end);
             
-            if (std_start<5 && std_end<5)
+            if (std_start<10 && std_end<10)
             {
                 start_peak= round(mean_start);
                 end_peak = round(mean_end);
@@ -519,11 +531,11 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     int start_peak = -1;
     int end_peak = -1;
     
-    if (find_consensus_rp(D, 1, start_peak, end_peak) && ( start_peak >=5 && start_peak<50 ) && (end_peak>=150 && end_peak <= 190) )
+   if (find_consensus_rp(D, 1, start_peak, end_peak) && ( start_peak >=5 && start_peak<50 ) && (end_peak>=150 && end_peak <= 190) )
     {
         G.rp_pos = S.pos + start_peak*10 - 500;
         G.rp_end = S.end + end_peak*10 - 1500;
-        
+
         for(int i=0; i<n_sample; ++i)
         {
             if ( (D.rdstats[i].rp_seq[1][start_peak] + D.rdstats[i].rp_seq[1][start_peak-1] + D.rdstats[i].rp_seq[1][start_peak+1]) > 10 &&
@@ -549,24 +561,24 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         }
         G.read_flag = true;
     }
-    
+
     int start_clip = -1;
     int end_clip = -1;
     
-    if (find_consensus_clip(D, 1, start_clip, end_clip) && (S.pos + start_clip - 100) < (S.end + end_clip - 300))
+   if (find_consensus_clip(D, 1, start_clip, end_clip) && (S.pos + start_clip - 100) < (S.end + end_clip - 300) && start_clip > 0 && start_clip<199 && end_clip>200 && end_clip<399)
     {
         G.clip_pos = S.pos + start_clip - 100;
         G.clip_end = S.end + end_clip - 300;
         for(int i=0; i<n_sample; ++i)
         {
-            if ( (D.rdstats[i].rclips[start_peak] + D.rdstats[i].lclips[start_peak-1] + D.rdstats[i].lclips[start_peak+1]) >= 5&&
-                (D.rdstats[i].lclips[end_peak] + D.rdstats[i].lclips[end_peak-1] + D.rdstats[i].lclips[end_peak+1]) >=5 && D.dps[2][i] < 0.15 )
+            if ( (D.rdstats[i].rclips[start_clip] + D.rdstats[i].lclips[start_clip-1] + D.rdstats[i].lclips[start_clip+1]) >= 5&&
+                (D.rdstats[i].lclips[end_clip] + D.rdstats[i].lclips[end_clip-1] + D.rdstats[i].lclips[end_clip+1]) >=5 && D.dps[2][i] < 0.15 )
             {
                 G.clip_gt[i] = 2;
                 G.clip_cn[i] = 0;
             }
-            else if ((D.rdstats[i].rclips[start_peak] + D.rdstats[i].lclips[start_peak-1] + D.rdstats[i].lclips[start_peak+1]) >=2 &&
-                     (D.rdstats[i].lclips[end_peak] + D.rdstats[i].lclips[end_peak-1] + D.rdstats[i].lclips[end_peak+1]) >=2 && D.dps[2][i] < 0.75 )
+            else if ((D.rdstats[i].rclips[start_clip] + D.rdstats[i].lclips[start_clip-1] + D.rdstats[i].lclips[start_clip+1]) >=2 &&
+                     (D.rdstats[i].lclips[end_clip] + D.rdstats[i].lclips[end_clip-1] + D.rdstats[i].lclips[end_clip+1]) >=2 && D.dps[2][i] < 0.75 )
             {
                 G.clip_gt[i] = 1;
                 G.clip_cn[i] = 1;
@@ -822,7 +834,6 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 {
     // Fit Gaussian mixture models with 1, 2, and 3 components, compare BIC
-
     std::vector< std::vector<double> > means = { {1.0}, {1.0, 1.5}, {1.0, 1.5, 2.0}, {1.0, 1.5, 2.0, 2.5}, {1.0, 1.5, 2.0, 2.5, 3.0}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0} };
 
     std::vector<int> dp_cn (n_sample, -1);
@@ -831,26 +842,8 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     int dp_ns = 0;
     int dp2_ns = 0;
 
-
     double best_dp_idx = 2;
 
-/*
-    double best_BIC = DBL_MAX;
-    if (D.dps.size() > 3)
-    {
-        for(int i=3; i<5; ++i)
-        {
-            GaussianMixture gm;
-            select_model(gm, means, D.dps[i]);
-            if (gm.bic < best_BIC && gm.p_overlap < G.MAX_P_OVERLAP)
-            {
-                best_BIC = gm.bic;
-                G.gmix = gm;
-                best_dp_idx = i;
-            }
-        }
-    }
-    */
     select_model(G.gmix, means, D.dps[best_dp_idx], G.MAX_P_OVERLAP);
 
     std::vector<double> &var_depth = D.dps[best_dp_idx];
@@ -936,7 +929,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         for(int i=0; i<n_sample; ++i)
             G.cn[i] = dp_cn[i];
     }
-
 
    get_prepost_stat(D, G);
 

@@ -328,7 +328,7 @@ bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &
         {
             dvec_dp[2][i] = correct_gc(gc, i, dvec_dp[2][i], curr_sv.chrnum, (curr_sv.pos + curr_sv.end)/2);
         }
-        return 0;
+        return false;
     }
     else if (n_dp <= 10)
         b_medfilt = false; // no median filtering
@@ -339,24 +339,6 @@ bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &
      //   std::vector<double> x(n_sample_total, 0);
       //  dvec_dp.push_back(x);
  //   }
-    /*
-    if (n_dp <= 40)
-    {
-        for(int k=0; k<2; ++k)
-        {
-            std::vector<double> x(n_sample_total, 0);
-            dvec_dp.push_back(x);
-        }
-    }
-    else
-    {
-        for(int k=0; k<4; ++k)
-        {
-            std::vector<double> x(n_sample_total, 0);
-            dvec_dp.push_back(x);
-        }
-    }
-     */
 
 	if (n_dp <= 200)
 	{
@@ -515,7 +497,7 @@ bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &
 		} // i : n_pileup
 	}
 
-    return 1;
+    return true;
 }
 
 bool DataReader::around_breakpoint(readpair &rp, sv &curr_sv)
@@ -677,8 +659,8 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                             if (sp.pos >= curr_sv.pos - 100 && sp.pos < curr_sv.pos + 100 && (sp.sapos + 151 + sp.secondclip) >= curr_sv.end-100 && (sp.sapos + 151 + sp.secondclip) < curr_sv.end + 100)
                             {
                                 rdstats[sample_idx+k].n_split_outward ++;
-                                rdstats[sample_idx+k].sp_seq_out[sp.pos-curr_sv.pos + 100] ++;
-                                rdstats[sample_idx+k].sp_seq_out[sp.sapos+151+sp.secondclip - curr_sv.end + 300] ++;
+                                // rdstats[sample_idx+k].sp_seq_out[sp.pos-curr_sv.pos + 100] ++;
+                                // rdstats[sample_idx+k].sp_seq_out[sp.sapos+151+sp.secondclip - curr_sv.end + 300] ++;
                             }
                         }
                         else if (sp.firstclip < 0 && sp.secondclip > 0)
@@ -687,8 +669,8 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                             {
                                 rdstats[sample_idx+k].n_split_inward ++;
                                 
-                                rdstats[sample_idx+k].sp_seq_in[sp.pos+151+sp.firstclip-curr_sv.pos + 100] ++;
-                                rdstats[sample_idx+k].sp_seq_in[sp.sapos - curr_sv.end + 300] ++;
+                                // rdstats[sample_idx+k].sp_seq_in[sp.pos+151+sp.firstclip-curr_sv.pos + 100] ++;
+                                // rdstats[sample_idx+k].sp_seq_in[sp.sapos - curr_sv.end + 300] ++;
                             }
                         }
                     }
@@ -702,17 +684,36 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                         myclip.chrnum = curr_sv.chrnum;
                         myclip.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
                         
+                 
                         if (myclip.pos >= curr_sv.pos - 100 && myclip.pos < curr_sv.pos + 100)
                         {
-                            rdstats[sample_idx+k].lclips[myclip.pos - curr_sv.pos + 100] ++;
+                            int tmp_idx = myclip.pos - curr_sv.pos + 100;
+                            
+                            if ( tmp_idx <0 || tmp_idx > 199)
+                            {
+                                // sanity check
+                                std::cerr << "Something wrong with clip idx  " << tmp_idx << std::endl;
+                                exit(1);
+                            }
+                            
+                            rdstats[sample_idx+k].lclips[tmp_idx] ++;
                             rdstats[sample_idx+k].n_lclip_start ++;
-                            all_lclips[myclip.pos - curr_sv.pos + 100] ++;
+                            all_lclips[tmp_idx] ++;
                         }
                         if (myclip.pos >= curr_sv.end - 100 && myclip.pos < curr_sv.end + 100 )
                         {
-                            rdstats[sample_idx+k].lclips[myclip.pos - curr_sv.end + 300] ++;
+                            int tmp_idx = myclip.pos - curr_sv.end + 300;
+                            
+                            if ( tmp_idx < 200 || tmp_idx > 399)
+                            {
+                                // sanity check
+                                std::cerr << "Something wrong with clip idx end " << tmp_idx << std::endl;
+                                exit(1);
+                            }
+                            
+                            rdstats[sample_idx+k].lclips[tmp_idx] ++;
                             rdstats[sample_idx+k].n_lclip_end ++;
-                            all_lclips[myclip.pos - curr_sv.end + 300] ++;
+                            all_lclips[tmp_idx] ++;
                         }
                     }
                     
@@ -726,15 +727,31 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                         myclip.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
                         if (myclip.pos >= curr_sv.pos - 100 && myclip.pos < curr_sv.pos + 100)
                         {
-                            rdstats[sample_idx+k].rclips[myclip.pos - curr_sv.pos + 100] ++;
+                            int tmp_idx = myclip.pos - curr_sv.pos + 100;
+                            
+                            if ( tmp_idx <0 || tmp_idx > 199)
+                            {
+                                // sanity check
+                                std::cerr << "Something wrong with clip idx  " << tmp_idx << std::endl;
+                                exit(1);
+                            }
+                            rdstats[sample_idx+k].rclips[tmp_idx] ++;
                             rdstats[sample_idx+k].n_rclip_start ++;
-                            all_rclips[myclip.pos - curr_sv.pos + 100] ++;
+                            all_rclips[tmp_idx] ++;
                         }
                         if (myclip.pos >= curr_sv.end - 100 && myclip.pos < curr_sv.end + 100 )
                         {
-                            rdstats[sample_idx+k].rclips[myclip.pos - curr_sv.end + 300] ++;
+                            int tmp_idx = myclip.pos - curr_sv.end + 300;
+                            
+                            if ( tmp_idx < 200 || tmp_idx > 399)
+                            {
+                                // sanity check
+                                std::cerr << "Something wrong with clip idx end " << tmp_idx << std::endl;
+                                exit(1);
+                            }
+                            rdstats[sample_idx+k].rclips[tmp_idx] ++;
                             rdstats[sample_idx+k].n_rclip_end ++;
-                            all_rclips[myclip.pos - curr_sv.end + 300] ++;
+                            all_rclips[tmp_idx] ++;
                         }
                     }
                 }
