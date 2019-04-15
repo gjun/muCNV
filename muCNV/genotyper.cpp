@@ -1103,14 +1103,15 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             if ( (D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1]) > 10 &&
                 (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 10 && D.dps[2][i] > 1.85)
             {
-                G.rp_gt[i] = 2;
-                G.rp_cn[i] = 0;
+                G.rp_cn[i] = round(D.dps[2][i]*2.0);
+                G.read_flag = true;
             }
             else if ( (D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1]) > 5 &&
-                     (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 5 && D.dps[2][i] > 1.25)
+                     (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 5 && D.dps[2][i] > 1.25 && D.dps[2][i]<1.8)
             {
-                G.rp_gt[i] = 1;
-                G.rp_cn[i] = 1;
+                G.rp_cn[i] = 3;
+                G.read_flag = true;
+
             }
             else
             {
@@ -1121,7 +1122,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                 }
             }
         }
-        G.read_flag = true;
     }
     
     int l_clip = -1;
@@ -1143,12 +1143,16 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                 {
                     G.clip_gt[i] = 2;
                     G.clip_cn[i] = round(D.dps[2][i] * 2.0);
+                    G.clip_flag = true;
+
                 }
                 else if ((D.rdstats[i].rclips[r_clip] + D.rdstats[i].rclips[r_clip-1] + D.rdstats[i].rclips[r_clip+1]) >=2 &&
-                         (D.rdstats[i].lclips[l_clip] + D.rdstats[i].lclips[l_clip-1] + D.rdstats[i].lclips[l_clip+1]) >=2 && D.dps[2][i] > 1.25 )
+                         (D.rdstats[i].lclips[l_clip] + D.rdstats[i].lclips[l_clip-1] + D.rdstats[i].lclips[l_clip+1]) >=2 && D.dps[2][i] > 1.25 && D.dps[2][i] < 1.8)
                 {
                     G.clip_gt[i] = 1;
                     G.clip_cn[i] = 3;
+                    G.clip_flag = true;
+
                 }
                 else
                 {
@@ -1159,7 +1163,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                     }
                 }
             }
-            G.clip_flag = true;
         }
     }
     
