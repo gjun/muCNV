@@ -10,11 +10,91 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "muCNV/genotyper.cpp"
-            timestampString = "577053969.271579"
+            timestampString = "577058166.945829"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "1000"
             endingLineNumber = "1000"
+            landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "muCNV/genotyper.cpp"
+            timestampString = "577058166.94619"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1219"
+            endingLineNumber = "1219"
+            landmarkName = "Genotyper::call_cnv(sv &amp;S, SvData&amp; D, SvGeno &amp;G)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "muCNV/genotyper.cpp"
+            timestampString = "577058166.946409"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "787"
+            endingLineNumber = "787"
+            landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "muCNV/genotyper.cpp"
+            timestampString = "577058166.9466079"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "796"
+            endingLineNumber = "796"
+            landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "muCNV/genotyper.cpp"
+            timestampString = "577058166.946808"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "804"
+            endingLineNumber = "804"
+            landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "muCNV/genotyper.cpp"
+            timestampString = "577058178.236487"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "805"
+            endingLineNumber = "805"
             landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
             landmarkType = "7">
          </BreakpointContent>

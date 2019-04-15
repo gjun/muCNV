@@ -789,16 +789,16 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
         for(int i=0; i<n_sample; ++i)
         {
-            if ( (D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1]) > 10 &&
-                (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 10 && D.dps[2][i] < 0.15)
+            if ( (D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1]) > 5 &&
+                (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 5 && D.dps[2][i] < 0.15)
             {
                 G.rp_gt[i] = 2;
                 G.rp_cn[i] = 0;
                 G.read_flag = true;
 
             }
-            else if ( (D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1]) > 5 &&
-                 (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 5 && D.dps[2][i] < 0.75)
+            else if ( (D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1]) > 3 &&
+                 (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 3 && D.dps[2][i] < 0.75)
             {
                 G.rp_gt[i] = 1;
                 G.rp_cn[i] = 1;
@@ -1074,7 +1074,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
     double callrate = (double)G.ns / n_sample;
 
-    if ( ( ( (G.dp_flag || G.dp2_flag) && (G.pd_flag || G.clip_flag || G.read_flag)) || (G.clip_flag && G.read_flag)) &&  callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
+    if ( ( (G.dp_flag && G.dp2_flag && (G.pd_flag || G.clip_flag || G.read_flag)) || (G.clip_flag  || G.read_flag)) &&  callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
         G.b_pass = true;
 
     // Excessive heterozygosity (basically all-het case)
@@ -1088,7 +1088,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     int end_peak = -1;
     int pairstr = 2;
     
-    if (find_consensus_rp(D, pairstr, start_peak, end_peak) && ( start_peak >=5 && start_peak<50 ) && (end_peak>=150 && end_peak <= 190) )
+    if (find_consensus_rp(D, pairstr, start_peak, end_peak)  )
     {
         G.rp_pos = S.pos + start_peak*10 - 500;
         G.rp_end = S.end + end_peak*10 - 1500;
@@ -1178,6 +1178,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     if (G.gmix.n_comp > 1 && G.gmix.r_ordered() )
     {
         // success
+        G.dp_flag = true;
 
         for(int i=0; i<(int)n_sample; ++i)
         {
@@ -1197,13 +1198,11 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             }
             else if (var_depth[i] > 1.4 &&  var_depth[i] < 1.8)
             {
-                G.dp_flag = true;
                 dp_cn[i] = 3;
                 dp_ns ++;
             }
             else if (var_depth[i] >= 1.85)
             {
-                G.dp_flag = true;
                 dp_cn[i] = round(var_depth[i] * 2.0);
                 dp_ns++;
             }
@@ -1212,13 +1211,14 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     if (D.multi_dp)
     {
         // DP100 genotyping
-        int dp2_idx = 2;
+        int dp2_idx = 3;
 
         select_model(G.gmix2, means, D.dps[dp2_idx], D.dps[dp2_idx+1], G.MAX_P_OVERLAP);
 
         // 2-D genotyping
         if (G.gmix2.n_comp>1 && G.gmix2.r_ordered() )
         {
+            G.dp2_flag = true;
             //TODO : dp2 geotyping seems unstable, maybe make this to post-processing for variants with pd_flag && rd_flag
             for(int i=0; i<(int)n_sample; ++i)
             {
@@ -1234,13 +1234,11 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                 }
                 else if (dp1>1.4 && dp2 > 1.4 &&  dp2 < 1.8 && dp2<1.8)
                 {
-                     G.dp2_flag = true;
                     dp2_cn[i] = 3;
                     dp2_ns ++;
                 }
                 else if (dp1 > 1.85 && dp2 > 1.85)
                 {
-                    G.dp2_flag = true;
                     dp2_cn[i] = round(var_depth[i] * 2.0);
                     dp2_ns++;
                 }
@@ -1317,7 +1315,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         }
     }
     */
-  
 
     int max_cn = 2;
     int min_cn = 2;
@@ -1385,7 +1382,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     }
 
     double callrate = (double)G.ns / n_sample;
-
-    if ( ( ( (G.dp_flag || G.dp2_flag) && (G.pd_flag || G.clip_flag || G.read_flag)) || (G.clip_flag && G.read_flag)) &&  callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
+    
+    if ( ( (G.dp_flag && G.dp2_flag && (G.pd_flag || G.clip_flag || G.read_flag)) || (G.clip_flag && G.read_flag)) &&  callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
         G.b_pass = true;
 }

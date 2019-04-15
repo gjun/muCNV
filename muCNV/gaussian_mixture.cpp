@@ -527,7 +527,7 @@ bool GaussianMixture::r_ordered()
 
 	for(int i=0; i<n_comp-1; ++i)
 	{
-		if (Comps[i+1].Mean - Comps[i].Mean < 0.35)
+		if (Comps[i+1].Mean - Comps[i].Mean < 0.3)
 			return false;
 	}
 
@@ -997,7 +997,7 @@ bool GaussianMixture2::r_ordered()
      */
     for (int i=0; i<n_comp-1; ++i)
     {
-        if (Comps[i].Mean[0] + Comps[i].Mean[1] - Comps[i+1].Mean[0] - Comps[i+1].Mean[1] < 0.6)
+        if ( Comps[i+1].Mean[0] + Comps[i+1].Mean[1] - Comps[i].Mean[0] - Comps[i].Mean[1] < 0.6)
             return false;
     }
 	return true;
