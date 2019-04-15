@@ -1101,20 +1101,20 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         for(int i=0; i<n_sample; ++i)
         {
             if ( (D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1]) > 10 &&
-                (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 10 && D.dps[2][i] < 0.15)
+                (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 10 && D.dps[2][i] > 1.85)
             {
                 G.rp_gt[i] = 2;
                 G.rp_cn[i] = 0;
             }
             else if ( (D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1]) > 5 &&
-                     (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 5 && D.dps[2][i] < 0.75)
+                     (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 5 && D.dps[2][i] > 1.25)
             {
                 G.rp_gt[i] = 1;
                 G.rp_cn[i] = 1;
             }
             else
             {
-                if (D.dps[2][i]>0.85 && D.dps[2][i] <= 1.5)
+                if (D.dps[2][i]>0.85 && D.dps[2][i] <= 1.3)
                 {
                     G.rp_gt[i] = 0;
                     G.rp_cn[i] = 2;
@@ -1227,19 +1227,21 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             {
 //                dp2_cn[i] = G.gmix2.assign_copynumber(D.dps[dp2_idx][i], D.dps[dp2_idx+1][i]);
 
-                double dp = (D.dps[dp2_idx][i] + D.dps[dp2_idx+1][i]) / 2.0;
-                if (dp > 0.7 && dp < 1.25)
+                double dp1 = D.dps[dp2_idx][i];
+                double dp2 = D.dps[dp2_idx+1][i];
+                
+                if (dp1 > 0.8 && dp1 < 1.25 && dp2>0.8 && dp2<1.25)
                 {
                     dp2_cn[i] = 2;
                     dp2_ns++;
                 }
-                else if (dp > 1.4 &&  dp < 1.8)
+                else if (dp1>1.4 && dp2 > 1.4 &&  dp2 < 1.8 && dp2<1.8)
                 {
                      G.dp2_flag = true;
                     dp2_cn[i] = 3;
                     dp2_ns ++;
                 }
-                else if (dp >= 1.85)
+                else if (dp1 > 1.85 && dp2 > 1.85)
                 {
                     G.dp2_flag = true;
                     dp2_cn[i] = round(var_depth[i] * 2.0);
@@ -1249,17 +1251,15 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         }
     }
 
-    if (dp2_ns > dp_ns)
+    for(int i=0; i<n_sample; ++i)
     {
-        for(int i=0; i<n_sample; ++i)
+        if (dp_cn[i] <0 && dp2_cn[i]>=0)
             G.cn[i] = dp2_cn[i];
-    }
-    else
-    {
-        for(int i=0; i<n_sample; ++i)
+        else if (dp_cn[i] >= 0 && dp2_cn[i] < 0)
             G.cn[i] = dp_cn[i];
+        else
+            G.cn[i] = round((dp_cn[i] + dp2_cn[i])/2.0);
     }
-
    get_prepost_stat(D, G);
 
     if (G.b_pre && G.b_post  && (G.dp_flag || G.dp2_flag))
