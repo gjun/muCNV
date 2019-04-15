@@ -58,6 +58,12 @@ public:
     std::vector<int> cn; // copy number
     std::vector<int> rp_cn;
     std::vector<int> clip_cn;
+    
+    std::vector<int> start_clips;
+    std::vector<int> end_clips;
+    
+    std::vector<int> start_rps;
+    std::vector<int> end_rps;
 
     SvGeno (int);
     

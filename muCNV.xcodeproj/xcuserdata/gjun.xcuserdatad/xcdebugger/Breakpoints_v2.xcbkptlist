@@ -10,11 +10,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "muCNV/genotyper.cpp"
-            timestampString = "577058166.945829"
+            timestampString = "577065335.035292"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1000"
-            endingLineNumber = "1000"
+            startingLineNumber = "985"
+            endingLineNumber = "985"
             landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
             landmarkType = "7">
          </BreakpointContent>
@@ -26,11 +26,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "muCNV/genotyper.cpp"
-            timestampString = "577058166.94619"
+            timestampString = "577065335.035696"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1219"
-            endingLineNumber = "1219"
+            startingLineNumber = "1204"
+            endingLineNumber = "1204"
             landmarkName = "Genotyper::call_cnv(sv &amp;S, SvData&amp; D, SvGeno &amp;G)"
             landmarkType = "7">
          </BreakpointContent>
@@ -42,11 +42,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "muCNV/genotyper.cpp"
-            timestampString = "577058166.946409"
+            timestampString = "577065335.035942"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "787"
-            endingLineNumber = "787"
+            startingLineNumber = "800"
+            endingLineNumber = "800"
             landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
             landmarkType = "7">
          </BreakpointContent>
@@ -58,7 +58,55 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "muCNV/genotyper.cpp"
-            timestampString = "577058166.9466079"
+            timestampString = "577065335.03617"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "813"
+            endingLineNumber = "813"
+            landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "muCNV/genotyper.cpp"
+            timestampString = "577065335.036396"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "949"
+            endingLineNumber = "949"
+            landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "muCNV/genotyper.cpp"
+            timestampString = "577065335.0366091"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1060"
+            endingLineNumber = "1060"
+            landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "muCNV/genotyper.cpp"
+            timestampString = "577065335.036818"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "796"
@@ -74,11 +122,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "muCNV/genotyper.cpp"
-            timestampString = "577058166.946808"
+            timestampString = "577065335.0370589"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "804"
-            endingLineNumber = "804"
+            startingLineNumber = "1056"
+            endingLineNumber = "1056"
             landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
             landmarkType = "7">
          </BreakpointContent>
@@ -90,11 +138,75 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "muCNV/genotyper.cpp"
-            timestampString = "577058178.236487"
+            timestampString = "577065335.0372649"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "805"
-            endingLineNumber = "805"
+            startingLineNumber = "906"
+            endingLineNumber = "906"
+            landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "muCNV/genotyper.cpp"
+            timestampString = "577065335.03747"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1035"
+            endingLineNumber = "1035"
+            landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "muCNV/genotyper.cpp"
+            timestampString = "577065335.037675"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "881"
+            endingLineNumber = "881"
+            landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "muCNV/genotyper.cpp"
+            timestampString = "577065335.037877"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "915"
+            endingLineNumber = "915"
+            landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "muCNV/genotyper.cpp"
+            timestampString = "577065335.038076"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1036"
+            endingLineNumber = "1036"
             landmarkName = "Genotyper::call_deletion(sv &amp;S, SvData &amp;D, SvGeno &amp;G)"
             landmarkType = "7">
          </BreakpointContent>
