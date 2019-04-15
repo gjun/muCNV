@@ -307,48 +307,131 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
 {
     G.b_biallelic = true;
     
-    double sum_inv = 0;
-    double sumsq_inv = 0;
-    int n_inv= 0;
+    int start_peak = -1;
+    int end_peak = -1;
+    int pairstr = 3;
     
-    for(int i=0; i<n_sample; ++i)
+    if (find_consensus_rp(D, pairstr, start_peak, end_peak) && ( start_peak >=5 && start_peak<50 ) && (end_peak>=150 && end_peak <= 190) )
     {
-        if (D.rdstats[i].inv_support())
-        {
-            G.read_flag = true;
-            double d_support = (D.rdstats[i].n_rp[0] + D.rdstats[i].n_rp[2]) / (double) stats[i].avg_dp;
-            sum_inv += d_support;
-            sumsq_inv = d_support*d_support;
-            n_inv ++;
-        }
-    }
-    
-    if (G.read_flag)
-    {
-        double mean_inv = sum_inv / n_inv;
-        double std_inv = sqrt(sumsq_inv / n_inv - mean_inv*mean_inv);
+        G.rp_pos = S.pos + start_peak*10 - 500;
+        G.rp_end = S.end + end_peak*10 - 1500;
         
         for(int i=0; i<n_sample; ++i)
         {
-            if (D.rdstats[i].inv_support())
+            if ( (D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1]) > 10 &&
+                (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 10)
             {
-                double x = (D.rdstats[i].n_rp[0] + D.rdstats[i].n_rp[2])/(double)stats[i].avg_dp;
+                G.rp_gt[i] = 2;
+            }
+            else if ( (D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1]) > 5 &&
+                     (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 5)
+            {
+                G.rp_gt[i] = 1;
+            }
+            else if( (D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1]) <2  &&
+                    (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) < 2)
+            {
+                G.rp_gt[i] = 0;
+            }
+        }
+        G.read_flag = true;
+    }
+    
+    int l_start = -1;
+    int l_end = -1;
+    int r_start = -1;
+    int r_end = -1;
+    
+    if (find_consensus_clip_inv(D, l_start, l_end, r_start, r_end))
+    {
+        int start_clip = -1;
+        int end_clip = -1;
+        if (r_start >= 0)
+        {
+            start_clip = r_start;
+        }
+        else if (l_start>=0)
+        {
+            start_clip = l_start;
+        }
+        if (l_end >= 0)
+        {
+            end_clip = l_end;
+        }
+        else if (r_end >= 0)
+        {
+            end_clip = r_end;
+        }
+        
+        if ((S.pos + start_clip - 100) < (S.end + end_clip - 300) && start_clip > 0 && start_clip<199 && end_clip>200 && end_clip<399)
+        {
+            G.clip_pos = S.pos + start_clip - 100;
+            G.clip_end = S.end + end_clip - 300;
+            for(int i=0; i<n_sample; ++i)
+            {
+                int n_start = 0;
+                int n_end = 0;
                 
-                if ( x > mean_inv + std_inv*2.0)
-                    G.gt[i] = 2;
-                else
-                    G.gt[i] = 1;
-                G.ac ++;
-                G.ns ++;
+                if (r_start>0)
+                {
+                    n_start += D.rdstats[i].rclips[r_start] + D.rdstats[i].rclips[r_start-1] + D.rdstats[i].rclips[r_start+1];
+                }
+                if (l_start>0)
+                {
+                    n_start += D.rdstats[i].lclips[l_start] + D.rdstats[i].lclips[l_start-1] + D.rdstats[i].lclips[l_start+1];
+                }
+                if (r_end >0)
+                {
+                    n_end += D.rdstats[i].rclips[r_end] + D.rdstats[i].rclips[r_end-1] + D.rdstats[i].rclips[r_end+1];
+                }
+                if (l_end >0)
+                {
+                    n_end += D.rdstats[i].lclips[l_end] + D.rdstats[i].lclips[l_end-1] + D.rdstats[i].lclips[l_end+1];
+                }
+                
+                if (n_start >= 10 && n_end >= 10)
+                {
+                    G.clip_gt[i] = 2;
+                }
+                else if (n_start >= 5 && n_end >= 5)
+                {
+                    G.clip_gt[i] = 1;
+                }
+                else if (n_start < 2 && n_end < 2)
+                {
+                    G.clip_gt[i] = 0;
+                }
+            }
+            G.clip_flag = true;
+        }
+    }
+    
+    G.ns = 0;
+    G.ac = 0;
+    if (G.read_flag || G.clip_flag)
+    {
+        for(int i=0; i<n_sample; ++i)
+        {
+            if (G.rp_gt[i] < 0)
+            {
+                G.gt[i] = G.clip_gt[i];
+            }
+            else if (G.clip_gt[i] < 0)
+            {
+                G.gt[i] = G.rp_gt[i];
             }
             else
             {
-                double x = (D.rdstats[i].n_rp[0] + D.rdstats[i].n_rp[2])/(double)stats[i].avg_dp;
-                if (x == 0 ||  x < mean_inv - std_inv * 2.0)
-                {
+                if (G.clip_gt[i] == 0 && G.rp_gt[i] == 0)
                     G.gt[i] = 0;
-                    G.ns ++;
-                }
+                else
+                    G.gt[i] = (G.clip_gt[i] > G.rp_gt[i]) ? G.clip_gt[i] : G.rp_gt[i];
+            }
+            
+            if (G.gt[i] >= 0)
+            {
+                G.ns++;
+                G.ac += G.gt[i];
             }
         }
 
@@ -391,8 +474,16 @@ bool Genotyper::find_consensus_rp(SvData &D, int pairstr, int &start_peak, int &
     std::vector<int> &seq = D.all_rps[pairstr];
     int N = (int) seq.size();
 
-    start_peak = find_peak(seq, 0, N/2);
-    end_peak = find_peak(seq, N/2, N);
+    if (pairstr == 3)
+    {
+        start_peak = find_peak(D.all_rps[0], 0, N/2); // FF
+        end_peak = find_peak(D.all_rps[3], N/2, N); // RR
+    }
+    else
+    {
+        start_peak = find_peak(seq, 0, N/2);
+        end_peak = find_peak(seq, N/2, N);
+    }
     
     if (start_peak>=0 && seq[start_peak]>=5 && end_peak>=0 && seq[end_peak]>=5)
     {
@@ -414,8 +505,14 @@ bool Genotyper::find_consensus_rp(SvData &D, int pairstr, int &start_peak, int &
             if (D.rdstats[i].n_rp[pairstr] > 4)
             {
                 // Supporting read pairs in pairstr in first 100
-                int peak1 = find_peak(D.rdstats[i].rp_seq[pairstr], 0, 100);
+                int peak1 = -1;
                 
+                
+                if (pairstr == 3)
+                    peak1 = find_peak(D.rdstats[i].rp_seq[0], 0, 100);
+                else
+                    peak1 = find_peak(D.rdstats[i].rp_seq[pairstr], 0, 100);
+
                 // Supporting read pairs in pairstr, in last 100
                 int peak2 = find_peak(D.rdstats[i].rp_seq[pairstr], 100, 200);
                 
@@ -466,10 +563,6 @@ bool Genotyper::find_consensus_clip(SvData &D, int pairstr, int &l_peak, int &r_
             l_peak = find_peak(D.all_lclips, 0, 200);
             r_peak = find_peak(D.all_rclips, 200, 400);
             break;
-        case 0:
-        case 3:
-            // inversion
-            break;
     }
     
     if (l_peak>=0 && D.all_lclips[l_peak]>=5 && r_peak>=0 && D.all_rclips[r_peak]>=5)
@@ -489,7 +582,20 @@ bool Genotyper::find_consensus_clip(SvData &D, int pairstr, int &l_peak, int &r_
         // From each sample
         for(int i=0; i<n_sample; ++i)
         {
-            if (D.rdstats[i].n_lclip_start >= 2 && D.rdstats[i].n_rclip_end >= 2)
+            int n_start = 0;
+            int n_end = 0;
+            
+            if (pairstr == 1)
+                n_start = D.rdstats[i].n_rclip_start;
+            else
+                n_start = D.rdstats[i].n_lclip_start;
+            
+            if (pairstr == 1)
+                n_end = D.rdstats[i].n_lclip_end;
+            else
+                n_end = D.rdstats[i].n_rclip_end;
+            
+            if (n_start >= 2 && n_end >= 2)
             {
                 l_peak = -1;
                 r_peak = -1;
@@ -541,6 +647,130 @@ bool Genotyper::find_consensus_clip(SvData &D, int pairstr, int &l_peak, int &r_
     return false;
 }
 
+
+bool Genotyper::find_consensus_clip_inv(SvData &D, int &l_start, int &l_end, int &r_start, int &r_end)
+{
+
+    l_start = find_peak(D.all_lclips, 0, 200);
+    l_end = find_peak(D.all_lclips, 200, 400);
+    r_start = find_peak(D.all_rclips, 0, 200);
+    r_end = find_peak(D.all_rclips, 200, 400);
+    
+    if ( ( (l_start>=0 && D.all_lclips[l_start]>=5) || (r_start >=0 && D.all_rclips[r_start] >= 5) ||
+           (r_start >= 0 && l_start >= 0 && (D.all_lclips[l_start] + D.all_rclips[r_start] >=5 ) ) )  &&
+         ( (l_end  >=0 && D.all_lclips[ l_end ]>=5) || (r_end >= 0  && D.all_rclips[ r_end ] >= 5) ||
+           (l_end >= 0 && r_end >= 0  && (D.all_lclips[l_end] + D.all_rclips[r_end] >= 5 ) ) ) )
+    {
+        return true;
+    }
+    else
+    {
+        int lstart_sum = 0;
+        int lstart_sumsq = 0;
+        
+        int rstart_sum = 0;
+        int rstart_sumsq = 0;
+        
+        int lend_sum = 0;
+        int lend_sumsq = 0;
+        
+        int rend_sum = 0;
+        int rend_sumsq = 0;
+        
+        int lstart_cnt = 0;
+        int lend_cnt = 0;
+        
+        int rstart_cnt = 0;
+        int rend_cnt = 0;
+        
+        // From each sample
+        for(int i=0; i<n_sample; ++i)
+        {
+            if (D.rdstats[i].n_lclip_start + D.rdstats[i].n_rclip_start >= 3 && D.rdstats[i].n_rclip_end + D.rdstats[i].n_lclip_end >= 2)
+            {
+                l_start = find_peak(D.rdstats[i].lclips, 0, 200); // lstart
+                l_end = find_peak(D.rdstats[i].lclips, 200, 400); // lend
+                r_start = find_peak(D.rdstats[i].rclips, 0, 200); //rstart
+                r_end  = find_peak(D.rdstats[i].rclips, 200, 400); //rend
+
+                if (l_start >=0 && D.rdstats[i].lclips[l_start] >=3)
+                {
+                    lstart_sum += l_start;
+                    lstart_sumsq += l_start * l_start;
+                    lstart_cnt ++;
+                }
+                if (l_end >=0 && D.rdstats[i].lclips[l_end] >=3)
+                {
+                    lend_sum += l_end;
+                    lend_sumsq += l_end * l_end;
+                    lend_cnt ++;
+                }
+                if (r_start >=0 && D.rdstats[i].rclips[r_start] >=3)
+                {
+                    rstart_sum += r_start;
+                    rstart_sumsq += r_start * r_start;
+                    rstart_cnt ++;
+                }
+                if (r_end >=0 && D.rdstats[i].rclips[r_end] >=3)
+                {
+                    rend_sum += r_end;
+                    rend_sumsq += r_end * r_end;
+                    rend_cnt ++;
+                }
+            }
+        }
+        
+        if (lstart_cnt > 0)
+        {
+            double mean_l = lstart_sum/(double)lstart_cnt;
+            double std_l = sqrt(lstart_sumsq/(double)lstart_cnt - mean_l * mean_l);
+            
+            if (std_l < 10)
+                l_start = round(mean_l);
+            else
+                l_start = -1;
+        }
+        
+        if (lend_cnt > 0)
+        {
+            double mean_l = lend_sum/(double)lend_cnt;
+            double std_l = sqrt(lend_sumsq/(double)lend_cnt - mean_l * mean_l);
+            
+            if (std_l < 10)
+                l_end = round(mean_l);
+            else
+                l_end = -1;
+        }
+        
+        if (rstart_cnt > 0)
+        {
+            double mean_r = rstart_sum/(double)rstart_cnt;
+            double std_r = sqrt(rstart_sumsq/(double)rstart_cnt - mean_r * mean_r);
+            
+            if (std_r < 10)
+                r_start = round(mean_r);
+            else
+                r_start = -1;
+        }
+        if (rend_cnt > 0)
+        {
+            double mean_r = rend_sum/(double)rend_cnt;
+            double std_r = sqrt(rend_sumsq/(double)rend_cnt - mean_r * mean_r);
+            
+            if (std_r < 10)
+                r_end = round(mean_r);
+            else
+                r_end = -1;
+        }
+        if ((l_start >=0 || r_start >=0) && (l_end >=0 || r_end>=0))
+            return true;
+    }
+    l_start = -1;
+    l_end = -1;
+    r_start = -1;
+    r_end = -1;
+    return false;
+}
 
 void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 {
