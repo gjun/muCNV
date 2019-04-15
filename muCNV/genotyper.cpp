@@ -413,10 +413,10 @@ bool Genotyper::find_consensus_rp(SvData &D, int pairstr, int &start_peak, int &
         {
             if (D.rdstats[i].n_rp[pairstr] > 4)
             {
-                // Supporting read pairs in F-R, in first 100
+                // Supporting read pairs in pairstr in first 100
                 int peak1 = find_peak(D.rdstats[i].rp_seq[pairstr], 0, 100);
                 
-                // Supporting read pairs in F-R, in last 100
+                // Supporting read pairs in pairstr, in last 100
                 int peak2 = find_peak(D.rdstats[i].rp_seq[pairstr], 100, 200);
                 
                 if (peak1>=0 && D.rdstats[i].rp_seq[pairstr][peak1]>2 && peak2>=0 && D.rdstats[i].rp_seq[pairstr][peak2]>2)
@@ -454,27 +454,35 @@ bool Genotyper::find_consensus_rp(SvData &D, int pairstr, int &start_peak, int &
     return false;
 }
 
-bool Genotyper::find_consensus_clip(SvData &D, int pairstr, int &start_peak, int &end_peak)
+bool Genotyper::find_consensus_clip(SvData &D, int pairstr, int &l_peak, int &r_peak)
 {
-    std::vector<int> &lseq = D.all_lclips;
-    std::vector<int> &rseq = D.all_rclips;
+    switch(pairstr)
+    {
+        case 1:
+            r_peak = find_peak(D.all_rclips, 0, 200);
+            l_peak = find_peak(D.all_lclips, 200, 400);
+            break;
+        case 2:
+            l_peak = find_peak(D.all_lclips, 0, 200);
+            r_peak = find_peak(D.all_rclips, 200, 400);
+            break;
+        case 0:
+        case 3:
+            // inversion
+            break;
+    }
     
-    int N = (int) lseq.size();
-    
-    start_peak = find_peak(lseq, 0, N/2);
-    end_peak = find_peak(rseq, N/2, N);
-    
-    if (start_peak>=0 && rseq[start_peak]>=5 && end_peak>=0 && lseq[end_peak]>=5)
+    if (l_peak>=0 && D.all_lclips[l_peak]>=5 && r_peak>=0 && D.all_rclips[r_peak]>=5)
     {
         return true;
     }
     else
     {
-        int start_sum = 0;
-        int start_sumsq = 0;
+        int l_sum = 0;
+        int l_sumsq = 0;
         
-        int end_sum = 0;
-        int end_sumsq = 0;
+        int r_sum = 0;
+        int r_sumsq = 0;
         
         int cnt = 0;
         
@@ -483,15 +491,30 @@ bool Genotyper::find_consensus_clip(SvData &D, int pairstr, int &start_peak, int
         {
             if (D.rdstats[i].n_lclip_start >= 2 && D.rdstats[i].n_rclip_end >= 2)
             {
-                int peak1 = find_peak(D.rdstats[i].rclips, 0, N/2);
-                int peak2 = find_peak(D.rdstats[i].lclips, N/2, N);
-                
-                if (peak1>=0 && D.rdstats[i].rclips[peak1]>=2 && peak2>=0 && D.rdstats[i].lclips[peak2]>=2)
+                l_peak = -1;
+                r_peak = -1;
+                switch(pairstr)
                 {
-                    start_sum += peak1;
-                    start_sumsq += peak1*peak1;
-                    end_sum += peak2;
-                    end_sumsq += peak2*peak2;
+                    case 1:
+                        r_peak = find_peak(D.rdstats[i].rclips, 0, 200);
+                        l_peak = find_peak(D.rdstats[i].lclips, 200, 400);
+                        break;
+                    case 2:
+                        l_peak = find_peak(D.rdstats[i].lclips, 0, 200);
+                        r_peak = find_peak(D.rdstats[i].rclips, 200, 400);
+                        break;
+                    case 0:
+                    case 3:
+                        // inversion
+                        break;
+                }
+                
+                if (l_peak>=0 && D.rdstats[i].lclips[l_peak]>=2 && r_peak>=0 && D.rdstats[i].rclips[r_peak]>=2)
+                {
+                    l_sum += l_peak;
+                    l_sumsq += l_peak * l_peak;
+                    r_sum += r_peak;
+                    r_sumsq += r_peak * r_peak;
                     cnt ++;
                 }
             }
@@ -499,25 +522,22 @@ bool Genotyper::find_consensus_clip(SvData &D, int pairstr, int &start_peak, int
         
         if (cnt>0)
         {
-            double mean_start = start_sum/(double)cnt;
-            double std_start = sqrt(start_sumsq/(double)cnt - mean_start*mean_start);
+            double mean_l = l_sum/(double)cnt;
+            double std_l = sqrt(l_sumsq/(double)cnt - mean_l * mean_l);
             
-            double mean_end = end_sum/(double)cnt;
-            double std_end = sqrt(end_sumsq/(double)cnt - mean_end*mean_end);
+            double mean_r = r_sum/(double)cnt;
+            double std_r = sqrt(r_sumsq/(double)cnt - mean_r * mean_r);
             
-            if (std_start<10 && std_end<10)
+            if (std_l<10 && std_r<10)
             {
-                start_peak= round(mean_start);
-                end_peak = round(mean_end);
+                l_peak = round(mean_l);
+                r_peak = round(mean_r);
                 return true;
-            }
-            else
-            {
-                start_peak = -1;
-                end_peak = -1;
             }
         }
     }
+    l_peak = -1;
+    r_peak = -1;
     return false;
 }
 
@@ -530,22 +550,23 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
     int start_peak = -1;
     int end_peak = -1;
+    int pairstr = 1;
     
-   if (find_consensus_rp(D, 1, start_peak, end_peak) && ( start_peak >=5 && start_peak<50 ) && (end_peak>=150 && end_peak <= 190) )
+   if (find_consensus_rp(D, pairstr, start_peak, end_peak) && ( start_peak >=5 && start_peak<50 ) && (end_peak>=150 && end_peak <= 190) )
     {
         G.rp_pos = S.pos + start_peak*10 - 500;
         G.rp_end = S.end + end_peak*10 - 1500;
 
         for(int i=0; i<n_sample; ++i)
         {
-            if ( (D.rdstats[i].rp_seq[1][start_peak] + D.rdstats[i].rp_seq[1][start_peak-1] + D.rdstats[i].rp_seq[1][start_peak+1]) > 10 &&
-                (D.rdstats[i].rp_seq[1][end_peak] + D.rdstats[i].rp_seq[1][end_peak-1] + D.rdstats[i].rp_seq[1][end_peak+1]) > 10 && D.dps[2][i] < 0.15)
+            if ( (D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1]) > 10 &&
+                (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 10 && D.dps[2][i] < 0.15)
             {
                 G.rp_gt[i] = 2;
                 G.rp_cn[i] = 0;
             }
-            else if ( (D.rdstats[i].rp_seq[1][start_peak] + D.rdstats[i].rp_seq[1][start_peak-1] + D.rdstats[i].rp_seq[1][start_peak+1]) > 5 &&
-                 (D.rdstats[i].rp_seq[1][end_peak] + D.rdstats[i].rp_seq[1][end_peak-1] + D.rdstats[i].rp_seq[1][end_peak+1]) > 5 && D.dps[2][i] < 0.75)
+            else if ( (D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1]) > 5 &&
+                 (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 5 && D.dps[2][i] < 0.75)
             {
                 G.rp_gt[i] = 1;
                 G.rp_cn[i] = 1;
@@ -562,37 +583,43 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         G.read_flag = true;
     }
 
-    int start_clip = -1;
-    int end_clip = -1;
+    int l_clip = -1;
+    int r_clip = -1;
     
-   if (find_consensus_clip(D, 1, start_clip, end_clip) && (S.pos + start_clip - 100) < (S.end + end_clip - 300) && start_clip > 0 && start_clip<199 && end_clip>200 && end_clip<399)
-    {
-        G.clip_pos = S.pos + start_clip - 100;
-        G.clip_end = S.end + end_clip - 300;
-        for(int i=0; i<n_sample; ++i)
-        {
-            if ( (D.rdstats[i].rclips[start_clip] + D.rdstats[i].lclips[start_clip-1] + D.rdstats[i].lclips[start_clip+1]) >= 5&&
-                (D.rdstats[i].lclips[end_clip] + D.rdstats[i].lclips[end_clip-1] + D.rdstats[i].lclips[end_clip+1]) >=5 && D.dps[2][i] < 0.15 )
+   if (find_consensus_clip(D, pairstr, l_clip, r_clip))
+   {
+       int start_clip = r_clip;
+       int end_clip = l_clip;
+       
+       if ((S.pos + start_clip - 100) < (S.end + end_clip - 300) && start_clip > 0 && start_clip<199 && end_clip>200 && end_clip<399)
+       {
+            G.clip_pos = S.pos + start_clip - 100;
+            G.clip_end = S.end + end_clip - 300;
+            for(int i=0; i<n_sample; ++i)
             {
-                G.clip_gt[i] = 2;
-                G.clip_cn[i] = 0;
-            }
-            else if ((D.rdstats[i].rclips[start_clip] + D.rdstats[i].lclips[start_clip-1] + D.rdstats[i].lclips[start_clip+1]) >=2 &&
-                     (D.rdstats[i].lclips[end_clip] + D.rdstats[i].lclips[end_clip-1] + D.rdstats[i].lclips[end_clip+1]) >=2 && D.dps[2][i] < 0.75 )
-            {
-                G.clip_gt[i] = 1;
-                G.clip_cn[i] = 1;
-            }
-            else
-            {
-                if (D.dps[2][i]>0.85 && D.dps[2][i] <= 1.5)
+                if ( (D.rdstats[i].rclips[r_clip] + D.rdstats[i].rclips[r_clip-1] + D.rdstats[i].rclips[r_clip+1]) >= 5&&
+                    (D.rdstats[i].lclips[l_clip] + D.rdstats[i].lclips[l_clip-1] + D.rdstats[i].lclips[l_clip+1]) >=5 && D.dps[2][i] < 0.15 )
                 {
-                    G.clip_gt[i] = 0;
-                    G.clip_cn[i] = 2;
+                    G.clip_gt[i] = 2;
+                    G.clip_cn[i] = 0;
+                }
+                else if ((D.rdstats[i].rclips[r_clip] + D.rdstats[i].rclips[r_clip-1] + D.rdstats[i].rclips[r_clip+1]) >=2 &&
+                         (D.rdstats[i].lclips[l_clip] + D.rdstats[i].lclips[l_clip-1] + D.rdstats[i].lclips[l_clip+1]) >=2 && D.dps[2][i] < 0.75 )
+                {
+                    G.clip_gt[i] = 1;
+                    G.clip_cn[i] = 1;
+                }
+                else
+                {
+                    if (D.dps[2][i]>0.85 && D.dps[2][i] <= 1.5)
+                    {
+                        G.clip_gt[i] = 0;
+                        G.clip_cn[i] = 2;
+                    }
                 }
             }
-        }
-        G.clip_flag = true;
+           G.clip_flag = true;
+       }
     }
     
     // Depth-based clustering genotyping
@@ -736,7 +763,6 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     double hom_dp = 0;
     double ref_dp = 0;
 
-
     for(int i=0; i<n_sample; ++i)
     {
         int sum_cn = 0;
@@ -833,6 +859,80 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
 void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 {
+    int start_peak = -1;
+    int end_peak = -1;
+    int pairstr = 2;
+    
+    if (find_consensus_rp(D, pairstr, start_peak, end_peak) && ( start_peak >=5 && start_peak<50 ) && (end_peak>=150 && end_peak <= 190) )
+    {
+        G.rp_pos = S.pos + start_peak*10 - 500;
+        G.rp_end = S.end + end_peak*10 - 1500;
+        
+        for(int i=0; i<n_sample; ++i)
+        {
+            if ( (D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1]) > 10 &&
+                (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 10 && D.dps[2][i] < 0.15)
+            {
+                G.rp_gt[i] = 2;
+                G.rp_cn[i] = 0;
+            }
+            else if ( (D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1]) > 5 &&
+                     (D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1]) > 5 && D.dps[2][i] < 0.75)
+            {
+                G.rp_gt[i] = 1;
+                G.rp_cn[i] = 1;
+            }
+            else
+            {
+                if (D.dps[2][i]>0.85 && D.dps[2][i] <= 1.5)
+                {
+                    G.rp_gt[i] = 0;
+                    G.rp_cn[i] = 2;
+                }
+            }
+        }
+        G.read_flag = true;
+    }
+    
+    int l_clip = -1;
+    int r_clip = -1;
+    
+    if (find_consensus_clip(D, pairstr, l_clip, r_clip))
+    {
+        int start_clip = l_clip;
+        int end_clip = r_clip;
+        
+        if ((S.pos + start_clip - 100) < (S.end + end_clip - 300) && start_clip > 0 && start_clip<199 && end_clip>200 && end_clip<399)
+        {
+            G.clip_pos = S.pos + start_clip - 100;
+            G.clip_end = S.end + end_clip - 300;
+            for(int i=0; i<n_sample; ++i)
+            {
+                if ( (D.rdstats[i].rclips[r_clip] + D.rdstats[i].rclips[r_clip-1] + D.rdstats[i].rclips[r_clip+1]) >= 5&&
+                    (D.rdstats[i].lclips[l_clip] + D.rdstats[i].lclips[l_clip-1] + D.rdstats[i].lclips[l_clip+1]) >=5 && D.dps[2][i] > 1.85 )
+                {
+                    G.clip_gt[i] = 2;
+                    G.clip_cn[i] = round(D.dps[2][i] * 2.0);
+                }
+                else if ((D.rdstats[i].rclips[r_clip] + D.rdstats[i].rclips[r_clip-1] + D.rdstats[i].rclips[r_clip+1]) >=2 &&
+                         (D.rdstats[i].lclips[l_clip] + D.rdstats[i].lclips[l_clip-1] + D.rdstats[i].lclips[l_clip+1]) >=2 && D.dps[2][i] > 1.25 )
+                {
+                    G.clip_gt[i] = 1;
+                    G.clip_cn[i] = 3;
+                }
+                else
+                {
+                    if (D.dps[2][i]>0.85 && D.dps[2][i] <= 1.3)
+                    {
+                        G.clip_gt[i] = 0;
+                        G.clip_cn[i] = 2;
+                    }
+                }
+            }
+            G.clip_flag = true;
+        }
+    }
+    
     // Fit Gaussian mixture models with 1, 2, and 3 components, compare BIC
     std::vector< std::vector<double> > means = { {1.0}, {1.0, 1.5}, {1.0, 1.5, 2.0}, {1.0, 1.5, 2.0, 2.5}, {1.0, 1.5, 2.0, 2.5, 3.0}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0} };
 
@@ -990,60 +1090,45 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         }
     }
     */
- 
-    // Readpair genotyping
-    for(int i=0; i<n_sample; ++i)
-    {
-        if (G.dp_flag || G.dp2_flag || G.pd_flag)
-        {
-            if (D.rdstats[i].dup_support())
-            {
-                if (var_depth[i] > 1.3 && var_depth[i] <= 1.85) // TEMPORARY
-                {
-                    G.read_flag = true;
-                    G.cn[i] = 3;
-                }
-                else if (var_depth[i]>1.85)
-                {
-                    G.read_flag = true;
-                    G.cn[i] = round(var_depth[i] * 2.0);
-                }
-            }
-            else if (var_depth[i] > 0.8 && var_depth[i] <= 1.3 && G.cn[i] < 0)
-            {
-                G.cn[i] = 2.0;
-            }
-        }
-        else
-        {
-            if (!D.rdstats[i].dup_support() &&  var_depth[i] > 0.75 && var_depth[i] <= 1.3)
-            {
-                G.cn[i] = 2;
-            }
-            else if (D.rdstats[i].dup_support())
-            {
-                if (var_depth[i] >= 1.35)
-                {
-                    G.read_flag = true;
-                    G.cn[i] = round(var_depth[i] * 2.0);
-                }
-            }
-        }
-        if (G.cn[i] >=0)
-        {
-            G.ns += 1;
-        }
-    }
+  
 
     int max_cn = 2;
     int min_cn = 2;
     for(int i=0; i<n_sample; ++i)
     {
+        int sum_cn = 0;
+        int cnt_cn = 0;
+        // get consensus
+        
+        if (G.cn[i] >= 0)
+        {
+            sum_cn += G.cn[i];
+            cnt_cn ++;
+        }
+        if (G.rp_cn[i] >= 0)
+        {
+            sum_cn += G.rp_cn[i];
+            cnt_cn ++;
+        }
+        if (G.clip_cn[i] >= 0)
+        {
+            sum_cn += G.clip_cn[i];
+            cnt_cn ++;
+        }
+        if (cnt_cn>0)
+        {
+            G.cn[i] = round(sum_cn / (double)cnt_cn);
+        }
+        else
+        {
+            G.cn[i] = -1;
+        }
+        
         if (G.cn[i] > max_cn)
         {
             max_cn = G.cn[i];
         }
-        if (G.cn[i] < min_cn)
+        if (G.cn[i] >=0 && G.cn[i] < min_cn)
         {
             min_cn = G.cn[i];
         }
@@ -1058,20 +1143,25 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         G.b_biallelic = false;
     }
 
+    G.ns = 0;
+    G.ac = 0;
     for(int i=0; i<n_sample; ++i)
     {
         if (G.cn[i] == 2)
         {
             G.gt[i] = 0; // 0/0
+            G.ns++;
         }
         else if (G.cn[i] == 3)
         {
             G.gt[i] = 1; // 0/1
+            G.ns++;
             G.ac++;
         }
         else if (G.cn[i] >3)
         {
             G.gt[i] = 2; // 1/1
+            G.ns++;
             G.ac+=2;
         }
     }
