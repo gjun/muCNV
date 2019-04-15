@@ -59,7 +59,7 @@ int main_genotype(int argc, char** argv)
         TCLAP::ValueArg<string> argRegion("r", "region", "Genotype specific genomic region", false, "", "chr:startpos-endpos" );
         TCLAP::ValueArg<double> argChr("c","chr","Chromosome number (1-24) if pileup contains only a single chromosome",false,0,"integer (1-24)");
 
-        TCLAP::ValueArg<double> argPoverlap("p","pmax","Maximum overlap between depth clusters",false,0.2,"number(0-1.0)");
+        TCLAP::ValueArg<double> argPoverlap("p","pmax","Maximum overlap between depth clusters",false,0.1,"number(0-1.0)");
 
         TCLAP::SwitchArg switchFail("a", "all", "Report filter failed variants", cmd, false);
         TCLAP::SwitchArg switchDumpstat("d", "dumpstat", "dump detailed statistics of variants (warning: large output)", cmd, false);
@@ -255,54 +255,57 @@ int main_genotype(int argc, char** argv)
         if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]) && sv_gc > min_GC && sv_gc < max_GC)
         {
 
-            Genotyper gtyper;
-            G.reset();
-            D.reset();
-            
-            G.MAX_P_OVERLAP = max_p;
-            if (vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
+            if (vec_sv[i].svtype != INV || vec_sv[i].len > 100)
             {
-                G.MAX_P_OVERLAP *= 2.0;
-            }
-
-            reader.read_var_depth(i - vec_offset, D.dps[2]); // TODO: make read_var_depth to check whether first argument is in range
-
-            // TODO: This is arbitrary threshold to filter out centromere region, add more systematic way to filter out problematic regions, by checking within-sample variance of regions
-            if (average(D.dps[2]) < 150)
-            {
-                reader.read_pair_split(vec_sv[i], D.rdstats, gc, D.all_rps, D.all_lclips, D.all_rclips);
-                if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
+                Genotyper gtyper;
+                G.reset();
+                D.reset();
+                
+                G.MAX_P_OVERLAP = max_p;
+                if (vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
                 {
-                    // var_depth gets GC-correction here
-                    D.multi_dp = reader.read_depth100(vec_sv[i], D.dps, gc, b_dumpstat);
-                }
-                for(int j=0; j<n_sample; ++j)
-                {
-                    for(int k=0; k<(int)D.dps.size(); ++k)
-                    {
-                        D.dps[k][j] /= (double)stats[j].avg_dp;
-                    }
+                    G.MAX_P_OVERLAP *= 1.5;
                 }
 
-                gtyper.call(vec_sv[i], D, G, b_kmeans, b_mahalanobis, stats);
+                reader.read_var_depth(i - vec_offset, D.dps[2]); // TODO: make read_var_depth to check whether first argument is in range
 
-                G.info = "var" + std::to_string(i);
-
-                if (bFail || G.b_pass)
+                // TODO: This is arbitrary threshold to filter out centromere region, add more systematic way to filter out problematic regions, by checking within-sample variance of regions
+                if (average(D.dps[2]) < 150)
                 {
-                    out_vcf.write_sv(vec_sv[i], D, G);
+                    reader.read_pair_split(vec_sv[i], D.rdstats, gc, D.all_rps, D.all_lclips, D.all_rclips);
+                    if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
+                    {
+                        // var_depth gets GC-correction here
+                        D.multi_dp = reader.read_depth100(vec_sv[i], D.dps, gc, b_dumpstat);
+                    }
+                    for(int j=0; j<n_sample; ++j)
+                    {
+                        for(int k=0; k<(int)D.dps.size(); ++k)
+                        {
+                            D.dps[k][j] /= (double)stats[j].avg_dp;
+                        }
+                    }
 
-                    if (vec_sv[i].svtype == DEL)
+                    gtyper.call(vec_sv[i], D, G, b_kmeans, b_mahalanobis, stats);
+
+                    G.info = "var" + std::to_string(i);
+
+                    if (bFail || G.b_pass)
                     {
-                        del_count ++;
-                    }
-                    else if (vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV )
-                    {
-                        dup_count ++;
-                    }
-                    else if (vec_sv[i].svtype == INV)
-                    {
-                        inv_count ++;
+                        out_vcf.write_sv(vec_sv[i], D, G);
+
+                        if (vec_sv[i].svtype == DEL)
+                        {
+                            del_count ++;
+                        }
+                        else if (vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV )
+                        {
+                            dup_count ++;
+                        }
+                        else if (vec_sv[i].svtype == INV)
+                        {
+                            inv_count ++;
+                        }
                     }
                 }
             }

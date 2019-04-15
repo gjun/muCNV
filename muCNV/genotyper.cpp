@@ -1079,7 +1079,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
     double callrate = (double)G.ns / n_sample;
 
-    if ( ( ((G.dp_flag || G.dp2_flag) && (G.pd_flag || G.read_flag)) || G.read_flag ) &&  callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
+    if ( ( ( (G.dp_flag || G.dp2_flag) && (G.clip_flag || G.read_flag)) || (G.clip_flag && G.read_flag)) &&  callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
         G.b_pass = true;
 
     // Excessive heterozygosity (basically all-het case)
@@ -1398,6 +1398,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 
     double callrate = (double)G.ns / n_sample;
 
-    if ( (G.dp_flag || G.dp2_flag || G.read_flag ) && callrate>0.5 && G.ac>0 && G.ac<(G.ns*2))
+    if ( ( ( (G.dp_flag || G.dp2_flag) && (G.clip_flag || G.read_flag)) || (G.clip_flag && G.read_flag)) && callrate>0.5 && G.ac>0 && G.ac<(G.ns*2))
         G.b_pass = true;
 }
