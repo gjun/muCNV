@@ -998,17 +998,13 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         int sum_cn = 0;
         int cnt_cn = 0;
         // get consensus
-        if (G.cn[i] >= 0)
-        {
-            sum_cn += G.cn[i];
-            cnt_cn ++;
-        }
-        if (G.rp_cn[i] >= 0)
+
+        if (G.rp_cn[i] < 2)
         {
             sum_cn += G.rp_cn[i];
             cnt_cn ++;
         }
-        if (G.clip_cn[i] >= 0)
+        if (G.clip_cn[i] < 2)
         {
             sum_cn += G.clip_cn[i];
             cnt_cn ++;
@@ -1018,12 +1014,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             G.cn[i] = round(sum_cn / (double)cnt_cn);
             G.gt[i] = 2-G.cn[i];
         }
-        else
-        {
-            G.cn[i] = -1;
-            G.gt[i] = -1;
-        }
-
+        
         
         if (G.gt[i] >=0)
         {
@@ -1152,7 +1143,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                     G.clip_gt[i] = 1;
                     G.clip_cn[i] = 3;
                     G.clip_flag = true;
-
                 }
                 else
                 {
@@ -1333,11 +1323,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         int cnt_cn = 0;
         // get consensus
         
-        if (G.cn[i] >= 0)
-        {
-            sum_cn += G.cn[i];
-            cnt_cn ++;
-        }
         if (G.rp_cn[i] >= 0)
         {
             sum_cn += G.rp_cn[i];
@@ -1351,10 +1336,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         if (cnt_cn>0)
         {
             G.cn[i] = round(sum_cn / (double)cnt_cn);
-        }
-        else
-        {
-            G.cn[i] = -1;
         }
         
         if (G.cn[i] > max_cn)
