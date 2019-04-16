@@ -215,6 +215,7 @@ int main_gcidx(int argc, char** argv)
             chr = "chrX";
         else if (i==24)
             chr = "chrY";
+		int nn_cnt = 0;
         
         F.seek(chr, 1);
         uint8_t* gc_array = (uint8_t *) calloc(n_interval[i], sizeof(uint8_t));
@@ -230,7 +231,12 @@ int main_gcidx(int argc, char** argv)
             F.read(interval_dist, S);
             
             gc_array_raw[j] = gc(S);
+
+			// if (gc_array_raw[j] < 0) std::cerr << "GC -1 chr " << i << " pos " << pos << " str " << S << std::endl;
+			if (gc_array_raw[j] < 0) nn_cnt ++;
         }
+		std::cerr << "Chr " << i << " has " << nn_cnt << "intervals with NNs" << std::endl;
+		
         
         for(int j=2; j<n_interval[i]-2; ++j)
         {
