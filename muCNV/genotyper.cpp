@@ -944,7 +944,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         // If clustered, filter false positive variants
         for (int i=0;i<n_sample; ++i)
         {
-            if (G.cn[i] != 2 && (abs(D.dps[0][i] - G.dp_pre_mean) > G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > G.dp_post_std || abs(var_depth[i] - D.prepost_dp[i]) < 0.3))
+          if (G.cn[i] != 2 && (abs(D.dps[0][i] - G.dp_pre_mean) > 2.0*G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > 2.0* G.dp_post_std || abs(var_depth[i] - D.prepost_dp[i]) < 0.3))
             {
                 G.cn[i] = -1;
                 G.rp_cn[i] = -1;
@@ -1249,7 +1249,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         // If clustered, filter false positive variants
         for (int i=0;i<n_sample; ++i)
         {
-            if (G.cn[i] != 2 && (abs(D.dps[0][i] - G.dp_pre_mean) > G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > G.dp_post_std || abs(var_depth[i] - D.prepost_dp[i]) < 0.3))
+            if (G.cn[i] != 2 && (abs(D.dps[0][i] - G.dp_pre_mean) > 2.0*G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > 2.0* G.dp_post_std || abs(var_depth[i] - D.prepost_dp[i]) < 0.3))
             {
                 G.cn[i] = -1;
                 G.rp_cn[i] = -1;
