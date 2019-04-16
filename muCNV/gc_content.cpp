@@ -180,8 +180,14 @@ double GcContent::get_gc_content(int c, int startpos, int endpos)
 
     for(int i=round(startpos/(double)interval_width)-1; i <= round(endpos/(double)interval_width)-1; ++i)
     {
-        gc_sum += (double)((gc_array[c][i]) / (double)num_bin) + 0.005 ;
-        gc_cnt ++;
+		if (gc_array[c][i] <= num_bin)
+		{
+			gc_sum += (double)((gc_array[c][i]) / (double)num_bin) + 0.005 ;
+			gc_cnt ++;
+		}
     }
-    return ((double)gc_sum/gc_cnt);
+	if (gc_cnt>0)
+		return ((double)gc_sum/gc_cnt);
+	else
+		return 0;
 }
