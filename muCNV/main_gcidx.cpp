@@ -217,9 +217,6 @@ int main_gcidx(int argc, char** argv)
             chr = "chrY";
         
         F.seek(chr, 1);
-        double g_buf[4] = {-1.0};
-        int cnt = 0;
-
         uint8_t* gc_array = (uint8_t *) calloc(n_interval[i], sizeof(uint8_t));
         
         std::cerr << "Current position: " << outFile.tellp() << std::endl;
@@ -250,7 +247,7 @@ int main_gcidx(int argc, char** argv)
             }
             if (n_gc>0)
             {
-                gc_array[j] = round(sum_gc/(double)n_gc);
+                gc_array[j] = round(100*sum_gc/(double)n_gc);
             }
             else
             {
