@@ -939,14 +939,16 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
     // Let's use peripheral depth to identify 'false positve' only
     // Genotyping based on 'variation' of depth
-    if (G.b_pre && G.b_post && (G.dp_flag || G.dp2_flag))
+    if (G.b_pre && G.b_post)
     {
         // If clustered, filter false positive variants
         for (int i=0;i<n_sample; ++i)
         {
-            if (G.cn[i] != 2 && (abs(D.dps[0][i] - G.dp_pre_mean) > G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > G.dp_post_std))
+            if (G.cn[i] != 2 && (abs(D.dps[0][i] - G.dp_pre_mean) > G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > G.dp_post_std || abs(var_depth[i] - D.prepost_dp[i]) < 0.3))
             {
                 G.cn[i] = -1;
+                G.rp_cn[i] = -1;
+                G.clip_cn[i] = -1;
             }
             else if (D.prepost_dp[i] > 0 && D.prepost_dp[i] - var_depth[i] > 0.3)
             {
@@ -1247,9 +1249,11 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         // If clustered, filter false positive variants
         for (int i=0;i<n_sample; ++i)
         {
-            if (G.cn[i] != 2 && (abs(D.dps[0][i] - G.dp_pre_mean) > G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > G.dp_post_std))
+            if (G.cn[i] != 2 && (abs(D.dps[0][i] - G.dp_pre_mean) > G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > G.dp_post_std || abs(var_depth[i] - D.prepost_dp[i]) < 0.3))
             {
                 G.cn[i] = -1;
+                G.rp_cn[i] = -1;
+                G.clip_cn[i] = -1;
             }
             else
             {
