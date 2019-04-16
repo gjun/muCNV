@@ -225,53 +225,33 @@ int main_gcidx(int argc, char** argv)
         std::cerr << "Current position: " << outFile.tellp() << std::endl;
         
         //        for(size_t pos=1; pos<F.chrlen(chr); pos+=200)
+        std::vector<double> gc_array_raw (n_interval[i], 0);
+        
         for(int j=0, pos=1; j<n_interval[i]; ++j, pos+=interval_dist)
         {
             std::string S;
             F.read(interval_dist, S);
-            int idx = j%4;
-            g_buf[idx] = gc(S);
-
-            if (j>2)
+            
+            gc_array_raw[j] = gc(S);
+        }
+        
+        for(int j=2; j<n_interval[i]-2; ++j)
+        {
+            gc_array[j] =0;
+            double sum_gc = 0;
+            int n_gc = 0;
+            for(int k=j-2; k<j+2; ++k)
             {
-                double sum_gc = 0;
-                double n_gc = 0;
-                int curr = cnt+2;
-                for(int k=curr; k<curr+2; ++k)
+                if (gc_array_raw[k]>=0)
                 {
-                    if (g_buf[k%4]>=0)
-                    {
-                        sum_gc += g_buf[k%4];
-                        n_gc +=1;
-                    }
-                }
-                for(int k=curr+2; k<curr+4; ++k)
-                {
-                    if (g_buf[k%4]>=0)
-                    {
-                        sum_gc += g_buf[k%4]*0.5;
-                        n_gc += 0.5;
-                    }
-                }
-                
-                if (n_gc>0)
-                {
-                    // gc_array[2] = 0-400bp average, center at 200, gc_array[3] = 100-500bp average, center at 300 ...
-                    gc_array[j-2] = (uint8_t) floor(sum_gc / n_gc * (double)num_bin);
-                    if (gc_array[j-2] == 100)
-                        gc_array[j-2] = 99;
-                    
-                    if (gc_array[j-2] < 0 || gc_array[j-2] > 99)
-                        std::cerr << " gc_array error : " << gc_array[j-2] << std::endl;
-                    
-                    gc_dist[gc_array[j-2]] += 1;
-                }
-                else
-                {
-                    gc_array[j-1] = 255;
+                    sum_gc += gc_array_raw[k];
+                    n_gc ++;
                 }
             }
-            //outFile.write(reinterpret_cast <char *>(&gcbin), sizeof(uint8_t));
+            if (n_gc>0)
+            {
+                gc_array[j] = round(sum_gc/(double)n_gc);
+            }
         }
         gc_array[0] = gc_array[1] = gc_array[2];
         gc_array[n_interval[i]-1] = gc_array[n_interval[i]-2] = gc_array[n_interval[i]-3];
