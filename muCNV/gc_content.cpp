@@ -165,23 +165,29 @@ double GcContent::get_gc_content(int c, int startpos, int endpos)
 {
     if (c < 1 || c > num_chr)
     {
-        return -1;
+        return 0.0;
     }
     
     // TODO: check this logic
     
-    if (round(startpos/(double)interval_width) == round(endpos/(double)interval_width))
+    if (round(startpos/(double)interval_dist) == round(endpos/(double)interval_dist))
     {
-        return ((double)gc_array[c][(int)round(startpos/(double)interval_width)-1]/ (double)num_bin + 0.005);
+        return ((double)gc_array[c][(int)round(startpos/(double)interval_dist)-1]/ (double)num_bin + 0.005);
     }
 
     double gc_sum = 0 ;
     int gc_cnt = 0;
 
-    for(int i=round(startpos/(double)interval_width)-1; i <= round(endpos/(double)interval_width)-1; ++i)
+    for(int i=round(startpos/(double)interval_dist)-1; i <= round(endpos/(double)interval_dist)-1; ++i)
     {
-        gc_sum += (double)((gc_array[c][i]) / (double)num_bin) + 0.005 ;
-        gc_cnt ++;
+        if (gc_array[c][i] >=0 && gc_array[c][i]<num_bin)
+        {
+            gc_sum += (double)((gc_array[c][i]) / (double)num_bin) + 0.005 ;
+            gc_cnt ++;
+        }
     }
-    return ((double)gc_sum/gc_cnt);
+    if (gc_cnt>0)
+        return ((double)gc_sum/gc_cnt);
+    else
+        return 0.0;
 }

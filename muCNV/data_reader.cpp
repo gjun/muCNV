@@ -220,6 +220,87 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
     return n_sample_total;
 }
 
+void DataReader::adjust_gc_factor(GcContent& gc, std::vector<SampleStat>& stats, int chrnum)
+{
+    int sample_idx = 0;
+    for(int i=0; i<n_pileup; ++i)
+    {
+        uint64_t start_byte = chr_bytepos_dp100[i][chrnum];
+        
+        int N = gc.n_interval[chrnum];
+        
+        int n_interval_by_sample = N * n_samples[i];
+        
+        uint16_t *D = new uint16_t[n_interval_by_sample];
+        
+        pileups[i].seekg(start_byte);
+        pileups[i].read_depth(D, n_interval_by_sample);
+        
+        int64_t gc_sum[n_samples[i]][gc.num_bin];
+        int64_t gc_cnt[n_samples[i]][gc.num_bin];
+        double gc_avg[n_samples[i]][gc.num_bin];
+
+        for(int j=0; j<n_samples[i]; ++j)
+        {
+            for(int k=0; k<gc.num_bin; ++k)
+            {
+                gc_sum[j][k] = 0;
+                gc_cnt[j][k] = 0;
+            }
+        }
+        for(int k=0; k<N; ++k)
+        {
+            double gcval = gc.get_gc_content(chrnum, k* gc.interval_dist, (k+1)*gc. interval_dist);
+            for(int j=0; j<n_samples[i]; ++j)
+            {
+                int idx = (int) round(gcval*100);
+                gc_sum[j][ idx ] += D[k*n_samples[i] + j];
+                gc_cnt[j][ idx ] ++;
+            }
+        }
+        
+        for(int j=0; j<n_samples[i]; ++j)
+        {
+            for(int k=2; k<gc.num_bin-2; ++k)
+            {
+                if (gc_cnt[j][k] + (gc_cnt[j][k-1] + gc_cnt[j][k+1])/2.0 + (gc_cnt[j][k-2]+gc_cnt[j][k+2])/4.0 > 100)
+                {
+                    gc_avg[j][k] = ((double)gc_sum[j][k] + 0.5*((double)gc_sum[j][k-1] + gc_sum[j][k+1]) + 0.25 * ((double)gc_sum[j][k-2] + gc_sum[j][k+2])) / (gc_cnt[j][k] +0.5*(gc_cnt[j][k-1]+gc_cnt[j][k+1]) + 0.25*(gc_cnt[j][k-2] + gc_cnt[j][k+2])) ;
+                }
+                else
+                {
+                    gc_avg[j][k] = -1;
+                }
+            }
+            gc_avg[j][0] = gc_avg[j][1] = gc_avg[j][2];
+            gc_avg[j][gc.num_bin-1] = gc_avg[j][gc.num_bin-2] = gc_avg[j][gc.num_bin-3];
+        }
+        
+        for(int j=0; j<n_samples[i]; ++j)
+        {
+            for(int k=0; k<gc.num_bin; ++k)
+            {
+                if (gc_avg[j][k]>0)
+                {
+                    gc_factors[sample_idx + j ][k] = stats[sample_idx+j].avg_dp / gc_avg[j][k];
+                }
+                else
+                {
+                    gc_factors[sample_idx + j][k] = 0;
+                }
+            }
+        }
+        sample_idx += n_samples[i];
+    }
+    for(int i=0; i<n_sample_total; ++i)
+    {
+        for(int j=0; j<gc.num_bin; ++j)
+        {
+            fprintf(stderr, "sample %d, gc bin %d, gc factor %f\n", i, j, gc_factors[i][j]);
+        }
+    }
+}
+
 bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &dvec_dp, GcContent& gc, bool b_dumpstat)
 {
     // this information is not useful when sv length is short

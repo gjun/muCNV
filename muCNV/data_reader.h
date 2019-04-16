@@ -94,6 +94,8 @@ public:
 
     // Initialize all multi-pileups, load number of samples & sapmle ids & gc factors
     int load(std::vector<string> &, std::vector<SampleStat>&, GcContent &, int );
+    void adjust_gc_factor(GcContent& ,std::vector<SampleStat>&, int);
+
     bool read_depth100(sv&, std::vector< std::vector<double> > &, GcContent& gc, bool);
     void read_var_depth(int, std::vector<double>&);
     void read_pair_split(sv&, std::vector<ReadStat> &, GcContent &, std::vector< std::vector<int> >&, std::vector<int> &, std::vector<int> &);
