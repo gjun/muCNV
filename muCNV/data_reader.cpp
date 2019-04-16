@@ -276,6 +276,13 @@ void DataReader::adjust_gc_factor(GcContent& gc, std::vector<SampleStat>& stats,
             gc_avg[j][gc.num_bin-1] = gc_avg[j][gc.num_bin-2] = gc_avg[j][gc.num_bin-3];
         }
         
+        for(int k=0;k<n_samples[i]; ++k)
+        {
+            for(int j=0; j<gc.num_bin; ++j)
+            {
+                fprintf(stderr, "sample %d, gc bin %d, avg dp %f\n", sample_idx + k, j, gc_avg[k][j]);
+            }
+        }
         for(int j=0; j<n_samples[i]; ++j)
         {
             for(int k=0; k<gc.num_bin; ++k)
