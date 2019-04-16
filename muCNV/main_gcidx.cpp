@@ -256,7 +256,7 @@ int main_gcidx(int argc, char** argv)
             {
                 gc_array[j] = 255;
             }
-            if (gc_array != 255)
+            if (gc_array[j] != 255)
                 gc_dist[gc_array[j]]++;
         }
         gc_array[0] = gc_array[1] = gc_array[2];
