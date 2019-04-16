@@ -250,7 +250,7 @@ void DataReader::adjust_gc_factor(GcContent& gc, std::vector<SampleStat>& stats,
         }
         for(int k=0; k<N; ++k)
         {
-            double gcval = gc.get_gc_content(chrnum, k* gc.interval_dist, (k+1)*gc. interval_dist);
+            double gcval = gc.get_gc_content(chrnum, k* gc.interval_dist, (k+1)*gc.interval_dist);
             for(int j=0; j<n_samples[i]; ++j)
             {
                 int idx = (int) round(gcval*100);
