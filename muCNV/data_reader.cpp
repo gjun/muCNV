@@ -269,7 +269,7 @@ void DataReader::adjust_gc_factor(GcContent& gc, std::vector<SampleStat>& stats,
                 }
                 else
                 {
-                    gc_avg[j][k] = -1;
+                    gc_avg[j][k] = 0;
                 }
             }
             gc_avg[j][0] = gc_avg[j][1] = gc_avg[j][2];
@@ -285,6 +285,8 @@ void DataReader::adjust_gc_factor(GcContent& gc, std::vector<SampleStat>& stats,
         }
         for(int j=0; j<n_samples[i]; ++j)
         {
+            fprintf(stderr, "sample %d, stat avg dp %f\n", sample_idx + j, stats[sample_idx+j].avg_dp);
+
             for(int k=0; k<gc.num_bin; ++k)
             {
                 if (gc_avg[j][k]>0)
