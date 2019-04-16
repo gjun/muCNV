@@ -254,7 +254,7 @@ void DataReader::adjust_gc_factor(GcContent& gc, std::vector<SampleStat>& stats,
             for(int j=0; j<n_samples[i]; ++j)
             {
                 int idx = (int) round(gcval*100);
-                gc_sum[j][ idx ] += D[k*n_samples[i] + j];
+                gc_sum[j][ idx ] += D[k*n_samples[i] + j]/32;
                 gc_cnt[j][ idx ] ++;
             }
         }
