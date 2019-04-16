@@ -186,7 +186,7 @@ void GaussianMixture::EM(std::vector<double>& x)
 	int n_sample = (int) x.size();
 	int n_iter = 15;
 
-	int p_count = 10;
+	int p_count = 2;
 
 	double p_val[n_comp];
 
@@ -809,7 +809,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 	int n_iter = 15;
 
 	// pseudo-counts
-	int p_count= 10;
+	int p_count= 2;
 
 	double p_val[n_comp][2];
 
@@ -926,9 +926,12 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
             sum_e_yy[m] += ey * ey;
 
             // Wishart prior : S = [0.01 0; 0 0.01]
-            Comps[m].Cov[0] = (sum_e_xx[m]  + 0.01 * p_count) / sum_pr[m];
-            Comps[m].Cov[1] = Comps[m].Cov[2] = sum_e_xy[m] / sum_pr[m];
-            Comps[m].Cov[3] = (sum_e_yy[m] + 0.01 * p_count) / sum_pr[m];
+            if (sum_pr[m]>1e-10)
+            {
+                Comps[m].Cov[0] = (sum_e_xx[m]  + 0.01 * p_count) / sum_pr[m];
+                Comps[m].Cov[1] = Comps[m].Cov[2] = sum_e_xy[m] / sum_pr[m];
+                Comps[m].Cov[3] = (sum_e_yy[m] + 0.01 * p_count) / sum_pr[m];
+            }
             Comps[m].update();
 
             Comps[m].Alpha = sum_pr[m] / (n_sample + n_comp*p_count);
