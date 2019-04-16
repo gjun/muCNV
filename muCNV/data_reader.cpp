@@ -222,6 +222,7 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
 
 void DataReader::adjust_gc_factor(GcContent& gc, std::vector<SampleStat>& stats, int chrnum)
 {
+    /*
     int sample_idx = 0;
     for(int i=0; i<n_pileup; ++i)
     {
@@ -300,7 +301,7 @@ void DataReader::adjust_gc_factor(GcContent& gc, std::vector<SampleStat>& stats,
             }
         }
         sample_idx += n_samples[i];
-    }
+    } */
     for(int i=0; i<n_sample_total; ++i)
     {
         for(int j=0; j<gc.num_bin; ++j)
@@ -886,6 +887,9 @@ void DataReader::read_var_depth(int var_i, std::vector<double> &var_dp)
 // GC-correction of n-th sample at chr:pos
 double DataReader::correct_gc(GcContent& gc, int n, double depth, int chr, int pos)
 {
+    // TEMPORARY!!!
+    return depth;
+    
     int p = pos / gc.interval_dist;
     //    std::cerr << "pos " << pos << " p " << p << std::endl;
     int bin = gc.gc_array[chr][p];
