@@ -65,7 +65,10 @@ void SvGeno::reset()
     dp2_flag = false;
     pd_flag = false;
     read_flag = false;
+	rp_geno_flag = false;
     clip_flag = false;
+	clip_geno_flag = false;
+	
     
     dp_pre_mean = 1.0;
     dp_pre_std = 0.1;
@@ -294,11 +297,11 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, bool bk, bool bm, std::vector<
 
     get_prepost_stat(D, G);
 
-    if (S.svtype == DEL)
-    {
+    if (S.svtype == DEL && G.b_pre && G.b_post)
+	{
         call_deletion(S, D, G);
     }
-    else if (S.svtype == DUP || S.svtype == CNV)
+    else if ( (S.svtype == DUP || S.svtype == CNV) && G.b_pre && G.b_post)
     {
         call_cnv(S, D, G);
     }
@@ -800,33 +803,37 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         G.rp_pos = S.pos + start_peak*10 - 500;
         G.rp_end = S.end + end_peak*10 - 1500;
 
-        for(int i=0; i<n_sample; ++i)
-        {
-            G.start_rps[i]= D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1];
-            
-            G.end_rps[i] = D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1];
-        
-            if ( G.start_rps[i] > 5 && G.end_rps[i] > 5 && D.dps[2][i] < 0.15)
-            {
-                G.rp_gt[i] = 2;
-                G.rp_cn[i] = 0;
-                G.read_flag = true;
-            }
-            else if ( G.start_rps[i] > 3 && G.end_rps[i] > 3 && D.dps[2][i] < 0.75)
-            {
-                G.rp_gt[i] = 1;
-                G.rp_cn[i] = 1;
-                G.read_flag = true;
-            }
-            else
-            {
-                if (D.dps[2][i]>0.85 && D.dps[2][i] <= 1.5)
-                {
-                    G.rp_gt[i] = 0;
-                    G.rp_cn[i] = 2;
-                }
-            }
-        }
+		if (G.rp_pos < G.rp_end)
+		{
+			G.read_flag = true;
+			for(int i=0; i<n_sample; ++i)
+			{
+				G.start_rps[i]= D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1];
+				
+				G.end_rps[i] = D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1];
+			
+				if ( G.start_rps[i] > 5 && G.end_rps[i] > 5 && D.dps[2][i] < 0.15)
+				{
+					G.rp_gt[i] = 2;
+					G.rp_cn[i] = 0;
+					G.rp_geno_flag = true;
+				}
+				else if ( G.start_rps[i] > 3 && G.end_rps[i] > 3 && D.dps[2][i] < 0.75)
+				{
+					G.rp_gt[i] = 1;
+					G.rp_cn[i] = 1;
+					G.rp_geno_flag = true;
+				}
+				else
+				{
+					if (D.dps[2][i]>0.85 && D.dps[2][i] <= 1.5)
+					{
+						G.rp_gt[i] = 0;
+						G.rp_cn[i] = 2;
+					}
+				}
+			}
+		}
     }
 
     int l_clip = -1;
@@ -841,6 +848,8 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         {
             G.clip_pos = S.pos + start_clip - 100;
             G.clip_end = S.end + end_clip - 300;
+			G.clip_flag = true;
+
             for(int i=0; i<n_sample; ++i)
             {
                 G.start_clips[i] = D.rdstats[i].rclips[r_clip] + D.rdstats[i].rclips[r_clip-1] + D.rdstats[i].rclips[r_clip+1];
@@ -850,12 +859,12 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
                 {
                     G.clip_gt[i] = 2;
                     G.clip_cn[i] = 0;
-                    G.clip_flag = true;}
+                    G.clip_geno_flag = true;}
                 else if ( G.start_clips[i] >= 2 && G.end_clips[i] >=2 && D.dps[2][i] < 0.75 )
                 {
                     G.clip_gt[i] = 1;
                     G.clip_cn[i] = 1;
-                    G.clip_flag = true;
+                    G.clip_geno_flag = true;
                 }
                 else
                 {
@@ -869,112 +878,97 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         }
     }
     
-    // Depth-based clustering genotyping
-    double best_dp_idx = 2;
-    select_model(G.gmix, means, D.dps[best_dp_idx], G.MAX_P_OVERLAP);
+	double best_dp_idx = 2;
+	std::vector<double> &var_depth = D.dps[best_dp_idx];
 
-    std::vector<double> &var_depth = D.dps[best_dp_idx];
+	if (G.b_pre && G.b_post)
+	{
+		// Depth-based clustering genotyping
+		select_model(G.gmix, means, D.dps[best_dp_idx], G.MAX_P_OVERLAP);
 
-    // depth clustering
-    if (G.gmix.n_comp > 1 && G.gmix.ordered())
-    {
-        G.dp_flag = true;
-        // success
-        // assign dp-genotypes
-        for(int i=0; i<n_sample; ++i)
-        {
-            int cn = G.gmix.assign_copynumber(var_depth[i]);
-            
-            if (cn == 2)
-            {
-                G.cn[i] = 2;
-                G.gt[i] = 0; // 0/0
-            }
-            else if (cn == 1)
-            {
-                G.cn[i] = 1;
-                G.gt[i] = 1; // 0/1
-            }
-            else if (cn == 0)
-            {
-                G.cn[i] = 0;
-                G.gt[i] = 2; // 1/1
-            }
-        }
-    }
 
-    int dp2_idx = 3;
-    if (D.multi_dp) //dp2 has more than 2 vectors
-    {
-        // dp100 genotyping
-        select_model(G.gmix2, means, D.dps[dp2_idx], D.dps[dp2_idx+1], G.MAX_P_OVERLAP);
+		// depth clustering
+		if (G.gmix.n_comp > 1 && G.gmix.ordered())
+		{
+			G.dp_flag = true;
+			// success
+			// assign dp-genotypes
+			for(int i=0; i<n_sample; ++i)
+			{
+				int cn = G.gmix.assign_copynumber(var_depth[i]);
+				
+				if (cn == 2)
+				{
+					G.cn[i] = 2;
+					G.gt[i] = 0; // 0/0
+				}
+				else if (cn == 1)
+				{
+					G.cn[i] = 1;
+					G.gt[i] = 1; // 0/1
+				}
+				else if (cn == 0)
+				{
+					G.cn[i] = 0;
+					G.gt[i] = 2; // 1/1
+				}
+			}
+		}
 
-        // 2-d genotyping
-        if (G.gmix2.n_comp>1 && G.gmix2.ordered())
-        {
-            G.dp2_flag = true;
-            //assign dp2 genotypes
+		int dp2_idx = 3;
+		if (D.multi_dp) //dp2 has more than 2 vectors
+		{
+			// dp100 genotyping
+			select_model(G.gmix2, means, D.dps[dp2_idx], D.dps[dp2_idx+1], G.MAX_P_OVERLAP);
 
-            for(int i=0; i<n_sample; ++i)
-            {
-                int cn = G.gmix2.assign_copynumber(D.dps[dp2_idx][i], D.dps[dp2_idx+1][i]);
-                if (cn == 2)
-                {
-                    G.cn[i] = 2;
-                    G.gt[i] = 0; // 0/0
-                }
-                else if (cn == 1)
-                {
-                    G.cn[i] = 1;
-                    G.gt[i] = 1; // 0/1
-                }
-                else if (cn == 0)
-                {
-                    G.cn[i] = 0;
-                    G.gt[i] = 2; // 1/1
-                }
-            }
-        }
-    }
+			// 2-d genotyping
+			if (G.gmix2.n_comp>1 && G.gmix2.ordered())
+			{
+				G.dp2_flag = true;
+				//assign dp2 genotypes
+
+				for(int i=0; i<n_sample; ++i)
+				{
+					int cn = G.gmix2.assign_copynumber(D.dps[dp2_idx][i], D.dps[dp2_idx+1][i]);
+					if (cn == 2)
+					{
+						G.cn[i] = 2;
+						G.gt[i] = 0; // 0/0
+					}
+					else if (cn == 1)
+					{
+						G.cn[i] = 1;
+						G.gt[i] = 1; // 0/1
+					}
+					else if (cn == 0)
+					{
+						G.cn[i] = 0;
+						G.gt[i] = 2; // 1/1
+					}
+				}
+			}
+		}
+	} // G.b_pre && G.b_post
 
     // Let's use peripheral depth to identify 'false positve' only
-    // Genotyping based on 'variation' of depth
     if (G.b_pre && G.b_post)
     {
-        // If clustered, filter false positive variants
         for (int i=0;i<n_sample; ++i)
         {
-          if (G.cn[i] != 2 && (abs(D.dps[0][i] - G.dp_pre_mean) > 2.0*G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > 2.0* G.dp_post_std || abs(var_depth[i] - D.prepost_dp[i]) < 0.3))
+          	if (abs(D.dps[0][i] - G.dp_pre_mean) > 2.0*G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > 2.0* G.dp_post_std || abs(var_depth[i] - D.dps[1][i]) < 0.3 || abs(var_depth[i] - D.dps[0][i]) < 0.3) 
             {
+				G.gt[i] = -1;
                 G.cn[i] = -1;
                 G.rp_cn[i] = -1;
                 G.clip_cn[i] = -1;
             }
-            else if (D.prepost_dp[i] > 0 && D.prepost_dp[i] - var_depth[i] > 0.3)
-            {
-                if (var_depth[i] >=0.15 && var_depth[i] < 0.65) // if there's a dip and depth is low
-                {
-                    G.pd_flag = true;
-                    G.cn[i] = 1;
-                    G.gt[i] = 1;
-                }
-                else if (var_depth[i] < 0.15) // if there's a dip and depth is very low
-                {
-                    G.pd_flag = true;
-                    G.cn[i] = 0;
-                    G.gt[i] = 2;
-                }
-                else // otherwise, missing
-                {
-                    G.cn[i] = -1;
-                    G.gt[i] = -1;
-                }
-            }
-            else // otherwise, missing
-            {
-                G.cn[i] = -1;
-                G.gt[i] = -1;
-            }
+
+			// fill in missing values
+			if (G.cn[i] < 0 && D.prepost_dp[i] > 0 && abs(var_depth[i] - D.prepost_dp[i]) < 0.15)
+			{
+				G.cn[i] = 2;
+				G.gt[i] = 0;
+			}
         }
     }
  
@@ -992,12 +986,12 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         int cnt_cn = 0;
         // get consensus
 
-        if (G.read_flag && G.rp_cn[i] > 0)
+        if (G.rp_geno_flag && G.rp_cn[i] >= 0)
         {
             sum_cn += G.rp_cn[i];
             cnt_cn ++;
         }
-        if (G.clip_flag && G.clip_cn[i] > 0)
+        if (G.clip_geno_flag && G.clip_cn[i] >= 0)
         {
             sum_cn += G.clip_cn[i];
             cnt_cn ++;
@@ -1061,7 +1055,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
     double callrate = (double)G.ns / n_sample;
 
-    if ( ( ( (G.dp_flag  || G.dp2_flag) && (G.pd_flag || G.clip_flag || G.read_flag)) || (G.clip_flag || G.read_flag)) &&  callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
+    if ( (((G.dp_flag  || G.dp2_flag) && G.clip_flag && G.read_flag) || G.clip_geno_flag || G.rp_geno_flag ) &&  callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
         G.b_pass = true;
 
     // Excessive heterozygosity (basically all-het case)
@@ -1080,30 +1074,34 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         G.rp_pos = S.pos + start_peak*10 - 500;
         G.rp_end = S.end + end_peak*10 - 1500;
         
-        for(int i=0; i<n_sample; ++i)
-        {
-            G.start_rps[i] = D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1];
-            G.end_rps[i] = D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1];
-            
-            if (G.start_rps[i] > 5 && G.end_rps[i] > 5 && D.dps[2][i] > 1.85)
-            {
-                G.rp_cn[i] = round(D.dps[2][i]*2.0);
-                G.read_flag = true;
-            }
-            else if (G.start_rps[i] > 3 && G.end_rps[i] > 3 && D.dps[2][i] > 1.3 && D.dps[2][i]<1.8 )
-            {
-                G.rp_cn[i] = 3;
-                G.read_flag = true;
-            }
-            else
-            {
-                if (D.dps[2][i]>0.85 && D.dps[2][i] <= 1.3)
-                {
-                    G.rp_gt[i] = 0;
-                    G.rp_cn[i] = 2;
-                }
-            }
-        }
+		if (G.rp_pos < G.rp_end)
+		{
+			G.read_flag = true;
+			for(int i=0; i<n_sample; ++i)
+			{
+				G.start_rps[i] = D.rdstats[i].rp_seq[pairstr][start_peak] + D.rdstats[i].rp_seq[pairstr][start_peak-1] + D.rdstats[i].rp_seq[pairstr][start_peak+1];
+				G.end_rps[i] = D.rdstats[i].rp_seq[pairstr][end_peak] + D.rdstats[i].rp_seq[pairstr][end_peak-1] + D.rdstats[i].rp_seq[pairstr][end_peak+1];
+				
+				if (G.start_rps[i] > 5 && G.end_rps[i] > 5 && D.dps[2][i] > 1.85)
+				{
+					G.rp_cn[i] = round(D.dps[2][i]*2.0);
+					G.rp_geno_flag = true;
+				}
+				else if (G.start_rps[i] > 3 && G.end_rps[i] > 3 && D.dps[2][i] > 1.3 && D.dps[2][i]<1.8 )
+				{
+					G.rp_cn[i] = 3;
+					G.rp_geno_flag = true;
+				}
+				else
+				{
+					if (D.dps[2][i]>0.85 && D.dps[2][i] <= 1.3)
+					{
+						G.rp_gt[i] = 0;
+						G.rp_cn[i] = 2;
+					}
+				}
+			}
+		}
     }
     
     int l_clip = -1;
@@ -1118,6 +1116,8 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         {
             G.clip_pos = S.pos + start_clip - 100;
             G.clip_end = S.end + end_clip - 300;
+			G.clip_flag = true;
+
             for(int i=0; i<n_sample; ++i)
             {
                 G.start_clips[i] = D.rdstats[i].lclips[l_clip] + D.rdstats[i].lclips[l_clip-1] + D.rdstats[i].lclips[l_clip+1];
@@ -1126,14 +1126,14 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                 {
                     G.clip_gt[i] = 2;
                     G.clip_cn[i] = round(D.dps[2][i] * 2.0);
-                    G.clip_flag = true;
+                    G.clip_geno_flag = true;
 
                 }
                 else if (G.start_clips[i] >=2 && G.end_clips[i] >=2 && D.dps[2][i] < 1.8 && D.dps[2][i] >1.3 )
                 {
                     G.clip_gt[i] = 1;
                     G.clip_cn[i] = 3;
-                    G.clip_flag = true;
+                    G.clip_geno_flag = true;
                 }
                 else
                 {
@@ -1156,130 +1156,111 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     int dp_ns = 0;
     int dp2_ns = 0;
 
-    double best_dp_idx = 2;
+	double best_dp_idx = 2;
+	std::vector<double> &var_depth = D.dps[best_dp_idx];
+	if (G.b_pre && G.b_post)
+	{
 
-    select_model(G.gmix, means, D.dps[best_dp_idx], G.MAX_P_OVERLAP);
+		select_model(G.gmix, means, D.dps[best_dp_idx], G.MAX_P_OVERLAP);
 
-    std::vector<double> &var_depth = D.dps[best_dp_idx];
 
-    if (G.gmix.n_comp > 1 && G.gmix.r_ordered() )
-    {
-        // success
-        G.dp_flag = true;
+		if (G.gmix.n_comp > 1 && G.gmix.r_ordered() )
+		{
+			// success
+			G.dp_flag = true;
 
-        for(int i=0; i<(int)n_sample; ++i)
-        {
-            /*
-            dp_cn[i] = G.gmix.assign_copynumber(var_depth[i]);
-            if (dp_cn[i] >= 2)
-            {
-                dp_ns++;
-            }
-            */
+			for(int i=0; i<(int)n_sample; ++i)
+			{
+				/*
+				dp_cn[i] = G.gmix.assign_copynumber(var_depth[i]);
+				if (dp_cn[i] >= 2)
+				{
+					dp_ns++;
+				}
+				*/
 
-            // TODO: arbitrary
-            if (var_depth[i] > 0.7 && var_depth[i] < 1.25)
-            {
-                dp_cn[i] = 2;
-                dp_ns++;
-            }
-            else if (var_depth[i] > 1.4 &&  var_depth[i] < 1.8)
-            {
-                dp_cn[i] = 3;
-                dp_ns ++;
-            }
-            else if (var_depth[i] >= 1.85)
-            {
-                dp_cn[i] = round(var_depth[i] * 2.0);
-                dp_ns++;
-            }
-        }
-    }
-    if (D.multi_dp)
-    {
-        // DP100 genotyping
-        int dp2_idx = 3;
+				// TODO: arbitrary
+				if (var_depth[i] > 0.7 && var_depth[i] < 1.25)
+				{
+					dp_cn[i] = 2;
+					dp_ns++;
+				}
+				else if (var_depth[i] > 1.4 &&  var_depth[i] < 1.8)
+				{
+					dp_cn[i] = 3;
+					dp_ns ++;
+				}
+				else if (var_depth[i] >= 1.85)
+				{
+					dp_cn[i] = round(var_depth[i] * 2.0);
+					dp_ns++;
+				}
+			}
+		}
+		if (D.multi_dp)
+		{
+			// DP100 genotyping
+			int dp2_idx = 3;
 
-        select_model(G.gmix2, means, D.dps[dp2_idx], D.dps[dp2_idx+1], G.MAX_P_OVERLAP);
+			select_model(G.gmix2, means, D.dps[dp2_idx], D.dps[dp2_idx+1], G.MAX_P_OVERLAP);
 
-        // 2-D genotyping
-        if (G.gmix2.n_comp>1 && G.gmix2.r_ordered() )
-        {
-            G.dp2_flag = true;
-            //TODO : dp2 geotyping seems unstable, maybe make this to post-processing for variants with pd_flag && rd_flag
-            for(int i=0; i<(int)n_sample; ++i)
-            {
-//                dp2_cn[i] = G.gmix2.assign_copynumber(D.dps[dp2_idx][i], D.dps[dp2_idx+1][i]);
+			// 2-D genotyping
+			if (G.gmix2.n_comp>1 && G.gmix2.r_ordered() )
+			{
+				G.dp2_flag = true;
+				for(int i=0; i<(int)n_sample; ++i)
+				{
+	//                dp2_cn[i] = G.gmix2.assign_copynumber(D.dps[dp2_idx][i], D.dps[dp2_idx+1][i]);
 
-                double dp1 = D.dps[dp2_idx][i];
-                double dp2 = D.dps[dp2_idx+1][i];
-                
-                if (dp1 > 0.8 && dp1 < 1.25 && dp2>0.8 && dp2<1.25)
-                {
-                    dp2_cn[i] = 2;
-                    dp2_ns++;
-                }
-                else if (dp1>1.4 && dp2 > 1.4 &&  dp2 < 1.8 && dp2<1.8)
-                {
-                    dp2_cn[i] = 3;
-                    dp2_ns ++;
-                }
-                else if (dp1 > 1.85 && dp2 > 1.85)
-                {
-                    dp2_cn[i] = round(var_depth[i] * 2.0);
-                    dp2_ns++;
-                }
-            }
-        }
-    }
+					double dp1 = D.dps[dp2_idx][i];
+					double dp2 = D.dps[dp2_idx+1][i];
+					
+					if (dp1 > 0.8 && dp1 < 1.25 && dp2>0.8 && dp2<1.25)
+					{
+						dp2_cn[i] = 2;
+						dp2_ns++;
+					}
+					else if (dp1>1.4 && dp2 > 1.4 &&  dp2 < 1.8 && dp2<1.8)
+					{
+						dp2_cn[i] = 3;
+						dp2_ns ++;
+					}
+					else if (dp1 > 1.85 && dp2 > 1.85)
+					{
+						dp2_cn[i] = round(var_depth[i] * 2.0);
+						dp2_ns++;
+					}
+				}
+			}
+		}
 
-    for(int i=0; i<n_sample; ++i)
-    {
-        if (dp_cn[i] <0 && dp2_cn[i]>=0)
-            G.cn[i] = dp2_cn[i];
-        else if (dp_cn[i] >= 0 && dp2_cn[i] < 0)
-            G.cn[i] = dp_cn[i];
-        else
-            G.cn[i] = round((dp_cn[i] + dp2_cn[i])/2.0);
-    }
-   get_prepost_stat(D, G);
+		for(int i=0; i<n_sample; ++i)
+		{
+			if (dp_cn[i] <0 && dp2_cn[i]>=0)
+				G.cn[i] = dp2_cn[i];
+			else if (dp_cn[i] >= 0 && dp2_cn[i] < 0)
+				G.cn[i] = dp_cn[i];
+			else
+				G.cn[i] = round((dp_cn[i] + dp2_cn[i])/2.0);
+		}
+	} // G.b_pre && G.b_post
 
     if (G.b_pre && G.b_post)
     {
         // If clustered, filter false positive variants
         for (int i=0;i<n_sample; ++i)
         {
-            if (G.cn[i] != 2 && (abs(D.dps[0][i] - G.dp_pre_mean) > 2.0*G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > 2.0* G.dp_post_std || abs(var_depth[i] - D.prepost_dp[i]) < 0.3))
+          	if (abs(D.dps[0][i] - G.dp_pre_mean) > 2.0*G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > 2.0* G.dp_post_std || abs(var_depth[i] - D.dps[1][i]) < 0.3 || abs(var_depth[i] - D.dps[0][i]) < 0.3)
             {
                 G.cn[i] = -1;
                 G.rp_cn[i] = -1;
                 G.clip_cn[i] = -1;
             }
-            else
-            {
-                if (D.prepost_dp[i] > 0 && var_depth[i] - D.prepost_dp[i] > 0.3)
-                {
-                    // TODO: arbitrary
-                    if (var_depth[i] >= 1.4 && var_depth[i] <= 1.85)
-                    {
-                        G.pd_flag = true;
-                        G.cn[i] = 3;
-                    }
-                    else if (var_depth[i] > 1.85)
-                    {
-                        G.pd_flag = true;
-                        G.cn[i] = round(var_depth[i] * 2.0);
-                    }
-                    else
-                    {
-                        G.cn[i] = -1;
-                    }
-                }
-                else
-                {
-                    G.cn[i] = -1;
-                }
-            }
+   			if (G.cn[i] < 0 && D.prepost_dp[i] > 0 && abs(var_depth[i] - D.prepost_dp[i]) < 0.15)
+			{
+				G.cn[i] = 2;
+				G.gt[i] = 0;
+			}
         }
     }
 
@@ -1305,12 +1286,12 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         int cnt_cn = 0;
         // get consensus
         
-        if (G.rp_cn[i] >= 0)
+        if (G.rp_geno_flag && G.rp_cn[i] >= 0)
         {
             sum_cn += G.rp_cn[i];
             cnt_cn ++;
         }
-        if (G.clip_cn[i] >= 0)
+        if (G.clip_geno_flag && G.clip_cn[i] >= 0)
         {
             sum_cn += G.clip_cn[i];
             cnt_cn ++;
@@ -1364,6 +1345,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 
     double callrate = (double)G.ns / n_sample;
     
-    if ( ( (G.dp_flag && G.dp2_flag && (G.pd_flag || G.clip_flag || G.read_flag)) || (G.clip_flag && G.read_flag)) &&  callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
+	if ( (((G.dp_flag || G.dp2_flag) && G.clip_flag && G.read_flag) || G.clip_geno_flag || G.rp_geno_flag) && callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
         G.b_pass = true;
+
 }

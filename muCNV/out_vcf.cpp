@@ -120,10 +120,18 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 	{
         fprintf(fp, ";READ=(%d,%d)", G.rp_pos, G.rp_end);
 	}
+	if (G.rp_geno_flag)
+	{
+        fprintf(fp, ";RPGENO");
+	}
     if (G.clip_flag)
     {
         fprintf(fp, ";CLIP=(%d,%d)", G.clip_pos, G.clip_end);
     }
+	if (G.clip_geno_flag)
+	{
+        fprintf(fp, ";SCGENO");
+	}
 	if (G.b_biallelic)
 	{
 		fprintf(fp, ";Biallelic");

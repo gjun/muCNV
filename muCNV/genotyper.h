@@ -25,7 +25,9 @@ public:
     bool dp2_flag;
     bool pd_flag;
     bool read_flag;
+	bool rp_geno_flag;
     bool clip_flag;
+	bool clip_geno_flag;
 	double MAX_P_OVERLAP;
     
     std::string info;
