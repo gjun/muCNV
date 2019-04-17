@@ -164,8 +164,10 @@ int main_genotype(int argc, char** argv)
     std::cerr << n_sample << " samples identified from pileup files" << std::endl;
 
     // TEMPORARY!
+	/*
     if (chr>0)
         reader.adjust_gc_factor(gc, stats, chr);
+		*/
 /*
     printf("SAMPLE\tAVG_DP\tSTD_DP\tAVG_ISIZE\tSTD_ISIZE\n");
     for(int i=0 ;i<n_sample; ++i)

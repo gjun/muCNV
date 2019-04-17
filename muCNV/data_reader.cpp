@@ -888,7 +888,7 @@ void DataReader::read_var_depth(int var_i, std::vector<double> &var_dp)
 double DataReader::correct_gc(GcContent& gc, int n, double depth, int chr, int pos)
 {
     // TEMPORARY!!!
-    return depth;
+//    return depth;
     
     int p = pos / gc.interval_dist;
     //    std::cerr << "pos " << pos << " p " << p << std::endl;
