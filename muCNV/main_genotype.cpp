@@ -231,10 +231,13 @@ int main_genotype(int argc, char** argv)
         {
             vec_offset++;
         }
-        if (n_start == 0)
-            n_start += vec_offset;
-        if (n_end > vec_offset + n_vars[chr - 1])
-            n_end = vec_offset + n_vars[chr] - 1;
+		if (range == "")
+		{
+			if (n_start == 0)
+				n_start += vec_offset;
+			if (n_end > vec_offset + n_vars[chr] - 1)
+				n_end = vec_offset + n_vars[chr] - 1;
+		}
         std::cerr << n_vars[chr] - 1 << " variants from " << n_start << ", ";
         vec_sv[n_start].print(stderr);
         std::cerr << " to " << n_end << ", ";
