@@ -325,7 +325,7 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
     int end_peak = -1;
     int pairstr = 3;
     
-    if (find_consensus_rp(D, pairstr, start_peak, end_peak) && ( start_peak >=5 && start_peak<50 ) && (end_peak>=150 && end_peak <= 190) )
+    if (find_consensus_rp(S, D, pairstr, start_peak, end_peak) && ( start_peak >=5 && start_peak<50 ) && (end_peak>=150 && end_peak <= 190) )
     {
         G.rp_pos = S.pos + start_peak*10 - 500;
         G.rp_end = S.end + end_peak*10 - 1500;
@@ -356,7 +356,7 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
     int r_start = -1;
     int r_end = -1;
     
-    if (find_consensus_clip_inv(D, l_start, l_end, r_start, r_end))
+    if (find_consensus_clip_inv(S, D, l_start, l_end, r_start, r_end))
     {
         int start_clip = -1;
         int end_clip = -1;
@@ -453,7 +453,7 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
 
         double callrate = (double)G.ns / n_sample;
 
-        if (callrate>0.5 && G.ac > 0 && G.ac < (G.ns*2))
+        if (callrate>0.3 && G.ac > 0 && G.ac < (G.ns*2))
             G.b_pass = true;
     }
 }
@@ -472,33 +472,46 @@ int Genotyper::find_peak(std::vector<int> &seq, int start, int end)
         peak_vec[i] = (seq[i] + (double)(seq[i-1]) * 0.5 + (double)(seq[i+1]) * 0.5) / 2.0;
     }
     double stdev =sqrt( (double)(sumsq)/ (double)(end-start));
+//	fprintf(stderr, "peak stdev: %f\n", stdev);
     
     max_peak = 0;
     for(int i=start+1; i<end-1; ++i)
     {
-        if (peak_vec[i] >= peak_vec[i-1] && peak_vec[i] >= peak_vec[i+1] && peak_vec[i] >= stdev && peak_vec[i] > max_peak)
+        if (peak_vec[i] >= peak_vec[i-1] && peak_vec[i] >= peak_vec[i+1] && peak_vec[i] >= stdev)
         {
-            max_peak = peak_vec[i];
-            peak_idx = i;
+		//	fprintf(stderr, "peak at %d, %d, %f\n", i, seq[i], peak_vec[i]);
+			if (peak_vec[i] > max_peak)
+			{
+				max_peak = peak_vec[i];
+				peak_idx = i;
+			}
         }
     }
     return peak_idx;
 }
 
-bool Genotyper::find_consensus_rp(SvData &D, int pairstr, int &start_peak, int &end_peak)
+bool Genotyper::find_consensus_rp(sv &S, SvData &D, int pairstr, int &start_peak, int &end_peak)
 {
     std::vector<int> &seq = D.all_rps[pairstr];
     int N = (int) seq.size();
+	int N_first = (int)N/2;
+	int N_second = (int)N/2;
+
+	if (S.len < 1000)
+	{
+		N_first = 50 + (int)(S.len/20);
+		N_second = 150 - (int)(S.len/20);
+	}
 
     if (pairstr == 3)
     {
-        start_peak = find_peak(D.all_rps[0], 0, N/2); // FF
-        end_peak = find_peak(D.all_rps[3], N/2, N); // RR
+        start_peak = find_peak(D.all_rps[0], 0, N_first); // FF
+        end_peak = find_peak(D.all_rps[3], N_second, N); // RR
     }
     else
     {
-        start_peak = find_peak(seq, 0, N/2);
-        end_peak = find_peak(seq, N/2, N);
+        start_peak = find_peak(seq, 0, N_first);
+        end_peak = find_peak(seq, N_second, N);
     }
     
     if (start_peak>=0 && seq[start_peak]>=5 && end_peak>=0 && seq[end_peak]>=5)
@@ -523,14 +536,13 @@ bool Genotyper::find_consensus_rp(SvData &D, int pairstr, int &start_peak, int &
                 // Supporting read pairs in pairstr in first 100
                 int peak1 = -1;
                 
-                
                 if (pairstr == 3)
-                    peak1 = find_peak(D.rdstats[i].rp_seq[0], 0, 100);
+                    peak1 = find_peak(D.rdstats[i].rp_seq[0], 0, N_first);
                 else
-                    peak1 = find_peak(D.rdstats[i].rp_seq[pairstr], 0, 100);
+                    peak1 = find_peak(D.rdstats[i].rp_seq[pairstr], 0, N_first);
 
                 // Supporting read pairs in pairstr, in last 100
-                int peak2 = find_peak(D.rdstats[i].rp_seq[pairstr], 100, 200);
+                int peak2 = find_peak(D.rdstats[i].rp_seq[pairstr], N_second, 200);
                 
                 if (peak1>=0 && D.rdstats[i].rp_seq[pairstr][peak1]>2 && peak2>=0 && D.rdstats[i].rp_seq[pairstr][peak2]>2)
                 {
@@ -567,17 +579,33 @@ bool Genotyper::find_consensus_rp(SvData &D, int pairstr, int &start_peak, int &
     return false;
 }
 
-bool Genotyper::find_consensus_clip(SvData &D, int pairstr, int &l_peak, int &r_peak)
+bool Genotyper::find_consensus_clip(sv &S, SvData &D, int pairstr, int &l_peak, int &r_peak)
 {
+	int N_buf = 100;
+	
+	if (S.len < 200) 
+	{
+		N_buf = (int)S.len/2;
+	//	fprintf(stderr, "first %d\tsecond %d\n", N_first, N_second);
+	}
+
+/*
+	fprintf(stderr, "RCLIP\tLCLIP\n");
+	for(int i=0;i<D.all_rclips.size(); ++i)
+	{
+		fprintf(stderr, "%d: %d\t%d\n", i, D.all_rclips[i], D.all_lclips[i]);
+	}
+	*/
+
     switch(pairstr)
     {
         case 1:
-            r_peak = find_peak(D.all_rclips, 0, 200);
-            l_peak = find_peak(D.all_lclips, 200, 400);
+            r_peak = find_peak(D.all_rclips, 100 - N_buf, 100 + N_buf);
+            l_peak = find_peak(D.all_lclips, 300 - N_buf, 300 + N_buf);
             break;
         case 2:
-            l_peak = find_peak(D.all_lclips, 0, 200);
-            r_peak = find_peak(D.all_rclips, 200, 400);
+            l_peak = find_peak(D.all_lclips, 100 - N_buf, 100 + N_buf);
+            r_peak = find_peak(D.all_rclips, 300 - N_buf, 300 + N_buf);
             break;
     }
     
@@ -618,12 +646,12 @@ bool Genotyper::find_consensus_clip(SvData &D, int pairstr, int &l_peak, int &r_
                 switch(pairstr)
                 {
                     case 1:
-                        r_peak = find_peak(D.rdstats[i].rclips, 0, 200);
-                        l_peak = find_peak(D.rdstats[i].lclips, 200, 400);
+                        r_peak = find_peak(D.rdstats[i].rclips, 100 - N_buf, 100 + N_buf);
+                        l_peak = find_peak(D.rdstats[i].lclips, 300 - N_buf, 300 + N_buf);
                         break;
                     case 2:
-                        l_peak = find_peak(D.rdstats[i].lclips, 0, 200);
-                        r_peak = find_peak(D.rdstats[i].rclips, 200, 400);
+                        l_peak = find_peak(D.rdstats[i].lclips, 100 - N_buf, 100 + N_buf);
+                        r_peak = find_peak(D.rdstats[i].rclips, 300 - N_buf, 300 + N_buf);
                         break;
                     case 0:
                     case 3:
@@ -664,13 +692,20 @@ bool Genotyper::find_consensus_clip(SvData &D, int pairstr, int &l_peak, int &r_
 }
 
 
-bool Genotyper::find_consensus_clip_inv(SvData &D, int &l_start, int &l_end, int &r_start, int &r_end)
+bool Genotyper::find_consensus_clip_inv(sv &S, SvData &D, int &l_start, int &l_end, int &r_start, int &r_end)
 {
 
-    l_start = find_peak(D.all_lclips, 0, 200);
-    l_end = find_peak(D.all_lclips, 200, 400);
-    r_start = find_peak(D.all_rclips, 0, 200);
-    r_end = find_peak(D.all_rclips, 200, 400);
+	int N_buf = 100;
+
+	if (S.len < 200)
+	{
+		N_buf = (int) S.len / 2;
+	}
+
+    l_start = find_peak(D.all_lclips, 100 - N_buf, 100 + N_buf);
+    l_end = find_peak(D.all_lclips, 300 - N_buf, 300 + N_buf);
+    r_start = find_peak(D.all_rclips, 100 - N_buf, 100 + N_buf);
+    r_end = find_peak(D.all_rclips, 300 - N_buf, 300 + N_buf);
     
     if ( ( (l_start>=0 && D.all_lclips[l_start]>=5) || (r_start >=0 && D.all_rclips[r_start] >= 5) ||
            (r_start >= 0 && l_start >= 0 && (D.all_lclips[l_start] + D.all_rclips[r_start] >=5 ) ) )  &&
@@ -704,10 +739,10 @@ bool Genotyper::find_consensus_clip_inv(SvData &D, int &l_start, int &l_end, int
         {
             if (D.rdstats[i].n_lclip_start + D.rdstats[i].n_rclip_start >= 3 && D.rdstats[i].n_rclip_end + D.rdstats[i].n_lclip_end >= 2)
             {
-                l_start = find_peak(D.rdstats[i].lclips, 0, 200); // lstart
-                l_end = find_peak(D.rdstats[i].lclips, 200, 400); // lend
-                r_start = find_peak(D.rdstats[i].rclips, 0, 200); //rstart
-                r_end  = find_peak(D.rdstats[i].rclips, 200, 400); //rend
+                l_start = find_peak(D.rdstats[i].lclips, 100 - N_buf, 100 + N_buf); // lstart
+                l_end = find_peak(D.rdstats[i].lclips, 300 - N_buf, 300 + N_buf); // lend
+                r_start = find_peak(D.rdstats[i].rclips, 100 - N_buf, 100 + N_buf); //rstart
+                r_end  = find_peak(D.rdstats[i].rclips, 300 - N_buf, 300 + N_buf); //rend
 
                 if (l_start >=0 && D.rdstats[i].lclips[l_start] >=3)
                 {
@@ -798,7 +833,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     int end_peak = -1;
     int pairstr = 1;
     
-   if (find_consensus_rp(D, pairstr, start_peak, end_peak) )
+   if (find_consensus_rp(S, D, pairstr, start_peak, end_peak) )
     {
         G.rp_pos = S.pos + start_peak*10 - 500;
         G.rp_end = S.end + end_peak*10 - 1500;
@@ -839,7 +874,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     int l_clip = -1;
     int r_clip = -1;
     
-    if (find_consensus_clip(D, pairstr, l_clip, r_clip))
+    if (find_consensus_clip(S, D, pairstr, l_clip, r_clip))
     {
         int start_clip = r_clip;
         int end_clip = l_clip;
@@ -868,7 +903,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
                 }
                 else
                 {
-                    if (D.dps[2][i]>0.85 && D.dps[2][i] <= 1.5)
+                    if ( D.dps[2][i] >0.8 && D.dps[2][i] <= 1.5)
                     {
                         G.clip_gt[i] = 0;
                         G.clip_cn[i] = 2;
@@ -1026,6 +1061,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         }
     }
 
+/*
     if (n_ref == 0)
     {
         G.b_pass = false;
@@ -1052,10 +1088,12 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         G.b_pass = false;
         return;
     }
+	*/
 
     double callrate = (double)G.ns / n_sample;
 
-    if ( (((G.dp_flag  || G.dp2_flag) && G.clip_flag && G.read_flag) || G.clip_geno_flag || G.rp_geno_flag ) &&  callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
+//	fprintf(stderr, " callrate %f , ns %d, ac %d\n", callrate, G.ns, G.ac); 
+    if ( (((G.dp_flag  || G.dp2_flag) && G.clip_flag && G.read_flag) || G.clip_geno_flag || G.rp_geno_flag ) &&  callrate>0.3 && G.ac > 0 && G.ac < G.ns*2)
         G.b_pass = true;
 
     // Excessive heterozygosity (basically all-het case)
@@ -1069,7 +1107,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     int end_peak = -1;
     int pairstr = 2;
     
-    if (find_consensus_rp(D, pairstr, start_peak, end_peak)  )
+    if (find_consensus_rp(S, D, pairstr, start_peak, end_peak)  )
     {
         G.rp_pos = S.pos + start_peak*10 - 500;
         G.rp_end = S.end + end_peak*10 - 1500;
@@ -1092,13 +1130,10 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 					G.rp_cn[i] = 3;
 					G.rp_geno_flag = true;
 				}
-				else
+				else if (G.start_rps[i] < 3 && G.end_rps[i] < 3 && D.dps[2][i]>0.85 && D.dps[2][i] <= 1.3)
 				{
-					if (D.dps[2][i]>0.85 && D.dps[2][i] <= 1.3)
-					{
-						G.rp_gt[i] = 0;
-						G.rp_cn[i] = 2;
-					}
+					G.rp_gt[i] = 0;
+					G.rp_cn[i] = 2;
 				}
 			}
 		}
@@ -1107,7 +1142,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     int l_clip = -1;
     int r_clip = -1;
     
-    if (find_consensus_clip(D, pairstr, l_clip, r_clip))
+    if (find_consensus_clip(S, D, pairstr, l_clip, r_clip))
     {
         int start_clip = l_clip;
         int end_clip = r_clip;
@@ -1127,7 +1162,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                     G.clip_gt[i] = 2;
                     G.clip_cn[i] = round(D.dps[2][i] * 2.0);
                     G.clip_geno_flag = true;
-
                 }
                 else if (G.start_clips[i] >=2 && G.end_clips[i] >=2 && D.dps[2][i] < 1.8 && D.dps[2][i] >1.3 )
                 {
@@ -1135,14 +1169,11 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
                     G.clip_cn[i] = 3;
                     G.clip_geno_flag = true;
                 }
-                else
-                {
-                    if (D.dps[2][i]>0.85 && D.dps[2][i] <= 1.3)
-                    {
-                        G.clip_gt[i] = 0;
-                        G.clip_cn[i] = 2;
-                    }
-                }
+                else if (G.start_clips[i] < 2 && G.end_clips[i] < 2 && D.dps[2][i]>0.8 && D.dps[2][i] <= 1.3)
+				{
+					G.clip_gt[i] = 0;
+					G.clip_cn[i] = 2;
+				}
             }
         }
     }
@@ -1345,7 +1376,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 
     double callrate = (double)G.ns / n_sample;
     
-	if ( (((G.dp_flag || G.dp2_flag) && G.clip_flag && G.read_flag) || G.clip_geno_flag || G.rp_geno_flag) && callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
+	if ( (((G.dp_flag || G.dp2_flag) && G.clip_flag && G.read_flag) || G.clip_geno_flag || G.rp_geno_flag) && callrate>0.3 && G.ac > 0 && G.ac < G.ns*2)
         G.b_pass = true;
 
 }

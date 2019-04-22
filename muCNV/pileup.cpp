@@ -61,8 +61,11 @@ int Pileup::write_readpair(readpair &rp)
 {
     int ret = 0;
     //fs.write(reinterpret_cast<char*>(&(rp.chrnum)), sizeof(int8_t));
-    int16_t selfpos = (int16_t) (rp.selfpos % 10000);
-    int16_t matepos = (int16_t) (rp.matepos % 10000);
+	// temoprary, to match previous ones
+    int16_t selfpos = (int16_t)rp.selfpos % 10000;
+    int16_t matepos = (int16_t)rp.matepos % 10000;
+//   int16_t selfpos = (int16_t) (rp.selfpos % 10000);
+//    int16_t matepos = (int16_t) (rp.matepos % 10000);
     
     fs.write(reinterpret_cast<char*>(&(selfpos)), sizeof(int16_t));
     fs.write(reinterpret_cast<char*>(&(matepos)), sizeof(int16_t));
@@ -78,8 +81,10 @@ int Pileup::write_readpair(readpair &rp)
 int Pileup::write_splitread(splitread& sp)
 {
     int ret = 0;
-    int16_t pos = (int16_t) (sp.pos % 10000);
-    int16_t sapos = (int16_t) (sp.sapos % 10000);
+    int16_t pos = (int16_t)sp.pos % 10000;
+    int16_t sapos = (int16_t)sp.sapos % 10000;
+   // int16_t pos = (int16_t) (sp.pos % 10000);
+    //int16_t sapos = (int16_t) (sp.sapos % 10000);
     
  //   fs.write(reinterpret_cast<char*>(&(sp.chrnum)), sizeof(int8_t));
     fs.write(reinterpret_cast<char*>(&(pos)), sizeof(int16_t));

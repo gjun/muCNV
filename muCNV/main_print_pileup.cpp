@@ -96,9 +96,29 @@ int main_print_pileup(int argc, char** argv)
     int sample_idx = -1;
     
     pup.open(pileup_name, std::ios::in | std::ios::binary);
+
+	if (!pup.good())
+	{
+		fprintf(stderr, "Cannot open %s \n", pileup_name.c_str());
+		exit(1);
+	}
+
+
     var_file.open(varfile_name, std::ios::in | std::ios::binary);
+
+	if (!var_file.good())
+	{
+		fprintf(stderr, "Cannot open %s \n", varfile_name.c_str());
+		exit(1);
+	}
     idx_file.open(idxfile_name, std::ios::in | std::ios::binary);
     
+	if (!idx_file.good())
+	{
+		fprintf(stderr, "Cannot open %s \n", idxfile_name.c_str());
+		exit(1);
+	}
+
     uint64_t curr_idx = 0;
     
     pup.read_int32(n_sample);

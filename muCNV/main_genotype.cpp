@@ -293,7 +293,7 @@ int main_genotype(int argc, char** argv)
 
                     gtyper.call(vec_sv[i], D, G, b_kmeans, b_mahalanobis, stats);
 
-                    G.info = "var" + std::to_string(i);
+                    G.info = "VarID=" + std::to_string(i);
 
                     if (bFail || G.b_pass)
                     {

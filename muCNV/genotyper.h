@@ -104,9 +104,9 @@ public:
 
     void get_prepost_stat(SvData &, SvGeno &);
     int find_peak(std::vector<int> &, int, int);
-    bool find_consensus_rp(SvData &, int, int &, int &);
-    bool find_consensus_clip(SvData &, int, int &, int &);
-    bool find_consensus_clip_inv(SvData &, int &, int &, int&, int&);
+    bool find_consensus_rp(sv &, SvData &, int, int &, int &);
+    bool find_consensus_clip(sv &, SvData &, int, int &, int &);
+    bool find_consensus_clip_inv(sv &, SvData &, int &, int &, int&, int&);
 
     void call( sv&,  SvData&, SvGeno &, bool, bool, std::vector<SampleStat> &);
     void call_deletion( sv &,  SvData &, SvGeno &);

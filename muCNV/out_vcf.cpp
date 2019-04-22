@@ -29,10 +29,16 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs)
 	fprintf(fp,"##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">\n");
 	fprintf(fp,"##INFO=<ID=CALLRATE,Number=1,Type=Float,Description=\"Call rate\">\n");
 	fprintf(fp,"##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the variant described in this record\">\n");
+	fprintf(fp,"##INFO=<ID=SVLEN,Number=1,Type=Integer,Description=\"Length of the structural variant\">\n");
 	fprintf(fp,"##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">\n");
 	fprintf(fp,"##INFO=<ID=DP,Number=1,Type=String,Description=\"1-D Depth clustering\">\n");
 	fprintf(fp,"##INFO=<ID=DP2,Number=1,Type=String,Description=\"2-D Depth clustering\">\n");
-	fprintf(fp,"##INFO=<ID=READ,Number=0,Type=String,Description=\"Read pair based genotyping\">\n");
+	fprintf(fp,"##INFO=<ID=READ,Number=1,Type=String,Description=\"Read pair locations around SV\">\n");
+	fprintf(fp,"##INFO=<ID=CLIP,Number=1,Type=String,Description=\"Soft clip locations around SV\">\n");
+	fprintf(fp,"##INFO=<ID=RPGENO, Number=0,Type=String,Description=\"Genotyped by read pair\">\n");
+	fprintf(fp,"##INFO=<ID=SCGENO, Number=0,Type=String,Description=\"Genotyped by soft clip\">\n");
+	fprintf(fp,"##INFO=<ID=PRE, Number=0,Type=String,Description=\"Read depth before SV looks normal\">\n");
+	fprintf(fp,"##INFO=<ID=POST, Number=0,Type=String,Description=\"Read depth after SV looks normal\">\n");
 	fprintf(fp,"##INFO=<ID=Biallelic,Number=0,Type=String,Description=\"Biallelic variant\">\n");
 	fprintf(fp,"##ALT=<ID=DEL,Description=\"Deletion\">\n");
 	fprintf(fp,"##ALT=<ID=DUP,Description=\"Duplication\">\n");
