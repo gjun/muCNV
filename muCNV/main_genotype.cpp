@@ -281,18 +281,18 @@ int main_genotype(int argc, char** argv)
                 if (average(D.dps[2]) < 150)
                 {
                     reader.read_pair_split(vec_sv[i], D.rdstats, gc, D.all_rps, D.all_lclips, D.all_rclips);
-                    if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
+                    //if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
                     {
                         // var_depth gets GC-correction here
                         D.multi_dp = reader.read_depth100(vec_sv[i], D.dps, gc, b_dumpstat);
-                    }
-                    for(int j=0; j<n_sample; ++j)
-                    {
-                        for(int k=0; k<(int)D.dps.size(); ++k)
-                        {
-                            D.dps[k][j] /= (double)stats[j].avg_dp;
-                        }
-                    }
+						for(int j=0; j<n_sample; ++j)
+						{
+							for(int k=0; k<(int)D.dps.size(); ++k)
+							{
+								D.dps[k][j] /= (double)stats[j].avg_dp;
+							}
+						}
+					}
 
                     gtyper.call(vec_sv[i], D, G, b_kmeans, b_mahalanobis, stats);
 

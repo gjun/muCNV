@@ -422,8 +422,14 @@ bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &
         return false;
     }
     else if (n_dp <= 10)
+	{
         b_medfilt = false; // no median filtering
+	}
     
+	if (curr_sv.svtype == INV)
+	{
+		return false;
+	}
     // deprecated 4/13/19
    // for(int k=0; k<2; ++k)
     //{
@@ -595,14 +601,41 @@ bool DataReader::around_breakpoint(readpair &rp, sv &curr_sv)
 {
     // It's already forced that matepos > selfpos
     
-    if (rp.selfpos >= curr_sv.pos -500 && rp.selfpos < curr_sv.pos+500 && rp.matepos < curr_sv.end +500 && rp.matepos >= curr_sv.end -500 && rp.matequal > 0)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+	switch(curr_sv.svtype)
+	{
+	case DEL:
+		if (rp.selfpos >= curr_sv.pos -500 && rp.selfpos < curr_sv.pos+500 && rp.matepos < curr_sv.end +500 && rp.matepos >= curr_sv.end - 500 && rp.matequal > 0)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+		break;
+	case DUP:
+	case CNV:
+		if (rp.selfpos >= curr_sv.pos - 500 && rp.selfpos < curr_sv.pos+500 && rp.matepos < curr_sv.end +500 && rp.matepos >= curr_sv.end -500 && rp.matequal > 0)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+
+		break;
+	case INV:
+		if ( (rp.selfpos >= curr_sv.pos - 500 && rp.selfpos < curr_sv.pos && rp.matepos < curr_sv.end  && rp.matepos >= curr_sv.end - 500 && rp.matepos > curr_sv.pos && rp.matequal > 30 && rp.pairstr == 0) || (rp.selfpos >= curr_sv.pos - 50 && rp.selfpos < curr_sv.pos + 500 && rp.selfpos < curr_sv.end && rp.matepos < curr_sv.end + 500 && rp.matepos >= curr_sv.end - 50 && rp.matequal > 30 && rp.pairstr == 3))
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+		break;
+	}
 }
 
 
@@ -696,28 +729,28 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                                 exit(1);
                                 
                             }
-                            rdstats[sample_idx + k].n_rp[rp.pairstr] ++;
-                            
-                            int buf_start = self_idx-5;
-                            int buf_end = self_idx+5;
-                            if (buf_start<0) buf_start = 0;
-                            if (buf_end>99) buf_end = 99;
-                            
-                            for(int m=buf_start; m<=buf_end;++m)
-                            {
-                                // frequency in 100-bp window
-                                rdstats[sample_idx + k].rp_seq[rp.pairstr][m]++;
-                                all_rps[rp.pairstr][m] ++;
-                            }
-                            buf_start = mate_idx - 5;
-                            buf_end = mate_idx + 5;
-                            if (buf_start<100) buf_start = 100;
-                            if (buf_end>199) buf_end = 199;
-                            for(int m=buf_start;m<=buf_end; ++m)
-                            {
-                                rdstats[sample_idx + k].rp_seq[rp.pairstr][m]++;
-                                all_rps[rp.pairstr][m] ++;
-                            }
+							rdstats[sample_idx + k].n_rp[rp.pairstr] ++;
+							
+							int buf_start = self_idx-5;
+							int buf_end = self_idx+5;
+							if (buf_start<0) buf_start = 0;
+							if (buf_end>99) buf_end = 99;
+							
+							for(int m=buf_start; m<=buf_end;++m)
+							{
+								// frequency in 100-bp window
+								rdstats[sample_idx + k].rp_seq[rp.pairstr][m]++;
+								all_rps[rp.pairstr][m] ++;
+							}
+							buf_start = mate_idx - 5;
+							buf_end = mate_idx + 5;
+							if (buf_start<100) buf_start = 100;
+							if (buf_end>199) buf_end = 199;
+							for(int m=buf_start;m<=buf_end; ++m)
+							{
+								rdstats[sample_idx + k].rp_seq[rp.pairstr][m]++;
+								all_rps[rp.pairstr][m] ++;
+							}
                         }
                     }
                     //printf("\n");
