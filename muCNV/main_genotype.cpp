@@ -287,9 +287,13 @@ int main_genotype(int argc, char** argv)
                         D.multi_dp = reader.read_depth100(vec_sv[i], D.dps, gc, b_dumpstat);
 						for(int j=0; j<n_sample; ++j)
 						{
-							for(int k=0; k<(int)D.dps.size(); ++k)
+							D.dps[0][j] /= (double)stats[j].avg_dp;
+							D.dps[1][j] /= (double)stats[j].avg_dp;
+							D.dps[2][j] /= (double)stats[j].avg_dp * (D.dps[1][j] + D.dps[0][j]) * 0.5;
+							if (D.multi_dp)
 							{
-								D.dps[k][j] /= (double)stats[j].avg_dp;
+								D.dps[3][j] /= (double)stats[j].avg_dp * D.dps[0][j];
+								D.dps[4][j] /= (double)stats[j].avg_dp * D.dps[1][j];
 							}
 						}
 					}
