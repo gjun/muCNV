@@ -26,6 +26,21 @@ void readmagic(std::ifstream &F)
     }
 }
 
+// GC_Content File Structure
+// ----------
+// MAGIC
+// uint8_t : Number of Chr
+// uint32_t * (Number of Chr) : Size of each Chr.
+// uint16_t : bin width (how much bp used to average GC content), 400bp
+// uint16_t : bin_dist (how much distance in bp between recorded GC contents, 100bp
+// uint16_t : number of bins in GC content curve, default: 100 (0 means GC content from 0 to 1%)
+// MAGIC
+// (# Chr)
+//  | (Chr Size) * uint8_t : GC content for each genomic position (every bin_dist-th bp)
+//  | MAGIC
+// double * (number of bins) : fraction of genomic bin_dist intervals in each GC-bin
+// MAGIC
+
 void GcContent::initialize(std::string &gcFile)
 {
 	// gcFile: filename for GC content file
@@ -49,6 +64,8 @@ void GcContent::initialize(std::string &gcFile)
     chr_size[0] = 0;
     chr_offset.resize(num_chr+1);
     chr_offset[0] = 0;
+    n_interval.resize(num_chr+1);
+    n_interval[0] = 0;
     
     
     for(int i=1;i<=num_chr;++i)
@@ -56,23 +73,26 @@ void GcContent::initialize(std::string &gcFile)
         inFile.read(reinterpret_cast <char *> (&chr_size[i]), sizeof(uint32_t));
         chr_offset[i] = chr_offset[i-1] + chr_size[i-1];
         DMSG("Chr " << i << " size: " << chr_size[i] <<  " offset: " << chr_offset[i]);
+        inFile.read(reinterpret_cast <char *> (&n_interval[i]), sizeof(uint32_t));
     }
     
     // read size of GC-interval bin
-    inFile.read(reinterpret_cast <char *> (&binsize), sizeof(uint16_t));
-    DMSG( "Bin size: " << (int) binsize);
+    inFile.read(reinterpret_cast <char *> (&interval_width), sizeof(uint16_t));
+    DMSG( "Length of genomic regions that GC content is averaged over: " << (int) interval_width);
     
-    // read number of GC bins
+    // read distance between GC sampling points
+    inFile.read(reinterpret_cast <char *> (&interval_dist), sizeof(uint16_t));
+    DMSG( "Distance between GC content measuring points: " << interval_dist);
+
+    // read number of total sampled intervals
     inFile.read(reinterpret_cast <char *> (&num_bin), sizeof(uint16_t));
     DMSG( "Num_bin : " << num_bin );
     
-    // read number of total sampled intervals
-    inFile.read(reinterpret_cast <char *> (&num_interval), sizeof(uint16_t));
-    DMSG( "Num_interval : " << num_interval);
-    
+    readmagic(inFile);
+
+    /*
     regions.resize(num_interval);
     
-    readmagic(inFile);
     
     // read 'sampled' intervals (chr, start, end)
     for(int i=0; i<num_interval; ++i)
@@ -93,7 +113,7 @@ void GcContent::initialize(std::string &gcFile)
     
 	DMSG("Sampled intervals read"); 
     readmagic(inFile);
-
+*/
     // read GC content for each (bin size)-bp interval for each chromosome
     // Current : 400-bp with 200bp overlap
     // std::cerr << "Currnet position : " << inFile.tellg() << std::endl;
@@ -104,15 +124,16 @@ void GcContent::initialize(std::string &gcFile)
     for(int i=1; i<=num_chr; ++i)
     {
 		// Fixed binsize
-        int num_bins_in_chr = ceil(chr_size[i] / 200.0);
-
-        gc_array[i] = (uint8_t *) calloc(num_bins_in_chr + 1, sizeof(uint8_t));
+        int num_bins_in_chr = ceil((chr_size[i] + 1.0)/ (double)interval_dist); // Number of intervals in a chromosome
+        gc_array[i] = (uint8_t *) calloc(num_bins_in_chr, sizeof(uint8_t));
+        
 		DMSG("GC array " << i << " is allocated");
 
         inFile.read(reinterpret_cast<char *>(gc_array[i]), sizeof(uint8_t)*num_bins_in_chr);
-        // TEMPORARY, TODO: update GC-content file to include end-of-chr bin
-		gc_array[i][num_bins_in_chr] = 0;
         readmagic(inFile);
+
+        // TEMPORARY, TODO: update GC-content file to include end-of-chr bin
+		// gc_array[i][num_bins_in_chr] = 0;
         
         if (!inFile.good())
         {
@@ -133,8 +154,8 @@ void GcContent::initialize(std::string &gcFile)
         }
         double v;
         inFile.read(reinterpret_cast<char *>(&v), sizeof(double));
-        DMSG("Bin " << i << " GC content proportion: "<< v);
-        gc_dist.push_back(v);
+        DMSG("Bin " << i << " Fraction : "<< v);
+        bin_fraction.push_back(v);
     }
     readmagic(inFile);
     inFile.close();
@@ -144,21 +165,29 @@ double GcContent::get_gc_content(int c, int startpos, int endpos)
 {
     if (c < 1 || c > num_chr)
     {
-        return -1;
+        return 0.0;
     }
-
-    if (round(startpos/200.0) == round(endpos/200.0))
+    
+    // TODO: check this logic
+    
+    if (round(startpos/(double)interval_dist) == round(endpos/(double)interval_dist))
     {
-        return ((double)gc_array[c][(int)round(startpos/200.0)-1]/ 20.0 + 0.025);
+        return ((double)gc_array[c][(int)round(startpos/(double)interval_dist)-1]/ (double)num_bin + 0.005);
     }
 
     double gc_sum = 0 ;
     int gc_cnt = 0;
 
-    for(int i=round(startpos/200.0)-1; i <= round(endpos/200.0)-1; ++i)
+    for(int i=round(startpos/(double)interval_dist)-1; i <= round(endpos/(double)interval_dist)-1; ++i)
     {
-        gc_sum += (double)((gc_array[c][i]) / 20.0) + 0.025 ;
-        gc_cnt ++;
+        if (gc_array[c][i] >=0 && gc_array[c][i]<num_bin)
+        {
+            gc_sum += (double)((gc_array[c][i]) / (double)num_bin) + 0.005 ;
+            gc_cnt ++;
+        }
     }
-    return ((double)gc_sum/gc_cnt);
+    if (gc_cnt>0)
+        return ((double)gc_sum/gc_cnt);
+    else
+        return 0.0;
 }

@@ -52,15 +52,12 @@ int get_cigar_clippos(std::string &cigar_str)
         }
     }
     
-    if (rclip > lclip)
-    {
+    if (rclip >= lclip && rclip >= 10) // arbitrary cutoff, 15
         return -rclip;
-    }
-    else if (lclip>rclip)
-    {
+    else if (lclip>rclip && lclip >= 10)
         return lclip;
-    }
-    return 0;
+    else
+        return 0;
 }
 
 bool process_split(std::string &t, splitread &new_sp, int32_t tid, bool strand)
@@ -157,50 +154,46 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
         if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
         if ( (int)b->core.qual < aux->min_mapQ ) continue;
 		if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
-
+        if (in_centrome(b->core.tid+1, b->core.pos)) continue;
+            
 //		fprintf(stderr, "%s\ttid:%d\tpos:%d\tmtid:%d\tmtpos:%d",bam_get_qname(b), b->core.tid, b->core.pos, b->core.mtid, b->core.mpos);
-        if ((b->core.flag & BAM_FPAIRED ) && !(b->core.flag & BAM_FSUPPLEMENTARY) && !in_centrome(b->core.tid+1, b->core.pos) )
+        if ((b->core.flag & BAM_FPAIRED ) && !(b->core.flag & BAM_FSUPPLEMENTARY))
         {
-
-//			fprintf(stderr, "%s\n", bam_get_qname(b));
-            if (IS_PROPERLYPAIRED(b) && b->core.pos>0 && b->core.mtid == b->core.tid && b->core.isize!=0)
+            if (IS_PROPERLYPAIRED(b) && b->core.pos>0 && b->core.mtid == b->core.tid && b->core.isize>0)
             {
-				//if (abs(b->core.isize) > 1000)
-				//{
-				//	std::cerr << "isize " << b->core.isize << std::endl;
-				//}
+                // properly paired read, add to insert size distribution
 
                 // get average isize statistics only from properly paired pairs
-                aux->sum_isz += (b->core.isize > 0) ? b->core.isize : -b->core.isize;
+                // and also for isize>0 cases (do not double count)
+                aux->sum_isz += b->core.isize;
                 aux->sumsq_isz += (b->core.isize) * (b->core.isize);
                 aux->n_isz += 1;
-
-//				std::cerr << "n_isz : " << aux->n_isz << ", sum_isz : " << aux->sum_isz << ", sumsq_isz : " << aux->sumsq_isz << std::endl;
             }
             else 
             {
+                // if not properly paired
+                
                 if (b->core.qual>=10)
                 {
                     // add to read pair set
                     readpair new_rp;
                     new_rp.chrnum = b->core.tid+1;
-					new_rp.matepos= 0; 
+					new_rp.matepos= 0;
 					new_rp.matequal = 0;
                     new_rp.selfpos = b->core.pos;
                     new_rp.pairstr = (b->core.flag & BAM_FREVERSE) ? 2 : 0;
 
-                    if (b->core.tid == b->core.mtid)
+                    // Write only once for a read pair, record only (self-mate), not (mate-self)
+                    if (b->core.tid == b->core.mtid && b->core.pos <= b->core.mpos)
                     {
                         uint8_t *aux_mq = bam_aux_get(b,"MQ");
 						if (aux_mq != NULL)
                         {
                             new_rp.matequal = (int8_t) bam_aux2i(aux_mq);
-					//		fprintf(stderr, "\tMateQual: %d\n", new_rp.matequal);
                         }
                         else
                         {
                             new_rp.matequal = 0;
-					//		fprintf(stderr, "\tCannot find auxMQ for read %s, flag %#x\n", bam_get_qname(b), b->core.flag);
                         }
                         new_rp.matepos = b->core.mpos;
                         new_rp.pairstr += (b->core.flag & BAM_FMREVERSE) ? 1 : 0;
@@ -209,13 +202,57 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                     }
                     else if (b->core.flag & BAM_FMUNMAP) // mate is unmapped, but self has good MQ  - insertion or inversion
                     {
+                        // TODO: Check - Is this useful at all?
                         new_rp.matequal = 0;
                         new_rp.matepos = -1;
                         aux->n_rp++;
                         (*(aux->p_vec_rp)).push_back(new_rp);
 					//	fprintf(stderr, "\tMateQualZero\n");
                     }
-				
+                }
+            }
+        }
+        
+        int16_t lclip = 0;
+        int16_t rclip = 0;
+        
+        // Check whether there's soft clip for all reads with >1 cigar ops
+        if ((b->core.n_cigar > 1) && b->core.qual >= 10) // min_MAPQ 10 for softclips
+        {
+            uint32_t *cigar  = bam_get_cigar(b);
+            int ncigar = b->core.n_cigar;
+            if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP || bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP)
+            {
+                
+                uint8_t *aux_nm = bam_aux_get(b, "NM");
+                int nm = (int)bam_aux2i(aux_nm); // edit distance of the read from reference
+                
+                if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP && nm<5)
+                {
+                    lclip = bam_cigar_oplen(cigar[0]);
+                    if (lclip >= 5)
+                    {
+                        sclip new_clip;
+                        new_clip.chrnum = b->core.tid + 1;
+                        new_clip.pos = b->core.pos;
+                        new_clip.b_end = (bool)(b->core.flag & BAM_FREVERSE);
+                        (*(aux->p_vec_lclip)).push_back(new_clip);
+                        //fprintf(stderr,"left clip ncigar %d, lclip %d, pos %d", b->core.n_cigar, lclip, b->core.pos);
+
+                    }
+                }
+                if (bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP && nm<5)
+                {
+                    rclip = bam_cigar_oplen(cigar[ncigar-1]);
+                    if (rclip >= 5)
+                    {
+                        sclip new_clip;
+                        new_clip.chrnum = b->core.tid + 1;
+                        new_clip.pos = bam_endpos(b);
+                        new_clip.b_end = !((bool)(b->core.flag & BAM_FREVERSE));
+                        (*(aux->p_vec_rclip)).push_back(new_clip);
+                       // fprintf(stderr,"right clip ncigar %d, lclip %d, pos %d", b->core.n_cigar, rclip, b->core.pos);
+                    }
                 }
             }
         }
@@ -236,29 +273,25 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 
 				int ncigar = b->core.n_cigar;
 				uint32_t *cigar  = bam_get_cigar(b);
-				int16_t lclip = 0;
-				int16_t rclip = 0;
-				if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP)
+
+                if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP)
 				{
 					lclip = bam_cigar_oplen(cigar[0]);
 				}
 				if (bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP)
 				{
-					rclip = bam_cigar_oplen(cigar[0]);
+					rclip = bam_cigar_oplen(cigar[ncigar-1]);
 				}
-				if (rclip > lclip && rclip > 15) // arbitrary cutoff, 15
-					new_sp.firstclip = -rclip;
-				else if (lclip>rclip && lclip > 15)
-					new_sp.firstclip = lclip;
-				
-				if (new_sp.firstclip != 0) // Process split read only if the read has soft-clipped ends
+                
+                if (rclip > lclip && rclip > 15) // arbitrary cutoff, 15
+                    new_sp.firstclip = -rclip;
+                else if (lclip>rclip && lclip > 15)
+                    new_sp.firstclip = lclip;
+                
+                if (new_sp.firstclip != 0)
+                // Process split read only if the read has soft-clipped ends
 				{
-					if (!process_split(str_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)))
-					{
-						new_sp.sapos = 0;
-						new_sp.secondclip = 0;
-					}
-					if (!in_centrome(b->core.tid+1, new_sp.sapos))
+					if (process_split(str_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)) && !in_centrome(b->core.tid+1, new_sp.sapos))
 					{
 						aux->n_sp++;
 						(*(aux->p_vec_sp)).push_back(new_sp);
@@ -295,17 +328,15 @@ void BamCram::initialize_sequential(std::string &bname, GcContent &gc)
     idx = NULL;
 
     gc_factor.resize(gc.num_bin);
+    gc_count.resize(gc.num_bin);
     
-    depth100.resize(gc.num_chr + 1);
-    nbin_100.resize(gc.num_chr + 1);
-    nbin_100[0] = 0;
+    depth_interval.resize(gc.num_chr + 1);
     
     for(int i=1; i<=gc.num_chr; ++i)
     {
-        nbin_100[i] = ceil((double)gc.chr_size[i] / 100.0) + 1 ;
-        depth100[i] = (uint16_t *) calloc(nbin_100[i], sizeof(uint16_t));
+        depth_interval[i] = (uint16_t *) calloc(gc.n_interval[i], sizeof(uint16_t));
         
-        DMSG("chr " << i << " bin size " << nbin_100[i]);
+        DMSG("chr " << i << " bin size " << gc.n_interval[i]);
     }
 }
 
@@ -340,6 +371,8 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
 
     data[0]->p_vec_rp = &(vec_rp);
     data[0]->p_vec_sp = &(vec_sp);
+    data[0]->p_vec_rclip = &(vec_rclip);
+    data[0]->p_vec_lclip = &(vec_lclip);
     
     data[0]->sum_isz = 0;
     data[0]->sumsq_isz = 0;
@@ -355,8 +388,7 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
     {
         gc_sum[i] = 0;
         gc_cnt[i] = 0;
-    }
-    
+    }    
     
     int* n_plp = (int *) calloc(1, sizeof(int));;
     const bam_pileup1_t **plp = (const bam_pileup1_t **) calloc(1, sizeof(bam_pileup1_t*));
@@ -388,12 +420,15 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
             {
                	int val = round((double) (sum100 * 32) / n100); // Now Depth100 stores (depth*32) as value
                 if (val>65535) val=65535; // handle overflow, though unlikely
-                depth100[prev_chrnum][prev_pos/100] = (uint16_t) val;
+                
+                //TODO: fix hard-coded 100
+                depth_interval[prev_chrnum][prev_pos/100] = (uint16_t) val;
             }
 			std::cerr << "n_isz : " << data[0]->n_isz << ", sum_isz : " << data[0]->sum_isz << ", sumsq_isz : " << data[0]->sumsq_isz << std::endl;
 
             // TODO: encapsulate this code
-			uint8_t bin = gc.gc_array[prev_chrnum][(int)prev_pos * 2 / gc.binsize];
+            // gc_array[chr][1] would contain 
+			uint8_t bin = gc.gc_array[prev_chrnum][(int) prev_pos / gc.interval_dist];
 			if (bin<gc.num_bin)
 			{
 				gc_sum[bin] += sum100;
@@ -410,13 +445,14 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
             // Update 100-bp depth
             if (n100>0)
             {
-                int val = round((double) (sum100 * 32) / n100);
+                int val = round((double) (sum100 * 32.0) / n100);
                 if (val>65535) val=65535; // handle overflow
-                depth100[chrnum][prev_pos/100] = (uint16_t) val;
+                                          // TODO: fix hard-coded 100
+                depth_interval[chrnum][prev_pos/100] = (uint16_t) val;
             }
             
             // TODO: encapsulate this code
-			uint8_t bin = gc.gc_array[chrnum][(int)prev_pos * 2 / gc.binsize];
+			uint8_t bin = gc.gc_array[chrnum][(int)prev_pos / gc.interval_dist];
 			if (bin<gc.num_bin)
 			{
 				gc_sum[bin] += sum100;
@@ -493,18 +529,47 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
 		}
     }
     
-    // TODO: refactor this..
+    // TODO: refactor these post-processing lines...
 
     stat.avg_dp = (double) sum_dp / n_dp;
     stat.std_dp = sqrt(((double)sumsq_dp / n_dp - (stat.avg_dp * stat.avg_dp)));
     
+    // Sort lclip & rclip
+    // We can assume readpairs and splitreads are sorted, because they're added according to the read orders
+    sort(vec_lclip.begin(), vec_lclip.end());
+    sort(vec_rclip.begin(), vec_rclip.end());
+    
+    // Check whether there're cycle-end clips without cycle-start clips around and drop them
+    int n_lclip = flag_softclips(vec_lclip);
+    int n_rclip = flag_softclips(vec_rclip);
+	std::cerr << n_lclip << " left clips" << std::endl;
+	std::cerr << n_rclip << " right clips" << std::endl;
+    
+    // Calculate GC-curve
+    std::vector<double> gc_avg (gc.num_bin, 0);
+    
+    for(int i=2; i<gc.num_bin-2; ++i)
+    {
+        if (gc_cnt[i] + (gc_cnt[i-1] + gc_cnt[i+1])/2.0 + (gc_cnt[i-2]+gc_cnt[i+2])/4.0 > 100)
+        {
+            gc_avg[i] = ((double)gc_sum[i] + 0.5*((double)gc_sum[i-1] + gc_sum[i+1]) + 0.25 * ((double)gc_sum[i-2] + gc_sum[i+2])) / (gc_cnt[i] +0.5*(gc_cnt[i-1]+gc_cnt[i+1]) + 0.25*(gc_cnt[i-2] + gc_cnt[i+2])) ;
+        }
+        else
+        {
+            gc_avg[i] = -1;
+        }
+    }
+    // padding at the end
+    gc_avg[0] = gc_avg[1] = gc_avg[2];
+    gc_avg[gc.num_bin-1] = gc_avg[gc.num_bin-2] = gc_avg[gc.num_bin-3];
     
     // Calculate GC-curve and save it with original DP to maximize information preservation instead of storing GC-corrected depths only
     for(int i=0;i<gc.num_bin;++i)
     {
-        if (gc_cnt[i]>20)
+        if (gc_avg[i]>0)
         {
-            gc_factor[i] = stat.avg_dp / ((double)gc_sum[i] / gc_cnt[i]) ; // multiplication factor
+            gc_factor[i] = stat.avg_dp / gc_avg[i];
+ //           stat.avg_dp / ((double)gc_sum[i] / gc_cnt[i]) ; // multiplication factor
         }
         else
         {
@@ -524,6 +589,41 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
     bam_mplp_destroy(mplp);
 }
 
+int BamCram::flag_softclips(std::vector<sclip> &vec_clip)
+{
+	int cnt = 0;
+    for(int i=0; i<vec_clip.size(); ++i)
+    {
+        if (vec_clip[i].b_end)
+        {
+            vec_clip[i].b_drop = true;
+            for(int j=i-1; j>=0&& vec_clip[j].pos >= vec_clip[i].pos - 10 && vec_clip[j].chrnum == vec_clip[i].chrnum ; --j)
+            {
+                if (vec_clip[i].b_end == false)
+				{
+                    vec_clip[i].b_drop = false;
+					cnt++;
+				}
+            }
+            if (vec_clip[i].b_drop == true)
+            {
+                for(int j=i+1; j<vec_clip.size() && vec_clip[j].pos<= vec_clip[i].pos + 10 && vec_clip[j].chrnum == vec_clip[i].chrnum ; ++j)
+                {
+                    if (vec_clip[i].b_end == false)
+					{
+                        vec_clip[i].b_drop = false;
+						cnt++;
+					}
+                }
+            }
+        }
+		else
+		{
+			cnt++;
+		}
+    }
+	return cnt;
+}
 
 void BamCram::postprocess_depth(std::vector<sv> &vec_sv)
 {

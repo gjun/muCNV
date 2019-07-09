@@ -12,61 +12,39 @@
 
 bool ReadStat::del_support()
 {
-    int rp_cnt = n_pre_FR + n_post_FR;
-    int sp_cnt = n_pre_split_in + n_post_split_in;
-    int clip_cnt = n_pre_clip_in + n_post_clip_in;
+    int rp_cnt = n_rp[1]; // FR
+    int clip_cnt = n_split_inward;
     
-    if (rp_cnt >=6   && rp_cnt + sp_cnt + clip_cnt > 10)
+    if (rp_cnt > 4 || rp_cnt + clip_cnt > 7)
         return true;
-		/*
-    else if (sp_cnt > 6 && rp_cnt + sp_cnt + clip_cnt > 10)
-        return true;
-    else if (sp_cnt + rp_cnt + clip_cnt > 15)
-        return true;
-		*/
-    
-    return false;
+    else
+        return false;
 }
+
 bool ReadStat::dup_support()
 {
-    int rp_cnt = n_pre_RF + n_post_RF;
-    int sp_cnt = n_pre_split_out + n_post_split_out;
-    int clip_cnt = n_pre_clip_out + n_post_clip_out;
+    int rp_cnt = n_rp[2]; // RF
+    int sp_cnt = n_split_outward;
     
-    if (rp_cnt >= 4  && rp_cnt + sp_cnt + clip_cnt > 10)
+    if (rp_cnt > 4  || rp_cnt + sp_cnt > 7)
         return true;
-		/*
-    else if (sp_cnt > 6 && rp_cnt + sp_cnt + clip_cnt > 10)
-        return true;
-    else if (sp_cnt + rp_cnt + clip_cnt > 15)
-        return true;
-		*/
-    
-    return false;
+    else
+        return false;
 }
 
 bool ReadStat::inv_support()
 {
-    int rp_cnt = n_pre_FF + n_post_RR;
+    int rp_cnt = n_rp[0] + n_rp[3];
     
     // inversion can have both in and out clipping
-    int sp_cnt = n_pre_split_out + n_post_split_out + n_pre_split_in + n_post_split_in;
-    int clip_cnt = n_pre_clip_in + n_pre_clip_out + n_post_clip_in + n_post_clip_out;
+    int sp_cnt = n_split_inward + n_split_outward;
     
-    if (rp_cnt >= 5 && rp_cnt+sp_cnt+clip_cnt>=15)
+    if (rp_cnt > 4 && rp_cnt + sp_cnt> 7)
         return true;
-
-    return false;
+    else
+        return false;
 }
 
-bool ReadStat::ins_support()
-{
-    if (n_pre_INS > 3 && n_pre_INS + n_pre_clip_in + n_post_clip_in + n_pre_sp_missing > 10)
-        return true; 
-    if (n_pre_INS + n_pre_rp_missing + n_pre_clip_in + n_post_clip_in + n_pre_sp_missing > 10 && !del_support() && !dup_support() && !inv_support())
-        return true;
-    return false;
-}
 
 void median_filter(uint16_t* D, uint16_t* D_filt, int n_sample, int n_dp)
 {
@@ -235,14 +213,105 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
 		{
 			for(int c=2; c<=gc.num_chr; ++c)
 			{
-				chr_bytepos_dp100[i][c] = chr_bytepos_dp100[i][c-1] + (ceil((double)gc.chr_size[c-1] / 100.0) + 1) * n_samples[i] * sizeof(uint16_t);
+				chr_bytepos_dp100[i][c] = chr_bytepos_dp100[i][c-1] + (gc.n_interval[c-1] * n_samples[i] * sizeof(uint16_t));
 			}
 		}
     }
     return n_sample_total;
 }
 
-int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &dvec_dp, GcContent& gc, bool b_dumpstat)
+void DataReader::adjust_gc_factor(GcContent& gc, std::vector<SampleStat>& stats, int chrnum)
+{
+    /*
+    int sample_idx = 0;
+    for(int i=0; i<n_pileup; ++i)
+    {
+        uint64_t start_byte = chr_bytepos_dp100[i][chrnum];
+        
+        int N = gc.n_interval[chrnum];
+        
+        int n_interval_by_sample = N * n_samples[i];
+        
+        uint16_t *D = new uint16_t[n_interval_by_sample];
+        
+        pileups[i].seekg(start_byte);
+        pileups[i].read_depth(D, n_interval_by_sample);
+        
+        int64_t gc_sum[n_samples[i]][gc.num_bin];
+        int64_t gc_cnt[n_samples[i]][gc.num_bin];
+        double gc_avg[n_samples[i]][gc.num_bin];
+
+        for(int j=0; j<n_samples[i]; ++j)
+        {
+            for(int k=0; k<gc.num_bin; ++k)
+            {
+                gc_sum[j][k] = 0;
+                gc_cnt[j][k] = 0;
+            }
+        }
+        for(int k=0; k<N; ++k)
+        {
+            double gcval = gc.get_gc_content(chrnum, k* gc.interval_dist, (k+1)*gc.interval_dist);
+            for(int j=0; j<n_samples[i]; ++j)
+            {
+                int idx = (int) round(gcval*100);
+                gc_sum[j][ idx ] += D[k*n_samples[i] + j]/32;
+                gc_cnt[j][ idx ] ++;
+            }
+        }
+        
+        for(int j=0; j<n_samples[i]; ++j)
+        {
+            for(int k=2; k<gc.num_bin-2; ++k)
+            {
+                if (gc_cnt[j][k] + (gc_cnt[j][k-1] + gc_cnt[j][k+1])/2.0 + (gc_cnt[j][k-2]+gc_cnt[j][k+2])/4.0 > 100)
+                {
+                    gc_avg[j][k] = ((double)gc_sum[j][k] + 0.5*((double)gc_sum[j][k-1] + gc_sum[j][k+1]) + 0.25 * ((double)gc_sum[j][k-2] + gc_sum[j][k+2])) / (gc_cnt[j][k] +0.5*(gc_cnt[j][k-1]+gc_cnt[j][k+1]) + 0.25*(gc_cnt[j][k-2] + gc_cnt[j][k+2])) ;
+                }
+                else
+                {
+                    gc_avg[j][k] = 0;
+                }
+            }
+            gc_avg[j][0] = gc_avg[j][1] = gc_avg[j][2];
+            gc_avg[j][gc.num_bin-1] = gc_avg[j][gc.num_bin-2] = gc_avg[j][gc.num_bin-3];
+        }
+        
+        for(int k=0;k<n_samples[i]; ++k)
+        {
+            for(int j=0; j<gc.num_bin; ++j)
+            {
+                fprintf(stderr, "sample %d, gc bin %d, avg dp %f\n", sample_idx + k, j, gc_avg[k][j]);
+            }
+        }
+        for(int j=0; j<n_samples[i]; ++j)
+        {
+            fprintf(stderr, "sample %d, stat avg dp %f\n", sample_idx + j, stats[sample_idx+j].avg_dp);
+
+            for(int k=0; k<gc.num_bin; ++k)
+            {
+                if (gc_avg[j][k]>0)
+                {
+                    gc_factors[sample_idx + j ][k] = stats[sample_idx+j].avg_dp / gc_avg[j][k];
+                }
+                else
+                {
+                    gc_factors[sample_idx + j][k] = 0;
+                }
+            }
+        }
+        sample_idx += n_samples[i];
+    } */
+    for(int i=0; i<n_sample_total; ++i)
+    {
+        for(int j=0; j<gc.num_bin; ++j)
+        {
+            fprintf(stderr, "sample %d, gc bin %d, gc factor %f\n", i, j, gc_factors[i][j]);
+        }
+    }
+}
+
+bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &dvec_dp, GcContent& gc, bool b_dumpstat)
 {
     // this information is not useful when sv length is short
     // process only for >200bp SVs (or at include least two full 100-bp intervals)
@@ -350,34 +419,23 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
         {
             dvec_dp[2][i] = correct_gc(gc, i, dvec_dp[2][i], curr_sv.chrnum, (curr_sv.pos + curr_sv.end)/2);
         }
-        return 0;
+        return false;
     }
     else if (n_dp <= 10)
+	{
         b_medfilt = false; // no median filtering
+	}
     
-    for(int k=0; k<2; ++k)
-    {
-        std::vector<double> x(n_sample_total, 0);
-        dvec_dp.push_back(x);
-    }
-    /*
-    if (n_dp <= 40)
-    {
-        for(int k=0; k<2; ++k)
-        {
-            std::vector<double> x(n_sample_total, 0);
-            dvec_dp.push_back(x);
-        }
-    }
-    else
-    {
-        for(int k=0; k<4; ++k)
-        {
-            std::vector<double> x(n_sample_total, 0);
-            dvec_dp.push_back(x);
-        }
-    }
-     */
+	if (curr_sv.svtype == INV)
+	{
+		return false;
+	}
+    // deprecated 4/13/19
+   // for(int k=0; k<2; ++k)
+    //{
+     //   std::vector<double> x(n_sample_total, 0);
+      //  dvec_dp.push_back(x);
+ //   }
 
 	if (n_dp <= 200)
 	{
@@ -536,14 +594,56 @@ int DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &d
 		} // i : n_pileup
 	}
 
-    return 1;
+    return true;
 }
 
-void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, GcContent &gc)
+bool DataReader::around_breakpoint(readpair &rp, sv &curr_sv)
+{
+    // It's already forced that matepos > selfpos
+    
+	switch(curr_sv.svtype)
+	{
+	case DEL:
+		if (rp.selfpos >= curr_sv.pos -500 && rp.selfpos < curr_sv.pos+500 && rp.matepos < curr_sv.end +500 && rp.matepos >= curr_sv.end - 500 && rp.matequal > 0)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+		break;
+	case DUP:
+	case CNV:
+		if (rp.selfpos >= curr_sv.pos - 500 && rp.selfpos < curr_sv.pos+500 && rp.matepos < curr_sv.end +500 && rp.matepos >= curr_sv.end -500 && rp.matequal > 0)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+
+		break;
+	case INV:
+		if ( (rp.selfpos >= curr_sv.pos - 500 && rp.selfpos < curr_sv.pos && rp.matepos < curr_sv.end  && rp.matepos >= curr_sv.end - 500 && rp.matepos > curr_sv.pos && rp.matequal > 30 && rp.pairstr == 0) || (rp.selfpos >= curr_sv.pos - 50 && rp.selfpos < curr_sv.pos + 500 && rp.selfpos < curr_sv.end && rp.matepos < curr_sv.end + 500 && rp.matepos >= curr_sv.end - 50 && rp.matequal > 30 && rp.pairstr == 3))
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+		break;
+	}
+}
+
+
+void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, GcContent &gc, std::vector< std::vector<int> > &all_rps, std::vector<int> &all_lclips, std::vector<int> &all_rclips)
 {
     int sample_idx = 0;
 
-	if (curr_sv.len < 50) return;
+//	if (curr_sv.len < 50) return; // clipped read works for short variants!
     // Starting breakpoint
     int start_pos1 = curr_sv.pos - 500;
     int end_pos1 = curr_sv.pos + 500;
@@ -563,247 +663,235 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
     uint64_t start_idx2 = chr_idx_rp[curr_sv.chrnum] + (int)start_pos2/10000;
     uint64_t end_idx2 = chr_idx_rp[curr_sv.chrnum] + (int)end_pos2/10000;
 
-	bool b_overlap = (end_idx1 >= start_idx2); // in fact, > case should never happen
+	bool b_overlap = (end_idx1 >= start_idx2);
 
 	uint64_t start_idx = start_idx1;
 	uint64_t end_idx = (b_overlap) ? end_idx2 : end_idx1;
 
-    for(int i=0; i<n_pileup; ++i)
+    for(int repeat=0; repeat<2; ++repeat)
     {
-        pileups[i].seekg(multi_idx[i][start_idx]);
-
-        for(uint64_t j=start_idx; j<=end_idx; ++j)
+        for(int i=0; i<n_pileup; ++i)
         {
-            
-            for(int k=0; k<n_samples[i]; ++k)
+            pileups[i].seekg(multi_idx[i][start_idx]);
+
+            for(uint64_t j=start_idx; j<=end_idx; ++j)
             {
-//				printf("\nSample %d\n", sample_idx+k);
-                uint32_t n_rp = 0;
-                pileups[i].read_uint32(n_rp);
- 
-                for(uint32_t l=0; l<n_rp; ++l)
+                for(int k=0; k<n_samples[i]; ++k)
                 {
-                    readpair rp;
-                    pileups[i].read_readpair(rp);
-					if (rp.selfpos >= start_pos1 && rp.selfpos <= end_pos1)
-					{
-						if (rp.matequal>0)
-						{
-							if (rp.matepos >= start_pos2 && rp.matepos <= end_pos2)
-							{
-                                //printf(">>>");
-								if (rp.pairstr == 1 && rp.selfpos < rp.matepos)
-									rdstats[sample_idx + k].n_pre_FR ++;
-	 							else if (rp.pairstr == 2 && rp.selfpos <= rp.matepos)
-									rdstats[sample_idx + k].n_pre_RF ++;
-                                else if (rp.pairstr == 0 && rp.selfpos <= rp.matepos)
-                                    rdstats[sample_idx + k].n_pre_FF ++;
+                    uint32_t n_rp = 0;
+                    pileups[i].read_uint32(n_rp);
+     
+                    for(uint32_t l=0; l<n_rp; ++l)
+                    {
+                        readpair rp;
+                        pileups[i].read_readpair(rp);
+                        
+                        int32_t curr_block = (int32_t)(j-chr_idx_rp[curr_sv.chrnum]);
+                        
+                        rp.chrnum = curr_sv.chrnum;
+                        rp.selfpos = pileups[i].fix_offset_pos(curr_block*10000, rp.selfpos);
+                        rp.matepos = pileups[i].fix_offset_pos(curr_block*10000, rp.matepos);
+                        
+                        rp.selfpos += curr_block * 10000;
+                        rp.matepos += curr_block * 10000;
+                        
+                        // TEMPORARY REMEDY for MATEPOS
+                        if (n_rp>5 && rp.matequal == 60 && abs(rp.selfpos- curr_sv.pos)<350 && abs(rp.matepos%10000 - curr_sv.end%10000) < 350)
+                        {
+                            rp.matepos = rp.matepos%10000 + int(curr_sv.end/10000)*10000;
+                        }
+                            
+                        if (rp.matepos < rp.selfpos)
+                        {
+                            // swap them
+                            int pos = rp.selfpos;
+                            rp.selfpos = rp.matepos;
+                            rp.matepos = pos;
+                            if (rp.pairstr == 1)
+                            {
+                                rp.pairstr = 2;
+                            }
+                            else if (rp.pairstr == 2)
+                            {
+                                rp.pairstr = 1;
+                            }
+                        }
+
+                        if (around_breakpoint(rp, curr_sv))
+                        {
+                            int self_idx = (rp.selfpos - curr_sv.pos + 500 ) /10;
+                            int mate_idx = (rp.matepos - curr_sv.end + 500 ) /10 + 100;
+                            
+                            if (self_idx <0 || self_idx>99 || mate_idx<100 || mate_idx>199)
+                            {
+                                // sanity check
+                                std::cerr << "Something wrong with read pair indices selfidx " << self_idx << " mate idx " << mate_idx << std::endl;
+                                exit(1);
                                 
                             }
-                            else if (rp.matepos >= start_pos1 && rp.matepos <= rp.selfpos + 300) // insert size 450 or below
-                            {
-                                if ((rp.pairstr == 1 && rp.selfpos < rp.matepos))
-                                {
-                                    rdstats[sample_idx + k].n_pre_INS ++;
-                                }
-                            }
-						}
-						else
-                            rdstats[sample_idx + k].n_pre_rp_missing ++;
-//                        printf("PRE_RP\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
-
-					}
- 					if (b_overlap && rp.selfpos >= start_pos2 && rp.selfpos <= end_pos2)
-					{
-						if (rp.matequal > 0)
-						{
-                            if (rp.matepos >= start_pos1 && rp.matepos <= end_pos1)
-                            {
-                                //printf(">>>");
-
-                                if (rp.pairstr == 2 && rp.selfpos > rp.matepos)
-                                    rdstats[sample_idx + k].n_post_FR ++;
-                                else if (rp.pairstr == 1 && rp.matepos <= rp.selfpos)
-                                    rdstats[sample_idx + k].n_post_RF ++;
-                                else if (rp.pairstr == 3 && rp.selfpos <= rp.matepos)
-                                    rdstats[sample_idx + k].n_post_RR ++;
-                            }
-						}
-						else
-                            rdstats[sample_idx+k].n_post_rp_missing ++;
-             //           printf("POST_RP\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
-
-					}
-                }
-				//printf("\n");
-                uint32_t n_sp = 0;
-                pileups[i].read_uint32(n_sp);
-                for(uint32_t l=0; l<n_sp; ++l)
-                {
-                    splitread sp;
-                    pileups[i].read_splitread(sp);
-					if (sp.pos >=start_pos1 && sp.pos <= end_pos1)
-                    {
-                        if (sp.sapos >= start_pos2 && sp.sapos <= end_pos2)
-                        {
-                            //printf(">>>");
-
-                            if (sp.pos < sp.sapos)
-                            {
-                                if (sp.firstclip <= 0 && sp.secondclip >=0)
-                                {
-                                    rdstats[sample_idx+k].n_pre_split_in ++;
-                                }
-                                else if (sp.firstclip >=0 && sp.secondclip <=0)
-                                {
-                                    rdstats[sample_idx+k].n_pre_split_out ++;
-                                }
-                            }
-
+							rdstats[sample_idx + k].n_rp[rp.pairstr] ++;
+							
+							int buf_start = self_idx-5;
+							int buf_end = self_idx+5;
+							if (buf_start<0) buf_start = 0;
+							if (buf_end>99) buf_end = 99;
+							
+							for(int m=buf_start; m<=buf_end;++m)
+							{
+								// frequency in 100-bp window
+								rdstats[sample_idx + k].rp_seq[rp.pairstr][m]++;
+								all_rps[rp.pairstr][m] ++;
+							}
+							buf_start = mate_idx - 5;
+							buf_end = mate_idx + 5;
+							if (buf_start<100) buf_start = 100;
+							if (buf_end>199) buf_end = 199;
+							for(int m=buf_start;m<=buf_end; ++m)
+							{
+								rdstats[sample_idx + k].rp_seq[rp.pairstr][m]++;
+								all_rps[rp.pairstr][m] ++;
+							}
                         }
-                        else if (sp.firstclip < 0 )
-                        {
-                            rdstats[sample_idx+k].n_pre_clip_in ++;
-                        }
-                        else if (sp.firstclip > 0 )
-                        {
-                            rdstats[sample_idx+k].n_pre_clip_out ++;
-                        }
-                        else if (sp.sapos == 0)
-                        {
-                            rdstats[sample_idx+k].n_pre_sp_missing ++;
-                        }
-                        //printf("PRE_SP\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
-
                     }
-                    if (b_overlap && sp.pos >=start_pos2 && sp.pos <= end_pos2)
+                    //printf("\n");
+                    uint32_t n_sp = 0;
+                    pileups[i].read_uint32(n_sp);
+                    for(uint32_t l=0; l<n_sp; ++l)
                     {
-                        if (sp.sapos >= start_pos1 && sp.sapos <= end_pos1)
+                        splitread sp;
+                        pileups[i].read_splitread(sp);
+                        int32_t curr_block = (int32_t)(j-chr_idx_rp[curr_sv.chrnum]);
+                        
+                        sp.chrnum = curr_sv.chrnum;
+                        sp.pos = pileups[i].fix_offset_pos(curr_block*10000, sp.pos);
+                        sp.sapos = pileups[i].fix_offset_pos(curr_block*10000, sp.sapos);
+                        sp.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                        sp.sapos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                        
+                        if (sp.pos > sp.sapos)
                         {
-                            //printf(">>>");
-
-                            if (sp.pos > sp.sapos)
+                            int pos = sp.pos;
+                            sp.pos = sp.sapos;
+                            sp.sapos = pos;
+                            int clip = sp.firstclip;
+                            sp.firstclip = sp.secondclip;
+                            sp.secondclip = clip;
+                        }
+                        
+                        if (sp.firstclip > 0 && sp.secondclip < 0)  // inside the sv
+                        {
+                            if (sp.pos >= curr_sv.pos - 100 && sp.pos < curr_sv.pos + 100 && (sp.sapos + 151 + sp.secondclip) >= curr_sv.end-100 && (sp.sapos + 151 + sp.secondclip) < curr_sv.end + 100)
                             {
-                                if (sp.firstclip <= 0 && sp.secondclip >=0)
-                                {
-                                    rdstats[sample_idx+k].n_pre_split_out ++;
-                                }
-                                else if (sp.firstclip >=0 && sp.secondclip <=0)
-                                {
-                                    rdstats[sample_idx+k].n_pre_split_in ++;
-                                }
+                                rdstats[sample_idx+k].n_split_outward ++;
+                                // rdstats[sample_idx+k].sp_seq_out[sp.pos-curr_sv.pos + 100] ++;
+                                // rdstats[sample_idx+k].sp_seq_out[sp.sapos+151+sp.secondclip - curr_sv.end + 300] ++;
                             }
                         }
-                        else if (sp.firstclip > 0 )
+                        else if (sp.firstclip < 0 && sp.secondclip > 0)
                         {
-                            rdstats[sample_idx+k].n_post_clip_in ++;
+                            if ( (sp.pos + 151 + sp.firstclip) >= curr_sv.pos - 100 && (sp.pos + 151 + sp.firstclip) < curr_sv.pos + 100 && sp.sapos >= curr_sv.end-100 && sp.sapos < curr_sv.end + 100)
+                            {
+                                rdstats[sample_idx+k].n_split_inward ++;
+                                
+                                // rdstats[sample_idx+k].sp_seq_in[sp.pos+151+sp.firstclip-curr_sv.pos + 100] ++;
+                                // rdstats[sample_idx+k].sp_seq_in[sp.sapos - curr_sv.end + 300] ++;
+                            }
                         }
-                        else if (sp.firstclip < 0 )
+                    }
+                    
+                    uint32_t n_lclip = 0;
+                    pileups[i].read_uint32(n_lclip);
+                    for(uint32_t l=0; l<n_lclip; ++l)
+                    {
+                        sclip myclip;
+                        pileups[i].read_softclip(myclip);
+                        myclip.chrnum = curr_sv.chrnum;
+                        myclip.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                        
+                 
+                        if (myclip.pos >= curr_sv.pos - 100 && myclip.pos < curr_sv.pos + 100)
                         {
-                            rdstats[sample_idx+k].n_post_clip_out ++;
+                            int tmp_idx = myclip.pos - curr_sv.pos + 100;
+                            
+                            if ( tmp_idx <0 || tmp_idx > 199)
+                            {
+                                // sanity check
+                                std::cerr << "Something wrong with clip idx  " << tmp_idx << std::endl;
+                                exit(1);
+                            }
+                            
+                            rdstats[sample_idx+k].lclips[tmp_idx] ++;
+                            rdstats[sample_idx+k].n_lclip_start ++;
+                            all_lclips[tmp_idx] ++;
                         }
-                        else if (sp.sapos == 0)
+                        if (myclip.pos >= curr_sv.end - 100 && myclip.pos < curr_sv.end + 100 )
                         {
-                            rdstats[sample_idx+k].n_post_sp_missing ++;
+                            int tmp_idx = myclip.pos - curr_sv.end + 300;
+                            
+                            if ( tmp_idx < 200 || tmp_idx > 399)
+                            {
+                                // sanity check
+                                std::cerr << "Something wrong with clip idx end " << tmp_idx << std::endl;
+                                exit(1);
+                            }
+                            
+                            rdstats[sample_idx+k].lclips[tmp_idx] ++;
+                            rdstats[sample_idx+k].n_lclip_end ++;
+                            all_lclips[tmp_idx] ++;
                         }
-                        //printf("POST_SP\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
-
+                    }
+                    
+                    uint32_t n_rclip = 0;
+                    pileups[i].read_uint32(n_rclip);
+                    for(uint32_t l=0; l<n_rclip; ++l)
+                    {
+                        sclip myclip;
+                        pileups[i].read_softclip(myclip);
+                        myclip.chrnum = curr_sv.chrnum;
+                        myclip.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+                        if (myclip.pos >= curr_sv.pos - 100 && myclip.pos < curr_sv.pos + 100)
+                        {
+                            int tmp_idx = myclip.pos - curr_sv.pos + 100;
+                            
+                            if ( tmp_idx <0 || tmp_idx > 199)
+                            {
+                                // sanity check
+                                std::cerr << "Something wrong with clip idx  " << tmp_idx << std::endl;
+                                exit(1);
+                            }
+                            rdstats[sample_idx+k].rclips[tmp_idx] ++;
+                            rdstats[sample_idx+k].n_rclip_start ++;
+                            all_rclips[tmp_idx] ++;
+                        }
+                        if (myclip.pos >= curr_sv.end - 100 && myclip.pos < curr_sv.end + 100 )
+                        {
+                            int tmp_idx = myclip.pos - curr_sv.end + 300;
+                            
+                            if ( tmp_idx < 200 || tmp_idx > 399)
+                            {
+                                // sanity check
+                                std::cerr << "Something wrong with clip idx end " << tmp_idx << std::endl;
+                                exit(1);
+                            }
+                            rdstats[sample_idx+k].rclips[tmp_idx] ++;
+                            rdstats[sample_idx+k].n_rclip_end ++;
+                            all_rclips[tmp_idx] ++;
+                        }
                     }
                 }
-                
             }
-        }
 
-        sample_idx += n_samples[i];
-    }
-    
-    if (b_overlap) return;
-    
-    // Non-overlapping case
-    start_idx = start_idx2;
-    end_idx = end_idx2;
-    sample_idx = 0;
-    
-    for(int i=0; i<n_pileup; ++i)
-    {
-        pileups[i].seekg(multi_idx[i][start_idx]);
-        
-        for(uint64_t j=start_idx; j<=end_idx; ++j)
-        {
-            
-            for(int k=0; k<n_samples[i]; ++k)
-            {
-                //printf("\nSample %d\n", sample_idx+k);
-                uint32_t n_rp = 0;
-                pileups[i].read_uint32(n_rp);
-                
-                for(uint32_t l=0; l<n_rp; ++l)
-                {
-                    readpair rp;
-                    pileups[i].read_readpair(rp);
-     
-                    if (rp.selfpos >= start_pos2 && rp.selfpos <= end_pos2)
-                    {
-                        //printf(">>>");
-                        if (rp.matequal > 0)
-                        {
-                            if (rp.matepos >= start_pos1 && rp.matepos <= end_pos1)
-                            {
-                                if (rp.pairstr == 2 && rp.selfpos > rp.matepos)
-                                    rdstats[sample_idx + k].n_post_FR ++;
-                                else if (rp.pairstr == 1 && rp.matepos <= rp.selfpos)
-                                    rdstats[sample_idx + k].n_post_RF ++;
-                                else if (rp.pairstr == 3 && rp.selfpos <= rp.matepos)
-                                    rdstats[sample_idx + k].n_post_RR ++;
-                            }
-                        }
-                        else
-                            rdstats[sample_idx+k].n_post_rp_missing ++;
-                        //printf("POST_RP\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
-
-                    }
-                }
-                //printf("\n");
-                uint32_t n_sp = 0;
-                pileups[i].read_uint32(n_sp);
-                for(uint32_t l=0; l<n_sp; ++l)
-                {
-                    splitread sp;
-                    pileups[i].read_splitread(sp);
-      
-                    if (sp.pos >=start_pos2 && sp.pos <= end_pos2)
-                    {
-                        if (sp.sapos >= start_pos1 && sp.sapos <= end_pos1)
-                        {
-                            //printf(">>>");
-                            if (sp.pos > sp.sapos)
-                            {
-                                if (sp.firstclip <= 0 && sp.secondclip >=0)
-                                {
-                                    rdstats[sample_idx+k].n_post_split_out ++;
-                                }
-                                else if (sp.firstclip >=0 && sp.secondclip <=0)
-                                {
-                                    rdstats[sample_idx+k].n_pre_split_in ++;
-                                }
-                            }
-                        }
-                        else if (sp.sapos == 0)
-                        {
-                            rdstats[sample_idx+k].n_post_sp_missing ++;
-                        }
-                        //printf("POST_SP\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
-
-                    }
-                }
-                
-            }
+            sample_idx += n_samples[i];
         }
         
-        sample_idx += n_samples[i];
+        if (b_overlap)
+            return;
+        
+        // Prepare to read second readpair interval
+        start_idx = start_idx2;
+        end_idx = end_idx2;
+        sample_idx = 0;
     }
-    
-    
     return;
 }
 
@@ -832,11 +920,14 @@ void DataReader::read_var_depth(int var_i, std::vector<double> &var_dp)
 // GC-correction of n-th sample at chr:pos
 double DataReader::correct_gc(GcContent& gc, int n, double depth, int chr, int pos)
 {
-    int p = pos*2 / gc.binsize;
+    // TEMPORARY!!!
+//    return depth;
+    
+    int p = pos / gc.interval_dist;
     //    std::cerr << "pos " << pos << " p " << p << std::endl;
     int bin = gc.gc_array[chr][p];
     
-    if (bin<19 && gc_factors[n][bin]>0.1)
+    if (bin<(gc.num_bin-1) && gc_factors[n][bin]>0.1)
     {
         //        std::cerr << D << " at " << chr << ":" << pos << " is adjusted to " << D/gc_factor[bin] << " by gc Factor "<< gc_factor[bin] << std::endl;
         return depth * gc_factors[n][bin];

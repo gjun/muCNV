@@ -12,7 +12,23 @@
 #include <iostream>
 #include <fstream>
 #include "pileup.h"
- 
+
+bool sclip::operator < (const sclip& b) const
+{
+    return (chrnum<b.chrnum || (chrnum == b.chrnum && pos<b.pos));
+}
+
+bool sclip::operator == (const sclip& b) const
+{
+    return (chrnum == b.chrnum && pos == b.pos);
+}
+
+bool sclip::operator <= (const sclip& b) const
+{
+    return (chrnum<b.chrnum || (chrnum==b.chrnum && pos<=b.pos));
+    //    return (*this <b || *this ==b);
+}
+
 int Pileup::write_sample_stat(SampleStat &s)
 {
     // Write depth and isize stats
@@ -44,26 +60,56 @@ int Pileup::write_depth(uint16_t *dp, int N)
 int Pileup::write_readpair(readpair &rp)
 {
     int ret = 0;
-    fs.write(reinterpret_cast<char*>(&(rp.chrnum)), sizeof(int8_t));
-    fs.write(reinterpret_cast<char*>(&(rp.selfpos)), sizeof(int32_t));
-    fs.write(reinterpret_cast<char*>(&(rp.matepos)), sizeof(int32_t));
+    //fs.write(reinterpret_cast<char*>(&(rp.chrnum)), sizeof(int8_t));
+	// temoprary, to match previous ones
+    int16_t selfpos = (int16_t)rp.selfpos % 10000;
+    int16_t matepos = (int16_t)rp.matepos % 10000;
+//   int16_t selfpos = (int16_t) (rp.selfpos % 10000);
+//    int16_t matepos = (int16_t) (rp.matepos % 10000);
+    
+    fs.write(reinterpret_cast<char*>(&(selfpos)), sizeof(int16_t));
+    fs.write(reinterpret_cast<char*>(&(matepos)), sizeof(int16_t));
     fs.write(reinterpret_cast<char*>(&(rp.matequal)), sizeof(int8_t));
     fs.write(reinterpret_cast<char*>(&(rp.pairstr)), sizeof(int8_t));
-    ret += sizeof(int8_t) + sizeof(int32_t) + sizeof(int32_t) + sizeof(int8_t) + sizeof(int8_t);
+//    ret += sizeof(int8_t) + sizeof(int32_t) + sizeof(int32_t) + sizeof(int8_t) + sizeof(int8_t);
+ //   ret += sizeof(int32_t) + sizeof(int32_t) + sizeof(int8_t) + sizeof(int8_t);
+    ret += sizeof(int16_t) + sizeof(int16_t) + sizeof(int8_t) + sizeof(int8_t);
+
     return ret;
 }
 
 int Pileup::write_splitread(splitread& sp)
 {
     int ret = 0;
+    int16_t pos = (int16_t)sp.pos % 10000;
+    int16_t sapos = (int16_t)sp.sapos % 10000;
+   // int16_t pos = (int16_t) (sp.pos % 10000);
+    //int16_t sapos = (int16_t) (sp.sapos % 10000);
     
-    fs.write(reinterpret_cast<char*>(&(sp.chrnum)), sizeof(int8_t));
-    fs.write(reinterpret_cast<char*>(&(sp.pos)), sizeof(int32_t));
-    fs.write(reinterpret_cast<char*>(&(sp.sapos)), sizeof(int32_t));
+ //   fs.write(reinterpret_cast<char*>(&(sp.chrnum)), sizeof(int8_t));
+    fs.write(reinterpret_cast<char*>(&(pos)), sizeof(int16_t));
+    fs.write(reinterpret_cast<char*>(&(sapos)), sizeof(int16_t));
+    
     fs.write(reinterpret_cast<char*>(&(sp.firstclip)), sizeof(int16_t));
     fs.write(reinterpret_cast<char*>(&(sp.secondclip)), sizeof(int16_t));
-    ret += sizeof(int8_t) + sizeof(int32_t) + sizeof(int32_t) + sizeof(int16_t) + sizeof(int16_t);
-    
+//    ret += sizeof(int8_t) + sizeof(int32_t) + sizeof(int32_t) + sizeof(int16_t) + sizeof(int16_t);
+    ret += sizeof(int16_t) + sizeof(int16_t) + sizeof(int16_t) + sizeof(int16_t);
+
+    return ret;
+}
+
+int Pileup::write_softclip(sclip &sc)
+{
+    int ret = 0;
+    int16_t pos16 = (int16_t)(sc.pos % 10000); // from the offset
+
+ //   fs.write(reinterpret_cast<char*>(&(sc.chrnum)), sizeof(int8_t));
+ //   fs.write(reinterpret_cast<char*>(&(sc.pos)), sizeof(int32_t)); // The position where M and S divides left/right will be recoreded in separate lists
+    fs.write(reinterpret_cast<char*>(&pos16), sizeof(int16_t));
+ //   ret += sizeof(int8_t) + sizeof(int32_t);
+ //   ret += sizeof(int32_t);
+    ret += sizeof(int16_t);
+
     return ret;
 }
 
@@ -100,25 +146,104 @@ int Pileup::read_depth(uint16_t *dp, int N)
 int Pileup::read_readpair(readpair &rp)
 {
     int ret = 0;
-    fs.read(reinterpret_cast<char*>(&(rp.chrnum)), sizeof(int8_t));
-    fs.read(reinterpret_cast<char*>(&(rp.selfpos)), sizeof(int32_t));
-    fs.read(reinterpret_cast<char*>(&(rp.matepos)), sizeof(int32_t));
+    int16_t selfpos=0;
+    int16_t matepos=0;
+    
+//    fs.read(reinterpret_cast<char*>(&(rp.chrnum)), sizeof(int8_t));
+    fs.read(reinterpret_cast<char*>(&(selfpos)), sizeof(int16_t));
+    fs.read(reinterpret_cast<char*>(&(matepos)), sizeof(int16_t));
     fs.read(reinterpret_cast<char*>(&(rp.matequal)), sizeof(int8_t));
     fs.read(reinterpret_cast<char*>(&(rp.pairstr)), sizeof(int8_t));
-    ret += sizeof(int8_t) + sizeof(int32_t) + sizeof(int32_t) + sizeof(int8_t) + sizeof(int8_t);
+//    ret += sizeof(int8_t) + sizeof(int32_t) + sizeof(int32_t) + sizeof(int8_t) + sizeof(int8_t);
+    ret += sizeof(int16_t) + sizeof(int16_t) + sizeof(int8_t) + sizeof(int8_t);
+
+    rp.selfpos = selfpos;
+    rp.matepos = matepos;
+    
     return ret;
 }
 
 int Pileup::read_splitread(splitread& sp)
 {
     int ret = 0;
+    int16_t pos;
+    int16_t sapos;
     
-    fs.read(reinterpret_cast<char*>(&(sp.chrnum)), sizeof(int8_t));
-    fs.read(reinterpret_cast<char*>(&(sp.pos)), sizeof(int32_t));
-    fs.read(reinterpret_cast<char*>(&(sp.sapos)), sizeof(int32_t));
+//    fs.read(reinterpret_cast<char*>(&(sp.chrnum)), sizeof(int8_t));
+    fs.read(reinterpret_cast<char*>(&(pos)), sizeof(int16_t));
+    fs.read(reinterpret_cast<char*>(&(sapos)), sizeof(int16_t));
     fs.read(reinterpret_cast<char*>(&(sp.firstclip)), sizeof(int16_t));
     fs.read(reinterpret_cast<char*>(&(sp.secondclip)), sizeof(int16_t));
-    ret += sizeof(int8_t) + sizeof(int32_t) + sizeof(int32_t) + sizeof(int16_t) + sizeof(int16_t);
+//    ret += sizeof(int8_t) + sizeof(int32_t) + sizeof(int32_t) + sizeof(int16_t) + sizeof(int16_t);
+    ret += sizeof(int16_t) + sizeof(int16_t) + sizeof(int16_t) + sizeof(int16_t);
+    
+    sp.pos = pos;
+    sp.sapos = sapos;
+
+    return ret;
+}
+
+int Pileup::read_softclip(sclip &sc)
+{
+    int ret = 0;
+    int16_t pos16;
+    
+//    fs.read(reinterpret_cast<char*>(&(sc.chrnum)), sizeof(int8_t));
+//    fs.read(reinterpret_cast<char*>(&(sc.pos)), sizeof(int32_t)); // The position where M and S divides, and also direction by the sign
+    fs.read(reinterpret_cast<char*>(&(pos16)), sizeof(int16_t)); // The position where M and S divides, and also direction by the sign
+
+ //   ret += sizeof(int8_t) + sizeof(int32_t);
+  //  ret += sizeof(int32_t);
+    ret += sizeof(int16_t);
+    sc.pos = (int32_t) pos16;
     
     return ret;
+}
+
+int Pileup::fix_offset_pos(int32_t j, int32_t r)
+{
+    int ans = 0;
+    
+    if (j<30000)
+    {
+        ans = r;
+    }
+    else
+    {
+        if ( ((j+10000) + 32768) / 65536 > (j + 32768) / 65536)
+        {
+            int32_t kk = (int32_t)((j+10000+32768)/65536)*65536 - 32768 - j;
+            
+            if (r>=0 && r<2768)
+            {
+                ans = kk - (2768-r);
+            }
+            else if (r>2767)
+            {
+                ans = kk - (2768-(r-10000));
+            }
+            else if (r<0 && r>= -2768)
+            {
+                ans = kk + (r+2768);
+            }
+            else
+            {
+                ans = kk + 10000 + r + 2768;
+            }
+        }
+        else
+        {
+            int16_t mm = (int16_t) j;
+            int16_t rr = mm % 10000;
+            if (r >= rr)
+            {
+                ans = r-rr;
+            }
+            else
+            {
+                ans = r-rr+10000;
+            }
+        }
+    }
+    return ans;
 }

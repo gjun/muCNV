@@ -26,6 +26,8 @@ public:
     
     //1-D without weights
     void EM(std::vector<double>&);
+    void EM_select(std::vector<double>&, std::vector<bool> &);
+
 	// 1-D K-Means
     void KM(std::vector<double>&, bool);
 

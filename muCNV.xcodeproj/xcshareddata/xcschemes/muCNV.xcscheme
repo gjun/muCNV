@@ -63,35 +63,35 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "genotype -i /Users/gjun/data/pileup/nature.list"
+            argument = "genotype -i /Users/gjun/data/pileup/ccdg_trio.list"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-V /Users/gjun/data/vcf/35K.merged.withXY.interval"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-n 3218-3218"
+            argument = "-n 192879-192879"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-r 10:1-19999999"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-o /Users/gjun/data/vcf/nature.vcf"
+            argument = "-o /Users/gjun/data/vcf/merged.chr20.vcf"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-V /Users/gjun/data/vcf/selected.sites.withXY.interval"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "-f /Users/gjun/code/mucnv/resource/GRCh38.gc"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-c 10"
+            argument = "-f /Users/gjun/code/mucnv/resource/GRCh38.v2.gc"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-c 20"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

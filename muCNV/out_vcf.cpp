@@ -29,10 +29,16 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs)
 	fprintf(fp,"##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">\n");
 	fprintf(fp,"##INFO=<ID=CALLRATE,Number=1,Type=Float,Description=\"Call rate\">\n");
 	fprintf(fp,"##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the variant described in this record\">\n");
+	fprintf(fp,"##INFO=<ID=SVLEN,Number=1,Type=Integer,Description=\"Length of the structural variant\">\n");
 	fprintf(fp,"##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">\n");
 	fprintf(fp,"##INFO=<ID=DP,Number=1,Type=String,Description=\"1-D Depth clustering\">\n");
 	fprintf(fp,"##INFO=<ID=DP2,Number=1,Type=String,Description=\"2-D Depth clustering\">\n");
-	fprintf(fp,"##INFO=<ID=READ,Number=0,Type=String,Description=\"Read pair based genotyping\">\n");
+	fprintf(fp,"##INFO=<ID=READ,Number=1,Type=String,Description=\"Read pair locations around SV\">\n");
+	fprintf(fp,"##INFO=<ID=CLIP,Number=1,Type=String,Description=\"Soft clip locations around SV\">\n");
+	fprintf(fp,"##INFO=<ID=RPGENO, Number=0,Type=String,Description=\"Genotyped by read pair\">\n");
+	fprintf(fp,"##INFO=<ID=SCGENO, Number=0,Type=String,Description=\"Genotyped by soft clip\">\n");
+	fprintf(fp,"##INFO=<ID=PRE, Number=0,Type=String,Description=\"Read depth before SV looks normal\">\n");
+	fprintf(fp,"##INFO=<ID=POST, Number=0,Type=String,Description=\"Read depth after SV looks normal\">\n");
 	fprintf(fp,"##INFO=<ID=Biallelic,Number=0,Type=String,Description=\"Biallelic variant\">\n");
 	fprintf(fp,"##ALT=<ID=DEL,Description=\"Deletion\">\n");
 	fprintf(fp,"##ALT=<ID=DUP,Description=\"Duplication\">\n");
@@ -89,7 +95,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
         af = (double)G.ac/(2.0*G.ns);
 	}
     
-	fprintf(fp, "SVTYPE=%s;END=%d;SVLEN=%d;AC=%d;NS=%d;CALLRATE=%.2f:AF=%f",  svtype, S.end, S.len, G.ac, G.ns, G.ns / (float)G.gt.size(), af);
+	fprintf(fp, "SVTYPE=%s;END=%d;SVLEN=%d;AC=%d;NS=%d;CALLRATE=%.2f;AF=%f",  svtype, S.end, S.len, G.ac, G.ns, G.ns / (float)G.gt.size(), af);
 	fprintf(fp, ";%s", G.info.c_str());
 
     if (G.pd_flag)
@@ -118,14 +124,26 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 	}
     if (G.read_flag)
 	{
-        fprintf(fp, ";READ");
+        fprintf(fp, ";READ=(%d,%d)", G.rp_pos, G.rp_end);
+	}
+	if (G.rp_geno_flag)
+	{
+        fprintf(fp, ";RPGENO");
+	}
+    if (G.clip_flag)
+    {
+        fprintf(fp, ";CLIP=(%d,%d)", G.clip_pos, G.clip_end);
+    }
+	if (G.clip_geno_flag)
+	{
+        fprintf(fp, ";SCGENO");
 	}
 	if (G.b_biallelic)
 	{
 		fprintf(fp, ";Biallelic");
 	}
 
-    fprintf(fp, "\tGT:CN:DP:DD:RP:SP:SC");
+    fprintf(fp, "\tGT:CN:DP:DD:RP:SC");
 
     for (int i=0; i<(int)G.gt.size(); ++i)
     {
@@ -170,19 +188,19 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 
 		if (S.svtype == DEL)
 		{
-			fprintf(fp, ":%d:%d:%d", D.rdstats[i].n_pre_FR + D.rdstats[i].n_post_FR, D.rdstats[i].n_pre_clip_in + D.rdstats[i].n_post_clip_in,  D.rdstats[i].n_pre_split_in + D.rdstats[i].n_post_split_in);
+            fprintf(fp, ":%d:%d", G.start_rps[i] + G.end_rps[i], G.start_clips[i] + G.end_clips[i]);
 		}
 		else if (S.svtype == DUP || S.svtype==CNV)
 		{
-			fprintf(fp, ":%d:%d:%d", D.rdstats[i].n_pre_RF + D.rdstats[i].n_post_RF, D.rdstats[i].n_pre_clip_out + D.rdstats[i].n_post_clip_out, D.rdstats[i].n_pre_split_out + D.rdstats[i].n_post_split_out);
+            fprintf(fp, ":%d:%d",  G.start_rps[i] + G.end_rps[i], G.start_clips[i] + G.end_clips[i]);
 		}
 		else if (S.svtype == INV)
 		{
-			fprintf(fp, ":%d:%d:%d", D.rdstats[i].n_pre_FF + D.rdstats[i].n_post_RR, D.rdstats[i].n_pre_clip_in + D.rdstats[i].n_pre_clip_out + D.rdstats[i].n_post_clip_in + D.rdstats[i].n_post_clip_out, D.rdstats[i].n_pre_split_out + D.rdstats[i].n_post_split_out + D.rdstats[i].n_pre_split_in + D.rdstats[i].n_pre_split_out);
+			fprintf(fp, ":%d:%d",  G.start_rps[i] + G.end_rps[i], G.start_clips[i] + G.end_clips[i]);
 		}
 		else if (S.svtype == INS)
 		{
-			fprintf(fp, ":%d:%d", D.rdstats[i].n_pre_INS, D.rdstats[i].n_pre_clip_in + D.rdstats[i].n_post_clip_in);
+			fprintf(fp, ":%d:%d", D.rdstats[i].n_rp[1], D.rdstats[i].n_split_inward);
 		}
 
     }

@@ -18,61 +18,73 @@ using std::string;
 class ReadStat
 {
 public:
-	int n_pre_FR;  // DEL
-	int n_pre_RF;  // DUP
-    int n_pre_FF;  // INV
-    int n_post_RR; // INV
-	int n_post_FR; // DEL
-	int n_post_RF; // DUP
-    int n_pre_INS; // INS
-    
-	int n_pre_rp_missing; 
-	int n_post_rp_missing;
+    std::vector<int> n_rp; // indexed by pairstr
 
-	int n_pre_sp_missing; 
-	int n_post_sp_missing;
-
-    //  ---------(sclip)                  (sclip)-------- split_in, DEL
-    //  (sclip)---------                  ----------(sclip) split_out, DUP
-	int n_pre_split_out; // right clipped
-	int n_pre_split_in; // left clipped
-	int n_post_split_out; // right clipped
-	int n_post_split_in; // left clipped
-    int n_pre_clip_in;
-    int n_pre_clip_out;
-    int n_post_clip_in;
-    int n_post_clip_out;
-
+    int n_split_inward;
+    int n_split_outward;
  
     bool del_support();
     bool dup_support();
     bool inv_support();
     bool ins_support();
     
+    // Vectors to store total # rp/sp in each sample per every 10 bp in +/- 500bp of the SV
+    std::vector< std::vector<int> > rp_seq;
+    std::vector<int> sp_seq_in;
+    std::vector<int> sp_seq_out;
+
+    
+    // Vector to store total # clips in each sample per every bp in +/- 100bp of the SV
+    // + : clip in forward direction (rclip)
+    // - : clip in reverse direction (lclip)
+    std::vector<int> lclips;
+    std::vector<int> rclips;
+    
+    int n_lclip_start;
+    int n_lclip_end;
+    
+    int n_rclip_start;
+    int n_rclip_end;
+    
+    void reset()
+    {
+        std::fill(n_rp.begin(), n_rp.end(), 0);
+        
+        n_split_inward = 0;
+        n_split_outward = 0;
+        for(int i=0; i<4; ++i)
+        {
+            std::fill(rp_seq[i].begin(), rp_seq[i].end(), 0);
+        }
+
+        std::fill(sp_seq_out.begin(), sp_seq_out.end(), 0);
+        std::fill(sp_seq_in.begin(), sp_seq_in.end(), 0);
+        
+        std::fill(lclips.begin(), lclips.end(), 0);
+        std::fill(rclips.begin(), rclips.end(), 0);
+        n_lclip_start = 0;
+        n_rclip_start = 0;
+        n_lclip_end = 0;
+        n_rclip_end = 0;
+    };
+    
 	ReadStat() 
 	{
-		n_pre_FR = 0;
-		n_pre_RF = 0;
-        n_pre_FF = 0;
-        n_post_RR = 0;
-		n_post_FR = 0;
-		n_post_RF = 0;
-        n_pre_INS = 0;
+        n_rp.resize(4);
         
-		n_pre_rp_missing = 0;
-		n_post_rp_missing =0;
+        rp_seq.resize(4);
 
-		n_pre_sp_missing = 0;
-		n_post_sp_missing =0;
-		n_pre_split_out = 0;
-		n_pre_split_in = 0;
-		n_post_split_out = 0;
-		n_post_split_in = 0;
-        n_pre_clip_in = 0;
-        n_pre_clip_out = 0;
-        n_post_clip_in = 0;
-        n_post_clip_out = 0;
-    }
+        for(int i=0; i<4; ++i)
+        {
+            rp_seq[i].resize(200);
+        }
+        sp_seq_out.resize(400);
+        sp_seq_in.resize(400);
+        
+        lclips.resize(400);
+        rclips.resize(400);
+    };
+    
 };
 
 class DataReader
@@ -82,10 +94,13 @@ public:
 
     // Initialize all multi-pileups, load number of samples & sapmle ids & gc factors
     int load(std::vector<string> &, std::vector<SampleStat>&, GcContent &, int );
-    int read_depth100(sv&, std::vector< std::vector<double> > &, GcContent& gc, bool);
+    void adjust_gc_factor(GcContent& ,std::vector<SampleStat>&, int);
+
+    bool read_depth100(sv&, std::vector< std::vector<double> > &, GcContent& gc, bool);
     void read_var_depth(int, std::vector<double>&);
-    void read_pair_split(sv&, std::vector<ReadStat> &, GcContent &);
+    void read_pair_split(sv&, std::vector<ReadStat> &, GcContent &, std::vector< std::vector<int> >&, std::vector<int> &, std::vector<int> &);
     double correct_gc(GcContent &, int, double, int, int);
+    bool around_breakpoint(readpair &, sv &);
     void close();
 
 private:

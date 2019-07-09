@@ -23,6 +23,7 @@ int main_print_pileup(int argc, char** argv)
     std::string interval_file;
     std::string gc_file;
     std::string sampID;
+    std::string pileupID;
     std::string region;
 	int chr;
     
@@ -34,7 +35,8 @@ int main_print_pileup(int argc, char** argv)
         TCLAP::CmdLine cmd("Command description message", ' ', "0.06");
         
 
-        TCLAP::ValueArg<std::string> argSampleID("s","sample","Sample ID",false,"","string");
+        TCLAP::ValueArg<std::string> argPileup("p","pileup","Prefix of the pileup file",false,"","string");
+        TCLAP::ValueArg<std::string> argSample("s","sample","Sample ID of a single sample to be printed from the pileup",false,"","string");
         TCLAP::ValueArg<std::string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
         TCLAP::ValueArg<std::string> argInterval("V","interVal", "Binary interval file containing candidate SVs", false, "", "string");
         TCLAP::ValueArg<std::string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "string");
@@ -44,13 +46,15 @@ int main_print_pileup(int argc, char** argv)
         cmd.add(argVcf);
         cmd.add(argInterval);
         cmd.add(argGcfile);
-        cmd.add(argSampleID);
+        cmd.add(argSample);
+        cmd.add(argPileup);
         cmd.add(argRegion);
 		cmd.add(argChr);
         
         cmd.parse(argc, argv);
         
-        sampID = argSampleID.getValue();
+        pileupID = argPileup.getValue();
+        sampID = argSample.getValue();
         vcf_file = argVcf.getValue();
         interval_file = argInterval.getValue();
         gc_file = argGcfile.getValue();
@@ -70,15 +74,15 @@ int main_print_pileup(int argc, char** argv)
     std::vector<breakpoint> vec_bp;
     
     // mvar, mpileup ?
-    std::string pileup_name = sampID + ".pileup";
-    std::string varfile_name = sampID + ".var";
-    std::string idxfile_name = sampID + ".idx";
+    std::string pileup_name = pileupID + ".pileup";
+    std::string varfile_name = pileupID + ".var";
+    std::string idxfile_name = pileupID + ".idx";
 
     if (chr>0)
     {
-        pileup_name = sampID + ".chr" + std::to_string(chr) + ".pileup";
-        varfile_name = sampID +".chr" + std::to_string(chr) +  ".var";
-        idxfile_name = sampID +".chr" + std::to_string(chr) +  ".idx";
+        pileup_name = pileupID + ".chr" + std::to_string(chr) + ".pileup";
+        varfile_name = pileupID +".chr" + std::to_string(chr) +  ".var";
+        idxfile_name = pileupID +".chr" + std::to_string(chr) +  ".idx";
     }
     
     // TODO: make this also work with VCF file
@@ -89,10 +93,32 @@ int main_print_pileup(int argc, char** argv)
     Pileup var_file;
     BaseFile idx_file;
     
+    int sample_idx = -1;
+    
     pup.open(pileup_name, std::ios::in | std::ios::binary);
+
+	if (!pup.good())
+	{
+		fprintf(stderr, "Cannot open %s \n", pileup_name.c_str());
+		exit(1);
+	}
+
+
     var_file.open(varfile_name, std::ios::in | std::ios::binary);
+
+	if (!var_file.good())
+	{
+		fprintf(stderr, "Cannot open %s \n", varfile_name.c_str());
+		exit(1);
+	}
     idx_file.open(idxfile_name, std::ios::in | std::ios::binary);
     
+	if (!idx_file.good())
+	{
+		fprintf(stderr, "Cannot open %s \n", idxfile_name.c_str());
+		exit(1);
+	}
+
     uint64_t curr_idx = 0;
     
     pup.read_int32(n_sample);
@@ -103,6 +129,12 @@ int main_print_pileup(int argc, char** argv)
     {
         char buf[256];
         pup.read_sample_id(buf);
+        std::string this_ID (buf);
+        if (this_ID == sampID)
+        {
+            printf("Only sample %s at index %d will be printed \n", sampID.c_str(), i);
+            sample_idx = i;
+        }
         printf("\t%s", buf);
     }
     printf("\n");
@@ -111,7 +143,11 @@ int main_print_pileup(int argc, char** argv)
     {
         SampleStat s;
         pup.read_sample_stat(s);
-        printf("Sample %d, AVG DP: %f, STdev: %f, AVG ISIZE: %f, STdev: %f \n", i, s.avg_dp, s.std_dp, s.avg_isize, s.std_isize);
+        
+        if (sample_idx < 0 || sample_idx == i)
+        {
+            printf("Sample %d, AVG DP: %f, STdev: %f, AVG ISIZE: %f, StdDev: %f \n", i, s.avg_dp, s.std_dp, s.avg_isize, s.std_isize);
+        }
     }
     
     GcContent gc;
@@ -119,15 +155,19 @@ int main_print_pileup(int argc, char** argv)
     
     for(int i=0; i<n_sample; ++i)
     {
-        printf("GC-factors for sample %d:\n", i);
         std::vector<double> gc_factor (gc.num_bin);
         pup.read_gc_factor(gc_factor, gc.num_bin);
-        for(int j=0; j<gc.num_bin; ++j)
+    
+        if (sample_idx < 0 || sample_idx == i)
         {
-            printf("GC-bin %d: %f\n", j, gc_factor[j]);
+            printf("GC-factors for sample %d:\n", i);
+            
+            for(int j=0; j<gc.num_bin; ++j)
+            {
+                printf("GC-bin %d: %f\n", j, gc_factor[j]);
+            }
         }
     }
-
 	fflush(stdout);
 
     idx_file.read_uint64(curr_idx);
@@ -140,7 +180,7 @@ int main_print_pileup(int argc, char** argv)
 
 	if (chr>0)
 	{
-        int N = ceil((double)gc.chr_size[chr] / 100.0) + 1;
+        int N = gc.n_interval[chr];
         for(int j=0;j<N;++j)
         {
             pup.read_depth(dp100, n_sample);
@@ -155,7 +195,7 @@ int main_print_pileup(int argc, char** argv)
 	{
 		for(int c=1; c<=gc.num_chr; ++c)
 		{
-			int N = ceil((double)gc.chr_size[c] / 100.0) + 1;
+			int N = gc.n_interval[c];
 			for(int j=0;j<N;++j)
 			{
 				pup.read_depth(dp100, n_sample);
@@ -170,7 +210,10 @@ int main_print_pileup(int argc, char** argv)
     delete [] dp100;
     for(int i=0; i<n_sample; ++i)
     {
-        printf("Sample %d, average DP100: %d\n", i, (int)round((double)dpsum[i]/n_dp[i]/32.0));
+        if (sample_idx < 0 || sample_idx == i)
+        {
+            printf("Sample %d, average DP100: %d\n", i, (int)round((double)dpsum[i]/n_dp[i]/32.0));
+        }
     }
     
 	if (chr>0)
@@ -181,29 +224,79 @@ int main_print_pileup(int argc, char** argv)
 		{
 			idx_file.read_uint64(curr_idx);
 			printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pup.tellg());
-			
+            printf("chr%d:%d-%d\n", chr, (j-1)*10000, j*10000);
+
 			for(int i=0; i<n_sample; ++i)
 			{
 				uint32_t n_rp = 0;
 				pup.read_uint32(n_rp);
-				printf("Sample %d, %d readpairs\n", i, n_rp);
+                if (sample_idx < 0 || sample_idx == i)
+                    printf("Sample %d, %d readpairs\n", i, n_rp);
+                
 				for(int k=0; k<(int)n_rp; ++k)
 				{
 					readpair rp;
 					pup.read_readpair(rp);
-					printf("\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+                    if (sample_idx < 0 || sample_idx == i)
+                    {
+                        rp.chrnum = chr;
+                        // TEMPORARY, TO FIX PILEUP TYPECASTING BUG
+                        rp.selfpos = pup.fix_offset_pos((j-1)*10000, rp.selfpos);
+                        rp.matepos = pup.fix_offset_pos((j-1)*10000, rp.matepos);
+                        rp.selfpos += (j-1)*10000;
+                        rp.matepos += (j-1)*10000;
+                        printf("\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+                    }
 				}
 				
 				uint32_t n_sp = 0;
 				pup.read_uint32(n_sp);
-				printf("Sample %d, %d split reads\n", i, n_sp);
+                if (sample_idx < 0 || sample_idx == i)
+                    printf("Sample %d, %d split reads\n", i, n_sp);
 				for(int k=0; k<(int)n_sp; ++k)
 				{
 					splitread sp;
 					pup.read_splitread(sp);
-					printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
-
+                    if (sample_idx < 0 || sample_idx == i)
+                    {
+                        // TEMPORARY, TO FIX PILEUP TYPECASTING BUG
+                        
+                        sp.pos = pup.fix_offset_pos((j-1)*10000, sp.pos);
+                        sp.sapos = pup.fix_offset_pos((j-1)*10000, sp.sapos);
+                        sp.chrnum = chr;
+                        sp.pos += (j-1)*10000;
+                        sp.sapos += (j-1)*10000;
+                        printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
+                    }
 				}
+                
+                uint32_t n_lclip = 0;
+                pup.read_uint32(n_lclip);
+                if (sample_idx < 0 || sample_idx == i)
+                    printf("Sample %d, %d left clips\n", i, n_lclip);
+                for(int k=0; k<(int)n_lclip; ++k)
+                {
+                    sclip myclip;
+                    pup.read_softclip(myclip);
+                    myclip.chrnum = chr;
+                    myclip.pos += (j-1)*10000;
+                    if (sample_idx < 0 || sample_idx == i)
+                        printf("\t%d\t%d\n", myclip.chrnum, myclip.pos);
+                }
+
+                uint32_t n_rclip = 0;
+                pup.read_uint32(n_rclip);
+                if (sample_idx < 0 || sample_idx == i)
+                    printf("Sample %d, %d right clips\n", i, n_rclip);
+                for(int k=0; k<(int)n_rclip; ++k)
+                {
+                    sclip myclip;
+                    pup.read_softclip(myclip);
+                    myclip.chrnum = chr;
+                    myclip.pos += (j-1)*10000;
+                    if (sample_idx < 0 || sample_idx == i)
+                        printf("\t%d\t%d\n", myclip.chrnum, myclip.pos);
+                }
 
 			}
 		}
@@ -218,29 +311,72 @@ int main_print_pileup(int argc, char** argv)
 			{
 				idx_file.read_uint64(curr_idx);
 				printf("index position %d, tellg position %d\n", (int)curr_idx, (int)pup.tellg());
-				
+                printf("chr%d:%d-%d\n", c, (j-1)*10000, j*10000);
+
 				for(int i=0; i<n_sample; ++i)
 				{
 					uint32_t n_rp = 0;
 					pup.read_uint32(n_rp);
-					printf("Sample %d, %d readpairs\n", i, n_rp);
+                    if (sample_idx < 0 || sample_idx == i)
+                        printf("Sample %d, %d readpairs\n", i, n_rp);
 					for(int k=0; k<(int)n_rp; ++k)
 					{
 						readpair rp;
 						pup.read_readpair(rp);
-						printf("\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
+                        rp.chrnum = c;
+                        // TEMPORARY, TO FIX PILEUP TYPECASTING BUG
+                        rp.selfpos = pup.fix_offset_pos((j-1)*10000, rp.selfpos);
+                        rp.matepos = pup.fix_offset_pos((j-1)*10000, rp.matepos);
+                        rp.selfpos += (j-1)*10000;
+                        rp.matepos += (j-1)*10000;
+                        if (sample_idx < 0 || sample_idx == i)
+                            printf("\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
 					}
 					
 					uint32_t n_sp = 0;
 					pup.read_uint32(n_sp);
-					printf("Sample %d, %d split reads\n", i, n_sp);
+                    if (sample_idx < 0 || sample_idx == i)
+                        printf("Sample %d, %d split reads\n", i, n_sp);
 					for(int k=0; k<(int)n_sp; ++k)
 					{
 						splitread sp;
 						pup.read_splitread(sp);
-						printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
-
+                        sp.chrnum = c;
+                        // TEMPORARY, TO FIX PILEUP TYPECASTING BUG
+                        sp.pos = pup.fix_offset_pos((j-1)*10000, sp.pos);
+                        sp.sapos = pup.fix_offset_pos((j-1)*10000, sp.sapos);
+                        sp.pos += (j-1)*10000;
+                        sp.sapos += (j-1)*10000;
+                        if (sample_idx < 0 || sample_idx == i)                        printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
 					}
+                    
+                    uint32_t n_lclip = 0;
+                    pup.read_uint32(n_lclip);
+                    if (sample_idx < 0 || sample_idx == i)
+                        printf("Sample %d, %d left clips\n", i, n_lclip);
+                    for(int k=0; k<(int)n_lclip; ++k)
+                    {
+                        sclip myclip;
+                        pup.read_softclip(myclip);
+                        myclip.chrnum = c;
+                        myclip.pos += (j-1)*10000;
+                        if (sample_idx < 0 || sample_idx == i)
+                            printf("\t%d\t%d\n", myclip.chrnum, myclip.pos);
+                    }
+                    
+                    uint32_t n_rclip = 0;
+                    pup.read_uint32(n_rclip);
+                    if (sample_idx < 0 || sample_idx == i)
+                        printf("Sample %d, %d right clips\n", i, n_rclip);
+                    for(int k=0; k<(int)n_rclip; ++k)
+                    {
+                        sclip myclip;
+                        pup.read_softclip(myclip);
+                        myclip.chrnum = c;
+                        myclip.pos += (j-1)*10000;
+                        if (sample_idx < 0 || sample_idx == i)
+                            printf("\t%d\t%d\n", myclip.chrnum, myclip.pos);
+                    }
 
 				}
 			}
@@ -263,7 +399,8 @@ int main_print_pileup(int argc, char** argv)
         char buf[256];
 
         var_file.read_sample_id(buf);
-        printf("\t%s", buf);
+        if (sample_idx < 0 || sample_idx == i)
+            printf("\t%s", buf);
     }
     printf("\n");
     
@@ -283,7 +420,8 @@ int main_print_pileup(int argc, char** argv)
         {
             uint16_t dp;
             var_file.read_depth(&dp, 1);
-            printf("\t%f", (dp/32.0));
+            if (sample_idx < 0 || sample_idx == i)
+                printf("\t%f", (dp/32.0));
         }
         printf("\n");
     }
