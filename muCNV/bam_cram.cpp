@@ -30,7 +30,7 @@ int get_cigar_clippos(std::string &cigar_str)
     {
         lclip = 0; //something wrong
     }
-    else if (cigar_str[j-1] == 'S')
+    else if (cigar_str[j] == 'S')
     {
         lclip = atoi(cigar_str.substr(0,j).c_str());
     }
@@ -79,7 +79,7 @@ bool process_split(std::string &t, splitread &new_sp, int32_t tid, bool strand)
             }
             else if (t[4]>='0' && t[4]<='9' && t[5]==',')
             {
-                chr = (t[3]-'0')*10 + (t[5]-'0');
+                chr = (t[3]-'0')*10 + (t[4]-'0');
                 i=6;
             }
         }
@@ -165,8 +165,8 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
 
                 // get average isize statistics only from properly paired pairs
                 // and also for isize>0 cases (do not double count)
-                aux->sum_isz += b->core.isize;
-                aux->sumsq_isz += (b->core.isize) * (b->core.isize);
+                aux->sum_isz += (b->core.isize - aux->shift_isz);
+                aux->sumsq_isz += (b->core.isize - aux->shift_isz) * (b->core.isize - aux->shift_isz);
                 aux->n_isz += 1;
             }
             else 
@@ -195,14 +195,18 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                         {
                             new_rp.matequal = 0;
                         }
-                        new_rp.matepos = b->core.mpos;
-                        new_rp.pairstr += (b->core.flag & BAM_FMREVERSE) ? 1 : 0;
-                        aux->n_rp++;
-                        (*(aux->p_vec_rp)).push_back(new_rp);
+                        if (new_rp.matequal > 10)
+                        {
+                            new_rp.matepos = b->core.mpos;
+                            new_rp.pairstr += (b->core.flag & BAM_FMREVERSE) ? 1 : 0;
+                            aux->n_rp++;
+                            (*(aux->p_vec_rp)).push_back(new_rp);
+                        }
                     }
-                    else if (b->core.flag & BAM_FMUNMAP) // mate is unmapped, but self has good MQ  - insertion or inversion
+                    else if (b->core.flag & BAM_FMUNMAP) // mate is unmapped, but self has good MQ  - possible novel sequence insertion?
                     {
                         // TODO: Check - Is this useful at all?
+                        // Oct 2019 - It looks like there's almost no case like this, so maybe not helpful
                         new_rp.matequal = 0;
                         new_rp.matepos = -1;
                         aux->n_rp++;
@@ -236,6 +240,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                         new_clip.chrnum = b->core.tid + 1;
                         new_clip.pos = b->core.pos;
                         new_clip.b_end = (bool)(b->core.flag & BAM_FREVERSE);
+                        new_clip.b_drop = false;
                         (*(aux->p_vec_lclip)).push_back(new_clip);
                         //fprintf(stderr,"left clip ncigar %d, lclip %d, pos %d", b->core.n_cigar, lclip, b->core.pos);
 
@@ -250,6 +255,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                         new_clip.chrnum = b->core.tid + 1;
                         new_clip.pos = bam_endpos(b);
                         new_clip.b_end = !((bool)(b->core.flag & BAM_FREVERSE));
+                        new_clip.b_drop = false;
                         (*(aux->p_vec_rclip)).push_back(new_clip);
                        // fprintf(stderr,"right clip ncigar %d, lclip %d, pos %d", b->core.n_cigar, rclip, b->core.pos);
                     }
@@ -257,30 +263,30 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
             }
         }
         
-		if ((b->core.flag & BAM_FSUPPLEMENTARY) && !in_centrome(b->core.tid+1, b->core.pos) )
+		if ((b->core.flag & BAM_FSUPPLEMENTARY) && !in_centrome(b->core.tid+1, b->core.pos) && b->core.qual >=20)
 		{
-			uint8_t *aux_sa = bam_aux_get(b, "SA");
-			char* p_sa;
-			if (aux_sa && (p_sa = bam_aux2Z(aux_sa)))
-			{
-				std::string str_sa = std::string(p_sa);
+            uint8_t *aux_sa = bam_aux_get(b, "SA");
+            char* p_sa;
+            if (aux_sa && (p_sa = bam_aux2Z(aux_sa)))
+            {
+                std::string str_sa = std::string(p_sa);
                 
-				splitread new_sp;
-				new_sp.chrnum = b->core.tid + 1;
-				new_sp.pos = b->core.pos;
-				new_sp.firstclip = 0;
-				new_sp.secondclip = 0;
-
-				int ncigar = b->core.n_cigar;
-				uint32_t *cigar  = bam_get_cigar(b);
-
+                splitread new_sp;
+                new_sp.chrnum = b->core.tid + 1;
+                new_sp.pos = b->core.pos;
+                new_sp.firstclip = 0;
+                new_sp.secondclip = 0;
+                
+                int ncigar = b->core.n_cigar;
+                uint32_t *cigar  = bam_get_cigar(b);
+                
                 if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP)
-				{
-					lclip = bam_cigar_oplen(cigar[0]);
-				}
-				if (bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP)
-				{
-					rclip = bam_cigar_oplen(cigar[ncigar-1]);
+                {
+                    lclip = bam_cigar_oplen(cigar[0]);
+                }
+                if (bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP)
+                {
+                    rclip = bam_cigar_oplen(cigar[ncigar-1]);
 				}
                 
                 if (rclip > lclip && rclip > 15) // arbitrary cutoff, 15
@@ -313,6 +319,7 @@ void BamCram::initialize_sequential(std::string &bname, GcContent &gc)
     
     data[0]->sum_isz = 0;
     data[0]->sumsq_isz = 0;
+    data[0]->shift_isz = 400; // location parameter
     data[0]->n_isz = 0;
     
     
@@ -356,9 +363,10 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
     
     size_t nxt = 0;
    
-    uint64_t sum_dp = 0;
-    uint64_t sumsq_dp = 0;
-    uint64_t n_dp = 0;
+    int64_t shift_dp = 30; // location parameter
+    int64_t sum_dp = 0;
+    int64_t sumsq_dp = 0;
+    int64_t n_dp = 0;
     
     std::vector<uint64_t> gc_sum;
     std::vector<uint64_t> gc_cnt;
@@ -512,8 +520,9 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
         n100 ++;
         
         // for whole-genome average
-        sum_dp += dpval;
-        sumsq_dp += dpval * dpval;
+        int64_t tmp_dp = dpval - shift_dp;
+        sum_dp += tmp_dp;
+        sumsq_dp += tmp_dp * tmp_dp;
         n_dp += 1;
         
 		for(size_t ii=0; ii<dp_list.size(); ++ii)
@@ -531,8 +540,9 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
     
     // TODO: refactor these post-processing lines...
 
-    stat.avg_dp = (double) sum_dp / n_dp;
-    stat.std_dp = sqrt(((double)sumsq_dp / n_dp - (stat.avg_dp * stat.avg_dp)));
+    double tmp_mean = (double)sum_dp / n_dp;
+    stat.avg_dp = (double)tmp_mean + shift_dp;
+    stat.std_dp = sqrt(((double)sumsq_dp / n_dp - (tmp_mean * tmp_mean)));
     
     // Sort lclip & rclip
     // We can assume readpairs and splitreads are sorted, because they're added according to the read orders
@@ -578,8 +588,10 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
     }
 
 	std::cerr << "n_rp : " << data[0]->n_rp << " n_sp: " << data[0]->n_sp << std::endl;
-    stat.avg_isize = data[0]->sum_isz / (double)data[0]->n_isz;
-    stat.std_isize = sqrt((double)data[0]->sumsq_isz /(double)data[0]->n_isz - ((double)stat.avg_isize * stat.avg_isize));
+    
+    double tmp_mean_isize = data[0] -> sum_isz / (double)data[0]->n_isz;
+    stat.avg_isize = tmp_mean_isize + data[0]->shift_isz;
+    stat.std_isize = sqrt((double)data[0]->sumsq_isz /(double)data[0]->n_isz - ((double)tmp_mean_isize*tmp_mean_isize));
     
     std::cerr << "n_isz : " << data[0]->n_isz << ", sum_isz : " << data[0]->sum_isz << ", sumsq_isz : " << data[0]->sumsq_isz << std::endl;
 	std::cerr << "avg_isz : " << stat.avg_isize << ", std_isize : " << stat.std_isize << std::endl;
@@ -596,18 +608,24 @@ int BamCram::flag_softclips(std::vector<sclip> &vec_clip)
     {
         if (vec_clip[i].b_end)
         {
+            // Mark a clip to drop, if the clip is at the cycle end
+            
+            // If a read is clipped at the cycle end, look for other soft-clipped reads in +/- 10bp range
+            // If there are other clipped reads (which is not cycle end), do not 'exclude' the clip
+            
             vec_clip[i].b_drop = true;
-            for(int j=i-1; j>=0&& vec_clip[j].pos >= vec_clip[i].pos - 10 && vec_clip[j].chrnum == vec_clip[i].chrnum ; --j)
+            for(int j=i-1; vec_clip[i].b_drop && j>=0 && vec_clip[j].pos >= vec_clip[i].pos - 10 && vec_clip[j].chrnum == vec_clip[i].chrnum ; --j)
             {
                 if (vec_clip[i].b_end == false)
 				{
                     vec_clip[i].b_drop = false;
 					cnt++;
+                    // this need to be done only once...
 				}
             }
             if (vec_clip[i].b_drop == true)
             {
-                for(int j=i+1; j<vec_clip.size() && vec_clip[j].pos<= vec_clip[i].pos + 10 && vec_clip[j].chrnum == vec_clip[i].chrnum ; ++j)
+                for(int j=i+1; vec_clip[i].b_drop && j<vec_clip.size() && vec_clip[j].pos<= vec_clip[i].pos + 10 && vec_clip[j].chrnum == vec_clip[i].chrnum ; ++j)
                 {
                     if (vec_clip[i].b_end == false)
 					{

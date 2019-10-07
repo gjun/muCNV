@@ -18,13 +18,14 @@
 
 int main_print_pileup(int argc, char** argv)
 {
-    std::string index_file;
-    std::string vcf_file;
-    std::string interval_file;
-    std::string gc_file;
+    std::string index_filename;
+    std::string vcf_filename;
+    std::string interval_filename;
+    std::string gc_filename;
     std::string sampID;
     std::string pileupID;
-    std::string region;
+    std::string out_filename;
+//    std::string region;
 	int chr;
     
     std::vector<std::string> sample_ids;
@@ -34,31 +35,33 @@ int main_print_pileup(int argc, char** argv)
     {
         TCLAP::CmdLine cmd("Command description message", ' ', "0.06");
         
-
         TCLAP::ValueArg<std::string> argPileup("p","pileup","Prefix of the pileup file",false,"","string");
         TCLAP::ValueArg<std::string> argSample("s","sample","Sample ID of a single sample to be printed from the pileup",false,"","string");
         TCLAP::ValueArg<std::string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
         TCLAP::ValueArg<std::string> argInterval("V","interVal", "Binary interval file containing candidate SVs", false, "", "string");
         TCLAP::ValueArg<std::string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "string");
-        TCLAP::ValueArg<std::string> argRegion("r", "region", "Genomic region (chr:start-end)", false, "", "string" );
-        TCLAP::ValueArg<int> argChr("c", "chr", "Pileup contains single chromosome", false, 0, "integer" );
+        TCLAP::ValueArg<std::string> argOut("o","out","Output file, default: stdout",false,"","string");
+//        TCLAP::ValueArg<std::string> argRegion("r", "region", "Genomic region (chr:start-end)", false, "", "string" );
+        TCLAP::ValueArg<int> argChr("c", "chr", "Pileup contains single chromosome ( .chrN.pileup, as in merged pileups)", false, 0, "integer" );
         
         cmd.add(argVcf);
         cmd.add(argInterval);
         cmd.add(argGcfile);
         cmd.add(argSample);
         cmd.add(argPileup);
-        cmd.add(argRegion);
+        cmd.add(argOut);
+//        cmd.add(argRegion);
 		cmd.add(argChr);
         
         cmd.parse(argc, argv);
         
         pileupID = argPileup.getValue();
         sampID = argSample.getValue();
-        vcf_file = argVcf.getValue();
-        interval_file = argInterval.getValue();
-        gc_file = argGcfile.getValue();
-        region = argRegion.getValue();
+        vcf_filename = argVcf.getValue();
+        interval_filename = argInterval.getValue();
+        gc_filename = argGcfile.getValue();
+        out_filename = argOut.getValue();
+//        region = argRegion.getValue();
 		chr = argChr.getValue();
        
     }
@@ -85,15 +88,10 @@ int main_print_pileup(int argc, char** argv)
         idxfile_name = pileupID +".chr" + std::to_string(chr) +  ".idx";
     }
     
-    // TODO: make this also work with VCF file
-    // read out and print pileup info
-    read_svs_from_intfile(interval_file, vec_bp, vec_sv);
-    
+
     Pileup pup;
     Pileup var_file;
     BaseFile idx_file;
-    
-    int sample_idx = -1;
     
     pup.open(pileup_name, std::ios::in | std::ios::binary);
 
@@ -102,7 +100,6 @@ int main_print_pileup(int argc, char** argv)
 		fprintf(stderr, "Cannot open %s \n", pileup_name.c_str());
 		exit(1);
 	}
-
 
     var_file.open(varfile_name, std::ios::in | std::ios::binary);
 
@@ -123,6 +120,8 @@ int main_print_pileup(int argc, char** argv)
     
     pup.read_int32(n_sample);
     printf("n_sample(pileup) : %d \n", n_sample);
+    
+    int sample_idx = -1;
 
     printf("SampleID:");
     for(int i=0; i<n_sample; ++i)
@@ -139,6 +138,13 @@ int main_print_pileup(int argc, char** argv)
     }
     printf("\n");
     
+    if (sampID != "" && sample_idx == -1)
+    {
+        // Single sample ID is given but not found in the pileup
+        std::cerr << "Error, Sampel ID " << sampID << " cannot be found in pileup" << std::endl;
+        exit(1);
+    }
+    
     for(int i=0; i<n_sample; ++i)
     {
         SampleStat s;
@@ -146,12 +152,12 @@ int main_print_pileup(int argc, char** argv)
         
         if (sample_idx < 0 || sample_idx == i)
         {
-            printf("Sample %d, AVG DP: %f, STdev: %f, AVG ISIZE: %f, StdDev: %f \n", i, s.avg_dp, s.std_dp, s.avg_isize, s.std_isize);
+            printf("Sample %d, Mean DP: %f, Std DP: %f, Mean ISIZE: %f, Std ISIZE: %f \n", i, s.avg_dp, s.std_dp, s.avg_isize, s.std_isize);
         }
     }
     
     GcContent gc;
-    gc.initialize(gc_file);
+    gc.initialize_quick(gc_filename);
     
     for(int i=0; i<n_sample; ++i)
     {
@@ -241,8 +247,10 @@ int main_print_pileup(int argc, char** argv)
                     {
                         rp.chrnum = chr;
                         // TEMPORARY, TO FIX PILEUP TYPECASTING BUG
-                        rp.selfpos = pup.fix_offset_pos((j-1)*10000, rp.selfpos);
-                        rp.matepos = pup.fix_offset_pos((j-1)*10000, rp.matepos);
+                        // commented out fix_offset, 07/09/2019
+                        // rp.selfpos = pup.fix_offset_pos((j-1)*10000, rp.selfpos);
+                        // rp.matepos = pup.fix_offset_pos((j-1)*10000, rp.matepos);
+                        
                         rp.selfpos += (j-1)*10000;
                         rp.matepos += (j-1)*10000;
                         printf("\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
@@ -260,9 +268,9 @@ int main_print_pileup(int argc, char** argv)
                     if (sample_idx < 0 || sample_idx == i)
                     {
                         // TEMPORARY, TO FIX PILEUP TYPECASTING BUG
-                        
-                        sp.pos = pup.fix_offset_pos((j-1)*10000, sp.pos);
-                        sp.sapos = pup.fix_offset_pos((j-1)*10000, sp.sapos);
+                        // comented out, 07/09/2019
+                        // sp.pos = pup.fix_offset_pos((j-1)*10000, sp.pos);
+                        // sp.sapos = pup.fix_offset_pos((j-1)*10000, sp.sapos);
                         sp.chrnum = chr;
                         sp.pos += (j-1)*10000;
                         sp.sapos += (j-1)*10000;
@@ -325,8 +333,10 @@ int main_print_pileup(int argc, char** argv)
 						pup.read_readpair(rp);
                         rp.chrnum = c;
                         // TEMPORARY, TO FIX PILEUP TYPECASTING BUG
-                        rp.selfpos = pup.fix_offset_pos((j-1)*10000, rp.selfpos);
-                        rp.matepos = pup.fix_offset_pos((j-1)*10000, rp.matepos);
+                        // commented out, 07/09/2019
+                        // rp.selfpos = pup.fix_offset_pos((j-1)*10000, rp.selfpos);
+                        // rp.matepos = pup.fix_offset_pos((j-1)*10000, rp.matepos);
+                        
                         rp.selfpos += (j-1)*10000;
                         rp.matepos += (j-1)*10000;
                         if (sample_idx < 0 || sample_idx == i)
@@ -343,11 +353,14 @@ int main_print_pileup(int argc, char** argv)
 						pup.read_splitread(sp);
                         sp.chrnum = c;
                         // TEMPORARY, TO FIX PILEUP TYPECASTING BUG
-                        sp.pos = pup.fix_offset_pos((j-1)*10000, sp.pos);
-                        sp.sapos = pup.fix_offset_pos((j-1)*10000, sp.sapos);
+                        // commented out, 07/09/2019
+                        //sp.pos = pup.fix_offset_pos((j-1)*10000, sp.pos);
+                        //sp.sapos = pup.fix_offset_pos((j-1)*10000, sp.sapos);
+                        
                         sp.pos += (j-1)*10000;
                         sp.sapos += (j-1)*10000;
-                        if (sample_idx < 0 || sample_idx == i)                        printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
+                        if (sample_idx < 0 || sample_idx == i)
+                            printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
 					}
                     
                     uint32_t n_lclip = 0;
@@ -385,6 +398,22 @@ int main_print_pileup(int argc, char** argv)
 
     pup.close();
     idx_file.close();
+    
+    // VAR file
+    if (vcf_filename != "" && interval_filename == "")
+    {
+        read_svs_from_vcf(vcf_filename, vec_bp, vec_sv);
+    }
+    else if (vcf_filename == "" && interval_filename != "")
+    {
+        read_svs_from_intfile(interval_filename, vec_bp, vec_sv);
+    }
+    else
+    {
+        std::cerr << "Error, VCF file or Interval file is required (but not both)" << std::endl;
+        exit (1);
+    }
+    
     
     int n_var = 0;
     

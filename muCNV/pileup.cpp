@@ -61,11 +61,13 @@ int Pileup::write_readpair(readpair &rp)
 {
     int ret = 0;
     //fs.write(reinterpret_cast<char*>(&(rp.chrnum)), sizeof(int8_t));
-	// temoprary, to match previous ones
-    int16_t selfpos = (int16_t)rp.selfpos % 10000;
-    int16_t matepos = (int16_t)rp.matepos % 10000;
-//   int16_t selfpos = (int16_t) (rp.selfpos % 10000);
-//    int16_t matepos = (int16_t) (rp.matepos % 10000);
+	// wrong version
+    // int16_t selfpos = (int16_t)rp.selfpos % 10000;
+    // int16_t matepos = (int16_t)rp.matepos % 10000;
+    
+    // corrected, 07/07/2019
+    int16_t selfpos = (int16_t) (rp.selfpos % 10000);
+    int16_t matepos = (int16_t) (rp.matepos % 10000);
     
     fs.write(reinterpret_cast<char*>(&(selfpos)), sizeof(int16_t));
     fs.write(reinterpret_cast<char*>(&(matepos)), sizeof(int16_t));
@@ -81,10 +83,14 @@ int Pileup::write_readpair(readpair &rp)
 int Pileup::write_splitread(splitread& sp)
 {
     int ret = 0;
-    int16_t pos = (int16_t)sp.pos % 10000;
-    int16_t sapos = (int16_t)sp.sapos % 10000;
-   // int16_t pos = (int16_t) (sp.pos % 10000);
-    //int16_t sapos = (int16_t) (sp.sapos % 10000);
+    
+    // wrong version
+    // int16_t pos = (int16_t)sp.pos % 10000;
+    // int16_t sapos = (int16_t)sp.sapos % 10000;
+    
+    // corrected, 07/07/2019
+    int16_t pos = (int16_t) (sp.pos % 10000);
+    int16_t sapos = (int16_t) (sp.sapos % 10000);
     
  //   fs.write(reinterpret_cast<char*>(&(sp.chrnum)), sizeof(int8_t));
     fs.write(reinterpret_cast<char*>(&(pos)), sizeof(int16_t));
@@ -101,7 +107,7 @@ int Pileup::write_splitread(splitread& sp)
 int Pileup::write_softclip(sclip &sc)
 {
     int ret = 0;
-    int16_t pos16 = (int16_t)(sc.pos % 10000); // from the offset
+    int16_t pos16 = (int16_t) (sc.pos % 10000); // from the offset
 
  //   fs.write(reinterpret_cast<char*>(&(sc.chrnum)), sizeof(int8_t));
  //   fs.write(reinterpret_cast<char*>(&(sc.pos)), sizeof(int32_t)); // The position where M and S divides left/right will be recoreded in separate lists
@@ -202,6 +208,7 @@ int Pileup::read_softclip(sclip &sc)
 
 int Pileup::fix_offset_pos(int32_t j, int32_t r)
 {
+    // April 2019 version needed this fix because of typecasting error
     int ans = 0;
     
     if (j<30000)

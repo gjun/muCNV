@@ -565,7 +565,8 @@ bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &
 					}
 				}
 
-				median_filter(D, D_filt, n_samples[i], n_dp);
+                if (b_medfilt)
+                    median_filter(D, D_filt, n_samples[i], n_dp);
 
 				std::vector<unsigned> dp_sum (n_samples[i], 0);
 				
@@ -636,6 +637,7 @@ bool DataReader::around_breakpoint(readpair &rp, sv &curr_sv)
 		}
 		break;
 	}
+    return false;
 }
 
 
@@ -689,8 +691,9 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                         int32_t curr_block = (int32_t)(j-chr_idx_rp[curr_sv.chrnum]);
                         
                         rp.chrnum = curr_sv.chrnum;
-                        rp.selfpos = pileups[i].fix_offset_pos(curr_block*10000, rp.selfpos);
-                        rp.matepos = pileups[i].fix_offset_pos(curr_block*10000, rp.matepos);
+                        // corrected, 07/09/2019
+                        //rp.selfpos = pileups[i].fix_offset_pos(curr_block*10000, rp.selfpos);
+                        //rp.matepos = pileups[i].fix_offset_pos(curr_block*10000, rp.matepos);
                         
                         rp.selfpos += curr_block * 10000;
                         rp.matepos += curr_block * 10000;
@@ -763,8 +766,9 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                         int32_t curr_block = (int32_t)(j-chr_idx_rp[curr_sv.chrnum]);
                         
                         sp.chrnum = curr_sv.chrnum;
-                        sp.pos = pileups[i].fix_offset_pos(curr_block*10000, sp.pos);
-                        sp.sapos = pileups[i].fix_offset_pos(curr_block*10000, sp.sapos);
+                        // commented out fix_offset, 07/09/2019
+                        // sp.pos = pileups[i].fix_offset_pos(curr_block*10000, sp.pos);
+                        // sp.sapos = pileups[i].fix_offset_pos(curr_block*10000, sp.sapos);
                         sp.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
                         sp.sapos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
                         

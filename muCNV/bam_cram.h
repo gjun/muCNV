@@ -19,9 +19,10 @@ typedef struct {     // auxiliary data structure
     bam_hdr_t *hdr;  // the file header
     hts_itr_t *iter; // NULL if a region not specified
     
-    uint64_t sum_isz;
-    uint64_t sumsq_isz;
-    uint64_t n_isz;
+    int64_t sum_isz;
+    int64_t sumsq_isz;
+    int64_t shift_isz;
+    int64_t n_isz;
     
     uint32_t n_rp;
     uint32_t n_sp;

@@ -543,6 +543,12 @@ void read_svs_from_intfile(std::string &intFileName, std::vector<breakpoint> &ve
     std::ifstream intFile(intFileName.c_str(), std::ios::in | std::ios::binary);
     int n_var = 0;
     
+    if (!intFile.good())
+    {
+        std::cerr << "Error, cannot open " << intFileName << std::endl;
+        exit(1);
+    }
+    
     intFile.read(reinterpret_cast<char*>(&n_var), sizeof(int));
     vec_sv.resize(n_var);
     vec_bp.resize(n_var*2);
