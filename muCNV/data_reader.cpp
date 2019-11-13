@@ -92,23 +92,31 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
     n_samples.resize(n_pileup);
     
     int idx_cnt = 1;
+    
     chr_idx_rp.resize(gc.num_chr+1);
-	if (chr>0)
+    // chr_idx_rp[] contains the array indices of the idxfile's indices
+    // which points to the beginning of read pair blocks, for each chromosome
+    
+	if (chr>0) // if pileup files are split by chromosomes
 	{
 		for(int i=1;i<=gc.num_chr; ++i)
 		{
 			chr_idx_rp[i] = -1; // make everything invalid 
 		}
 		chr_idx_rp[chr] = idx_cnt;
+        // if chr==20, chr_idx_rp[20] == 1;, chr_idx_rp[1..19], chr_idx_rp[21..24] == -1
+
 		idx_cnt += ceil((double)gc.chr_size[chr] / 10000.0) ;
+        // idx_cnt increases by number of 10kbp blocks in the single chromosome
 	}
-	else
+	else // if pileup files contains all chromosomes
 	{
 		for(int i=1;i<=gc.num_chr; ++i)
 		{
-			chr_idx_rp[i] = idx_cnt; // chr_idx[1] contains the array index of pileup index of chr 1
-			idx_cnt += ceil((double)gc.chr_size[i] / 10000.0) ;
+			chr_idx_rp[i] = idx_cnt;
+			idx_cnt += ceil((double)gc.chr_size[i] / 10000.0);
 		}
+        // idx_cnt increase by number of 10kbp blocks in all chromosomes, added up
 	}
     
     DMSG(idx_cnt << " indices should be in index file");
@@ -153,28 +161,6 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
             std::vector<double> gc_f;
             pileups[i].read_gc_factor(gc_f, gc.num_bin);
 
-            /*
-            std::vector<double> gcf10;
-
-            //interpolate into 10-sub-bins
-            gcf10.resize(gc_f.size()*10);
-
-            for(int k=0; k< (int)gc_f.size()-1; ++k)
-            {
-                for(int l=0; l<10; ++l)
-                {
-                    // interpolate 1/gc_factor using linear interfolation and then inverse it
-                    gcf10[k*10+l] = 1.0/((1.0/gc_f[k+1] - 1.0/gc_f[k]) *  (l/10.0) + 1.0/gc_f[k]);
-                }
-            }
-            gcf10[(gc_f.size()-1) * 10] = gc_f[gc_f.size()-1];
-            for(int k= (int) (gc_f.size()-1) * 10; k < gcf10.size(); ++k)
-            {
-                gcf10[k] = gc_f[gc_f.size()-1];
-            }
-                
-            gc_factors.push_back(gcf10);
-            */
             gc_factors.push_back(gc_f);
         }
         
@@ -190,8 +176,6 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
         multi_idx[i] = new uint64_t[idx_cnt];
         idx_files[i].read_uint64_multi(multi_idx[i], idx_cnt);
         idx_files[i].close(); // index file content is now on memory
-        
-        // idx offset?
     }
 
     chr_bytepos_dp100.resize(n_pileup);
@@ -311,7 +295,7 @@ void DataReader::adjust_gc_factor(GcContent& gc, std::vector<SampleStat>& stats,
     }
 }
 
-bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &dvec_dp, GcContent& gc, bool b_dumpstat)
+bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &dvec_dp, GcContent& gc)
 {
     // this information is not useful when sv length is short
     // process only for >200bp SVs (or at include least two full 100-bp intervals)
@@ -325,7 +309,7 @@ bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &
     
     if (pre_start<1) pre_start = 1 ;
     if (post_end > (int)gc.chr_size[curr_sv.chrnum]) post_end = gc.chr_size[curr_sv.chrnum];
-
+    
     int idx_pre_start = pre_start / 100;
     int idx_post_end = (post_end/100);
     
@@ -392,7 +376,6 @@ bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &
             delete [] D;
         }
         
-
         sample_idx += n_samples[i];
     }
     if (n_pre<=2)
@@ -688,25 +671,16 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                         readpair rp;
                         pileups[i].read_readpair(rp);
                         
-                        int32_t curr_block = (int32_t)(j-chr_idx_rp[curr_sv.chrnum]);
+                       // int32_t curr_block = (int32_t)(j-chr_idx_rp[curr_sv.chrnum]);
                         
                         rp.chrnum = curr_sv.chrnum;
-                        // corrected, 07/09/2019
-                        //rp.selfpos = pileups[i].fix_offset_pos(curr_block*10000, rp.selfpos);
-                        //rp.matepos = pileups[i].fix_offset_pos(curr_block*10000, rp.matepos);
                         
-                        rp.selfpos += curr_block * 10000;
-                        rp.matepos += curr_block * 10000;
+                       //  rp.selfpos += curr_block * 10000;
+                        // rp.matepos += curr_block * 10000;
                         
-                        // TEMPORARY REMEDY for MATEPOS
-                        if (n_rp>5 && rp.matequal == 60 && abs(rp.selfpos- curr_sv.pos)<350 && abs(rp.matepos%10000 - curr_sv.end%10000) < 350)
-                        {
-                            rp.matepos = rp.matepos%10000 + int(curr_sv.end/10000)*10000;
-                        }
-                            
                         if (rp.matepos < rp.selfpos)
                         {
-                            // swap them
+                            // swap them, always selfpos <= matepos
                             int pos = rp.selfpos;
                             rp.selfpos = rp.matepos;
                             rp.matepos = pos;
@@ -763,14 +737,12 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                     {
                         splitread sp;
                         pileups[i].read_splitread(sp);
-                        int32_t curr_block = (int32_t)(j-chr_idx_rp[curr_sv.chrnum]);
+                        // int32_t curr_block = (int32_t)(j-chr_idx_rp[curr_sv.chrnum]);
                         
                         sp.chrnum = curr_sv.chrnum;
-                        // commented out fix_offset, 07/09/2019
-                        // sp.pos = pileups[i].fix_offset_pos(curr_block*10000, sp.pos);
-                        // sp.sapos = pileups[i].fix_offset_pos(curr_block*10000, sp.sapos);
-                        sp.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
-                        sp.sapos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+
+                        // sp.pos += curr_block * 10000;
+                        // sp.sapos += curr_block * 10000;
                         
                         if (sp.pos > sp.sapos)
                         {

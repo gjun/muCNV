@@ -42,7 +42,7 @@ int main_pileup(int argc, char** argv)
         TCLAP::ValueArg<std::string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
         TCLAP::ValueArg<std::string> argInterval("V","interVal", "Binary interval file containing candidate SVs", false, "", "string");
         TCLAP::ValueArg<std::string> argSampleID("s","sample","Sample ID, also used for output filenames (.pileup, .var, .idx)",true,"","string");
-        TCLAP::ValueArg<std::string> argOutDir("o","outdir","Output directory, current directory if omitted",false,"","string");
+        TCLAP::ValueArg<std::string> argOutDir("o","outdir","Output directory, current directory if omitted",false,".","string");
         TCLAP::ValueArg<std::string> argGcfile("f","gcFile","File containing GC content information (default: GRCh38.gc)",false, "GRCh38.gc", "string");
         
         cmd.add(argBam);

@@ -62,7 +62,6 @@ int main_genotype(int argc, char** argv)
         TCLAP::ValueArg<double> argPoverlap("p","pmax","Maximum overlap between depth clusters",false,0.2,"number(0-1.0)");
 
         TCLAP::SwitchArg switchFail("a", "all", "Report filter failed variants", cmd, false);
-        TCLAP::SwitchArg switchDumpstat("d", "dumpstat", "dump detailed statistics of variants (warning: large output)", cmd, false);
         TCLAP::SwitchArg switchNoHeader("l", "lessheader", "Do not print header in genoptyed VCF", cmd, false);
         TCLAP::SwitchArg switchKmeans("k", "Kmeans", "Use K-Means instead of EM", cmd, false);
         TCLAP::SwitchArg switchMahalanobis("m","Mahalanobis", "Use Mahalanobis distance (use with K-means)", cmd, false);
@@ -88,7 +87,6 @@ int main_genotype(int argc, char** argv)
         bFail = switchFail.getValue();
 		chr = argChr.getValue();
 		max_p = argPoverlap.getValue();
-        b_dumpstat = switchDumpstat.getValue();
 		b_kmeans = switchKmeans.getValue();
 		b_mahalanobis = switchMahalanobis.getValue();
 
@@ -274,9 +272,9 @@ int main_genotype(int argc, char** argv)
                 {
                     G.MAX_P_OVERLAP *= 1.5;
                 }
-
-                reader.read_var_depth(i - vec_offset, D.dps[2]); // TODO: make read_var_depth to check whether first argument is in range
-
+                
+                reader.read_var_depth(i - vec_offset, D.dps[2]); // TODO: make read_var_depth check whether first argument is in range
+                
                 // TODO: This is arbitrary threshold to filter out centromere region, add more systematic way to filter out problematic regions, by checking within-sample variance of regions
                 if (average(D.dps[2]) < 150)
                 {
@@ -284,7 +282,7 @@ int main_genotype(int argc, char** argv)
                     //if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
                     {
                         // var_depth gets GC-correction here
-                        D.multi_dp = reader.read_depth100(vec_sv[i], D.dps, gc, b_dumpstat);
+                        D.multi_dp = reader.read_depth100(vec_sv[i], D.dps, gc);
 						for(int j=0; j<n_sample; ++j)
 						{
 							D.dps[0][j] /= (double)stats[j].avg_dp;

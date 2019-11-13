@@ -246,13 +246,7 @@ int main_print_pileup(int argc, char** argv)
                     if (sample_idx < 0 || sample_idx == i)
                     {
                         rp.chrnum = chr;
-                        // TEMPORARY, TO FIX PILEUP TYPECASTING BUG
-                        // commented out fix_offset, 07/09/2019
-                        // rp.selfpos = pup.fix_offset_pos((j-1)*10000, rp.selfpos);
-                        // rp.matepos = pup.fix_offset_pos((j-1)*10000, rp.matepos);
-                        
-                        rp.selfpos += (j-1)*10000;
-                        rp.matepos += (j-1)*10000;
+
                         printf("\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
                     }
 				}
@@ -267,13 +261,8 @@ int main_print_pileup(int argc, char** argv)
 					pup.read_splitread(sp);
                     if (sample_idx < 0 || sample_idx == i)
                     {
-                        // TEMPORARY, TO FIX PILEUP TYPECASTING BUG
-                        // comented out, 07/09/2019
-                        // sp.pos = pup.fix_offset_pos((j-1)*10000, sp.pos);
-                        // sp.sapos = pup.fix_offset_pos((j-1)*10000, sp.sapos);
                         sp.chrnum = chr;
-                        sp.pos += (j-1)*10000;
-                        sp.sapos += (j-1)*10000;
+
                         printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
                     }
 				}
@@ -287,7 +276,7 @@ int main_print_pileup(int argc, char** argv)
                     sclip myclip;
                     pup.read_softclip(myclip);
                     myclip.chrnum = chr;
-                    myclip.pos += (j-1)*10000;
+
                     if (sample_idx < 0 || sample_idx == i)
                         printf("\t%d\t%d\n", myclip.chrnum, myclip.pos);
                 }
@@ -301,7 +290,7 @@ int main_print_pileup(int argc, char** argv)
                     sclip myclip;
                     pup.read_softclip(myclip);
                     myclip.chrnum = chr;
-                    myclip.pos += (j-1)*10000;
+
                     if (sample_idx < 0 || sample_idx == i)
                         printf("\t%d\t%d\n", myclip.chrnum, myclip.pos);
                 }
@@ -332,13 +321,7 @@ int main_print_pileup(int argc, char** argv)
 						readpair rp;
 						pup.read_readpair(rp);
                         rp.chrnum = c;
-                        // TEMPORARY, TO FIX PILEUP TYPECASTING BUG
-                        // commented out, 07/09/2019
-                        // rp.selfpos = pup.fix_offset_pos((j-1)*10000, rp.selfpos);
-                        // rp.matepos = pup.fix_offset_pos((j-1)*10000, rp.matepos);
-                        
-                        rp.selfpos += (j-1)*10000;
-                        rp.matepos += (j-1)*10000;
+
                         if (sample_idx < 0 || sample_idx == i)
                             printf("\t%d\t%d\t%d\t%u\t%d\n", rp.chrnum, rp.selfpos, rp.matepos, rp.matequal, rp.pairstr);
 					}
@@ -352,13 +335,7 @@ int main_print_pileup(int argc, char** argv)
 						splitread sp;
 						pup.read_splitread(sp);
                         sp.chrnum = c;
-                        // TEMPORARY, TO FIX PILEUP TYPECASTING BUG
-                        // commented out, 07/09/2019
-                        //sp.pos = pup.fix_offset_pos((j-1)*10000, sp.pos);
-                        //sp.sapos = pup.fix_offset_pos((j-1)*10000, sp.sapos);
-                        
-                        sp.pos += (j-1)*10000;
-                        sp.sapos += (j-1)*10000;
+   
                         if (sample_idx < 0 || sample_idx == i)
                             printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
 					}
@@ -372,7 +349,6 @@ int main_print_pileup(int argc, char** argv)
                         sclip myclip;
                         pup.read_softclip(myclip);
                         myclip.chrnum = c;
-                        myclip.pos += (j-1)*10000;
                         if (sample_idx < 0 || sample_idx == i)
                             printf("\t%d\t%d\n", myclip.chrnum, myclip.pos);
                     }
@@ -386,7 +362,6 @@ int main_print_pileup(int argc, char** argv)
                         sclip myclip;
                         pup.read_softclip(myclip);
                         myclip.chrnum = c;
-                        myclip.pos += (j-1)*10000;
                         if (sample_idx < 0 || sample_idx == i)
                             printf("\t%d\t%d\n", myclip.chrnum, myclip.pos);
                     }
