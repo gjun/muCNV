@@ -56,13 +56,17 @@ public:
     std::vector<int> gt; // bi-allelic genotype
     std::vector<int> rp_gt;
     std::vector<int> clip_gt;
+    std::vector<int> split_gt;
 
     std::vector<int> cn; // copy number
     std::vector<int> rp_cn;
     std::vector<int> clip_cn;
+    std::vector<int> split_cn;
     
     std::vector<int> start_clips;
     std::vector<int> end_clips;
+    
+    std::vector<int> split_cnts;
     
     std::vector<int> start_rps;
     std::vector<int> end_rps;
@@ -123,7 +127,7 @@ public:
     void get_prepost_stat(SvData &, SvGeno &);
     int find_peak(std::vector<int> &, int, int);
     bool find_consensus_rp(sv &, SvData &, int, int &, int &);
-    bool find_consensus_split(sv &, SvData &, int &, int &);
+    bool find_consensus_split(sv &, SvData &, int &);
     bool is_split_direction(sv &, PairSplit &);
     bool find_consensus_clip(sv &, SvData &, int, int &, int &);
     bool find_consensus_clip_inv(sv &, SvData &, int &, int &, int&, int&);

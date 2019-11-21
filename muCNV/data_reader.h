@@ -1,5 +1,5 @@
 //
-//  multi_pileup.hpp
+//  data_reader.h
 //  muCNV
 //
 //  Created by Goo Jun on 11/25/18.
@@ -73,6 +73,10 @@ public:
         
         std::fill(lclips.begin(), lclips.end(), 0);
         std::fill(rclips.begin(), rclips.end(), 0);
+        
+        readpairs.clear();
+        splits.clear();
+        
         n_lclip_start = 0;
         n_rclip_start = 0;
         n_lclip_end = 0;

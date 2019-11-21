@@ -32,7 +32,7 @@ double BreakCluster::get_distance(std::pair<int, int> &span)
     double dx = (span.first - start_mean);
     double dy = (span.second - end_mean);
     
-    return dx*dx + dy*dy;
+    return abs(dx) + abs(dy);
 }
 
 double BreakCluster::get_distance(BreakCluster& br)
@@ -40,7 +40,7 @@ double BreakCluster::get_distance(BreakCluster& br)
     double dx = (br.start_mean - start_mean);
     double dy = (br.end_mean - end_mean);
     
-    return dx*dx + dy*dy;
+    return abs(dx) + abs(dy);
 }
 
 
@@ -88,6 +88,9 @@ SvGeno::SvGeno(int n)
     gt.resize(n_sample, -1);
     cn.resize(n_sample, -1);
     
+    split_gt.resize(n_sample, -1);
+    split_cn.resize(n_sample, -1);
+    
     rp_gt.resize(n_sample, -1);
     rp_cn.resize(n_sample, -1);
     
@@ -97,9 +100,10 @@ SvGeno::SvGeno(int n)
     start_clips.resize(n_sample, 0);
     end_clips.resize(n_sample, 0);
     
+    split_cnts.resize(n_sample, 0);
+    
     start_rps.resize(n_sample, 0);
     end_rps.resize(n_sample, 0);
-
 }
 
 void SvGeno::reset()
@@ -110,8 +114,13 @@ void SvGeno::reset()
     std::fill(rp_gt.begin(), rp_gt.end(), -1);
     std::fill(rp_cn.begin(), rp_cn.end(), -1);
     
+    std::fill(split_gt.begin(), split_gt.end(), -1);
+    std::fill(split_cn.begin(), split_cn.end(), -1);
+    
     std::fill(clip_gt.begin(), clip_gt.end(), -1);
     std::fill(clip_cn.begin(), clip_cn.end(), -1);
+    
+    std::fill(split_cnts.begin(), split_cnts.end(), 0);
     
     std::fill(start_clips.begin(), start_clips.end(), 0);
     std::fill(end_clips.begin(), end_clips.end(), 0);
@@ -198,6 +207,7 @@ void SvData::reset()
     }
     
     std::fill(prepost_dp.begin(), prepost_dp.end(), 1);
+    vec_break_clusters.clear();
 }
 
 void copyComps(std::vector<Gaussian> &C, std::vector<Gaussian> &C0)
@@ -603,8 +613,9 @@ bool Genotyper::is_split_direction(sv &S, PairSplit &split)
     return false;
 }
 
-bool Genotyper::find_consensus_split(sv &S, SvData &D, int &startsplit, int &endsplit)
+bool Genotyper::find_consensus_split(sv &S, SvData &D, int &clus_idx)
 {
+    
     for(int i=0; i<n_sample; ++i)
     {
         std::vector<BreakCluster> vec_br;
@@ -627,7 +638,7 @@ bool Genotyper::find_consensus_split(sv &S, SvData &D, int &startsplit, int &end
                         min_idx = j;
                     }
                 }
-                if (min_idx >= 0 && min_dist < 4) // TODO: arbitrary cutoff. Check smaller SVs how this affects.
+                if (min_idx >= 0 && min_dist < 5) // TODO: arbitrary cutoff. Check smaller SVs how this affects.
                 {
                     vec_br[min_idx].add_to_cluster(split.positions);
                 }
@@ -654,7 +665,7 @@ bool Genotyper::find_consensus_split(sv &S, SvData &D, int &startsplit, int &end
             }
         }
         
-        if (max_cnt > 3) // TODO: arbitrary cutoff
+        if (max_cnt >= 2) // TODO: arbitrary cutoff
         {
             // add to the overall cluster
             double min_dist = 1000;
@@ -670,7 +681,7 @@ bool Genotyper::find_consensus_split(sv &S, SvData &D, int &startsplit, int &end
                     min_idx = j;
                 }
             }
-            if (min_idx >= 0 && min_dist < 4) // TODO: arbitrary cutoff. Check smaller SVs how this affects.
+            if (min_idx >= 0 && min_dist < 5) // TODO: arbitrary cutoff. Check smaller SVs how this affects.
             {
                 D.vec_break_clusters[min_idx].merge(vec_br[max_idx]);
             }
@@ -681,14 +692,27 @@ bool Genotyper::find_consensus_split(sv &S, SvData &D, int &startsplit, int &end
             }
         }
             // std::cout << "SV " << S.pos << "-" << S.end << ", sample " << i<< " startsplit " << vec_br[maxidx].start_mean << ", endsplit " << vec_br[maxidx].end_mean << " cnt " << maxcnt << std::endl;
+        vec_br.clear();
     }
-    std::cout << "SV " << S.pos << "-" << S.end << ", " << D.vec_break_clusters.size() << " split clusters found\n";
-    for(int j=0; j<D.vec_break_clusters.size(); ++j)
+    if (D.vec_break_clusters.size() > 0)
+        std::cout << "SV " << S.pos << "-" << S.end << ", " << D.vec_break_clusters.size() << " split clusters found\n";
     {
-        std::cout << "Cluster " << j << " " << D.vec_break_clusters[j].start_mean << "(" << D.vec_break_clusters[j].start_var << ")" << "-" << D.vec_break_clusters[j].end_mean <<  "(" << D.vec_break_clusters[j].end_var << ")" << ", " << D.vec_break_clusters[j].N << " elements\n";
-    }
+        int max_idx = -1;
+        int max_cnt = 0;
+        for(int j=0; j<D.vec_break_clusters.size(); ++j)
+        {
+            std::cout << "Cluster " << j << " " << (int)D.vec_break_clusters[j].start_mean << "(" << D.vec_break_clusters[j].start_var << ")" << "-" << (int)D.vec_break_clusters[j].end_mean <<  "(" << D.vec_break_clusters[j].end_var << ")" << ", " << D.vec_break_clusters[j].N << " elements\n";
+            if (D.vec_break_clusters[j].N > max_cnt)
+            {
+                max_cnt = D.vec_break_clusters[j].N;
+                max_idx = j;
+            }
+        }
+        clus_idx = max_idx;
 
-    return true;
+        return true;
+    }
+    return false;
 }
 
 bool Genotyper::find_consensus_rp(sv &S, SvData &D, int pairstr, int &start_peak, int &end_peak)
@@ -1055,11 +1079,57 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     std::vector< std::vector<double> > means = { {1.0}, {1.0, 0.5}, {1.0, 0.5, 0.0}};
     G.b_biallelic = true;
 
-    int start_peak = -1;
-    int end_peak = -1;
+    int clus_idx = -1;
     int pairstr = 1;
 
-    find_consensus_split(S, D, start_peak, end_peak);
+    if (find_consensus_split(S, D, clus_idx))
+    {
+        // yay!
+        
+        // Genotyping strategy:
+        // 1) count # clips around the consensus softclip site
+        // 2) count # readpairs before / after softclip site (insert size - readlen / 50)
+        int r_clip = ((int)(D.vec_break_clusters[clus_idx].start_mean+0.5) - S.pos + 100);
+        int l_clip = ((int)(D.vec_break_clusters[clus_idx].end_mean+0.5) - S.end + 300);
+        if (r_clip < 1) r_clip = 1;
+        if (r_clip > 198) r_clip = 198;
+        if (l_clip < 201) l_clip = 201;
+        if (l_clip > 398) l_clip = 398;
+        
+        for(int i=0; i< n_sample; ++i)
+        {
+            // Count the number of split reads
+            for(auto &split : D.rdstats[i].splits)
+            {
+                if (D.vec_break_clusters[clus_idx].get_distance(split.positions) < 5)
+                {
+                    G.split_cnts[i] ++;
+                }
+            }
+            // Count number of soft clips around the split read breakpoints
+            G.start_clips[i] = D.rdstats[i].rclips[r_clip] + D.rdstats[i].rclips[r_clip-1] + D.rdstats[i].rclips[r_clip+1];
+            G.end_clips[i] = D.rdstats[i].lclips[l_clip] + D.rdstats[i].lclips[l_clip-1] + D.rdstats[i].lclips[l_clip+1];
+            
+            for(auto &rp : D.rdstats[i].readpairs)
+            {
+                // only for SVs > 50 bp?
+                int dx = (int) (D.vec_break_clusters[clus_idx].start_mean - rp.positions.first);
+                int dy = (int) (rp.positions.second - D.vec_break_clusters[clus_idx].end_mean);
+                if (dx > 75 && dx < 375 && dy > -75 && dy < 300)
+                {
+                   // G.rp_cnts[i] ++;
+                }
+            }
+        }
+    }
+    else
+    {
+        // if no split reads, try other evidences
+    }
+    
+    
+    int start_peak = -1;
+    int end_peak = -1;
     
     if (find_consensus_rp(S, D, pairstr, start_peak, end_peak) )
     {
