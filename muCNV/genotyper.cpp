@@ -16,6 +16,68 @@
  */
 
 #include "genotyper.h"
+#include <unordered_map>
+
+BreakCluster::BreakCluster()
+{
+    N = 0;
+    start_mean = 0;
+    start_var = 0;
+    end_mean = 0;
+    end_var = 0;
+}
+
+double BreakCluster::get_distance(std::pair<int, int> &span)
+{
+    double dx = (span.first - start_mean);
+    double dy = (span.second - end_mean);
+    
+    return dx*dx + dy*dy;
+}
+
+double BreakCluster::get_distance(BreakCluster& br)
+{
+    double dx = (br.start_mean - start_mean);
+    double dy = (br.end_mean - end_mean);
+    
+    return dx*dx + dy*dy;
+}
+
+
+void BreakCluster::add_to_cluster(std::pair<int, int> &span)
+{
+    if (N == 0)
+    {
+        start_mean = span.first;
+        end_mean = span.second;
+        start_var = 0;
+        end_var = 0;
+        N = 1;
+    }
+    else
+    {
+        double dx = span.first - start_mean;
+        double dy = span.second - end_mean;
+        start_var += dx*dx /(double)(N+1) - start_var/(double)N;
+        start_mean += dx / (double)(N+1);
+        
+        end_var += dy*dy/(double)(N+1) - end_var/(double)N;
+        end_mean += dy / (double)(N+1);
+        N = N + 1;
+    }
+}
+
+
+void BreakCluster::merge(BreakCluster& br)
+{
+    start_mean = (start_mean * N + br.start_mean * br.N) / (double)(N + br.N);
+    end_mean = (end_mean * N + br.end_mean * br.N) / (double)(N + br.N);
+    
+    start_var = ((N - 1) * start_var + (br.N -1) * br.start_var + (N * br.N) / (N + br.N) * (start_mean - br.start_mean) * (start_mean - br.start_mean)) / (double)(N + br.N - 1.0);
+    end_var = ((N - 1) * end_var + (br.N -1) * br.end_var + (N * br.N) / (N + br.N) * (end_mean - br.end_mean) * (end_mean - br.end_mean)) / (double)(N + br.N - 1.0);
+    N += br.N;
+}
+
 
 SvGeno::SvGeno(int n)
 {
@@ -529,6 +591,106 @@ int Genotyper::find_peak(std::vector<int> &seq, int start, int end)
     return peak_idx;
 }
 
+bool Genotyper::is_split_direction(sv &S, PairSplit &split)
+{
+    if (S.svtype == DEL && split.directions.first  && !split.directions.second)
+        return true;
+    else if (S.svtype == DUP && !split.directions.first && split.directions.second)
+        return true;
+    else if (S.svtype == INV && ((!split.directions.first && !split.directions.second) || (split.directions.first && split.directions.second)))
+        return true;
+    
+    return false;
+}
+
+bool Genotyper::find_consensus_split(sv &S, SvData &D, int &startsplit, int &endsplit)
+{
+    for(int i=0; i<n_sample; ++i)
+    {
+        std::vector<BreakCluster> vec_br;
+       // std::cerr << "Sample " << i << " has " << D.rdstats[i].splits.size() << " splits\n";
+
+        for(auto &split : D.rdstats[i].splits)
+        {
+            if (is_split_direction(S, split))
+            {
+              //  std::cerr << split.positions.first << "\t" << split.positions.second << std::endl;
+                double min_dist = 1000;
+                int min_idx = -1;
+                
+                for(int j=0; j<vec_br.size(); ++j)
+                {
+                    double dist = vec_br[j].get_distance(split.positions);
+                    if (dist < min_dist)
+                    {
+                        min_dist = dist;
+                        min_idx = j;
+                    }
+                }
+                if (min_idx >= 0 && min_dist < 4) // TODO: arbitrary cutoff. Check smaller SVs how this affects.
+                {
+                    vec_br[min_idx].add_to_cluster(split.positions);
+                }
+                else
+                {
+                    BreakCluster br;
+                    br.add_to_cluster(split.positions);
+                    vec_br.push_back(br);
+                    //std::cerr << "Adding to a new cluster: " << split.positions.first << "\t" << split.positions.second << std::endl;
+                }
+            }
+        }
+        
+        int max_cnt = 0;
+        int max_idx = 0;
+        
+        for(int j=0; j<vec_br.size(); ++j)
+        {
+            int cnt = vec_br[j].N;
+            if (cnt  > max_cnt)
+            {
+                max_cnt = cnt;
+                max_idx = j;
+            }
+        }
+        
+        if (max_cnt > 3) // TODO: arbitrary cutoff
+        {
+            // add to the overall cluster
+            double min_dist = 1000;
+            int min_idx = -1;
+            
+            for(int j=0; j<D.vec_break_clusters.size(); ++j)
+            {
+                double dist = D.vec_break_clusters[j].get_distance(vec_br[max_idx]);
+                
+                if (dist < min_dist)
+                {
+                    min_dist = dist;
+                    min_idx = j;
+                }
+            }
+            if (min_idx >= 0 && min_dist < 4) // TODO: arbitrary cutoff. Check smaller SVs how this affects.
+            {
+                D.vec_break_clusters[min_idx].merge(vec_br[max_idx]);
+            }
+            else
+            {
+                D.vec_break_clusters.push_back(vec_br[max_idx]);
+                //std::cerr << "Adding to a new cluster: " << split.positions.first << "\t" << split.positions.second << std::endl;
+            }
+        }
+            // std::cout << "SV " << S.pos << "-" << S.end << ", sample " << i<< " startsplit " << vec_br[maxidx].start_mean << ", endsplit " << vec_br[maxidx].end_mean << " cnt " << maxcnt << std::endl;
+    }
+    std::cout << "SV " << S.pos << "-" << S.end << ", " << D.vec_break_clusters.size() << " split clusters found\n";
+    for(int j=0; j<D.vec_break_clusters.size(); ++j)
+    {
+        std::cout << "Cluster " << j << " " << D.vec_break_clusters[j].start_mean << "(" << D.vec_break_clusters[j].start_var << ")" << "-" << D.vec_break_clusters[j].end_mean <<  "(" << D.vec_break_clusters[j].end_var << ")" << ", " << D.vec_break_clusters[j].N << " elements\n";
+    }
+
+    return true;
+}
+
 bool Genotyper::find_consensus_rp(sv &S, SvData &D, int pairstr, int &start_peak, int &end_peak)
 {
     std::vector<int> &seq = D.all_rps[pairstr];
@@ -896,8 +1058,10 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     int start_peak = -1;
     int end_peak = -1;
     int pairstr = 1;
+
+    find_consensus_split(S, D, start_peak, end_peak);
     
-   if (find_consensus_rp(S, D, pairstr, start_peak, end_peak) )
+    if (find_consensus_rp(S, D, pairstr, start_peak, end_peak) )
     {
         G.rp_pos = S.pos + start_peak*10 - 500;
         G.rp_end = S.end + end_peak*10 - 1500;
@@ -1161,8 +1325,8 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         G.b_pass = true;
 
     // Excessive heterozygosity (basically all-het case)
-    if ( n_het > ((double)G.ns * 0.75) && n_hom < ((double)0.05 * G.ns) )
-        G.b_pass = false;
+   // if ( n_het > ((double)G.ns * 0.75) && n_hom < ((double)0.05 * G.ns) )
+     //   G.b_pass = false;
 }
 
 void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)

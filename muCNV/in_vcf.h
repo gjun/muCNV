@@ -13,12 +13,14 @@
 #include <vector>
 #include <string>
 
-#include <htslib/hts.h>
-#include <htslib/tbx.h>
-#include <htslib/kseq.h>
+// #include <htslib/hts.h>
+// #include <htslib/tbx.h>
+// #include <htslib/kseq.h>
 
 #include "sv.h"
 
+
+/*
 class invcfs
 {
 public:
@@ -35,6 +37,7 @@ public:
     int initialize(std::vector<std::string> &, std::vector<std::string> &, std::vector<double> &, std::vector<double> &, std::vector<double> &, std::string &);
 };
 
+*/ // commented out tabix-based VCF access for now. Nov. 16. 2019
 
 void read_svs_from_vcf(std::string &, std::vector<breakpoint> &, std::vector<sv> &);
 void read_svs_from_intfile(std::string &, std::vector<breakpoint> &, std::vector<sv> &);

@@ -72,6 +72,23 @@ public:
     void reset();
 };
 
+class BreakCluster
+{
+public:
+    BreakCluster();
+    double get_distance(std::pair<int, int> &);
+    double get_distance(BreakCluster&);
+    void merge(BreakCluster&);
+
+    void add_to_cluster(std::pair<int, int> &);
+
+    double start_mean;
+    double start_var;
+    double end_mean;
+    double end_var;
+    int N;
+};
+
 class SvData
 {
 public:
@@ -84,7 +101,8 @@ public:
     std::vector< std::vector<int> >all_rps;
     std::vector<int> all_sps;
     // Vector to store total # clips cross all samples per every bp in +/- 100bp of the SV
-
+    std::vector<BreakCluster> vec_break_clusters;
+    
     std::vector<int> all_lclips;
     std::vector<int> all_rclips;
 
@@ -105,6 +123,8 @@ public:
     void get_prepost_stat(SvData &, SvGeno &);
     int find_peak(std::vector<int> &, int, int);
     bool find_consensus_rp(sv &, SvData &, int, int &, int &);
+    bool find_consensus_split(sv &, SvData &, int &, int &);
+    bool is_split_direction(sv &, PairSplit &);
     bool find_consensus_clip(sv &, SvData &, int, int &, int &);
     bool find_consensus_clip_inv(sv &, SvData &, int &, int &, int&, int&);
 

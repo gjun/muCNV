@@ -38,7 +38,6 @@ int main_genotype(int argc, char** argv)
     string region;
     string range;
 	double max_p;
-    bool b_dumpstat;
 	bool b_kmeans;
 	bool b_mahalanobis;
 	int chr;

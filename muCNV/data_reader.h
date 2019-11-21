@@ -15,6 +15,13 @@
 
 using std::string;
 
+class PairSplit
+{
+public:
+    std::pair<int,int> positions;
+    std::pair<bool,bool> directions;
+};
+
 class ReadStat
 {
 public:
@@ -32,7 +39,11 @@ public:
     std::vector< std::vector<int> > rp_seq;
     std::vector<int> sp_seq_in;
     std::vector<int> sp_seq_out;
-
+    
+    // Vectors to store total 'pairs' of read pair and split read positions
+    
+    std::vector< PairSplit > readpairs;
+    std::vector< PairSplit > splits;
     
     // Vector to store total # clips in each sample per every bp in +/- 100bp of the SV
     // + : clip in forward direction (rclip)
