@@ -67,6 +67,7 @@ public:
     std::vector<int> end_clips;
     
     std::vector<int> split_cnts;
+    std::vector<int> rp_cnts;
     
     std::vector<int> start_rps;
     std::vector<int> end_rps;

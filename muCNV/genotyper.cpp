@@ -101,7 +101,8 @@ SvGeno::SvGeno(int n)
     end_clips.resize(n_sample, 0);
     
     split_cnts.resize(n_sample, 0);
-    
+    rp_cnts.resize(n_sample, 0);
+
     start_rps.resize(n_sample, 0);
     end_rps.resize(n_sample, 0);
 }
@@ -121,7 +122,8 @@ void SvGeno::reset()
     std::fill(clip_cn.begin(), clip_cn.end(), -1);
     
     std::fill(split_cnts.begin(), split_cnts.end(), 0);
-    
+    std::fill(rp_cnts.begin(), rp_cnts.end(), 0);
+
     std::fill(start_clips.begin(), start_clips.end(), 0);
     std::fill(end_clips.begin(), end_clips.end(), 0);
     std::fill(start_rps.begin(), start_rps.end(), 0);
@@ -695,8 +697,9 @@ bool Genotyper::find_consensus_split(sv &S, SvData &D, int &clus_idx)
         vec_br.clear();
     }
     if (D.vec_break_clusters.size() > 0)
-        std::cout << "SV " << S.pos << "-" << S.end << ", " << D.vec_break_clusters.size() << " split clusters found\n";
     {
+        std::cout << "SV " << S.pos << "-" << S.end << ", " << D.vec_break_clusters.size() << " split clusters found\n";
+
         int max_idx = -1;
         int max_cnt = 0;
         for(int j=0; j<D.vec_break_clusters.size(); ++j)
@@ -1081,7 +1084,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
     int clus_idx = -1;
     int pairstr = 1;
-
+    
     if (find_consensus_split(S, D, clus_idx))
     {
         // yay!
@@ -1112,14 +1115,17 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             
             for(auto &rp : D.rdstats[i].readpairs)
             {
+                // printf("%d\t%d\n", rp.positions.first, rp.positions.second);
                 // only for SVs > 50 bp?
                 int dx = (int) (D.vec_break_clusters[clus_idx].start_mean - rp.positions.first);
                 int dy = (int) (rp.positions.second - D.vec_break_clusters[clus_idx].end_mean);
                 if (dx > 75 && dx < 375 && dy > -75 && dy < 300)
                 {
-                   // G.rp_cnts[i] ++;
+                   G.rp_cnts[i] ++;
                 }
             }
+            
+            printf("%d\t%d\t%d\t%d\t%f\t%f\t%f\n", G.split_cnts[i], G.rp_cnts[i], G.start_clips[i], G.end_clips[i], D.dps[0][i], D.dps[1][i], D.dps[2][i]);
         }
     }
     else

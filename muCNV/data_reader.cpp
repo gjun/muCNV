@@ -588,7 +588,7 @@ bool DataReader::around_breakpoint(readpair &rp, sv &curr_sv)
 	switch(curr_sv.svtype)
 	{
 	case DEL:
-		if (rp.selfpos >= curr_sv.pos -500 && rp.selfpos < curr_sv.pos+500 && rp.matepos < curr_sv.end +500 && rp.matepos >= curr_sv.end - 500 && rp.matequal > 0)
+		if (rp.selfpos >= curr_sv.pos - 500 && rp.selfpos <= curr_sv.pos + 100 && rp.matepos < curr_sv.end + 500 && rp.matepos >= curr_sv.end - 100 && rp.matequal > 0)
 		{
 			return true;
 		}
@@ -599,7 +599,7 @@ bool DataReader::around_breakpoint(readpair &rp, sv &curr_sv)
 		break;
 	case DUP:
 	case CNV:
-		if (rp.selfpos >= curr_sv.pos - 500 && rp.selfpos < curr_sv.pos+500 && rp.matepos < curr_sv.end +500 && rp.matepos >= curr_sv.end -500 && rp.matequal > 0)
+		if (rp.selfpos >= curr_sv.pos - 100 && rp.selfpos < curr_sv.pos+500 && rp.matepos <= curr_sv.end + 100 && rp.matepos >= curr_sv.end -500 && rp.matequal > 0)
 		{
 			return true;
 		}
