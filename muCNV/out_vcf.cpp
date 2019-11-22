@@ -148,7 +148,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 		fprintf(fp, ";Biallelic");
 	}
 
-    fprintf(fp, "\tGT:CN:DP:DD:RP:SC");
+    fprintf(fp, "\tGT:CN:DP:DD:SP:RP:SC");
 
     for (int i=0; i<(int)G.gt.size(); ++i)
     {
@@ -193,7 +193,9 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 
 		if (S.svtype == DEL)
 		{
-            fprintf(fp, ":%d:%d", G.start_rps[i] + G.end_rps[i], (int)(G.start_clips[i] + G.end_clips[i]));
+            fprintf(fp, ":%d:%d:%d", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)(G.start_clips[i] + G.end_clips[i]));
+
+           // fprintf(fp, ":%d:%d", G.start_rps[i] + G.end_rps[i], (int)(G.start_clips[i] + G.end_clips[i]));
 		}
 		else if (S.svtype == DUP || S.svtype==CNV)
 		{
