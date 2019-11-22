@@ -1128,6 +1128,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         if (l_clip < 201) l_clip = 201;
         if (l_clip > 398) l_clip = 398;
         bool b_genotype = false;
+        int split_ns = 0;
         
         for(int i=0; i< n_sample; ++i)
         {
@@ -1158,17 +1159,20 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             G.all_cnts[i] = G.split_cnts[i] + G.rp_cnts[i] + (G.start_clips[i] + G.end_clips[i])/2.0;
             
             // TODO: cut-off values are arbitrary
-            if (G.split_cnts[i] > 4 || G.all_cnts[i] > 8)
+            if (G.split_cnts[i] > 3 || G.all_cnts[i] > 8)
             {
                 G.split_gt[i] = 1;
+                split_ns ++;
                 b_genotype = true;
                 nonalt_mask[i] = true;
             }
             else if (G.all_cnts[i] < 3)
+            {
                 G.split_gt[i] = 0;
+                split_ns++;
+            }
             else
                 G.split_gt[i] = -1;
-            printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], D.dps[0][i], D.dps[1][i], D.dps[2][i]);
             
         }
         if (!b_genotype)
@@ -1206,20 +1210,17 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             
             if (d0>0 && d1 < d0 * (G.all_cnts[i] / 2.0)) // TODO: 2.0 is arbitrary factor
             {
-                if (G.gmix.n_comp>0)
+                if (D.dps[2][i] < 0.1 && G.split_gt[i] > 0)
                 {
-                    if (D.dps[2][i] < 0.1 && G.split_gt[i] > 0)
-                    {
-                        G.gt[i] = 2;
-                        G.ns++;
-                        G.ac += 2;
-                    }
-                    else
-                    {
-                        G.gt[i] = 1;
-                        G.ns++;
-                        G.ac++;
-                    }
+                    G.gt[i] = 2;
+                    G.ns++;
+                    G.ac += 2;
+                }
+                else if (split_ns < 0.9*n_sample || G.all_cnts[i] > 0) // if there are few ambiguous samples, do not code alternative allele solely based on depth
+                {
+                    G.gt[i] = 1;
+                    G.ns++;
+                    G.ac++;
                 }
             }
             else
@@ -1233,6 +1234,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
                 }
                 
             }
+            printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%d\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], D.dps[0][i], D.dps[1][i], D.dps[2][i], G.gt[i]);
         }
         /*
         rp_mix.estimate(G.rp_cnts, G.split_gt, 2);
