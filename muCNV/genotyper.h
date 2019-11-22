@@ -26,6 +26,7 @@ public:
     bool pd_flag;
     bool read_flag;
 	bool rp_geno_flag;
+    bool split_flag;
     bool clip_flag;
 	bool clip_geno_flag;
 	double MAX_P_OVERLAP;
@@ -48,6 +49,8 @@ public:
     int rp_end;
     int clip_pos;
     int clip_end;
+    int split_start;
+    int split_end;
     
 	GaussianMixture gmix;
     
@@ -63,11 +66,12 @@ public:
     std::vector<int> clip_cn;
     std::vector<int> split_cn;
     
-    std::vector<int> start_clips;
-    std::vector<int> end_clips;
+    std::vector<double> start_clips;
+    std::vector<double> end_clips;
     
-    std::vector<int> split_cnts;
-    std::vector<int> rp_cnts;
+    std::vector<double> split_cnts;
+    std::vector<double> rp_cnts;
+    std::vector<double> all_cnts;
     
     std::vector<int> start_rps;
     std::vector<int> end_rps;
@@ -139,9 +143,8 @@ public:
     void call_inversion(sv &, SvData &, SvGeno &, std::vector<SampleStat> &);
   //  void call_insertion(sv &, SvData &, SvGeno &);
     void select_model(GaussianMixture &, std::vector< std::vector<double> > &, std::vector<double> &, double);
+    void select_model(GaussianMixture &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<bool> &, double);
     void select_model(GaussianMixture2 &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<double>&, double);
-    void select_model_mask(GaussianMixture &, std::vector< std::vector<double> > &, std::vector<double> &x, std::vector<bool> &mask, double MAX_P_OVERLAP);
-
 };
 
 #endif /* genotyper_h */

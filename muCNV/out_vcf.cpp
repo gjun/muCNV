@@ -138,6 +138,11 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 	{
         fprintf(fp, ";SCGENO");
 	}
+    if (G.split_flag)
+    {
+        fprintf(fp, ";BREAKPOINT=(%d,%d)", G.split_start, G.split_end);
+    }
+    
 	if (G.b_biallelic)
 	{
 		fprintf(fp, ";Biallelic");
@@ -188,15 +193,15 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 
 		if (S.svtype == DEL)
 		{
-            fprintf(fp, ":%d:%d", G.start_rps[i] + G.end_rps[i], G.start_clips[i] + G.end_clips[i]);
+            fprintf(fp, ":%d:%d", G.start_rps[i] + G.end_rps[i], (int)(G.start_clips[i] + G.end_clips[i]));
 		}
 		else if (S.svtype == DUP || S.svtype==CNV)
 		{
-            fprintf(fp, ":%d:%d",  G.start_rps[i] + G.end_rps[i], G.start_clips[i] + G.end_clips[i]);
+            fprintf(fp, ":%d:%d",  G.start_rps[i] + G.end_rps[i], (int)(G.start_clips[i] + G.end_clips[i]));
 		}
 		else if (S.svtype == INV)
 		{
-			fprintf(fp, ":%d:%d",  G.start_rps[i] + G.end_rps[i], G.start_clips[i] + G.end_clips[i]);
+			fprintf(fp, ":%d:%d",  G.start_rps[i] + G.end_rps[i], (int)(G.start_clips[i] + G.end_clips[i]));
 		}
 		else if (S.svtype == INS)
 		{

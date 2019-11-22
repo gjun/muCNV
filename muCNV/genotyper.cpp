@@ -102,9 +102,38 @@ SvGeno::SvGeno(int n)
     
     split_cnts.resize(n_sample, 0);
     rp_cnts.resize(n_sample, 0);
+    
+    all_cnts.resize(n_sample, 0);
 
     start_rps.resize(n_sample, 0);
     end_rps.resize(n_sample, 0);
+    ns = 0;
+    ac = 0;
+
+    b_biallelic = false;
+    b_pass = false;
+    dp_flag = false;
+    dp2_flag = false;
+    pd_flag = false;
+    read_flag = false;
+    rp_geno_flag = false;
+    clip_flag = false;
+    clip_geno_flag = false;
+    split_flag = false;
+    
+    dp_pre_mean = 1.0;
+    dp_pre_std = 0.1;
+    dp_post_mean = 1.0;
+    dp_post_std = 0.1;
+    b_pre = false;
+    b_post = false;
+    info = "";
+    rp_pos = -1;
+    rp_end = -1;
+    clip_pos = -1;
+    clip_end = -1;
+    split_start = -1;
+    split_end = -1;
 }
 
 void SvGeno::reset()
@@ -123,6 +152,8 @@ void SvGeno::reset()
     
     std::fill(split_cnts.begin(), split_cnts.end(), 0);
     std::fill(rp_cnts.begin(), rp_cnts.end(), 0);
+    
+    std::fill(all_cnts.begin(), all_cnts.end(), 0);
 
     std::fill(start_clips.begin(), start_clips.end(), 0);
     std::fill(end_clips.begin(), end_clips.end(), 0);
@@ -141,7 +172,7 @@ void SvGeno::reset()
 	rp_geno_flag = false;
     clip_flag = false;
 	clip_geno_flag = false;
-	
+    split_flag = false;
     
     dp_pre_mean = 1.0;
     dp_pre_std = 0.1;
@@ -154,6 +185,8 @@ void SvGeno::reset()
     rp_end = -1;
     clip_pos = -1;
     clip_end = -1;
+    split_start = -1;
+    split_end = -1;
 }
 
 SvData::SvData(int n)
@@ -306,25 +339,19 @@ void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector
     return;
 }
 
-void Genotyper::select_model_mask(GaussianMixture &ret_gmix, std::vector< std::vector<double> > &means, std::vector<double> &x, std::vector<bool> &mask, double MAX_P_OVERLAP)
+void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector<double> > &means, std::vector<double> &x, std::vector<bool> &mask, double MAX_P_OVERLAP)
 {
     double best_bic = DBL_MAX;
-    
+
     // number of models
     for(int m=0; m<(int)means.size(); ++m)
     {
         std::vector<double> s (means[m].size(), 0.1);
         GaussianMixture gmix(means[m], s);
-        if (b_kmeans)  //should not be true for this version (04/13/2019)
-        {
-            gmix.KM(x, b_mahalanobis);
-        }
-        else
-        {
-            gmix.EM_select(x, mask); // fit mixture model
-                        //        gmix.print();
-        }
-        // if (gmix.bic < best_bic)
+        gmix.EM_select(x, mask); // fit mixture model
+    //        gmix.print();
+
+       // if (gmix.bic < best_bic)
         if (gmix.bic < best_bic && gmix.p_overlap < MAX_P_OVERLAP)
         {
             best_bic = gmix.bic;
@@ -667,7 +694,7 @@ bool Genotyper::find_consensus_split(sv &S, SvData &D, int &clus_idx)
             }
         }
         
-        if (max_cnt >= 2) // TODO: arbitrary cutoff
+        if (max_cnt >= 3) // TODO: arbitrary cutoff
         {
             // add to the overall cluster
             double min_dist = 1000;
@@ -1088,6 +1115,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     if (find_consensus_split(S, D, clus_idx))
     {
         // yay!
+        std::vector<bool> nonalt_mask (n_sample, false);
         
         // Genotyping strategy:
         // 1) count # clips around the consensus softclip site
@@ -1098,6 +1126,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         if (r_clip > 198) r_clip = 198;
         if (l_clip < 201) l_clip = 201;
         if (l_clip > 398) l_clip = 398;
+        bool b_genotype = false;
         
         for(int i=0; i< n_sample; ++i)
         {
@@ -1110,8 +1139,8 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
                 }
             }
             // Count number of soft clips around the split read breakpoints
-            G.start_clips[i] = D.rdstats[i].rclips[r_clip] + D.rdstats[i].rclips[r_clip-1] + D.rdstats[i].rclips[r_clip+1];
-            G.end_clips[i] = D.rdstats[i].lclips[l_clip] + D.rdstats[i].lclips[l_clip-1] + D.rdstats[i].lclips[l_clip+1];
+            G.start_clips[i] = D.rdstats[i].rclips[r_clip] + D.rdstats[i].rclips[r_clip-1] + D.rdstats[i].rclips[r_clip+1]+D.rdstats[i].rclips[r_clip-2]+D.rdstats[i].rclips[r_clip+2];
+            G.end_clips[i] = D.rdstats[i].lclips[l_clip] + D.rdstats[i].lclips[l_clip-1] + D.rdstats[i].lclips[l_clip+1] + D.rdstats[i].lclips[l_clip-2] + D.rdstats[i].lclips[l_clip+2];
             
             for(auto &rp : D.rdstats[i].readpairs)
             {
@@ -1125,11 +1154,158 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
                 }
             }
             
-            printf("%d\t%d\t%d\t%d\t%f\t%f\t%f\n", G.split_cnts[i], G.rp_cnts[i], G.start_clips[i], G.end_clips[i], D.dps[0][i], D.dps[1][i], D.dps[2][i]);
+            G.all_cnts[i] = G.split_cnts[i] + G.rp_cnts[i] + (G.start_clips[i] + G.end_clips[i])/2.0;
+            
+            // TODO: cut-off values are arbitrary
+            if (G.split_cnts[i] > 4 || G.all_cnts[i] > 8)
+            {
+                G.split_gt[i] = 1;
+                b_genotype = true;
+                nonalt_mask[i] = true;
+            }
+            else if (G.all_cnts[i] < 3)
+                G.split_gt[i] = 0;
+            else
+                G.split_gt[i] = -1;
+            printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], D.dps[0][i], D.dps[1][i], D.dps[2][i]);
+            
         }
+        if (!b_genotype)
+            return;
+        
+        G.split_flag = true;
+        
+        GaussianMixture dp_mix, all_mix;
+        
+        // Check whether the 'variant' depth is separated from 'non-variant' depth
+        dp_mix.estimate(D.dps[2], G.split_gt, 2);
+        printf("Depth cluster\n");
+        dp_mix.print(stdout);
+
+        if (dp_mix.Comps[1].Stdev < 0.01)
+            dp_mix.Comps[1].Stdev = 0.1;
+        
+        // TODO: Arbitrary cutoffs
+        if (dp_mix.Comps[0].Mean<0.5 || dp_mix.Comps[0].Mean < dp_mix.Comps[1].Mean + dp_mix.Comps[1].Stdev)
+            return;
+        
+        // if yes, then try to EM with masks, variants only
+        std::vector<std::vector<double> > alt_means = { {0.5}, {0.5, 0.0} };
+        select_model(G.gmix, alt_means, D.dps[2], nonalt_mask, 0.5);
+        printf("GMIX cluster\n");
+        G.gmix.print(stdout);
+        
+        all_mix.estimate(G.all_cnts, G.split_gt, 2);
+        printf("ALL count cluster\n");
+        all_mix.print(stdout);
+        
+        for(int i=0; i<n_sample; ++i)
+        {
+            double d0 = dp_mix.Comps[0].Mean - D.dps[2][i];
+            double d1 = D.dps[2][i] - G.gmix.Comps[0].Mean;
+            
+            if (d0>0 && d1 < d0 * (G.all_cnts[i] / 2.0)) // TODO: 2.0 is arbitrary factor
+            {
+                if (G.gmix.n_comp>0)
+                {
+                    if (D.dps[2][i] < 0.1 && G.split_gt[i] > 0)
+                    {
+                        G.gt[i] = 2;
+                        G.ns++;
+                        G.ac += 2;
+                    }
+                    else
+                    {
+                        G.gt[i] = 1;
+                        G.ns++;
+                        G.ac++;
+                    }
+                }
+            }
+            else
+            {
+                if (G.all_cnts[i] > all_mix.Comps[1].Mean - all_mix.Comps[1].Stdev)   // missing
+                    G.gt[i] = -1;
+                else
+                {
+                    G.gt[i] = 0;
+                    G.ns++;
+                }
+                
+            }
+        }
+        /*
+        rp_mix.estimate(G.rp_cnts, G.split_gt, 2);
+        printf("RP count cluster\n");
+        rp_mix.print(stdout);
+        
+        split_mix.estimate(G.split_cnts, G.split_gt, 2);
+        printf("Split count cluster\n");
+        split_mix.print(stdout);
+        
+        rclip_mix.estimate(G.start_clips, G.split_gt, 2);
+        printf("R-clip count cluster\n");
+        rclip_mix.print(stdout);
+        
+        lclip_mix.estimate(G.end_clips, G.split_gt, 2);
+        printf("L-clip count cluster\n");
+        lclip_mix.print(stdout);
+*/
+        fflush(stdout);
+        double callrate = (double)G.ns / n_sample;
+
+    //    fprintf(stderr, " callrate %f , ns %d, ac %d\n", callrate, G.ns, G.ac);
+        if ( G.split_flag &&  callrate>0.3 && G.ac > 0 && G.ac < G.ns*2)
+            G.b_pass = true;
+        return;
+        
     }
     else
     {
+        int l_clip = -1;
+        int r_clip = -1;
+        
+        if (find_consensus_clip(S, D, pairstr, l_clip, r_clip))
+        {
+            int start_clip = r_clip;
+            int end_clip = l_clip;
+            
+            if ((S.pos + start_clip - 100) < (S.end + end_clip - 300) && start_clip > 0 && start_clip<199 && end_clip>200 && end_clip<399)
+            {
+                G.clip_pos = S.pos + start_clip - 100;
+                G.clip_end = S.end + end_clip - 300;
+                G.clip_flag = true;
+
+                for(int i=0; i<n_sample; ++i)
+                {
+                    G.start_clips[i] = D.rdstats[i].rclips[r_clip] + D.rdstats[i].rclips[r_clip-1] + D.rdstats[i].rclips[r_clip+1];
+                    G.end_clips[i] = D.rdstats[i].lclips[l_clip] + D.rdstats[i].lclips[l_clip-1] + D.rdstats[i].lclips[l_clip+1];
+                    
+                    if ( G.start_clips[i] >= 5 && G.end_clips[i] >=5 && D.dps[2][i] < 0.15 )
+                    {
+                        G.clip_gt[i] = 2;
+                        G.clip_cn[i] = 0;
+                        G.clip_geno_flag = true;
+                        
+                    }
+                    else if ( G.start_clips[i] >= 2 && G.end_clips[i] >=2 && D.dps[2][i] < 0.75 )
+                    {
+                        G.clip_gt[i] = 1;
+                        G.clip_cn[i] = 1;
+                        G.clip_geno_flag = true;
+                    }
+                    else
+                    {
+                        if ( D.dps[2][i] >0.8 && D.dps[2][i] <= 1.5)
+                        {
+                            G.clip_gt[i] = 0;
+                            G.clip_cn[i] = 2;
+                        }
+                    }
+                }
+            }
+        }
+        return;
         // if no split reads, try other evidences
     }
     
