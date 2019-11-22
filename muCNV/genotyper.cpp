@@ -1116,12 +1116,13 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     {
         // yay!
         std::vector<bool> nonalt_mask (n_sample, false);
-        
+        G.split_start =(int)(D.vec_break_clusters[clus_idx].start_mean+0.5);
+        G.split_end =(int)(D.vec_break_clusters[clus_idx].end_mean+0.5);
         // Genotyping strategy:
         // 1) count # clips around the consensus softclip site
         // 2) count # readpairs before / after softclip site (insert size - readlen / 50)
-        int r_clip = ((int)(D.vec_break_clusters[clus_idx].start_mean+0.5) - S.pos + 100);
-        int l_clip = ((int)(D.vec_break_clusters[clus_idx].end_mean+0.5) - S.end + 300);
+        int r_clip = (G.split_start - S.pos + 100);
+        int l_clip = (G.split_end - S.end + 300);
         if (r_clip < 1) r_clip = 1;
         if (r_clip > 198) r_clip = 198;
         if (l_clip < 201) l_clip = 201;
@@ -1174,7 +1175,6 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             return;
         
         G.split_flag = true;
-        
         GaussianMixture dp_mix, all_mix;
         
         // Check whether the 'variant' depth is separated from 'non-variant' depth
@@ -1186,7 +1186,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             dp_mix.Comps[1].Stdev = 0.1;
         
         // TODO: Arbitrary cutoffs
-        if (dp_mix.Comps[0].Mean<0.5 || dp_mix.Comps[0].Mean < dp_mix.Comps[1].Mean + dp_mix.Comps[1].Stdev)
+        if (dp_mix.Comps[0].Mean<0.8 || dp_mix.Comps[0].Mean < dp_mix.Comps[1].Mean + dp_mix.Comps[1].Stdev)
             return;
         
         // if yes, then try to EM with masks, variants only
@@ -1224,7 +1224,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             }
             else
             {
-                if (G.all_cnts[i] > all_mix.Comps[1].Mean - all_mix.Comps[1].Stdev)   // missing
+                if (G.all_cnts[i] > 5)   // missing
                     G.gt[i] = -1;
                 else
                 {
