@@ -1145,11 +1145,14 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             // Count the number of split reads
             for(auto &split : D.rdstats[i].splits)
             {
-                for (int j=0; j<D.vec_break_clusters.size(); ++j)
+                if (is_split_direction(S, split))
                 {
-                    if (D.vec_break_clusters[j].get_distance(split.positions) < 4)
+                    for (int j=0; j<D.vec_break_clusters.size(); ++j)
                     {
-                        G.split_cnts[i] ++;
+                        if (D.vec_break_clusters[j].get_distance(split.positions) < 4)
+                        {
+                            G.split_cnts[i] ++;
+                        }
                     }
                 }
             }
@@ -1221,9 +1224,9 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             double d0 = dp_mix.Comps[0].Mean - D.dps[2][i];
             double d1 = D.dps[2][i] - G.gmix.Comps[0].Mean;
             
-            if (d0>0 &&  G.all_cnts[i]>0 && d1 < d0 * ((G.split_cnts[i] + G.all_cnts[i] + 1) / 2.0))
+            if (d0>0 &&  G.all_cnts[i]>0 && d1 < d0 * ((G.split_cnts[i] + G.all_cnts[i] - 1) / 2.0))
             {
-                if (D.dps[2][i] < 0.1)
+                if (D.dps[2][i] < 0.1 || (G.gmix.Comps.size()>1 && D.dps[2][i] < G.gmix.Comps[1].Stdev))
                 {
                     G.gt[i] = 2;
                     G.ns++;
@@ -1253,80 +1256,56 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             }
             printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%d\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], D.dps[0][i], D.dps[1][i], D.dps[2][i], G.gt[i]);
         }
-        /*
-        rp_mix.estimate(G.rp_cnts, G.split_gt, 2);
-        printf("RP count cluster\n");
-        rp_mix.print(stdout);
-        
-        split_mix.estimate(G.split_cnts, G.split_gt, 2);
-        printf("Split count cluster\n");
-        split_mix.print(stdout);
-        
-        rclip_mix.estimate(G.start_clips, G.split_gt, 2);
-        printf("R-clip count cluster\n");
-        rclip_mix.print(stdout);
-        
-        lclip_mix.estimate(G.end_clips, G.split_gt, 2);
-        printf("L-clip count cluster\n");
-        lclip_mix.print(stdout);
-*/
+
         fflush(stdout);
         double callrate = (double)G.ns / n_sample;
 
-    //    fprintf(stderr, " callrate %f , ns %d, ac %d\n", callrate, G.ns, G.ac);
-        if ( G.split_flag &&  callrate>0.3 && G.ac > 0 && G.ac < G.ns*2)
+        if ( G.split_flag &&  callrate>0.3 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
+        {
             G.b_pass = true;
-        return;
+            return;
+        }
         
     }
-    else
+    
+    int l_clip = -1;
+    int r_clip = -1;
+    
+    if (find_consensus_clip(S, D, pairstr, l_clip, r_clip))
     {
-        int l_clip = -1;
-        int r_clip = -1;
-        
-        if (find_consensus_clip(S, D, pairstr, l_clip, r_clip))
-        {
-            int start_clip = r_clip;
-            int end_clip = l_clip;
-            
-            if ((S.pos + start_clip - 100) < (S.end + end_clip - 300) && start_clip > 0 && start_clip<199 && end_clip>200 && end_clip<399)
-            {
-                G.clip_pos = S.pos + start_clip - 100;
-                G.clip_end = S.end + end_clip - 300;
-                G.clip_flag = true;
+        G.clip_pos = S.pos + r_clip - 100;
+        G.clip_end = S.end + l_clip - 300;
+        G.clip_flag = true;
 
-                for(int i=0; i<n_sample; ++i)
+        for(int i=0; i<n_sample; ++i)
+        {
+            G.start_clips[i] = D.rdstats[i].rclips[r_clip] + D.rdstats[i].rclips[r_clip-1] + D.rdstats[i].rclips[r_clip+1];
+            G.end_clips[i] = D.rdstats[i].lclips[l_clip] + D.rdstats[i].lclips[l_clip-1] + D.rdstats[i].lclips[l_clip+1];
+
+            if ( G.start_clips[i] >= 5 && G.end_clips[i] >=5 && D.dps[2][i] < 0.15 )
+            {
+                G.clip_gt[i] = 2;
+                G.clip_cn[i] = 0;
+                G.clip_geno_flag = true;
+                
+            }
+            else if ( G.start_clips[i] >= 2 && G.end_clips[i] >=2 && D.dps[2][i] < 0.75 )
+            {
+                G.clip_gt[i] = 1;
+                G.clip_cn[i] = 1;
+                G.clip_geno_flag = true;
+            }
+            else
+            {
+                if ( D.dps[2][i] >0.8 && D.dps[2][i] <= 1.5)
                 {
-                    G.start_clips[i] = D.rdstats[i].rclips[r_clip] + D.rdstats[i].rclips[r_clip-1] + D.rdstats[i].rclips[r_clip+1];
-                    G.end_clips[i] = D.rdstats[i].lclips[l_clip] + D.rdstats[i].lclips[l_clip-1] + D.rdstats[i].lclips[l_clip+1];
-                    
-                    if ( G.start_clips[i] >= 5 && G.end_clips[i] >=5 && D.dps[2][i] < 0.15 )
-                    {
-                        G.clip_gt[i] = 2;
-                        G.clip_cn[i] = 0;
-                        G.clip_geno_flag = true;
-                        
-                    }
-                    else if ( G.start_clips[i] >= 2 && G.end_clips[i] >=2 && D.dps[2][i] < 0.75 )
-                    {
-                        G.clip_gt[i] = 1;
-                        G.clip_cn[i] = 1;
-                        G.clip_geno_flag = true;
-                    }
-                    else
-                    {
-                        if ( D.dps[2][i] >0.8 && D.dps[2][i] <= 1.5)
-                        {
-                            G.clip_gt[i] = 0;
-                            G.clip_cn[i] = 2;
-                        }
-                    }
+                    G.clip_gt[i] = 0;
+                    G.clip_cn[i] = 2;
                 }
             }
         }
-        return;
-        // if no split reads, try other evidences
     }
+    return;
     
     
     int start_peak = -1;
