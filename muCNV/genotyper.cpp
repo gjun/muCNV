@@ -1121,12 +1121,22 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         // Genotyping strategy:
         // 1) count # clips around the consensus softclip site
         // 2) count # readpairs before / after softclip site (insert size - readlen / 50)
-        int r_clip = (G.split_start - S.pos + 100);
-        int l_clip = (G.split_end - S.end + 300);
-        if (r_clip < 1) r_clip = 1;
-        if (r_clip > 198) r_clip = 198;
-        if (l_clip < 201) l_clip = 201;
-        if (l_clip > 398) l_clip = 398;
+        
+        int n_sp_clus = (int)D. vec_break_clusters.size();
+        
+        std::vector<int> r_clip_idx (n_sp_clus, 0);
+        std::vector<int> l_clip_idx (n_sp_clus, 0);
+        
+        for(int j=0; j<n_sp_clus; ++j)
+        {
+            r_clip_idx[j] = ((int)(D.vec_break_clusters[j].start_mean+0.5) - S.pos + 100);
+            l_clip_idx[j] = ((int)(D.vec_break_clusters[j].end_mean+0.5) - S.end + 300);
+            
+            if (r_clip_idx[j] < 2) r_clip_idx[j] = 2;
+            if (r_clip_idx[j] > 197) r_clip_idx[j] = 197;
+            if (l_clip_idx[j] < 202) l_clip_idx[j] = 202;
+            if (l_clip_idx[j] > 397) l_clip_idx[j] = 397;
+        }
         bool b_genotype = false;
         int split_ns = 0;
         
@@ -1135,15 +1145,21 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             // Count the number of split reads
             for(auto &split : D.rdstats[i].splits)
             {
-                if (D.vec_break_clusters[clus_idx].get_distance(split.positions) < 5)
+                for (int j=0; j<D.vec_break_clusters.size(); ++j)
                 {
-                    G.split_cnts[i] ++;
+                    if (D.vec_break_clusters[j].get_distance(split.positions) < 4)
+                    {
+                        G.split_cnts[i] ++;
+                    }
                 }
             }
-            // Count number of soft clips around the split read breakpoints
-            G.start_clips[i] = D.rdstats[i].rclips[r_clip] + D.rdstats[i].rclips[r_clip-1] + D.rdstats[i].rclips[r_clip+1]+D.rdstats[i].rclips[r_clip-2]+D.rdstats[i].rclips[r_clip+2];
-            G.end_clips[i] = D.rdstats[i].lclips[l_clip] + D.rdstats[i].lclips[l_clip-1] + D.rdstats[i].lclips[l_clip+1] + D.rdstats[i].lclips[l_clip-2] + D.rdstats[i].lclips[l_clip+2];
             
+            for(int j=0; j<D.vec_break_clusters.size(); ++j)
+            {
+            // Count number of soft clips around the split read breakpoints
+                G.start_clips[i] = D.rdstats[i].rclips[r_clip_idx[j]] + D.rdstats[i].rclips[r_clip_idx[j]-1] + D.rdstats[i].rclips[r_clip_idx[j]+1]+D.rdstats[i].rclips[r_clip_idx[j]-2]+D.rdstats[i].rclips[r_clip_idx[j]+2];
+                G.end_clips[i] = D.rdstats[i].lclips[l_clip_idx[j]] + D.rdstats[i].lclips[l_clip_idx[j]-1] + D.rdstats[i].lclips[l_clip_idx[j]+1] + D.rdstats[i].lclips[l_clip_idx[j]-2] + D.rdstats[i].lclips[l_clip_idx[j]+2];
+            }
             for(auto &rp : D.rdstats[i].readpairs)
             {
                 // printf("%d\t%d\n", rp.positions.first, rp.positions.second);
@@ -1166,7 +1182,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
                 b_genotype = true;
                 nonalt_mask[i] = true;
             }
-            else if (G.all_cnts[i] < 2)
+            else if (G.all_cnts[i] < 1)
             {
                 G.split_gt[i] = 0;
                 split_ns++;
@@ -1205,7 +1221,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             double d0 = dp_mix.Comps[0].Mean - D.dps[2][i];
             double d1 = D.dps[2][i] - G.gmix.Comps[0].Mean;
             
-            if (d0>0 && d1 < d0 * ((G.all_cnts[i] + 1) / 2.0)) // TODO: 2.0 is arbitrary factor
+            if (d0>0 &&  G.all_cnts[i]>0 && d1 < d0 * ((G.split_cnts[i] + G.all_cnts[i] + 1) / 2.0))
             {
                 if (D.dps[2][i] < 0.1)
                 {
@@ -1213,7 +1229,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
                     G.ns++;
                     G.ac += 2;
                 }
-                else if (split_ns < 0.9*n_sample || G.all_cnts[i] > 0) // if there are few ambiguous samples, do not code alternative allele solely based on depth
+                else // if there are few ambiguous samples, do not code alternative allele solely based on depth
                 {
                     G.gt[i] = 1;
                     G.ns++;
@@ -1222,12 +1238,16 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             }
             else
             {
-                if (G.all_cnts[i] > 5)   // missing
+                if (D.dps[2][i] < dp_mix.Comps[0].Mean - (dp_mix.Comps[0].Stdev / (G.all_cnts[i]+1.0) ) )  // missing
                     G.gt[i] = -1;
-                else
+                else if (d0 < d1)
                 {
                     G.gt[i] = 0;
                     G.ns++;
+                }
+                else
+                {
+                    G.gt[i] = -1;
                 }
                 
             }
