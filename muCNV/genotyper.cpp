@@ -1159,14 +1159,14 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             G.all_cnts[i] = G.split_cnts[i] + G.rp_cnts[i] + (G.start_clips[i] + G.end_clips[i])/2.0;
             
             // TODO: cut-off values are arbitrary
-            if (G.split_cnts[i] > 3 || G.all_cnts[i] > 8)
+            if (G.split_cnts[i] > 3 || (G.split_cnts[i] > 0 && G.all_cnts[i] > 5))
             {
                 G.split_gt[i] = 1;
                 split_ns ++;
                 b_genotype = true;
                 nonalt_mask[i] = true;
             }
-            else if (G.all_cnts[i] < 3)
+            else if (G.all_cnts[i] < 2)
             {
                 G.split_gt[i] = 0;
                 split_ns++;
@@ -1185,12 +1185,9 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         dp_mix.estimate(D.dps[2], G.split_gt, 2);
         printf("Depth cluster\n");
         dp_mix.print(stdout);
-
-        if (dp_mix.Comps[1].Stdev < 0.01)
-            dp_mix.Comps[1].Stdev = 0.1;
         
         // TODO: Arbitrary cutoffs
-        if (dp_mix.Comps[0].Mean<0.8 || dp_mix.Comps[0].Mean < dp_mix.Comps[1].Mean + dp_mix.Comps[1].Stdev)
+        if (dp_mix.Comps[0].Mean<0.8 || dp_mix.Comps[0].Mean - dp_mix.Comps[0].Stdev < dp_mix.Comps[1].Mean)
             return;
         
         // if yes, then try to EM with masks, variants only
@@ -1208,9 +1205,9 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             double d0 = dp_mix.Comps[0].Mean - D.dps[2][i];
             double d1 = D.dps[2][i] - G.gmix.Comps[0].Mean;
             
-            if (d0>0 && d1 < d0 * (G.all_cnts[i] / 2.0)) // TODO: 2.0 is arbitrary factor
+            if (d0>0 && d1 < d0 * ((G.all_cnts[i] + 1) / 2.0)) // TODO: 2.0 is arbitrary factor
             {
-                if (D.dps[2][i] < 0.1 && G.split_gt[i] > 0)
+                if (D.dps[2][i] < 0.1)
                 {
                     G.gt[i] = 2;
                     G.ns++;
