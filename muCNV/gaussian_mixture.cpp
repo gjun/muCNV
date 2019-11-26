@@ -515,20 +515,6 @@ int GaussianMixture::assign_copynumber(double x)
 		}
 	}
 
-/*
-    double s = Comps[ret].Stdev;
-    if (s<0.05)
-    {
-        //minimun svdev 
-        s = 0.05; 
-    }
-    if (x - Comps[ret].Mean > 2.0 * Comps[ret].Stdev )
-    {
-        // Let's see how this works
-        return -1;
-    }
-    */
-
 	ret = round(Comps[ret].Mean * 2);
 
 	int up = ceil(x*2.0);
@@ -1163,16 +1149,6 @@ int GaussianMixture2::assign_copynumber(double x, double y)
 		}
 	}
     
-    /*
-    double dx = (x - Comps[ret].Mean[0]);
-    double dy = (y - Comps[ret].Mean[1]);
-    
-    double dist = (dx * Comps[ret].Prc[0] + dy * Comps[ret].Prc[2]) * dx + (dx * Comps[ret].Prc[1] + dy * Comps[ret].Prc[3]) * dy;
-
-    if (dist > 2.0)
-        return -1;
-        */
-
 	ret = round(Comps[ret].Mean[0] + Comps[ret].Mean[1]); // TODO: what if only one of the dimensions cluster correctly? (0, 0.5, 1) + (1, 1, 1) = (1 1.5 2) 
 
 	int up = ceil(x+y);
@@ -1262,12 +1238,12 @@ double GaussianMixture2::BayesError()
 	return exp(-1.0*min_d);
 }
 
-void GaussianMixture2::print()
+void GaussianMixture2::print(FILE *fp)
 {
 	for(int i=0; i<n_comp; ++i)
 	{
-		std::cerr << "Comp " << i <<  " (" << Comps[i].Mean[0] << "," << Comps[i].Mean[1] << ";" << Comps[i].Cov[0] << "," << Comps[i].Cov[1] <<"." << Comps[i].Cov[3]  << "), " << Comps[i].Alpha << std::endl;
-	}
+        fprintf(fp, "Comp %d (%f,%f; %f,%f,%f), %f\n", i, Comps[i].Mean[0], Comps[i].Mean[1], Comps[i].Cov[0], Comps[i].Cov[1], Comps[i].Cov[3], Comps[i].Alpha);
+    }
 }
 
 

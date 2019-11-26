@@ -141,9 +141,9 @@ public:
     void call_cnv( sv &,  SvData &, SvGeno &);
     void call_inversion(sv &, SvData &, SvGeno &, std::vector<SampleStat> &);
 
-    bool assign_del_genotypes(sv &, SvData &, SvGeno &, std::vector<int> &);
-    bool assign_dup_genotypes(sv &, SvData &, SvGeno &, std::vector<int> &);
-    bool assign_inv_genotypes(sv &, SvData &, SvGeno &, std::vector<int> &);
+    bool assign_del_genotypes(sv &, SvData &, SvGeno &);
+    bool assign_dup_genotypes(sv &, SvData &, SvGeno &);
+    bool assign_inv_genotypes(sv &, SvData &, SvGeno &);
 
   //  void call_insertion(sv &, SvData &, SvGeno &);
     void select_model(GaussianMixture &, std::vector< std::vector<double> > &, std::vector<double> &, double);

@@ -1162,24 +1162,24 @@ bool Genotyper::find_consensus_clip_inv(sv &S, SvData &D, int &l_start, int &l_e
     return false;
 }
 
-bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<int> &gtypes)
+bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G)
 {
     GaussianMixture dp_mix, all_mix;
-    G.ns = 0;
-    G.ac = 0;
-    
+
     // Check whether the 'variant' depth is separated from 'non-variant' depth
-    dp_mix.estimate(D.dps[2], gtypes, 2);
+    dp_mix.estimate(D.dps[2], G.gt, 2);
     printf("Depth cluster\n");
     dp_mix.print(stdout);
     
     double err_bound = dp_mix.Comps[0].Stdev;
     if (err_bound < 0.2) err_bound = 0.2;
     
+    printf("Sum/AC: %f, %f, %f, %f\n", G.split_sum/G.ac, G.rp_sum/G.ac, G.startclip_sum/G.ac, G.endclip_sum/G.ac);
     // TODO: Arbitrary cutoffs
     if (dp_mix.Comps[0].Mean<0.65 || dp_mix.Comps[0].Mean - err_bound < dp_mix.Comps[1].Mean || dp_mix.p_overlap>0.5)
         return false;
-    if (G.split_sum / G.ac < 0.1 && G.rp_sum / G.ac < 0.1 && ((G.startclip_sum/G.ac < 0.1 && G.endclip_sum/G.ac > 1) || (G.endclip_sum/G.ac < 0.1 && G.startclip_sum/G.ac > 1)) && dp_mix.Comps[1].Mean > 0.7)
+    
+    if (G.split_sum / G.ac < 1 && G.rp_sum / G.ac < 1 && ((G.startclip_sum/(G.endclip_sum+0.001) > 5) || (G.endclip_sum/(G.startclip_sum+0.001) > 5)))
         return false;
 
     // if yes, then try to EM with masks, variants only
@@ -1188,9 +1188,12 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<in
     printf("GMIX cluster\n");
     G.gmix.print(stdout);
     
-    all_mix.estimate(G.all_cnts, gtypes, 2);
+    all_mix.estimate(G.all_cnts, G.gt, 2);
     printf("ALL count cluster\n");
     all_mix.print(stdout);
+    
+    G.ns = 0;
+    G.ac = 0;
     
     for(int i=0; i<n_sample; ++i)
     {
@@ -1231,7 +1234,6 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<in
             {
                 G.gt[i] = -1;
             }
-            
         }
     }
 
@@ -1273,7 +1275,6 @@ bool Genotyper::get_del_cnts(sv &S, SvData &D, SvGeno &G)
         if (l_clip_idx[j] < 202) l_clip_idx[j] = 202;
         if (l_clip_idx[j] > 397) l_clip_idx[j] = 397;
     }
-    bool b_genotype = false;
     
     for(int i=0; i< n_sample; ++i)
     {
@@ -1298,6 +1299,7 @@ bool Genotyper::get_del_cnts(sv &S, SvData &D, SvGeno &G)
             // Count the number of soft clips around breakpoints
             G.start_clips[i] = D.rdstats[i].rclips[r_clip_idx[j]] + D.rdstats[i].rclips[r_clip_idx[j]-1] + D.rdstats[i].rclips[r_clip_idx[j]+1]+D.rdstats[i].rclips[r_clip_idx[j]-2]+D.rdstats[i].rclips[r_clip_idx[j]+2];
             G.end_clips[i] = D.rdstats[i].lclips[l_clip_idx[j]] + D.rdstats[i].lclips[l_clip_idx[j]-1] + D.rdstats[i].lclips[l_clip_idx[j]+1] + D.rdstats[i].lclips[l_clip_idx[j]-2] + D.rdstats[i].lclips[l_clip_idx[j]+2];
+            
             G.startclip_sum += G.start_clips[i];
             G.endclip_sum += G.end_clips[i];
         }
@@ -1319,7 +1321,6 @@ bool Genotyper::get_del_cnts(sv &S, SvData &D, SvGeno &G)
         if (G.split_cnts[i] > 3 || (G.split_flag && G.split_cnts[i] > 0 && G.all_cnts[i] > 5) || (!G.split_flag && G.all_cnts[i] > 5))
         {
             G.gt[i] = 1;
-            b_genotype = true;
             G.nonalt_mask[i] = true;
             G.ac++;
             G.ns++;
@@ -1331,7 +1332,7 @@ bool Genotyper::get_del_cnts(sv &S, SvData &D, SvGeno &G)
         }
     }
     
-    if (b_genotype && G.ns > G.ac)
+    if (G.ac>0 && G.ns > G.ac)
         return true;
     else
         return false;
@@ -1345,9 +1346,9 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     // First, try split read - best evidence
     if (find_consensus_split(S, D))
     {
-        G.split_flag = true;
-        if (get_del_cnts(S, D, G) && assign_del_genotypes(S, D, G, G.gt))
+        if (get_del_cnts(S, D, G) && assign_del_genotypes(S, D, G))
         {
+            G.split_flag = true;
             return;
         }
         else
@@ -1362,10 +1363,10 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
         printf("CLIP-GENOTYPE: ");
         S.print(stdout);
         printf("\n");
-        G.clip_flag = true;
-
-        if (get_del_cnts(S, D, G) && assign_del_genotypes(S, D, G, G.gt))
+        
+        if (get_del_cnts(S, D, G) && assign_del_genotypes(S, D, G))
         {
+            G.clip_flag = true;
             for(int i=0; i<n_sample;++i)
             {
                 printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%d\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], D.dps[0][i], D.dps[1][i], D.dps[2][i], G.gt[i]);
@@ -1374,7 +1375,6 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
             return;
         }
     }
-    return;
     
     // If no breakpoints identified by split reads nor by soft clips, just use the SV breakpoints as given
     D.vec_break_clusters.clear();
@@ -1382,11 +1382,13 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     BreakCluster br;
     br.add_to_cluster(S.pos, S.end, 1);
     D.vec_break_clusters.push_back(br);
-    printf("READPAIR-GENOTYPE: ");
-    S.print(stdout);
-    printf("\n");
-    if (get_del_cnts(S, D, G) && assign_del_genotypes(S, D, G, G.gt))
+
+    if (get_del_cnts(S, D, G) && assign_del_genotypes(S, D, G))
     {
+        printf("READPAIR-GENOTYPE: ");
+        S.print(stdout);
+        printf("\n");
+        
         G.readpair_flag = true;
         for(int i=0; i<n_sample;++i)
         {
@@ -1399,17 +1401,19 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     // If nothing works, use Depth-only clustering with stringent cutoff
     std::vector< std::vector<double> > means = { {1.0}, {1.0, 0.5}, {1.0, 0.5, 0.0}};
     G.MAX_P_OVERLAP = 0.2;
-    
 	double best_dp_idx = 2;
 	std::vector<double> &var_depth = D.dps[best_dp_idx];
 
+    G.ns = 0;
+    G.ac = 0;
+    
 	if (G.b_pre && G.b_post)
 	{
 		// Depth-based clustering genotyping
 		select_model(G.gmix, means, D.dps[best_dp_idx], G.MAX_P_OVERLAP);
 
 		// depth clustering
-		if (G.gmix.n_comp > 1 && G.gmix.ordered())
+		if (G.gmix.n_comp > 1 && G.gmix.ordered() && G.gmix.Comps[0].Alpha > 0.5)
 		{
 			G.dp_flag = true;
 			// success
@@ -1472,7 +1476,8 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 	} // G.b_pre && G.b_post
 
     // Let's use peripheral depth to identify 'false positve' only
-    if (G.b_pre && G.b_post)
+    /*
+    if (G.b_pre && G.b_post && G.dp_flag)
     {
         for (int i=0;i<n_sample; ++i)
         {
@@ -1489,7 +1494,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 				G.gt[i] = 0;
 			}
         }
-    }
+    } */
  
     int n_het = 0;
     int n_hom = 0;
@@ -1519,12 +1524,27 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 
     double callrate = (double)G.ns / n_sample;
 
-    if ((G.dp_flag  || G.dp2_flag) &&  callrate>0.3 && G.ac > 0 && G.ac < G.ns*2)
-        G.b_pass = true;
-
     // Excessive heterozygosity (basically all-het case)
     if ( n_het > ((double)G.ns * 0.75) && n_hom < ((double)0.05 * G.ns) )
+    {
         G.b_pass = false;
+    }
+    else if ((G.dp_flag  || (G.dp_flag && G.dp2_flag)) &&  callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
+    {
+        G.b_pass = true;
+
+        printf("DEPTH-GENOTYPE: ");
+        S.print(stdout);
+        printf("\n");
+        G.gmix.print(stdout);
+        G.gmix2.print(stdout);
+        
+        for(int i=0; i<n_sample;++i)
+        {
+            printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%d\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], D.dps[0][i], D.dps[1][i], D.dps[2][i], G.gt[i]);
+            
+        }
+    }
 }
 
 void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)

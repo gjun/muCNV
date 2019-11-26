@@ -72,7 +72,7 @@ public:
     bool r_ordered();
     double BIC(std::vector<double>& , std::vector<double>& );
     double BayesError();
-	void print();
+	void print(FILE *);
 
     GaussianMixture2 () {bic = DBL_MAX; p_overlap = 1.0; n_comp = 0; zeroidx = -1;};
     GaussianMixture2 (const GaussianMixture2 &);

@@ -33,7 +33,9 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs)
 	fprintf(fp,"##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">\n");
     fprintf(fp,"##INFO=<ID=VarID,Number=1,Type=Float,Description=\"Variant ID\">\n");
 	fprintf(fp,"##INFO=<ID=DP,Number=1,Type=String,Description=\"1-D Depth clustering\">\n");
+    fprintf(fp,"##INFO=<ID=DPOverlap,Number=1,Type=Float,Description=\"Overlap between 1-D depth clusters\">\n");
 	fprintf(fp,"##INFO=<ID=DP2,Number=1,Type=String,Description=\"2-D Depth clustering\">\n");
+    fprintf(fp,"##INFO=<ID=DP2Overlap,Number=1,Type=Float,Description=\"Overlap between 2-D depth clusters\">\n");
 	fprintf(fp,"##INFO=<ID=SPLIT,Number=1,Type=String,Description=\"Breakpoints estimated by split reads\">\n");
     fprintf(fp,"##INFO=<ID=CLIP,Number=1,Type=String,Description=\"Breakpoints estimated by soft clips\">\n");
 	fprintf(fp,"##INFO=<ID=PRE, Number=1,Type=String,Description=\"Read depth statistic before SV\">\n");
@@ -127,6 +129,28 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 	{
 		fprintf(fp, ";Biallelic");
 	}
+    
+    if (G.split_flag)
+    {
+        fprintf(fp, ";SPLIT=(");
+        fprintf(fp, "%d,%d", (int)(D.vec_break_clusters[0].start_mean + 0.5), (int)(D.vec_break_clusters[0].end_mean+0.5));
+        for(int j=1; j<D.vec_break_clusters.size(); ++j)
+        {
+            fprintf(fp, ";%d,%d", (int)(D.vec_break_clusters[0].start_mean + 0.5), (int)(D.vec_break_clusters[0].end_mean+0.5));
+        }
+        fprintf(fp, ")");
+    }
+    else if (G.clip_flag)
+    {
+        fprintf(fp, ";CLIP=(");
+        fprintf(fp, "%d,%d", (int)(D.vec_break_clusters[0].start_mean + 0.5), (int)(D.vec_break_clusters[0].end_mean+0.5));
+        for(int j=1; j<D.vec_break_clusters.size(); ++j)
+        {
+            fprintf(fp, ";%d,%d", (int)(D.vec_break_clusters[0].start_mean + 0.5), (int)(D.vec_break_clusters[0].end_mean+0.5));
+        }
+        fprintf(fp, ")");
+    }
+    
     
     fprintf(fp, "\tGT:CN:DP:DD:SP:RP:SC:EC");
     
