@@ -38,8 +38,7 @@ int main_genotype(int argc, char** argv)
     string region;
     string range;
 	double max_p;
-	bool b_kmeans;
-	bool b_mahalanobis;
+
 	int chr;
     
     // Parsing command-line arguments
@@ -62,8 +61,6 @@ int main_genotype(int argc, char** argv)
 
         TCLAP::SwitchArg switchFail("a", "all", "Report filter failed variants", cmd, false);
         TCLAP::SwitchArg switchNoHeader("l", "lessheader", "Do not print header in genoptyed VCF", cmd, false);
-        TCLAP::SwitchArg switchKmeans("k", "Kmeans", "Use K-Means instead of EM", cmd, false);
-        TCLAP::SwitchArg switchMahalanobis("m","Mahalanobis", "Use Mahalanobis distance (use with K-means)", cmd, false);
         
         cmd.add(argOut);
         cmd.add(argVcf);
@@ -86,8 +83,6 @@ int main_genotype(int argc, char** argv)
         bFail = switchFail.getValue();
 		chr = argChr.getValue();
 		max_p = argPoverlap.getValue();
-		b_kmeans = switchKmeans.getValue();
-		b_mahalanobis = switchMahalanobis.getValue();
 
         region = argRegion.getValue();
         
@@ -295,7 +290,7 @@ int main_genotype(int argc, char** argv)
 						}
 					}
 
-                    gtyper.call(vec_sv[i], D, G, b_kmeans, b_mahalanobis, stats);
+                    gtyper.call(vec_sv[i], D, G, stats);
 
                     G.info = "VarID=" + std::to_string(i);
 

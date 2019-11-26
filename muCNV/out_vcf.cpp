@@ -31,14 +31,13 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs)
 	fprintf(fp,"##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the variant described in this record\">\n");
 	fprintf(fp,"##INFO=<ID=SVLEN,Number=1,Type=Integer,Description=\"Length of the structural variant\">\n");
 	fprintf(fp,"##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">\n");
+    fprintf(fp,"##INFO=<ID=VarID,Number=1,Type=Float,Description=\"Variant ID\">\n");
 	fprintf(fp,"##INFO=<ID=DP,Number=1,Type=String,Description=\"1-D Depth clustering\">\n");
 	fprintf(fp,"##INFO=<ID=DP2,Number=1,Type=String,Description=\"2-D Depth clustering\">\n");
-	fprintf(fp,"##INFO=<ID=READ,Number=1,Type=String,Description=\"Read pair locations around SV\">\n");
-	fprintf(fp,"##INFO=<ID=CLIP,Number=1,Type=String,Description=\"Soft clip locations around SV\">\n");
-	fprintf(fp,"##INFO=<ID=RPGENO, Number=0,Type=String,Description=\"Genotyped by read pair\">\n");
-	fprintf(fp,"##INFO=<ID=SCGENO, Number=0,Type=String,Description=\"Genotyped by soft clip\">\n");
-	fprintf(fp,"##INFO=<ID=PRE, Number=0,Type=String,Description=\"Read depth before SV looks normal\">\n");
-	fprintf(fp,"##INFO=<ID=POST, Number=0,Type=String,Description=\"Read depth after SV looks normal\">\n");
+	fprintf(fp,"##INFO=<ID=SPLIT,Number=1,Type=String,Description=\"Breakpoints estimated by split reads\">\n");
+    fprintf(fp,"##INFO=<ID=CLIP,Number=1,Type=String,Description=\"Breakpoints estimated by soft clips\">\n");
+	fprintf(fp,"##INFO=<ID=PRE, Number=1,Type=String,Description=\"Read depth statistic before SV\">\n");
+	fprintf(fp,"##INFO=<ID=POST, Number=1,Type=String,Description=\"Read depth statistic after SV\">\n");
 	fprintf(fp,"##INFO=<ID=Biallelic,Number=0,Type=String,Description=\"Biallelic variant\">\n");
 	fprintf(fp,"##ALT=<ID=DEL,Description=\"Deletion\">\n");
 	fprintf(fp,"##ALT=<ID=DUP,Description=\"Duplication\">\n");
@@ -46,10 +45,11 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs)
 	fprintf(fp,"##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n");
 	fprintf(fp,"##FORMAT=<ID=CN,Number=1,Type=Integer,Description=\"Copy Number\">\n");
 	fprintf(fp,"##FORMAT=<ID=DP,Number=1,Type=Float,Description=\"Normalized depth\">\n");
-	fprintf(fp,"##FORMAT=<ID=DD,Number=A,Type=Float,Description=\"Normalized depth in segments\">\n");
+	fprintf(fp,"##FORMAT=<ID=DD,Number=A,Type=Float,Description=\"Normalized depth in before, inside first, inside second, and after SV\">\n");
 	fprintf(fp,"##FORMAT=<ID=RP,Number=1,Type=Integer,Description=\"Number of supporting read pairs\">\n");
 	fprintf(fp,"##FORMAT=<ID=SP,Number=1,Type=Integer,Description=\"Number of supporting split reads\">\n");
-	fprintf(fp,"##FORMAT=<ID=SC,Number=1,Type=Integer,Description=\"Number of supporting soft clips\">\n");
+	fprintf(fp,"##FORMAT=<ID=SC,Number=1,Type=Integer,Description=\"Number of supporting soft clips around starting position of SV\">\n");
+    fprintf(fp,"##FORMAT=<ID=EC,Number=1,Type=Integer,Description=\"Number of supporting soft clips around end position of SV\">\n");
 	fprintf(fp,"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
 	for(unsigned j=0; j<sampleIDs.size();++j)
 	{
@@ -122,34 +122,14 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 		}
 		fprintf(fp, "):DP2overlap=%2f", G.gmix2.p_overlap);
 	}
-    if (G.read_flag)
-	{
-        fprintf(fp, ";READ=(%d,%d)", G.rp_pos, G.rp_end);
-	}
-	if (G.rp_geno_flag)
-	{
-        fprintf(fp, ";RPGENO");
-	}
-    if (G.clip_flag)
-    {
-        fprintf(fp, ";CLIP=(%d,%d)", G.clip_pos, G.clip_end);
-    }
-	if (G.clip_geno_flag)
-	{
-        fprintf(fp, ";SCGENO");
-	}
-    if (G.split_flag)
-    {
-        fprintf(fp, ";BREAKPOINT=(%d,%d)", G.split_start, G.split_end);
-    }
-    
+
 	if (G.b_biallelic)
 	{
 		fprintf(fp, ";Biallelic");
 	}
-
-    fprintf(fp, "\tGT:CN:DP:DD:SP:RP:SC");
-
+    
+    fprintf(fp, "\tGT:CN:DP:DD:SP:RP:SC:EC");
+    
     for (int i=0; i<(int)G.gt.size(); ++i)
     {
         switch(G.gt[i])
@@ -191,25 +171,14 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 			fprintf(fp, ":,");
 		}
 
-		if (S.svtype == DEL)
+		if (S.svtype == DEL || S.svtype == DUP || S.svtype == CNV)
 		{
-            fprintf(fp, ":%d:%d:%d", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)(G.start_clips[i] + G.end_clips[i]));
-
-           // fprintf(fp, ":%d:%d", G.start_rps[i] + G.end_rps[i], (int)(G.start_clips[i] + G.end_clips[i]));
-		}
-		else if (S.svtype == DUP || S.svtype==CNV)
-		{
-            fprintf(fp, ":%d:%d",  G.start_rps[i] + G.end_rps[i], (int)(G.start_clips[i] + G.end_clips[i]));
+            fprintf(fp, ":%d:%d:%d:%d", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i]);
 		}
 		else if (S.svtype == INV)
 		{
-			fprintf(fp, ":%d:%d",  G.start_rps[i] + G.end_rps[i], (int)(G.start_clips[i] + G.end_clips[i]));
+            fprintf(fp, ":%d:%d:%d:%d", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i]);
 		}
-		else if (S.svtype == INS)
-		{
-			fprintf(fp, ":%d:%d", D.rdstats[i].n_rp[1], D.rdstats[i].n_split_inward);
-		}
-
     }
 	fprintf(fp, "\n");
 }

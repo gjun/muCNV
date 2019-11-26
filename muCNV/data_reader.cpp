@@ -730,8 +730,13 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                             PairSplit new_pair;
                             new_pair.positions.first = rp.selfpos;
                             new_pair.positions.second = rp.matepos;
-                            new_pair.directions.first = (rp.pairstr < 2);
-                            new_pair.directions.second = !(rp.pairstr == 1 || rp.pairstr == 3);
+                            // directions.first: indicate self forward (true) or self reverse (false)
+                            // directions.second: indicate mate forward (true) or mate reverse (false)
+                            // for deletions, should always be FR
+                            // for duplications, RF
+                            // inversions RR or FF
+                            new_pair.directions.first = (rp.pairstr < 2); // pairstr 00b = FF, 01b = FR, 10b = RF, 11b = RR
+                            new_pair.directions.second = (rp.pairstr == 0 || rp.pairstr == 2);
                             rdstats[offset+sample_idx].readpairs.push_back(new_pair);
                         }
                     }
