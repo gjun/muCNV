@@ -121,6 +121,7 @@ class Genotyper
 public:
     int n_sample;
 
+    void check_biallelic(SvGeno &);
     void get_prepost_stat(SvData &, SvGeno &);
     int find_peak(std::vector<int> &, int, int);
     bool find_consensus_rp(sv &, SvData &, int, int &, int &);
