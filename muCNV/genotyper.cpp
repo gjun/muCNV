@@ -390,11 +390,11 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
 
     if (S.svtype == DEL)
 	{
-        call_deletion(S, D, G);
+       call_deletion(S, D, G);
     }
     else if (S.svtype == DUP || S.svtype == CNV)
     {
-        call_cnv(S, D, G);
+       call_cnv(S, D, G);
     }
     else if (S.svtype == INV)
     {
@@ -402,8 +402,251 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
     }
 }
 
+
+bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G)
+{
+    GaussianMixture startclip_mix, rp_mix, endclip_mix, all_mix;
+
+    
+    rp_mix.estimate(G.rp_cnts, G.gt, 2);
+    printf("Start clip cluster\n");
+    rp_mix.print(stdout);
+    
+    startclip_mix.estimate(G.start_clips, G.gt, 2);
+    printf("Start clip cluster\n");
+    startclip_mix.print(stdout);
+    
+    endclip_mix.estimate(G.end_clips, G.gt, 2);
+    printf("Start clip cluster\n");
+    endclip_mix.print(stdout);
+    
+    // Check whether the 'variant' depth is separated from 'non-variant' depth
+    all_mix.estimate(G.all_cnts, G.gt, 2);
+    printf("All counts cluster\n");
+    all_mix.print(stdout);
+    
+    for(int i=0; i<n_sample;++i)
+    {
+        printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%d\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], D.dps[0][i], D.dps[1][i], D.dps[2][i]);
+        
+    }
+    /*
+    double err_bound = all_mix.Comps[0].Stdev;
+    if (err_bound < 0.2) err_bound = 0.2;
+    
+//    printf("Sum/AC: %f, %f, %f, %f\n", G.split_sum/G.ac, G.rp_sum/G.ac, G.startclip_sum/G.ac, G.endclip_sum/G.ac);
+    // TODO: Arbitrary cutoffs
+    if (dp_mix.Comps[0].Mean<0.8 || dp_mix.Comps[0].Mean - err_bound < dp_mix.Comps[1].Mean || dp_mix.p_overlap>0.5)
+        return false;
+    
+    if (G.split_sum / G.ac < 1 && G.rp_sum / G.ac < 1 && ((G.startclip_sum/(G.endclip_sum+0.001) > 5) || (G.endclip_sum/(G.startclip_sum+0.001) > 5)))
+        return false;
+
+    // if yes, then try to EM with masks, variants only
+    std::vector<std::vector<double> > alt_means = { {0.5}, {0.5, 0.0} };
+    select_model(G.gmix, alt_means, D.dps[2], G.nonalt_mask, 0.3);
+//    printf("GMIX cluster\n");
+//    G.gmix.print(stdout);
+    
+    G.ns = 0;
+    G.ac = 0;
+    
+    for(int i=0; i<n_sample; ++i)
+    {
+        double d0 = dp_mix.Comps[0].Mean - D.dps[2][i];
+        double d1 = D.dps[2][i] - G.gmix.Comps[0].Mean;
+        
+        G.gt[i] = -1;
+        G.cn[i] = -1;
+        
+        if (d0>0 &&  G.all_cnts[i]>0 && d1 < d0 * ((G.split_cnts[i] + G.all_cnts[i] - 1) / 2.0))
+        {
+            if (D.dps[2][i] < 0.1 || (G.gmix.Comps.size()>1 && D.dps[2][i] < G.gmix.Comps[1].Stdev))
+            {
+                G.gt[i] = 2;
+                G.cn[i] = 0;
+                G.ns++;
+                G.ac += 2;
+            }
+            else // if there are few ambiguous samples, do not code alternative allele solely based on depth
+            {
+                G.gt[i] = 1;
+                G.cn[i] = 1;
+                G.ns++;
+                G.ac++;
+            }
+        }
+        else
+        {
+            if (D.dps[2][i] < dp_mix.Comps[0].Mean - (err_bound / (G.all_cnts[i]+1.0) ) )  // missing
+                G.gt[i] = -1;
+            else if (d0 < d1)
+            {
+                G.gt[i] = 0;
+                G.cn[i] = 2;
+                G.ns++;
+            }
+            else
+            {
+                G.gt[i] = -1;
+            }
+        }
+    }
+
+    fflush(stdout);
+    double callrate = (double)G.ns / n_sample;
+
+    if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
+    {
+        G.b_pass = true;
+        return true;
+    }
+    return false;
+    */
+    return false;
+}
+        
+bool Genotyper::get_inv_cnts(sv &S, SvData &D, SvGeno &G)
+{
+    G.startclip_sum = 0;
+    G.endclip_sum = 0;
+    G.rp_sum = 0;
+    G.split_sum = 0;
+    G.ns = 0;
+    G.ac = 0;
+    
+    int start_pos  =(int)(D.vec_break_clusters[D.clus_idx].start_mean+0.5);
+    int end_pos = (int)(D.vec_break_clusters[D.clus_idx].end_mean+0.5);
+    
+    int n_clus = (int)D. vec_break_clusters.size();
+    
+    std::vector<int> start_idx (n_clus, 0);
+    std::vector<int> end_idx (n_clus, 0);
+    
+    for(int j=0; j<n_clus; ++j)
+    {
+        start_idx[j] = ((int)(D.vec_break_clusters[j].start_mean+0.5) - S.pos + 100);
+        end_idx[j] = ((int)(D.vec_break_clusters[j].end_mean+0.5) - S.end + 300);
+        
+        if (start_idx[j] < 2) start_idx[j] = 2;
+        if (start_idx[j] > 197) start_idx[j] = 197;
+        if (end_idx[j] < 202) end_idx[j] = 202;
+        if (end_idx[j] > 397) end_idx[j] = 397;
+    }
+    
+    for(int i=0; i< n_sample; ++i)
+    {
+        G.split_cnts[i] = 0;
+        // Count the number of split reads
+        for(auto &split : D.rdstats[i].splits)
+        {
+            if (is_pairsplit_oriented(S, split))
+            {
+                for (int j=0; j<n_clus; ++j)
+                {
+                    if (D.vec_break_clusters[j].get_distance(split.positions) < 4)
+                    {
+                        G.split_cnts[i] ++;
+                    }
+                }
+            }
+        }
+        
+        for(int j=0; j<n_clus; ++j)
+        {
+            // Count the number of soft clips around breakpoints
+            G.start_clips[i] = 0;
+            G.end_clips[i] = 0;
+            for (int k=-3; k<=3; k++)
+            {
+                G.start_clips[i] += D.rdstats[i].rclips[start_idx[j] - k] + D.rdstats[i].lclips[start_idx[j]-k];
+                G.end_clips[i] += D.rdstats[i].lclips[end_idx[j]-k] + D.rdstats[i].rclips[end_idx[j]-k];
+            }
+        }
+        
+        G.rp_cnts[i] = 0;
+        for(auto &rp : D.rdstats[i].readpairs)
+        {
+            // Because read pair counting has enough buffer size, we do not iterate through breakpoints to avoid double-counting
+            if (rp.positions.first && rp.positions.second) // FF
+            {
+                int dx = (int) (start_pos - rp.positions.first);
+                int dy = (int) (end_pos - rp.positions.second);
+                if (dx > 50 && dx < 400 && dy > 50 && dy < 400)
+                {
+                    G.rp_cnts[i] ++;
+                }
+            }
+            else if (!rp.positions.first && !rp.positions.second) // RR
+            {
+                int dx = (int) (rp.positions.first - start_pos);
+                int dy = (int) (rp.positions.second - end_pos);
+                if (dx > -50 && dx < 375 && dy > -50 && dy < 375)
+                {
+                    G.rp_cnts[i] ++;
+                }
+            }
+        }
+        
+        G.all_cnts[i] = G.split_cnts[i] + G.rp_cnts[i] + (G.start_clips[i] + G.end_clips[i])/2.0;
+        
+        // TODO: cut-off values are arbitrary
+        if (G.rp_cnts[i] > 0 && G.all_cnts[i] > 5)
+        {
+            G.gt[i] = 1;
+            G.nonalt_mask[i] = true;
+            G.ac++;
+            G.ns++;
+            G.startclip_sum += G.start_clips[i];
+            G.endclip_sum += G.end_clips[i];
+            G.split_sum += G.split_cnts[i];
+            G.rp_sum += G.rp_cnts[i];
+        }
+        else if (G.all_cnts[i] < 1)
+        {
+            G.gt[i] = 0;
+            G.ns++;
+        }
+    }
+    
+    if (G.ac>0 && G.ns > G.ac)
+        return true;
+    else
+        return false;
+}
+
+
+
 void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats)
 {
+    G.b_biallelic = true;
+    
+    printf("Inversion Genotyping: ");
+    S.print(stdout);
+    printf("\n");
+    D.clus_idx = -1;
+    if (find_consensus_clip(S, D))
+    {
+        if (get_inv_cnts(S, D, G) && assign_inv_genotypes(S, D, G))
+        {
+            G.clip_flag = true;
+            return;
+        }
+    }
+    
+    // If no breakpoints identified by split reads nor by soft clips, just use the SV breakpoints as given
+    D.vec_break_clusters.clear();
+    D.clus_idx = -1;
+    BreakCluster br;
+    br.add_to_cluster(S.pos, S.end, 1);
+    D.vec_break_clusters.push_back(br);
+
+    if (get_inv_cnts(S, D, G) && assign_inv_genotypes(S, D, G))
+    {
+        G.readpair_flag = true;
+        return;
+    }
+    
     /*
     G.b_biallelic = true;
     
@@ -963,7 +1206,109 @@ bool Genotyper::find_consensus_clip(sv &S, SvData &D)
             }
         }
     }
-    
+    else if (S.svtype == INV)
+    {
+        for(int i=0;i<n_sample; ++i)
+        {
+            int max_lclip = 0;
+            int max_l_idx = 0;
+            int max_rclip = 0;
+            int max_r_idx = 0;
+            
+            for(int j=0;j<200; ++j)
+            {
+                if (D.rdstats[i].rclips[j] > max_rclip)
+                {
+                    max_r_idx = j;
+                    max_rclip = D.rdstats[i].rclips[j];
+                }
+            }
+            if (max_rclip>1)
+                printf("Start: max rclip %d at %d\n", max_rclip, S.pos + max_r_idx - 100);
+            for(int j=0; j<200; ++j)
+            {
+                if (D.rdstats[i].lclips[j] > max_lclip)
+                {
+                    max_l_idx = j;
+                    max_lclip = D.rdstats[i].lclips[j];
+                }
+            }
+            if (max_lclip > 1)
+                printf("Start: max lclip %d at %d\n", max_lclip, S.pos + max_l_idx - 100);
+            int start_pos = S.pos;
+            int start_cnt = 0;
+            
+            if (abs(max_r_idx - max_l_idx) < 10 && max_lclip >=3 && max_rclip>=3)
+            {
+                start_pos = S.pos + (int)((max_l_idx + max_r_idx)/2.0) - 100;
+                start_cnt = max_lclip > max_rclip ? max_rclip : max_lclip;
+            }
+            
+            max_lclip = 0;
+            max_l_idx = 0;
+            max_rclip = 0;
+            max_r_idx = 0;
+            
+            for(int j=200;j<400; ++j)
+            {
+                if (D.rdstats[i].rclips[j] > max_rclip)
+                {
+                    max_r_idx = j;
+                    max_rclip = D.rdstats[i].rclips[j];
+                }
+            }
+            if (max_rclip > 1)
+                printf("End: max rclip %d at %d\n", max_rclip, S.end + max_r_idx - 300);
+
+            for(int j=200; j<400; ++j)
+            {
+                if (D.rdstats[i].lclips[j] > max_lclip)
+                {
+                    max_l_idx = j;
+                    max_lclip = D.rdstats[i].lclips[j];
+                }
+            }
+            if (max_lclip > 1)
+                printf("End: max lclip %d at %d\n", max_lclip, S.end + max_l_idx - 300);
+
+            int end_pos = S.end;
+            int end_cnt = 0;
+            
+            if (abs(max_r_idx - max_l_idx) < 10 && max_lclip >=3 && max_rclip>=3)
+            {
+                end_pos = S.pos + (int)((max_l_idx + max_r_idx)/2.0) - 300;
+                end_cnt = max_lclip > max_rclip ? max_rclip : max_lclip;
+            }
+            int cnt = start_cnt > end_cnt ? end_cnt : start_cnt;
+                        
+            if (cnt >=3 && start_pos < end_pos)
+            {
+                double min_dist = 1000;
+                int min_idx = -1;
+                
+                for(int j=0; j<D.vec_break_clusters.size(); ++j)
+                {
+                    double dist = D.vec_break_clusters[j].get_distance(start_pos, end_pos);
+                    
+                    if (dist < min_dist)
+                    {
+                        min_dist = dist;
+                        min_idx = j;
+                    }
+                }
+                if (min_idx >= 0 && min_dist < 5) // TODO: arbitrary cutoff
+                {
+                    D.vec_break_clusters[min_idx].add_to_cluster(start_pos, end_pos, cnt);
+                }
+                else
+                {
+                    BreakCluster br;
+                    br.add_to_cluster(start_pos, end_pos, cnt);
+                    D.vec_break_clusters.push_back(br);
+                }
+            }
+        }
+    }
     if (D.vec_break_clusters.size() > 0)
     {
         std::cout << "SV " << S.pos << "-" << S.end << ", " << D.vec_break_clusters.size() << " softclip clusters found\n";
@@ -1333,6 +1678,7 @@ bool Genotyper::get_del_cnts(sv &S, SvData &D, SvGeno &G)
     
     for(int i=0; i< n_sample; ++i)
     {
+        G.split_cnts[i] = 0;
         // Count the number of split reads
         for(auto &split : D.rdstats[i].splits)
         {
@@ -1354,6 +1700,8 @@ bool Genotyper::get_del_cnts(sv &S, SvData &D, SvGeno &G)
             G.start_clips[i] = D.rdstats[i].rclips[r_clip_idx[j]] + D.rdstats[i].rclips[r_clip_idx[j]-1] + D.rdstats[i].rclips[r_clip_idx[j]+1]+D.rdstats[i].rclips[r_clip_idx[j]-2]+D.rdstats[i].rclips[r_clip_idx[j]+2];
             G.end_clips[i] = D.rdstats[i].lclips[l_clip_idx[j]] + D.rdstats[i].lclips[l_clip_idx[j]-1] + D.rdstats[i].lclips[l_clip_idx[j]+1] + D.rdstats[i].lclips[l_clip_idx[j]-2] + D.rdstats[i].lclips[l_clip_idx[j]+2];
         }
+        
+        G.rp_cnts[i] = 0;
         for(auto &rp : D.rdstats[i].readpairs)
         {
             // Because read pair counting has enough buffer size, we do not iterate through breakpoints to avoid double-counting
@@ -1391,7 +1739,6 @@ bool Genotyper::get_del_cnts(sv &S, SvData &D, SvGeno &G)
     else
         return false;
 }
-
 
 void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
 {
@@ -1443,113 +1790,86 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G)
     G.ns = 0;
     G.ac = 0;
     
-	if (G.b_pre && G.b_post)
-	{
-		// Depth-based clustering genotyping
-		select_model(G.gmix, means, D.dps[best_dp_idx], G.MAX_P_OVERLAP);
+    // Depth-based clustering genotyping
+    select_model(G.gmix, means, D.dps[best_dp_idx], G.MAX_P_OVERLAP);
 
-		// depth clustering
-		if (G.gmix.n_comp > 1 && G.gmix.ordered() && G.gmix.Comps[0].Alpha > 0.5)
-		{
-			G.dp_flag = true;
-			// success
-			// assign dp-genotypes
-			for(int i=0; i<n_sample; ++i)
-			{
-                if (var_depth[i] >= 0.7 && var_depth[i] < 0.8 )
-                {
-                    G.cn[i] = -1;
-                    G.gt[i] = -1;
-                }
-                else
-                {
-                    int cn = G.gmix.assign_copynumber(var_depth[i]);
-                    
-                    if (cn == 2)
-                    {
-                        G.cn[i] = 2;
-                        G.gt[i] = 0; // 0/0
-                    }
-                    else if (cn == 1)
-                    {
-                        G.cn[i] = 1;
-                        G.gt[i] = 1; // 0/1
-                    }
-                    else if (cn == 0)
-                    {
-                        G.cn[i] = 0;
-                        G.gt[i] = 2; // 1/1
-                    }
-                }
-			}
-		}
-
-		int dp2_idx = 3;
-		if (D.multi_dp) //dp2 has more than 2 vectors
-		{
-			// dp100 genotyping
-			select_model(G.gmix2, means, D.dps[dp2_idx], D.dps[dp2_idx+1], G.MAX_P_OVERLAP);
-
-			// 2-d genotyping
-			if (G.gmix2.n_comp>1 && G.gmix2.ordered())
-			{
-				G.dp2_flag = true;
-				//assign dp2 genotypes
-
-				for(int i=0; i<n_sample; ++i)
-				{
-					int cn = G.gmix2.assign_copynumber(D.dps[dp2_idx][i], D.dps[dp2_idx+1][i]);
-					if (cn == 2)
-					{
-						G.cn[i] = 2;
-						G.gt[i] = 0; // 0/0
-					}
-					else if (cn == 1)
-					{
-						G.cn[i] = 1;
-						G.gt[i] = 1; // 0/1
-					}
-					else if (cn == 0)
-					{
-						G.cn[i] = 0;
-						G.gt[i] = 2; // 1/1
-					}
-				}
-			}
-		}
-	} // G.b_pre && G.b_post
-
-    // Let's use peripheral depth to identify 'false positve' only
-    /*
-    if (G.b_pre && G.b_post && G.dp_flag)
+    // depth clustering
+    if (G.gmix.n_comp > 1 && G.gmix.ordered() && G.gmix.Comps[0].Alpha > 0.5)
     {
-        for (int i=0;i<n_sample; ++i)
+        G.dp_flag = true;
+        // success
+        // assign dp-genotypes
+        for(int i=0; i<n_sample; ++i)
         {
-          	if (abs(D.dps[0][i] - G.dp_pre_mean) > 2.0*G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > 2.0* G.dp_post_std || abs(var_depth[i] - D.dps[1][i]) < 0.3 || abs(var_depth[i] - D.dps[0][i]) < 0.3) 
-            {
-				G.gt[i] = -1;
-                G.cn[i] = -1;
-            }
-
-			// fill in missing values
-			if (G.cn[i] < 0 && D.prepost_dp[i] > 0 && abs(var_depth[i] - D.prepost_dp[i]) <= 0.1)
-			{
-				G.cn[i] = 2;
-				G.gt[i] = 0;
-			}
-        }
-    } */
-
-    if (G.b_pre && G.b_post)
-    {
-        // If clustered, filter false positive variants
-        for (int i=0;i<n_sample; ++i)
-        {
-              if (abs(D.dps[0][i] - G.dp_pre_mean) > 2.0*G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > 2.0* G.dp_post_std || (G.gt[i] > 0 && abs(var_depth[i] - D.dps[1][i]) < 2.0*G.dp_post_std) || (G.gt[i] > 0 && abs(var_depth[i] - D.dps[0][i]) < 2.0*G.dp_pre_std))
+            if (var_depth[i] >= 0.7 && var_depth[i] < 0.8 )
             {
                 G.cn[i] = -1;
                 G.gt[i] = -1;
             }
+            else
+            {
+                int cn = G.gmix.assign_copynumber(var_depth[i]);
+                
+                if (cn == 2)
+                {
+                    G.cn[i] = 2;
+                    G.gt[i] = 0; // 0/0
+                }
+                else if (cn == 1)
+                {
+                    G.cn[i] = 1;
+                    G.gt[i] = 1; // 0/1
+                }
+                else if (cn == 0)
+                {
+                    G.cn[i] = 0;
+                    G.gt[i] = 2; // 1/1
+                }
+            }
+        }
+    }
+
+    int dp2_idx = 3;
+    if (D.multi_dp) //dp2 has more than 2 vectors
+    {
+        // dp100 genotyping
+        select_model(G.gmix2, means, D.dps[dp2_idx], D.dps[dp2_idx+1], G.MAX_P_OVERLAP);
+
+        // 2-d genotyping
+        if (G.gmix2.n_comp>1 && G.gmix2.ordered())
+        {
+            G.dp2_flag = true;
+            //assign dp2 genotypes
+
+            for(int i=0; i<n_sample; ++i)
+            {
+                int cn = G.gmix2.assign_copynumber(D.dps[dp2_idx][i], D.dps[dp2_idx+1][i]);
+                if (cn == 2)
+                {
+                    G.cn[i] = 2;
+                    G.gt[i] = 0; // 0/0
+                }
+                else if (cn == 1)
+                {
+                    G.cn[i] = 1;
+                    G.gt[i] = 1; // 0/1
+                }
+                else if (cn == 0)
+                {
+                    G.cn[i] = 0;
+                    G.gt[i] = 2; // 1/1
+                }
+            }
+        }
+    }
+
+    // If clustered, filter false positive variants
+    for (int i=0;i<n_sample; ++i)
+    {
+          if (abs(D.dps[0][i] - G.dp_pre_mean) > 2.0*G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > 2.0* G.dp_post_std || (G.gt[i] > 0 && abs(var_depth[i] - D.dps[1][i]) < 2.0*G.dp_post_std) || (G.gt[i] > 0 && abs(var_depth[i] - D.dps[0][i]) < 2.0*G.dp_pre_std))
+        {
+            G.cn[i] = -1;
+            G.gt[i] = -1;
         }
     }
     
@@ -1712,6 +2032,7 @@ bool Genotyper::get_dup_cnts(sv &S, SvData &D, SvGeno &G)
     
     for(int i=0; i< n_sample; ++i)
     {
+        G.split_cnts[i] = 0;
         // Count the number of split reads
         for(auto &split : D.rdstats[i].splits)
         {
@@ -1733,6 +2054,7 @@ bool Genotyper::get_dup_cnts(sv &S, SvData &D, SvGeno &G)
             G.start_clips[i] = D.rdstats[i].lclips[l_clip_idx[j]] + D.rdstats[i].lclips[l_clip_idx[j]-1] + D.rdstats[i].lclips[l_clip_idx[j]+1] + D.rdstats[i].lclips[l_clip_idx[j]-2] + D.rdstats[i].lclips[l_clip_idx[j]+2];
             G.end_clips[i] = D.rdstats[i].rclips[r_clip_idx[j]] + D.rdstats[i].rclips[r_clip_idx[j]-1] + D.rdstats[i].rclips[r_clip_idx[j]+1]+D.rdstats[i].rclips[r_clip_idx[j]-2]+D.rdstats[i].rclips[r_clip_idx[j]+2];
         }
+        G.rp_cnts[i] = 0;
         for(auto &rp : D.rdstats[i].readpairs)
         {
             // Because read pair counting has enough buffer size, we do not iterate through breakpoints to avoid double-counting
