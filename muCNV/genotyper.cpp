@@ -1916,7 +1916,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
         // If clustered, filter false positive variants
         for (int i=0;i<n_sample; ++i)
         {
-          	if (abs(D.dps[0][i] - G.dp_pre_mean) > 2.0*G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > 2.0* G.dp_post_std || abs(var_depth[i] - D.dps[1][i]) < 0.3 || abs(var_depth[i] - D.dps[0][i]) < 0.3)
+          	if (abs(D.dps[0][i] - G.dp_pre_mean) > 2.0*G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > 2.0* G.dp_post_std || (G.cn[i] > 0 && abs(var_depth[i] - D.dps[1][i]) < 0.3) || (G.cn[i] > 0 && abs(var_depth[i] - D.dps[0][i]) < 0.3))
             {
                 G.cn[i] = -1;
             }
