@@ -390,11 +390,11 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
 
     if (S.svtype == DEL)
 	{
-       //call_deletion(S, D, G);
+       call_deletion(S, D, G);
     }
     else if (S.svtype == DUP || S.svtype == CNV)
     {
-       //call_cnv(S, D, G);
+       call_cnv(S, D, G);
     }
     else if (S.svtype == INV)
     {
@@ -414,12 +414,10 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
     }
     
     rp_mix.estimate(norm_cnts, G.gt, 2);
-   printf("Read pair cluster\n");
-  rp_mix.print(stdout);
-    
+ 
     std::vector<std::vector<double> > alt_means = { {rp_mix.Comps[1].Mean}, {rp_mix.Comps[1].Mean, rp_mix.Comps[1].Mean * 2.0} };
     select_model(G.gmix, alt_means, norm_cnts, G.nonalt_mask, 0.3);
-    G.gmix.print(stdout);
+ //   G.gmix.print(stdout);
 
     double err_bound = rp_mix.Comps[0].Stdev;
     if (err_bound < 0.1) err_bound = 0.1;
@@ -468,12 +466,12 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
             }
         }
     }
-
+/*
     for(int i=0; i<n_sample;++i)
     {
         printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%d\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], G.rp_cnts[i] / stats[i].avg_dp, G.start_clips[i] / stats[i].avg_dp, G.end_clips[i] / stats[i].avg_dp , G.gt[i]);
     }
-  
+  */
     double callrate = (double)G.ns / n_sample;
 
     if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
@@ -602,9 +600,6 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
 {
     G.b_biallelic = true;
     
-    printf("Inversion Genotyping: ");
-    S.print(stdout);
-    printf("\n");
     D.clus_idx = -1;
     if (find_consensus_clip(S, D))
     {
@@ -933,13 +928,13 @@ bool Genotyper::find_consensus_split(sv &S, SvData &D)
     }
     if (D.vec_break_clusters.size() > 0)
     {
-        std::cout << "SV " << S.pos << "-" << S.end << ", " << D.vec_break_clusters.size() << " split clusters found\n";
+        // std::cout << "SV " << S.pos << "-" << S.end << ", " << D.vec_break_clusters.size() << " split clusters found\n";
 
         int max_idx = -1;
         int max_cnt = 0;
         for(int j=0; j<D.vec_break_clusters.size(); ++j)
         {
-            std::cout << "Cluster " << j << " " << (int)D.vec_break_clusters[j].start_mean << "(" << D.vec_break_clusters[j].start_var << ")" << "-" << (int)D.vec_break_clusters[j].end_mean <<  "(" << D.vec_break_clusters[j].end_var << ")" << ", " << D.vec_break_clusters[j].N << " elements\n";
+         //   std::cout << "Cluster " << j << " " << (int)D.vec_break_clusters[j].start_mean << "(" << D.vec_break_clusters[j].start_var << ")" << "-" << (int)D.vec_break_clusters[j].end_mean <<  "(" << D.vec_break_clusters[j].end_var << ")" << ", " << D.vec_break_clusters[j].N << " elements\n";
             if (D.vec_break_clusters[j].N > max_cnt)
             {
                 max_cnt = D.vec_break_clusters[j].N;
@@ -1204,8 +1199,6 @@ bool Genotyper::find_consensus_clip(sv &S, SvData &D)
                     max_rclip = D.rdstats[i].rclips[j];
                 }
             }
-            if (max_rclip>1)
-                printf("Start: max rclip %d at %d\n", max_rclip, S.pos + max_r_idx - 100);
             for(int j=0; j<200; ++j)
             {
                 if (D.rdstats[i].lclips[j] > max_lclip)
@@ -1214,12 +1207,10 @@ bool Genotyper::find_consensus_clip(sv &S, SvData &D)
                     max_lclip = D.rdstats[i].lclips[j];
                 }
             }
-            if (max_lclip > 1)
-                printf("Start: max lclip %d at %d\n", max_lclip, S.pos + max_l_idx - 100);
             int start_pos = S.pos;
             int start_cnt = 0;
             
-            if (max_lclip > 1 && max_rclip > 1 && abs(max_l_idx - max_r_idx) < 10 && max_lclip + max_rclip >= 3)
+            if (max_lclip >= 1 && max_rclip >= 1 && abs(max_l_idx - max_r_idx) < 10 && max_lclip + max_rclip >= 3)
             {
                 start_pos = S.pos + (int)((max_l_idx + max_r_idx)/2.0) - 100;
                 start_cnt = max_lclip + max_rclip;
@@ -1248,8 +1239,6 @@ bool Genotyper::find_consensus_clip(sv &S, SvData &D)
                     max_rclip = D.rdstats[i].rclips[j];
                 }
             }
-            if (max_rclip > 1)
-                printf("End: max rclip %d at %d\n", max_rclip, S.end + max_r_idx - 300);
 
             for(int j=200; j<400; ++j)
             {
@@ -1259,13 +1248,11 @@ bool Genotyper::find_consensus_clip(sv &S, SvData &D)
                     max_lclip = D.rdstats[i].lclips[j];
                 }
             }
-            if (max_lclip > 1)
-                printf("End: max lclip %d at %d\n", max_lclip, S.end + max_l_idx - 300);
 
             int end_pos = S.end;
             int end_cnt = 0;
             
-            if (max_lclip > 1 && max_rclip > 1 && abs(max_l_idx - max_r_idx) < 10 && max_lclip + max_rclip >= 3)
+            if (max_lclip >= 1 && max_rclip >= 1 && abs(max_l_idx - max_r_idx) < 10 && max_lclip + max_rclip >= 3)
             {
                 end_pos = S.end + (int)((max_l_idx + max_r_idx)/2.0) - 300;
                 end_cnt = max_lclip + max_rclip;
@@ -1313,13 +1300,13 @@ bool Genotyper::find_consensus_clip(sv &S, SvData &D)
     }
     if (D.vec_break_clusters.size() > 0)
     {
-        std::cout << "SV " << S.pos << "-" << S.end << ", " << D.vec_break_clusters.size() << " softclip clusters found\n";
+//        std::cout << "SV " << S.pos << "-" << S.end << ", " << D.vec_break_clusters.size() << " softclip clusters found\n";
 
         int max_idx = -1;
         int max_cnt = 0;
         for(int j=0; j<D.vec_break_clusters.size(); ++j)
         {
-            std::cout << "Cluster " << j << " " << (int)D.vec_break_clusters[j].start_mean << "(" << D.vec_break_clusters[j].start_var << ")" << "-" << (int)D.vec_break_clusters[j].end_mean <<  "(" << D.vec_break_clusters[j].end_var << ")" << ", " << D.vec_break_clusters[j].N << " elements\n";
+  //          std::cout << "Cluster " << j << " " << (int)D.vec_break_clusters[j].start_mean << "(" << D.vec_break_clusters[j].start_var << ")" << "-" << (int)D.vec_break_clusters[j].end_mean <<  "(" << D.vec_break_clusters[j].end_var << ")" << ", " << D.vec_break_clusters[j].N << " elements\n";
             if (D.vec_break_clusters[j].N > max_cnt)
             {
                 max_cnt = D.vec_break_clusters[j].N;
@@ -1924,13 +1911,10 @@ bool Genotyper::assign_dup_genotypes(sv &S, SvData &D, SvGeno &G)
 
     // Check whether the 'variant' depth is separated from 'non-variant' depth
     dp_mix.estimate(D.dps[2], G.gt, 2);
-    printf("Depth cluster\n");
-    dp_mix.print(stdout);
     
     double err_bound = dp_mix.Comps[0].Stdev;
     if (err_bound < 0.2) err_bound = 0.2;
     
-    printf("Sum/AC: %f, %f, %f, %f\n", G.split_sum/G.ac, G.rp_sum/G.ac, G.startclip_sum/G.ac, G.endclip_sum/G.ac);
     // TODO: Arbitrary cutoffs
     if (dp_mix.Comps[0].Mean<0.8 || dp_mix.Comps[0].Mean>1.2 || dp_mix.Comps[1].Mean - err_bound < dp_mix.Comps[0].Mean)
         return false;
@@ -1941,10 +1925,7 @@ bool Genotyper::assign_dup_genotypes(sv &S, SvData &D, SvGeno &G)
     // if yes, then try to EM with masks, variants only
     std::vector<std::vector<double> > alt_means =  { {1.5}, {1.5, 2.0}, {1.5, 2.0, 2.5}, {1.5, 2.0, 2.5, 3.0}, {1.5, 2.0, 2.5, 3.0, 3.5}, {1.5, 2.0, 2.5, 3.0, 3.5, 4.0} };
     select_model(G.gmix, alt_means, D.dps[2], G.nonalt_mask, 0.3);
-    
-    printf("GMIX cluster\n");
-    G.gmix.print(stdout);
-    
+        
     G.ns = 0;
     G.ac = 0;
     
@@ -2100,17 +2081,15 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     // First, try split read - best evidence
     if (find_consensus_split(S, D))
     {
-        printf("SPLIT-GENOTYPE: ");
-        S.print(stdout);
-        printf("\n");
         if (get_dup_cnts(S, D, G) && assign_dup_genotypes(S, D, G))
         {
             G.split_flag = true;
+            /*
             for(int i=0; i<n_sample;++i)
             {
                 printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%d\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], D.dps[0][i], D.dps[1][i], D.dps[2][i], G.gt[i]);
                 
-            }
+            }*/
             return;
         }
         else
@@ -2122,17 +2101,14 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     D.clus_idx = -1;
     if (find_consensus_clip(S, D))
     {
-        printf("CLIP-GENOTYPE: ");
-        S.print(stdout);
-        printf("\n");
-        
         if (get_dup_cnts(S, D, G) && assign_dup_genotypes(S, D, G))
         {
             G.clip_flag = true;
+            /*
             for(int i=0; i<n_sample;++i)
             {
                 printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%d\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], D.dps[0][i], D.dps[1][i], D.dps[2][i], G.gt[i]);
-            }
+            }*/
             return;
         }
     }
@@ -2146,16 +2122,13 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 
     if (get_dup_cnts(S, D, G) && assign_dup_genotypes(S, D, G))
     {
-        printf("READPAIR-GENOTYPE: ");
-        S.print(stdout);
-        printf("\n");
-        
         G.readpair_flag = true;
+        /*
         for(int i=0; i<n_sample;++i)
         {
             printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%d\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], D.dps[0][i], D.dps[1][i], D.dps[2][i], G.gt[i]);
             
-        }
+        }*/
         return;
     }
     
@@ -2289,15 +2262,12 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
     
 	if ( (G.dp_flag || G.dp2_flag) && callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
     {
-        printf("DEPTH-GENOTYPE: ");
-        S.print(stdout);
-        printf("\n");
-        
+        /*
         for(int i=0; i<n_sample;++i)
         {
             printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%d\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], D.dps[0][i], D.dps[1][i], D.dps[2][i], G.gt[i]);
             
-        }
+        }*/
         G.b_pass = true;
     }
 }

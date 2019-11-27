@@ -110,7 +110,7 @@ void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
         Comps[0].Alpha = 1;
         updateAICBIC(x, mask);
         p_overlap = 0;
-        print(stdout);
+//        print(stdout);
 
         return;
     }
@@ -228,7 +228,7 @@ void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
     }
     bic = -2.0 * llk +  (2*n_comp - 1 ) *log(n_mask);
     aic = -2.0 * llk + 4.0*n_comp;
-    printf("llk: %f, bic : %f, aic: %f\n", llk, bic, aic);
+  //  printf("llk: %f, bic : %f, aic: %f\n", llk, bic, aic);
 
     p_overlap = BayesError();
     
