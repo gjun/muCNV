@@ -1911,7 +1911,6 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
 		}
 	} // G.b_pre && G.b_post
 
-    /*
     if (G.b_pre && G.b_post)
     {
         // If clustered, filter false positive variants
@@ -1921,13 +1920,8 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G)
             {
                 G.cn[i] = -1;
             }
-   			if (G.cn[i] < 0 && D.prepost_dp[i] > 0 && abs(var_depth[i] - D.prepost_dp[i]) < 0.15)
-			{
-				G.cn[i] = 2;
-				G.gt[i] = 0;
-			}
         }
-    }*/
+    }
 
     check_biallelic(G);
   
