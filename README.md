@@ -2,13 +2,18 @@
 
 Multi-sample SV genotyper for large-scale WGS data
 
-Last edited: Dec. 11, 2018, (c) Goo Jun
+Version 0.9.5
+Last edited: Nov. 27, 2019, (c) Goo Jun
 
-muCNV has two-stages for multi-sample SV genotyping:
+muCNV uses multiple steps for multi-sample SV genotyping, to handle large number of samples and to enable efficient parallelization:
+0. Generate binary interval file from input VCF 
 1. Generate *pileups* from CRAM/BAM files using candidate list of SVs
-2. Multi-sample genotyping from summary files.
+2. Merge individual pileups to generate 'merged' pileups
+3. Multi-sample genotyping from merged pileups
 
-There is also an optional 'pileup merging' step in-between, which is recommended for >300 samples.
+* The 'merging' step is optional, but is recommended for ~ >500 samples. 
+* By default, merging will create pileups separated by chromosomes. 
+* When genotyping merged pileups, do not add 'chr' postfixes in your 'list' file
 
 ## Basis usage:
 ```
@@ -26,10 +31,25 @@ gcidx
 filter
 ```    
 
+## Generating variant list from input VCF
+```
+$ muCNV vcf2int -v <VCF> -i <interval file> -p
+-i, --interval
+  Name of the interval file to be created
+
+-v, --vcf
+  Name of the input VCF file
+  
+-p, --print
+  Optional flag to print out list of SVs to stdout
+```
 ## Pileup
 ```
-$ mucnv pileup -s <sample ID> -v <VCF> -f <GRCh file> -b <BAM/CRAM file> -o <output prefix>
+$ muCNV pileup -s <sample ID> -v <VCF> -f <GRCh file> -b <BAM/CRAM file> -o <output prefix>
 
+-o, --outdir
+  Output directory. Default is current (.) directory
+  
 -s,  --sample
   Sample ID for output filename base
 
@@ -46,7 +66,7 @@ $ mucnv pileup -s <sample ID> -v <VCF> -f <GRCh file> -b <BAM/CRAM file> -o <out
   (required)  Input BAM/CRAM file name
 ```
 
- - GC content file for human reference genome build 38 is provided in resources/GRCh38.gc
+ - GC content file for human reference genome build 38 is provided in resources/GRCh38.v3.gc
  - Either VCF file (-v) or binary interval file (-V) is required
  
 ## Merge
@@ -100,6 +120,6 @@ $ muCNV genotype [-i <string>] [-f <string>] [-V <string>] [-v <string>] [-o <st
 -l,  --lessheader
   Do not print header in genoptyed VCF
 ```    
- - GC content file for human reference genome build 38 is provided in resources/GRCh38.gc
+ - GC content file for human reference genome build 38 is provided in resources/GRCh38.v3.gc
  - Either VCF file (-v) or binary interval file (-V) is required
  - GRCh38 and Interval file should be the same to the ones used for pileup and merging
