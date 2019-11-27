@@ -390,11 +390,11 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
 
     if (S.svtype == DEL)
 	{
-       call_deletion(S, D, G);
+       //call_deletion(S, D, G);
     }
     else if (S.svtype == DUP || S.svtype == CNV)
     {
-       call_cnv(S, D, G);
+       //call_cnv(S, D, G);
     }
     else if (S.svtype == INV)
     {
@@ -403,7 +403,7 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
 }
 
 
-bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G)
+bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats)
 {
     GaussianMixture startclip_mix, rp_mix, endclip_mix, all_mix;
 
@@ -427,8 +427,7 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G)
     
     for(int i=0; i<n_sample;++i)
     {
-        printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%d\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], D.dps[0][i], D.dps[1][i], D.dps[2][i]);
-        
+        printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], G.rp_cnts[i] / stats[i].avg_dp, G.start_clips[i] / stats[i].avg_dp, G.end_clips[i] / stats[i].avg_dp );
     }
     /*
     double err_bound = all_mix.Comps[0].Stdev;
@@ -568,8 +567,9 @@ bool Genotyper::get_inv_cnts(sv &S, SvData &D, SvGeno &G)
         for(auto &rp : D.rdstats[i].readpairs)
         {
             // Because read pair counting has enough buffer size, we do not iterate through breakpoints to avoid double-counting
-            if (rp.positions.first && rp.positions.second) // FF
+            if (rp.directions.first && rp.directions.second) // FF
             {
+                printf("FF RP: %d, %d\n", rp.positions.first, rp.positions.second);
                 int dx = (int) (start_pos - rp.positions.first);
                 int dy = (int) (end_pos - rp.positions.second);
                 if (dx > 50 && dx < 400 && dy > 50 && dy < 400)
@@ -577,8 +577,10 @@ bool Genotyper::get_inv_cnts(sv &S, SvData &D, SvGeno &G)
                     G.rp_cnts[i] ++;
                 }
             }
-            else if (!rp.positions.first && !rp.positions.second) // RR
+            else if (!rp.directions.first && !rp.directions.second) // RR
             {
+                printf("RR RP: %d, %d\n", rp.positions.first, rp.positions.second);
+
                 int dx = (int) (rp.positions.first - start_pos);
                 int dy = (int) (rp.positions.second - end_pos);
                 if (dx > -50 && dx < 375 && dy > -50 && dy < 375)
@@ -591,7 +593,7 @@ bool Genotyper::get_inv_cnts(sv &S, SvData &D, SvGeno &G)
         G.all_cnts[i] = G.split_cnts[i] + G.rp_cnts[i] + (G.start_clips[i] + G.end_clips[i])/2.0;
         
         // TODO: cut-off values are arbitrary
-        if (G.rp_cnts[i] > 0 && G.all_cnts[i] > 5)
+        if (G.rp_cnts[i] > 0 && G.all_cnts[i] > 3)
         {
             G.gt[i] = 1;
             G.nonalt_mask[i] = true;
@@ -627,7 +629,7 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
     D.clus_idx = -1;
     if (find_consensus_clip(S, D))
     {
-        if (get_inv_cnts(S, D, G) && assign_inv_genotypes(S, D, G))
+        if (get_inv_cnts(S, D, G) && assign_inv_genotypes(S, D, G, stats))
         {
             G.clip_flag = true;
             return;
@@ -641,7 +643,7 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
     br.add_to_cluster(S.pos, S.end, 1);
     D.vec_break_clusters.push_back(br);
 
-    if (get_inv_cnts(S, D, G) && assign_inv_genotypes(S, D, G))
+    if (get_inv_cnts(S, D, G) && assign_inv_genotypes(S, D, G, stats))
     {
         G.readpair_flag = true;
         return;
@@ -1238,10 +1240,20 @@ bool Genotyper::find_consensus_clip(sv &S, SvData &D)
             int start_pos = S.pos;
             int start_cnt = 0;
             
-            if (abs(max_r_idx - max_l_idx) < 10 && max_lclip >=3 && max_rclip>=3)
+            if (max_lclip > 1 && max_rclip > 1 && abs(max_l_idx - max_r_idx) < 10 && max_lclip + max_rclip >= 3)
             {
                 start_pos = S.pos + (int)((max_l_idx + max_r_idx)/2.0) - 100;
-                start_cnt = max_lclip > max_rclip ? max_rclip : max_lclip;
+                start_cnt = max_lclip + max_rclip;
+            }
+            else if (max_lclip >= 3 && max_rclip <= 1)
+            {
+                start_pos = S.pos + max_l_idx - 100;
+                start_cnt = max_lclip;
+            }
+            else if (max_rclip >= 3 && max_lclip <= 1)
+            {
+                start_pos = S.pos + max_r_idx - 100;
+                start_cnt = max_rclip;
             }
             
             max_lclip = 0;
@@ -1274,11 +1286,22 @@ bool Genotyper::find_consensus_clip(sv &S, SvData &D)
             int end_pos = S.end;
             int end_cnt = 0;
             
-            if (abs(max_r_idx - max_l_idx) < 10 && max_lclip >=3 && max_rclip>=3)
+            if (max_lclip > 1 && max_rclip > 1 && abs(max_l_idx - max_r_idx) < 10 && max_lclip + max_rclip >= 3)
             {
-                end_pos = S.pos + (int)((max_l_idx + max_r_idx)/2.0) - 300;
-                end_cnt = max_lclip > max_rclip ? max_rclip : max_lclip;
+                end_pos = S.end + (int)((max_l_idx + max_r_idx)/2.0) - 300;
+                end_cnt = max_lclip + max_rclip;
             }
+            else if (max_lclip >= 3 && max_rclip <= 1)
+            {
+                end_pos = S.end + max_l_idx - 300;
+                end_cnt = max_lclip;
+            }
+            else if (max_rclip >= 3 && max_lclip <= 1)
+            {
+                end_pos = S.end + max_r_idx - 300;
+                end_cnt = max_rclip;
+            }
+            
             int cnt = start_cnt > end_cnt ? end_cnt : start_cnt;
                         
             if (cnt >=3 && start_pos < end_pos)
