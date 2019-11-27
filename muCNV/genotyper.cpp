@@ -405,84 +405,61 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
 
 bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats)
 {
-    GaussianMixture startclip_mix, rp_mix, endclip_mix, all_mix;
-
+    GaussianMixture rp_mix;
     
-    rp_mix.estimate(G.rp_cnts, G.gt, 2);
-    printf("Start clip cluster\n");
-    rp_mix.print(stdout);
-    
-    startclip_mix.estimate(G.start_clips, G.gt, 2);
-    printf("Start clip cluster\n");
-    startclip_mix.print(stdout);
-    
-    endclip_mix.estimate(G.end_clips, G.gt, 2);
-    printf("Start clip cluster\n");
-    endclip_mix.print(stdout);
-    
-    // Check whether the 'variant' depth is separated from 'non-variant' depth
-    all_mix.estimate(G.all_cnts, G.gt, 2);
-    printf("All counts cluster\n");
-    all_mix.print(stdout);
-    
-    for(int i=0; i<n_sample;++i)
+    std::vector<double> norm_cnts (n_sample, 0);
+    for(int i=0; i<n_sample; ++i)
     {
-        printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], G.rp_cnts[i] / stats[i].avg_dp, G.start_clips[i] / stats[i].avg_dp, G.end_clips[i] / stats[i].avg_dp );
+        norm_cnts[i] = G.rp_cnts[i] / stats[i].avg_dp ;
     }
-    /*
-    double err_bound = all_mix.Comps[0].Stdev;
-    if (err_bound < 0.2) err_bound = 0.2;
     
-//    printf("Sum/AC: %f, %f, %f, %f\n", G.split_sum/G.ac, G.rp_sum/G.ac, G.startclip_sum/G.ac, G.endclip_sum/G.ac);
-    // TODO: Arbitrary cutoffs
-    if (dp_mix.Comps[0].Mean<0.8 || dp_mix.Comps[0].Mean - err_bound < dp_mix.Comps[1].Mean || dp_mix.p_overlap>0.5)
-        return false;
+    rp_mix.estimate(norm_cnts, G.gt, 2);
+   printf("Read pair cluster\n");
+  rp_mix.print(stdout);
     
-    if (G.split_sum / G.ac < 1 && G.rp_sum / G.ac < 1 && ((G.startclip_sum/(G.endclip_sum+0.001) > 5) || (G.endclip_sum/(G.startclip_sum+0.001) > 5)))
-        return false;
+    std::vector<std::vector<double> > alt_means = { {rp_mix.Comps[1].Mean}, {rp_mix.Comps[1].Mean, rp_mix.Comps[1].Mean * 2.0} };
+    select_model(G.gmix, alt_means, norm_cnts, G.nonalt_mask, 0.3);
+    G.gmix.print(stdout);
 
-    // if yes, then try to EM with masks, variants only
-    std::vector<std::vector<double> > alt_means = { {0.5}, {0.5, 0.0} };
-    select_model(G.gmix, alt_means, D.dps[2], G.nonalt_mask, 0.3);
-//    printf("GMIX cluster\n");
-//    G.gmix.print(stdout);
+    double err_bound = rp_mix.Comps[0].Stdev;
+    if (err_bound < 0.1) err_bound = 0.1;
+    
+    // TODO: Arbitrary cutoffs
+    if (rp_mix.Comps[0].Mean>0.1 || rp_mix.Comps[1].Mean - err_bound < rp_mix.Comps[0].Mean || rp_mix.p_overlap > 0.5)
+        return false;
     
     G.ns = 0;
     G.ac = 0;
     
     for(int i=0; i<n_sample; ++i)
     {
-        double d0 = dp_mix.Comps[0].Mean - D.dps[2][i];
-        double d1 = D.dps[2][i] - G.gmix.Comps[0].Mean;
+        double d0 = norm_cnts[i] - rp_mix.Comps[0].Mean ;
+        double d1 = G.gmix.Comps[0].Mean - norm_cnts[i];
         
         G.gt[i] = -1;
-        G.cn[i] = -1;
         
-        if (d0>0 &&  G.all_cnts[i]>0 && d1 < d0 * ((G.split_cnts[i] + G.all_cnts[i] - 1) / 2.0))
+        if (d0>0 &&  G.all_cnts[i]>0 && d1 < d0 * ((G.rp_cnts[i] + G.all_cnts[i] - 1) / 2.0))
         {
-            if (D.dps[2][i] < 0.1 || (G.gmix.Comps.size()>1 && D.dps[2][i] < G.gmix.Comps[1].Stdev))
+            if (G.gmix.Comps.size()>1  && (G.gmix.Comps[1].Mean - norm_cnts[i] < (norm_cnts[i] - G.gmix.Comps[0].Mean) * 0.5))
             {
                 G.gt[i] = 2;
-                G.cn[i] = 0;
                 G.ns++;
                 G.ac += 2;
             }
             else // if there are few ambiguous samples, do not code alternative allele solely based on depth
             {
                 G.gt[i] = 1;
-                G.cn[i] = 1;
                 G.ns++;
                 G.ac++;
             }
         }
         else
         {
-            if (D.dps[2][i] < dp_mix.Comps[0].Mean - (err_bound / (G.all_cnts[i]+1.0) ) )  // missing
+            if (norm_cnts[i] > rp_mix.Comps[0].Mean + (err_bound / (G.all_cnts[i]+1.0) ) )  // missing
                 G.gt[i] = -1;
             else if (d0 < d1)
             {
                 G.gt[i] = 0;
-                G.cn[i] = 2;
                 G.ns++;
             }
             else
@@ -492,7 +469,11 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         }
     }
 
-    fflush(stdout);
+    for(int i=0; i<n_sample;++i)
+    {
+        printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%d\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], G.rp_cnts[i] / stats[i].avg_dp, G.start_clips[i] / stats[i].avg_dp, G.end_clips[i] / stats[i].avg_dp , G.gt[i]);
+    }
+  
     double callrate = (double)G.ns / n_sample;
 
     if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
@@ -500,8 +481,6 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         G.b_pass = true;
         return true;
     }
-    return false;
-    */
     return false;
 }
         
@@ -569,7 +548,7 @@ bool Genotyper::get_inv_cnts(sv &S, SvData &D, SvGeno &G)
             // Because read pair counting has enough buffer size, we do not iterate through breakpoints to avoid double-counting
             if (rp.directions.first && rp.directions.second) // FF
             {
-                printf("FF RP: %d, %d\n", rp.positions.first, rp.positions.second);
+        //        printf("FF RP: %d, %d\n", rp.positions.first, rp.positions.second);
                 int dx = (int) (start_pos - rp.positions.first);
                 int dy = (int) (end_pos - rp.positions.second);
                 if (dx > 50 && dx < 400 && dy > 50 && dy < 400)
@@ -579,7 +558,7 @@ bool Genotyper::get_inv_cnts(sv &S, SvData &D, SvGeno &G)
             }
             else if (!rp.directions.first && !rp.directions.second) // RR
             {
-                printf("RR RP: %d, %d\n", rp.positions.first, rp.positions.second);
+        //        printf("RR RP: %d, %d\n", rp.positions.first, rp.positions.second);
 
                 int dx = (int) (rp.positions.first - start_pos);
                 int dy = (int) (rp.positions.second - end_pos);
