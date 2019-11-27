@@ -25,6 +25,8 @@ class GcContent
 {
 public:
     void initialize(std::string &); // filename for GC content, populate all std::vectors
+    void initialize_quick(std::string &); // filename for GC content, populate all std::vectors except for gc_array
+
     double get_gc_content(int, int, int);
     uint16_t num_bin; // Number of GC bin
     uint8_t num_chr; //number of chrs

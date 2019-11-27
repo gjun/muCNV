@@ -92,23 +92,31 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
     n_samples.resize(n_pileup);
     
     int idx_cnt = 1;
+    
     chr_idx_rp.resize(gc.num_chr+1);
-	if (chr>0)
+    // chr_idx_rp[] contains the array indices of the idxfile's indices
+    // which points to the beginning of read pair blocks, for each chromosome
+    
+	if (chr>0) // if pileup files are split by chromosomes
 	{
 		for(int i=1;i<=gc.num_chr; ++i)
 		{
 			chr_idx_rp[i] = -1; // make everything invalid 
 		}
 		chr_idx_rp[chr] = idx_cnt;
+        // if chr==20, chr_idx_rp[20] == 1;, chr_idx_rp[1..19], chr_idx_rp[21..24] == -1
+
 		idx_cnt += ceil((double)gc.chr_size[chr] / 10000.0) ;
+        // idx_cnt increases by number of 10kbp blocks in the single chromosome
 	}
-	else
+	else // if pileup files contains all chromosomes
 	{
 		for(int i=1;i<=gc.num_chr; ++i)
 		{
-			chr_idx_rp[i] = idx_cnt; // chr_idx[1] contains the array index of pileup index of chr 1
-			idx_cnt += ceil((double)gc.chr_size[i] / 10000.0) ;
+			chr_idx_rp[i] = idx_cnt;
+			idx_cnt += ceil((double)gc.chr_size[i] / 10000.0);
 		}
+        // idx_cnt increase by number of 10kbp blocks in all chromosomes, added up
 	}
     
     DMSG(idx_cnt << " indices should be in index file");
@@ -153,28 +161,6 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
             std::vector<double> gc_f;
             pileups[i].read_gc_factor(gc_f, gc.num_bin);
 
-            /*
-            std::vector<double> gcf10;
-
-            //interpolate into 10-sub-bins
-            gcf10.resize(gc_f.size()*10);
-
-            for(int k=0; k< (int)gc_f.size()-1; ++k)
-            {
-                for(int l=0; l<10; ++l)
-                {
-                    // interpolate 1/gc_factor using linear interfolation and then inverse it
-                    gcf10[k*10+l] = 1.0/((1.0/gc_f[k+1] - 1.0/gc_f[k]) *  (l/10.0) + 1.0/gc_f[k]);
-                }
-            }
-            gcf10[(gc_f.size()-1) * 10] = gc_f[gc_f.size()-1];
-            for(int k= (int) (gc_f.size()-1) * 10; k < gcf10.size(); ++k)
-            {
-                gcf10[k] = gc_f[gc_f.size()-1];
-            }
-                
-            gc_factors.push_back(gcf10);
-            */
             gc_factors.push_back(gc_f);
         }
         
@@ -190,8 +176,6 @@ int DataReader::load(std::vector<string>& base_names, std::vector<SampleStat> &s
         multi_idx[i] = new uint64_t[idx_cnt];
         idx_files[i].read_uint64_multi(multi_idx[i], idx_cnt);
         idx_files[i].close(); // index file content is now on memory
-        
-        // idx offset?
     }
 
     chr_bytepos_dp100.resize(n_pileup);
@@ -311,7 +295,7 @@ void DataReader::adjust_gc_factor(GcContent& gc, std::vector<SampleStat>& stats,
     }
 }
 
-bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &dvec_dp, GcContent& gc, bool b_dumpstat)
+bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &dvec_dp, GcContent& gc)
 {
     // this information is not useful when sv length is short
     // process only for >200bp SVs (or at include least two full 100-bp intervals)
@@ -325,7 +309,7 @@ bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &
     
     if (pre_start<1) pre_start = 1 ;
     if (post_end > (int)gc.chr_size[curr_sv.chrnum]) post_end = gc.chr_size[curr_sv.chrnum];
-
+    
     int idx_pre_start = pre_start / 100;
     int idx_post_end = (post_end/100);
     
@@ -392,7 +376,6 @@ bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &
             delete [] D;
         }
         
-
         sample_idx += n_samples[i];
     }
     if (n_pre<=2)
@@ -565,7 +548,8 @@ bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &
 					}
 				}
 
-				median_filter(D, D_filt, n_samples[i], n_dp);
+                if (b_medfilt)
+                    median_filter(D, D_filt, n_samples[i], n_dp);
 
 				std::vector<unsigned> dp_sum (n_samples[i], 0);
 				
@@ -604,7 +588,7 @@ bool DataReader::around_breakpoint(readpair &rp, sv &curr_sv)
 	switch(curr_sv.svtype)
 	{
 	case DEL:
-		if (rp.selfpos >= curr_sv.pos -500 && rp.selfpos < curr_sv.pos+500 && rp.matepos < curr_sv.end +500 && rp.matepos >= curr_sv.end - 500 && rp.matequal > 0)
+		if (rp.selfpos >= curr_sv.pos - 500 && rp.selfpos <= curr_sv.pos + 100 && rp.matepos < curr_sv.end + 500 && rp.matepos >= curr_sv.end - 100 && rp.matequal > 0)
 		{
 			return true;
 		}
@@ -615,7 +599,7 @@ bool DataReader::around_breakpoint(readpair &rp, sv &curr_sv)
 		break;
 	case DUP:
 	case CNV:
-		if (rp.selfpos >= curr_sv.pos - 500 && rp.selfpos < curr_sv.pos+500 && rp.matepos < curr_sv.end +500 && rp.matepos >= curr_sv.end -500 && rp.matequal > 0)
+		if (rp.selfpos >= curr_sv.pos - 100 && rp.selfpos < curr_sv.pos+500 && rp.matepos <= curr_sv.end + 100 && rp.matepos >= curr_sv.end -500 && rp.matequal > 0)
 		{
 			return true;
 		}
@@ -635,13 +619,17 @@ bool DataReader::around_breakpoint(readpair &rp, sv &curr_sv)
 			return false;
 		}
 		break;
+    case BND:
+    case INS:
+        break;
 	}
+    return false;
 }
 
 
 void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, GcContent &gc, std::vector< std::vector<int> > &all_rps, std::vector<int> &all_lclips, std::vector<int> &all_rclips)
 {
-    int sample_idx = 0;
+    int offset = 0;
 
 //	if (curr_sv.len < 50) return; // clipped read works for short variants!
     // Starting breakpoint
@@ -670,40 +658,27 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
 
     for(int repeat=0; repeat<2; ++repeat)
     {
-        for(int i=0; i<n_pileup; ++i)
+        for(int batch_idx=0; batch_idx<n_pileup; ++batch_idx)
         {
-            pileups[i].seekg(multi_idx[i][start_idx]);
+            pileups[batch_idx].seekg(multi_idx[batch_idx][start_idx]);
 
             for(uint64_t j=start_idx; j<=end_idx; ++j)
             {
-                for(int k=0; k<n_samples[i]; ++k)
+                for(int sample_idx=0; sample_idx<n_samples[batch_idx]; ++sample_idx)
                 {
                     uint32_t n_rp = 0;
-                    pileups[i].read_uint32(n_rp);
+                    pileups[batch_idx].read_uint32(n_rp);
      
                     for(uint32_t l=0; l<n_rp; ++l)
                     {
                         readpair rp;
-                        pileups[i].read_readpair(rp);
-                        
-                        int32_t curr_block = (int32_t)(j-chr_idx_rp[curr_sv.chrnum]);
+                        pileups[batch_idx].read_readpair(rp);
                         
                         rp.chrnum = curr_sv.chrnum;
-                        rp.selfpos = pileups[i].fix_offset_pos(curr_block*10000, rp.selfpos);
-                        rp.matepos = pileups[i].fix_offset_pos(curr_block*10000, rp.matepos);
                         
-                        rp.selfpos += curr_block * 10000;
-                        rp.matepos += curr_block * 10000;
-                        
-                        // TEMPORARY REMEDY for MATEPOS
-                        if (n_rp>5 && rp.matequal == 60 && abs(rp.selfpos- curr_sv.pos)<350 && abs(rp.matepos%10000 - curr_sv.end%10000) < 350)
-                        {
-                            rp.matepos = rp.matepos%10000 + int(curr_sv.end/10000)*10000;
-                        }
-                            
                         if (rp.matepos < rp.selfpos)
                         {
-                            // swap them
+                            // swap them, always selfpos <= matepos
                             int pos = rp.selfpos;
                             rp.selfpos = rp.matepos;
                             rp.matepos = pos;
@@ -729,7 +704,7 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                                 exit(1);
                                 
                             }
-							rdstats[sample_idx + k].n_rp[rp.pairstr] ++;
+							rdstats[offset + sample_idx].n_rp[rp.pairstr] ++;
 							
 							int buf_start = self_idx-5;
 							int buf_end = self_idx+5;
@@ -739,7 +714,7 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
 							for(int m=buf_start; m<=buf_end;++m)
 							{
 								// frequency in 100-bp window
-								rdstats[sample_idx + k].rp_seq[rp.pairstr][m]++;
+								rdstats[offset + sample_idx].rp_seq[rp.pairstr][m]++;
 								all_rps[rp.pairstr][m] ++;
 							}
 							buf_start = mate_idx - 5;
@@ -748,26 +723,42 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
 							if (buf_end>199) buf_end = 199;
 							for(int m=buf_start;m<=buf_end; ++m)
 							{
-								rdstats[sample_idx + k].rp_seq[rp.pairstr][m]++;
+								rdstats[offset + sample_idx].rp_seq[rp.pairstr][m]++;
 								all_rps[rp.pairstr][m] ++;
 							}
+                            
+                            PairSplit new_pair;
+                            new_pair.positions.first = rp.selfpos;
+                            new_pair.positions.second = rp.matepos;
+                            // directions.first: indicate self forward (true) or self reverse (false)
+                            // directions.second: indicate mate forward (true) or mate reverse (false)
+                            // for deletions, should always be FR
+                            // for duplications, RF
+                            // inversions RR or FF
+                            new_pair.directions.first = (rp.pairstr < 2); // pairstr 00b = FF, 01b = FR, 10b = RF, 11b = RR
+                            new_pair.directions.second = (rp.pairstr == 0 || rp.pairstr == 2);
+                            rdstats[offset+sample_idx].readpairs.push_back(new_pair);
                         }
                     }
                     //printf("\n");
                     uint32_t n_sp = 0;
-                    pileups[i].read_uint32(n_sp);
+                    pileups[batch_idx].read_uint32(n_sp);
                     for(uint32_t l=0; l<n_sp; ++l)
                     {
                         splitread sp;
-                        pileups[i].read_splitread(sp);
-                        int32_t curr_block = (int32_t)(j-chr_idx_rp[curr_sv.chrnum]);
+                        pileups[batch_idx].read_splitread(sp);
                         
                         sp.chrnum = curr_sv.chrnum;
-                        sp.pos = pileups[i].fix_offset_pos(curr_block*10000, sp.pos);
-                        sp.sapos = pileups[i].fix_offset_pos(curr_block*10000, sp.sapos);
-                        sp.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
-                        sp.sapos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
                         
+                        // ||| : clipped bases
+                        //
+                        // 1. ----||||               ||||---- : DEL  , pos < sapos && firstclip < 0 && secondclip > 0, or all <> opposite
+                        // 2. ||||----               ----|||| : DUP  , pos < sapos && firstclip > 0 && secondclip < 0, or all <> opposite
+                        
+                        // 3. ----||||               ----|||| : INV when strands are opposite, currently unavailable
+                        // 4. ||||----               ||||---- : INV when strands are opposite, currently unavailable
+
+                        /*
                         if (sp.pos > sp.sapos)
                         {
                             int pos = sp.pos;
@@ -776,38 +767,119 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                             int clip = sp.firstclip;
                             sp.firstclip = sp.secondclip;
                             sp.secondclip = clip;
-                        }
+                            
+                        }*/
                         
-                        if (sp.firstclip > 0 && sp.secondclip < 0)  // inside the sv
+                        int break1 = sp.pos;
+                        int break2 = sp.sapos;
+                        
+                        if (sp.firstclip < 0)
                         {
-                            if (sp.pos >= curr_sv.pos - 100 && sp.pos < curr_sv.pos + 100 && (sp.sapos + 151 + sp.secondclip) >= curr_sv.end-100 && (sp.sapos + 151 + sp.secondclip) < curr_sv.end + 100)
+                            // TODO: 150 is hard coded
+                            break1 += 151 + sp.firstclip;
+                        }
+                        if (sp.secondclip < 0)
+                        {
+                            break2 += 151 + sp.secondclip;
+                            
+                        }
+
+                        // TODO: make split read arrays (+/- 100bp around sv start-end) a class
+                        
+                        if (break1 < break2)
+                        {
+                            if (sp.firstclip < 0 && sp.secondclip > 0) // DEL, inward split (pos)----||||      ||||(sapos)----
                             {
-                                rdstats[sample_idx+k].n_split_outward ++;
-                                // rdstats[sample_idx+k].sp_seq_out[sp.pos-curr_sv.pos + 100] ++;
-                                // rdstats[sample_idx+k].sp_seq_out[sp.sapos+151+sp.secondclip - curr_sv.end + 300] ++;
+                                break2 = break2 - 1;
+
+                                if (break1 >= curr_sv.pos - 100 && break1 < curr_sv.pos + 100 && break2 >= curr_sv.end-100 && break2 < curr_sv.end + 100)
+                                {
+                                    rdstats[offset+sample_idx].n_split_inward ++;
+                                    rdstats[offset+sample_idx].sp_seq_in[break1 - curr_sv.pos + 100] ++;
+                                    rdstats[offset+sample_idx].sp_seq_in[break2 - curr_sv.end + 300] ++;
+                                    
+                                    // std::cout << "break1 < break2, DEL, break1 " << break1 << " break2 " << break2 << std::endl;
+
+                                    PairSplit new_split;
+                                    new_split.positions.first = break1;
+                                    new_split.positions.second = break2;
+                                    new_split.directions.first = true;
+                                    new_split.directions.second = false;
+                                    rdstats[offset+sample_idx].splits.push_back(new_split);
+                                }
+                            }
+                            else if (sp.firstclip > 0 && sp.secondclip < 0) // DUP, outward split ||||(pos)----    ----(sapos)||||
+                            {
+                                break2 = break2 - 1;
+                                if (break1 >= curr_sv.pos - 100 && break1 < curr_sv.pos + 100 && break2 >= curr_sv.end-100 && break2 < curr_sv.end + 100)
+                                {
+                                    rdstats[offset+sample_idx].n_split_outward ++;
+                                    rdstats[offset+sample_idx].sp_seq_out[break1 - curr_sv.pos + 100] ++;
+                                    rdstats[offset+sample_idx].sp_seq_out[break2 - curr_sv.end + 300] ++;
+                                    
+                                    // std::cout << "break1 < break2, DUP, break1 " << break1 << " break2 " << break2 << std::endl;
+
+                                    
+                                    PairSplit new_split;
+                                    new_split.positions.first = break1;
+                                    new_split.positions.second = break2;
+                                    new_split.directions.first = false;
+                                    new_split.directions.second = true;
+                                    rdstats[offset+sample_idx].splits.push_back(new_split);
+                                }
                             }
                         }
-                        else if (sp.firstclip < 0 && sp.secondclip > 0)
+                        else // break1 >= break2
                         {
-                            if ( (sp.pos + 151 + sp.firstclip) >= curr_sv.pos - 100 && (sp.pos + 151 + sp.firstclip) < curr_sv.pos + 100 && sp.sapos >= curr_sv.end-100 && sp.sapos < curr_sv.end + 100)
+                            if (sp.firstclip > 0 && sp.secondclip < 0) // DEL, inward split (sapos)----||||      ||||(pos)----
                             {
-                                rdstats[sample_idx+k].n_split_inward ++;
-                                
-                                // rdstats[sample_idx+k].sp_seq_in[sp.pos+151+sp.firstclip-curr_sv.pos + 100] ++;
-                                // rdstats[sample_idx+k].sp_seq_in[sp.sapos - curr_sv.end + 300] ++;
+                                break2 = break2 -1 ;
+                                if (break2 >= curr_sv.pos - 100 && break2 < curr_sv.pos + 100 && break1 >= curr_sv.end-100 && break1 < curr_sv.end + 100)
+                                {
+                                    rdstats[offset+sample_idx].n_split_inward ++;
+                                    rdstats[offset+sample_idx].sp_seq_in[break2 - curr_sv.pos + 100] ++;
+                                    rdstats[offset+sample_idx].sp_seq_in[break1 - curr_sv.end + 300] ++;
+                                    
+                                   // std::cout << "break2 < break1, DEL, break1 " << break1 << " break2 " << break2 << std::endl;
+                                    
+                                    PairSplit new_split;
+                                    new_split.positions.first = break2;
+                                    new_split.positions.second = break1;
+                                    new_split.directions.first = true;
+                                    new_split.directions.second = false;
+                                    rdstats[offset+sample_idx].splits.push_back(new_split);
+                                }
                             }
+                            else if (sp.firstclip < 0 && sp.secondclip > 0) // DUP, outward split ||||(sapos)----    (pos)----||||
+                            {
+                                break2 = break2 - 1;
+                                if (break2 >= curr_sv.pos - 100 && break2 < curr_sv.pos + 100 && break1 >= curr_sv.end-100 && break1 < curr_sv.end + 100)
+                                {
+                                    rdstats[offset+sample_idx].n_split_outward ++;
+                                    rdstats[offset+sample_idx].sp_seq_out[break2 - curr_sv.pos + 100] ++;
+                                    rdstats[offset+sample_idx].sp_seq_out[break1 - curr_sv.end + 300] ++;
+                                    
+                                    // std::cout << "break2 < break1, DUP, break1 " << break1 << " break2 " << break2 << std::endl;
+
+                                    PairSplit new_split;
+                                    new_split.positions.first = break2;
+                                    new_split.positions.second = break1;
+                                    new_split.directions.first = false;
+                                    new_split.directions.second = true;
+                                    rdstats[offset+sample_idx].splits.push_back(new_split);
+                                }
+                            }
+                            
                         }
                     }
                     
                     uint32_t n_lclip = 0;
-                    pileups[i].read_uint32(n_lclip);
+                    pileups[batch_idx].read_uint32(n_lclip);
                     for(uint32_t l=0; l<n_lclip; ++l)
                     {
                         sclip myclip;
-                        pileups[i].read_softclip(myclip);
+                        pileups[batch_idx].read_softclip(myclip);
                         myclip.chrnum = curr_sv.chrnum;
-                        myclip.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
-                        
                  
                         if (myclip.pos >= curr_sv.pos - 100 && myclip.pos < curr_sv.pos + 100)
                         {
@@ -820,8 +892,8 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                                 exit(1);
                             }
                             
-                            rdstats[sample_idx+k].lclips[tmp_idx] ++;
-                            rdstats[sample_idx+k].n_lclip_start ++;
+                            rdstats[offset+sample_idx].lclips[tmp_idx] ++;
+                            rdstats[offset+sample_idx].n_lclip_start ++;
                             all_lclips[tmp_idx] ++;
                         }
                         if (myclip.pos >= curr_sv.end - 100 && myclip.pos < curr_sv.end + 100 )
@@ -835,20 +907,20 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                                 exit(1);
                             }
                             
-                            rdstats[sample_idx+k].lclips[tmp_idx] ++;
-                            rdstats[sample_idx+k].n_lclip_end ++;
+                            rdstats[offset+sample_idx].lclips[tmp_idx] ++;
+                            rdstats[offset+sample_idx].n_lclip_end ++;
                             all_lclips[tmp_idx] ++;
                         }
                     }
                     
                     uint32_t n_rclip = 0;
-                    pileups[i].read_uint32(n_rclip);
+                    pileups[batch_idx].read_uint32(n_rclip);
                     for(uint32_t l=0; l<n_rclip; ++l)
                     {
                         sclip myclip;
-                        pileups[i].read_softclip(myclip);
+                        pileups[batch_idx].read_softclip(myclip);
                         myclip.chrnum = curr_sv.chrnum;
-                        myclip.pos += (j - chr_idx_rp[curr_sv.chrnum]) * 10000;
+
                         if (myclip.pos >= curr_sv.pos - 100 && myclip.pos < curr_sv.pos + 100)
                         {
                             int tmp_idx = myclip.pos - curr_sv.pos + 100;
@@ -859,8 +931,8 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                                 std::cerr << "Something wrong with clip idx  " << tmp_idx << std::endl;
                                 exit(1);
                             }
-                            rdstats[sample_idx+k].rclips[tmp_idx] ++;
-                            rdstats[sample_idx+k].n_rclip_start ++;
+                            rdstats[offset+sample_idx].rclips[tmp_idx] ++;
+                            rdstats[offset+sample_idx].n_rclip_start ++;
                             all_rclips[tmp_idx] ++;
                         }
                         if (myclip.pos >= curr_sv.end - 100 && myclip.pos < curr_sv.end + 100 )
@@ -873,15 +945,15 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                                 std::cerr << "Something wrong with clip idx end " << tmp_idx << std::endl;
                                 exit(1);
                             }
-                            rdstats[sample_idx+k].rclips[tmp_idx] ++;
-                            rdstats[sample_idx+k].n_rclip_end ++;
+                            rdstats[offset+sample_idx].rclips[tmp_idx] ++;
+                            rdstats[offset+sample_idx].n_rclip_end ++;
                             all_rclips[tmp_idx] ++;
                         }
                     }
                 }
             }
 
-            sample_idx += n_samples[i];
+            offset += n_samples[batch_idx];
         }
         
         if (b_overlap)
@@ -890,7 +962,7 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
         // Prepare to read second readpair interval
         start_idx = start_idx2;
         end_idx = end_idx2;
-        sample_idx = 0;
+        offset = 0;
     }
     return;
 }

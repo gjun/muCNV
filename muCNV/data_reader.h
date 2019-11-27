@@ -1,5 +1,5 @@
 //
-//  multi_pileup.hpp
+//  data_reader.h
 //  muCNV
 //
 //  Created by Goo Jun on 11/25/18.
@@ -14,6 +14,13 @@
 #include "gc_content.h"
 
 using std::string;
+
+class PairSplit
+{
+public:
+    std::pair<int,int> positions;
+    std::pair<bool,bool> directions;
+};
 
 class ReadStat
 {
@@ -32,7 +39,11 @@ public:
     std::vector< std::vector<int> > rp_seq;
     std::vector<int> sp_seq_in;
     std::vector<int> sp_seq_out;
-
+    
+    // Vectors to store total 'pairs' of read pair and split read positions
+    
+    std::vector< PairSplit > readpairs;
+    std::vector< PairSplit > splits;
     
     // Vector to store total # clips in each sample per every bp in +/- 100bp of the SV
     // + : clip in forward direction (rclip)
@@ -62,6 +73,10 @@ public:
         
         std::fill(lclips.begin(), lclips.end(), 0);
         std::fill(rclips.begin(), rclips.end(), 0);
+        
+        readpairs.clear();
+        splits.clear();
+        
         n_lclip_start = 0;
         n_rclip_start = 0;
         n_lclip_end = 0;
@@ -96,7 +111,7 @@ public:
     int load(std::vector<string> &, std::vector<SampleStat>&, GcContent &, int );
     void adjust_gc_factor(GcContent& ,std::vector<SampleStat>&, int);
 
-    bool read_depth100(sv&, std::vector< std::vector<double> > &, GcContent& gc, bool);
+    bool read_depth100(sv&, std::vector< std::vector<double> > &, GcContent& gc);
     void read_var_depth(int, std::vector<double>&);
     void read_pair_split(sv&, std::vector<ReadStat> &, GcContent &, std::vector< std::vector<int> >&, std::vector<int> &, std::vector<int> &);
     double correct_gc(GcContent &, int, double, int, int);

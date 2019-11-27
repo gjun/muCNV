@@ -26,6 +26,7 @@ int main_pileup(int argc, char** argv)
     std::string out_filename;
     std::string vcf_file;
     std::string interval_file;
+    std::string out_dir;
     std::string gc_file;
     std::string sample_id;
 
@@ -40,19 +41,22 @@ int main_pileup(int argc, char** argv)
         TCLAP::ValueArg<std::string> argBam("b","bam","Input BAM/CRAM file name",true,"","string");
         TCLAP::ValueArg<std::string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
         TCLAP::ValueArg<std::string> argInterval("V","interVal", "Binary interval file containing candidate SVs", false, "", "string");
-        TCLAP::ValueArg<std::string> argSampleID("s","sample","Sample ID for output filename base",false,"","string");
-        TCLAP::ValueArg<std::string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "string");
+        TCLAP::ValueArg<std::string> argSampleID("s","sample","Sample ID, also used for output filenames (.pileup, .var, .idx)",true,"","string");
+        TCLAP::ValueArg<std::string> argOutDir("o","outdir","Output directory, current directory if omitted",false,".","string");
+        TCLAP::ValueArg<std::string> argGcfile("f","gcFile","File containing GC content information (default: GRCh38.gc)",false, "GRCh38.gc", "string");
         
         cmd.add(argBam);
         cmd.add(argVcf);
         cmd.add(argInterval);
         cmd.add(argGcfile);
         cmd.add(argSampleID);
+        cmd.add(argOutDir);
         cmd.parse(argc, argv);
         
         bam_file = argBam.getValue();
         sample_id = argSampleID.getValue();
         vcf_file = argVcf.getValue();
+        out_dir = argOutDir.getValue();
         interval_file = argInterval.getValue();
         gc_file = argGcfile.getValue();
     }
@@ -95,10 +99,15 @@ int main_pileup(int argc, char** argv)
     std::vector<int> idxs;
     std::sort(vec_bp.begin(), vec_bp.end());
     
-    std::string pileup_name = sample_id + ".pileup";
-    std::string varfile_name = sample_id + ".var";
-    std::string idxfile_name = sample_id + ".idx";
+    if (out_dir.back() != '/')
+        out_dir += '/';
     
+
+    std::string pileup_name = out_dir + sample_id + ".pileup";
+    std::string varfile_name = out_dir + sample_id + ".var";
+    std::string idxfile_name = out_dir + sample_id + ".idx";
+    
+    std::cerr << "Writing to " << pileup_name << std::endl;
     // Initialize Pileup
     Pileup pup;
     pup.open(pileup_name, std::ios::out | std::ios::binary);

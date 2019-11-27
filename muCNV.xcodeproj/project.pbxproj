@@ -209,7 +209,7 @@
 		F138FD711CAD744A00CD5539 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1010;
+				LastUpgradeCheck = 1120;
 				ORGANIZATIONNAME = "Goo Jun";
 				TargetAttributes = {
 					F138FD781CAD744A00CD5539 = {
@@ -219,11 +219,11 @@
 			};
 			buildConfigurationList = F138FD741CAD744A00CD5539 /* Build configuration list for PBXProject "muCNV" */;
 			compatibilityVersion = "Xcode 8.0";
-			developmentRegion = English;
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				English,
 				en,
+				Base,
 			);
 			mainGroup = F138FD701CAD744A00CD5539;
 			productRefGroup = F138FD7A1CAD744A00CD5539 /* Products */;
@@ -385,6 +385,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CODE_SIGN_IDENTITY = "-";
 				HEADER_SEARCH_PATHS = (
 					"tclap-1.2.1/include",
 					tabix,
@@ -404,6 +405,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CODE_SIGN_IDENTITY = "-";
 				HEADER_SEARCH_PATHS = (
 					"tclap-1.2.1/include",
 					tabix,

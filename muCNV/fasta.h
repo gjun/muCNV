@@ -135,7 +135,7 @@ int fasta::read(int64_t len, std::string &contig)
         //        printf("readlen %d \n", readlen);
         if (readlen > len)
         {
-            readlen = len;
+            readlen = (unsigned int) len;
             //            printf("readlen shortened to %d \n", readlen);
             fastaFile.read(reinterpret_cast <char *> (buf), readlen);
             buf[readlen] = 0;

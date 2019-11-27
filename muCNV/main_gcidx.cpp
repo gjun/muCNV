@@ -59,11 +59,11 @@ void writemagic(std::ofstream &F)
 // MAGIC
 // uint8_t : Number of Chr
 // (# Chr)
-//  | uint32_t : Size of each Chr.
-//  | uint32_t : Number of bins in each chr, ceil( (chrssize + 1.0) / bin_dist )
+//  | uint32_t : Size of n-th chromosome
+//  | uint32_t : Number of bins in n-th chromosome, ceil( (chrsize[n] + 1.0) / bin_dist )
 // uint16_t : bin width (how much bp used to average GC content), 400bp
 // uint16_t : bin_dist (how much distance in bp between recorded GC contents, 100bp
-// uint16_t : number of bins in GC content curve, default: 100 (0 means GC content from 0 to 1%)
+// uint16_t : num_bins, number of bins in GC content curve, default: 100 (0 means GC content from 0 to 1%)
 // MAGIC
 // (# Chr)
 //  | (Chr Size) * uint8_t : GC content for each genomic position (every bin_dist-th bp)
@@ -208,6 +208,7 @@ int main_gcidx(int argc, char** argv)
     }
     
     // 8 byte per each chr len ? or 4 byte ?
+    // TODO: Fix this hard-coded chromosome structure
     for(int i=1;i<25;++i)
     {
         std::string chr = "chr" + std::to_string(i);

@@ -22,6 +22,7 @@ public:
     int n_comp;
 	int zeroidx;
     double bic;
+    double aic;
     double p_overlap;
     
     //1-D without weights
@@ -31,15 +32,20 @@ public:
 	// 1-D K-Means
     void KM(std::vector<double>&, bool);
 
-	void print();
+	void print(FILE *);
     
     bool ordered();
     bool r_ordered();
     double BIC(std::vector<double>& );
-    double BayesError();
+    void updateAICBIC(std::vector<double>&, std::vector<bool> &);
+    double AIC(std::vector<double>& );
 
+    double BayesError();
+    void estimate(std::vector<double> &, std::vector<int> &, int);
+
+    
 	// Constructors
-    GaussianMixture () { bic = DBL_MAX; p_overlap = 1.0; zeroidx = -1; n_comp = 0;};
+    GaussianMixture () { bic = DBL_MAX; aic = DBL_MAX; p_overlap = 1.0; zeroidx = -1; n_comp = 0;};
     GaussianMixture (const GaussianMixture &);
     GaussianMixture (std::vector<double> &, std::vector<double> &);
     GaussianMixture& operator = ( const GaussianMixture& gmix);
@@ -66,7 +72,7 @@ public:
     bool r_ordered();
     double BIC(std::vector<double>& , std::vector<double>& );
     double BayesError();
-	void print();
+	void print(FILE *);
 
     GaussianMixture2 () {bic = DBL_MAX; p_overlap = 1.0; n_comp = 0; zeroidx = -1;};
     GaussianMixture2 (const GaussianMixture2 &);

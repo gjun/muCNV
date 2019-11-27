@@ -211,7 +211,7 @@ int suppvcf::initialize(const char* filename, std::vector<std::string> &sample_i
 
 */
 
-
+/*
 int invcfs::initialize(std::vector<std::string> &vcf_files, std::vector<std::string> &sample_ids, std::vector<double> &avg_depths, std::vector<double> &avg_isizes, std::vector<double> &std_isizes, std::string &region)
 {
 	int n_vcf = (int)vcf_files.size();
@@ -424,7 +424,7 @@ void invcfs::get_value_pair(std::string &t, int &n, double &x)
 	}
 }
 
-
+*/
 int read_candidate_vcf(std::ifstream &vfile, sv& new_interval, std::string& suppvec)
 {
 	std::string ln;
@@ -542,6 +542,12 @@ void read_svs_from_intfile(std::string &intFileName, std::vector<breakpoint> &ve
 {
     std::ifstream intFile(intFileName.c_str(), std::ios::in | std::ios::binary);
     int n_var = 0;
+    
+    if (!intFile.good())
+    {
+        std::cerr << "Error, cannot open " << intFileName << std::endl;
+        exit(1);
+    }
     
     intFile.read(reinterpret_cast<char*>(&n_var), sizeof(int));
     vec_sv.resize(n_var);
