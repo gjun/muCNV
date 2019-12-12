@@ -771,8 +771,9 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                         }*/
                         
                         int break1 = sp.pos;
-                        int break2 = sp.sapos;
+                        int break2 = sp.sa_pos;
                         
+                        /*
                         if (sp.firstclip < 0)
                         {
                             // TODO: 150 is hard coded
@@ -782,14 +783,19 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                         {
                             break2 += 151 + sp.secondclip;
                             
-                        }
-
+                        }*/
+                        if (sp.lclip < sp.rclip)
+                            break1 += sp.rlen+1;
+                        if (sp.sa_lclip < sp.sa_rclip)
+                            break2 = sp.sa_pos + sp.sa_rlen+1;
+                        
                         // TODO: make split read arrays (+/- 100bp around sv start-end) a class
                         
                         if (break1 < break2)
                         {
-                            if (sp.firstclip < 0 && sp.secondclip > 0) // DEL, inward split (pos)----||||      ||||(sapos)----
+                            if (sp.lclip < sp.rclip && sp.sa_lclip > sp.sa_rclip) // DEL, inward split (pos)----||||      ||||(sapos)----
                             {
+                                // TODO: test this fits with the revised breakpoints
                                 break2 = break2 - 1;
 
                                 if (break1 >= curr_sv.pos - 100 && break1 < curr_sv.pos + 100 && break2 >= curr_sv.end-100 && break2 < curr_sv.end + 100)
@@ -808,7 +814,7 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                                     rdstats[offset+sample_idx].splits.push_back(new_split);
                                 }
                             }
-                            else if (sp.firstclip > 0 && sp.secondclip < 0) // DUP, outward split ||||(pos)----    ----(sapos)||||
+                            else if (sp.lclip > sp.rclip && sp.sa_lclip < sp.sa_rclip) // DUP, outward split ||||(pos)----    ----(sapos)||||
                             {
                                 break2 = break2 - 1;
                                 if (break1 >= curr_sv.pos - 100 && break1 < curr_sv.pos + 100 && break2 >= curr_sv.end-100 && break2 < curr_sv.end + 100)
@@ -831,7 +837,7 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                         }
                         else // break1 >= break2
                         {
-                            if (sp.firstclip > 0 && sp.secondclip < 0) // DEL, inward split (sapos)----||||      ||||(pos)----
+                            if (sp.lclip > sp.rclip && sp.sa_lclip < sp.sa_rclip) // DEL, inward split (sapos)----||||      ||||(pos)----
                             {
                                 break2 = break2 -1 ;
                                 if (break2 >= curr_sv.pos - 100 && break2 < curr_sv.pos + 100 && break1 >= curr_sv.end-100 && break1 < curr_sv.end + 100)
@@ -850,7 +856,7 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                                     rdstats[offset+sample_idx].splits.push_back(new_split);
                                 }
                             }
-                            else if (sp.firstclip < 0 && sp.secondclip > 0) // DUP, outward split ||||(sapos)----    (pos)----||||
+                            else if (sp.lclip < sp.rclip && sp.sa_lclip > sp.sa_rclip) // DUP, outward split ||||(sapos)----    (pos)----||||
                             {
                                 break2 = break2 - 1;
                                 if (break2 >= curr_sv.pos - 100 && break2 < curr_sv.pos + 100 && break1 >= curr_sv.end-100 && break1 < curr_sv.end + 100)

@@ -19,13 +19,59 @@
 
 typedef enum { READ_UNKNOWN = 0, READ_1 = 1, READ_2 = 2 } readpart;
 
-int get_cigar_clippos(std::string &cigar_str)
+void get_cigar_clippos(std::string &cigar_str, splitread &sp)
 {
-    int lclip = 0;
-    int rclip = 0;
-    int j=0;
+    int n_cigar = 0;
+    
+    int cigar_val = 0;
+    int rlen = 0;
+    sp.sa_lclip = 0;
+    sp.sa_rclip = 0;
+    
+    for(int j=0; j<(int)cigar_str.length(); ++j)
+    {
+        if (cigar_str[j] >= '0' && cigar_str[j] <= '9')
+        {
+            cigar_val = cigar_val * 10 + (int)(cigar_str[j]-'0');
+        }
+        else
+        {
+            // cigar_str[j] : cigar_op
+            n_cigar++;
+            switch(cigar_str[j])
+            {
+                // consumes reference bases
+                case 'M':
+                case 'D':
+                case 'N':
+                case '=':
+                case 'X':
+                    rlen += cigar_val;
+                // I, S, H, B do not consume reference
+            }
+            
+            if (n_cigar == 1 && cigar_str[j] == 'S')
+            {
+                // left clip
+                sp.sa_lclip = cigar_val;
+            }
+            else if (j == cigar_str.length() - 1 && cigar_str[j] == 'S')
+            {
+                // right clip
+                sp.sa_rclip = cigar_val;
+            }
+            
+            // reset cigar_val
+            cigar_val = 0;
+        }
+    }
+    sp.sa_rlen = rlen;
+    return;
+    /*
     while(cigar_str[j] >= '0' && cigar_str[j] <='9' && j<(int)cigar_str.length())
+    {
         ++j;
+    }
     if (j==0 || j==(int)cigar_str.length())
     {
         lclip = 0; //something wrong
@@ -57,10 +103,11 @@ int get_cigar_clippos(std::string &cigar_str)
     else if (lclip>rclip && lclip >= 10)
         return lclip;
     else
-        return 0;
+        return 0;*/
+    
 }
 
-bool process_split(std::string &t, splitread &new_sp, int32_t tid, bool strand)
+bool process_split(std::string &t, splitread &new_sp, int32_t tid)
 {
     int i=1;
     
@@ -106,21 +153,16 @@ bool process_split(std::string &t, splitread &new_sp, int32_t tid, bool strand)
 		std::string::size_type c;
 		std::string::size_type d;
 
-		new_sp.sapos = stoi(t.substr(i), &c);
+		new_sp.sa_pos = stoi(t.substr(i), &c);
 	//	DMSG("POS_STR: " << t.substr(i) << " SAPOS:" <<new_sp.sapos);
         
-		if (new_sp.sapos < 1) return false;
+		if (new_sp.sa_pos < 1) return false;
 
 		c=c+i+1;
-		if (t[c] == '+')
+        
+		if (t[c] == '-')
 		{
-			if (!strand)
-				return false;
-		}
-		else if (t[c] == '-')
-		{
-			if (strand)
-				return false;
+            new_sp.pairstr += 1;
 		}
 		// DMSG("STRAND : " << t[c]);
 		c+=2;
@@ -132,8 +174,11 @@ bool process_split(std::string &t, splitread &new_sp, int32_t tid, bool strand)
         
 		if (cigar_str.length() == 0 ) return false;
 
-        new_sp.secondclip = get_cigar_clippos(cigar_str);
-	    return true;
+        get_cigar_clippos(cigar_str, new_sp);
+        if (new_sp.sa_lclip == 0 && new_sp.sa_rclip ==0)
+            return false;
+        else
+            return true;
     }
 	else
 	{
@@ -243,7 +288,7 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                         new_clip.b_drop = false;
                         (*(aux->p_vec_lclip)).push_back(new_clip);
                         //fprintf(stderr,"left clip ncigar %d, lclip %d, pos %d", b->core.n_cigar, lclip, b->core.pos);
-
+                        
                     }
                 }
                 if (bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP && nm<5)
@@ -274,30 +319,37 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
                 splitread new_sp;
                 new_sp.chrnum = b->core.tid + 1;
                 new_sp.pos = b->core.pos;
-                new_sp.firstclip = 0;
-                new_sp.secondclip = 0;
+                //new_sp.firstclip = 0;
+                //new_sp.secondclip = 0;
+                new_sp.rclip = 0;
+                new_sp.lclip = 0;
+                
+                new_sp.pairstr = (b->core.flag & BAM_FREVERSE) ? 2 : 0;
                 
                 int ncigar = b->core.n_cigar;
                 uint32_t *cigar  = bam_get_cigar(b);
                 
+                new_sp.rlen = bam_cigar2rlen(ncigar, cigar);
+                
                 if (bam_cigar_op(cigar[0]) == BAM_CSOFT_CLIP)
                 {
-                    lclip = bam_cigar_oplen(cigar[0]);
+                    new_sp.lclip = bam_cigar_oplen(cigar[0]);
                 }
                 if (bam_cigar_op(cigar[ncigar-1]) == BAM_CSOFT_CLIP)
                 {
-                    rclip = bam_cigar_oplen(cigar[ncigar-1]);
+                    new_sp.rclip = bam_cigar_oplen(cigar[ncigar-1]);
 				}
                 
+                /*
                 if (rclip > lclip && rclip > 15) // arbitrary cutoff, 15
                     new_sp.firstclip = -rclip;
                 else if (lclip>rclip && lclip > 15)
                     new_sp.firstclip = lclip;
-                
-                if (new_sp.firstclip != 0)
+                */
+                if (new_sp.rclip > 0 || new_sp.lclip > 0) // there should be some clip
                 // Process split read only if the read has soft-clipped ends
 				{
-					if (process_split(str_sa, new_sp, b->core.tid, !(b->core.flag & BAM_FREVERSE)) && !in_centrome(b->core.tid+1, new_sp.sapos))
+					if (process_split(str_sa, new_sp, b->core.tid) && !in_centrome(b->core.tid+1, new_sp.sa_pos))
 					{
 						aux->n_sp++;
 						(*(aux->p_vec_sp)).push_back(new_sp);

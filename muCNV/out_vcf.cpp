@@ -66,19 +66,26 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs)
 void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 {
 	const char *svtype = svTypeName(S.svtype).c_str();
-
+    
+    // TODO: convert hard-coded chr-names using real chr names from BAM/CRAM header - this should be stored in GC content file
+    // current code works only with GRCh38
+    
 	if (S.chrnum < 23)
 	{
-    	fprintf(fp, "%d",  S.chrnum);
+    	fprintf(fp, "chr%d",  S.chrnum);
 	}
 	else if (S.chrnum == 23)
 	{
-		fprintf(fp, "X");
+		fprintf(fp, "chrX");
 	}
 	else if (S.chrnum == 24)
 	{
-		fprintf(fp, "Y");
+		fprintf(fp, "chrY");
 	}
+    else if (S.chrnum == 25)
+    {
+        fprintf(fp, "chrM");
+    }
 
 	fprintf(fp, "\t%d\t%s_%d:%d-%d\t.\t<%s>\t.\t", S.pos, svtype, S.chrnum, S.pos, S.end, svtype);
 

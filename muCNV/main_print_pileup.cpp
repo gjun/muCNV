@@ -263,7 +263,8 @@ int main_print_pileup(int argc, char** argv)
                     {
                         sp.chrnum = chr;
 
-                        printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
+                        printf("\t%d\t%d,%d\t%d,%d\t%d,%d\t%d,%d\t%d\n", sp.chrnum, sp.pos, sp.rlen, sp.sa_pos, sp.sa_rlen, sp.lclip, sp.rclip, sp.sa_lclip, sp.sa_rclip, sp.pairstr);
+
                     }
 				}
                 
@@ -337,7 +338,7 @@ int main_print_pileup(int argc, char** argv)
                         sp.chrnum = c;
    
                         if (sample_idx < 0 || sample_idx == i)
-                            printf("\t%d\t%d\t%d\t%d\t%d\n", sp.chrnum, sp.pos, sp.sapos, sp.firstclip, sp.secondclip);
+                            printf("\t%d\t%d,%d\t%d,%d\t%d,%d\t%d,%d\t%d\n", sp.chrnum, sp.pos, sp.rlen, sp.sa_pos, sp.sa_rlen, sp.lclip, sp.rclip, sp.sa_lclip, sp.sa_rclip, sp.pairstr);
 					}
                     
                     uint32_t n_lclip = 0;
