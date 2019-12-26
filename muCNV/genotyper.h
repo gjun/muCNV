@@ -22,6 +22,7 @@ public:
     bool b_biallelic;
     bool b_pass;
 
+    bool cnt_flag;
     bool dp_flag;
     bool dp2_flag;
     bool pd_flag;
@@ -138,12 +139,12 @@ public:
     bool get_inv_cnts(sv &, SvData &, SvGeno &);
 
     void call( sv&,  SvData&, SvGeno &, std::vector<SampleStat> &);
-    void call_deletion( sv &,  SvData &, SvGeno &);
-    void call_cnv( sv &,  SvData &, SvGeno &);
+    void call_deletion( sv &,  SvData &, SvGeno &, std::vector<SampleStat> &);
+    void call_cnv( sv &,  SvData &, SvGeno &, std::vector<SampleStat> &);
     void call_inversion(sv &, SvData &, SvGeno &, std::vector<SampleStat> &);
 
-    bool assign_del_genotypes(sv &, SvData &, SvGeno &);
-    bool assign_dup_genotypes(sv &, SvData &, SvGeno &);
+    bool assign_del_genotypes(sv &, SvData &, SvGeno &, std::vector<SampleStat> &);
+    bool assign_dup_genotypes(sv &, SvData &, SvGeno &, std::vector<SampleStat> &);
     bool assign_inv_genotypes(sv &, SvData &, SvGeno &, std::vector<SampleStat> &);
 
   //  void call_insertion(sv &, SvData &, SvGeno &);

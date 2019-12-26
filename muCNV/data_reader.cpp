@@ -754,129 +754,136 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                         //
                         // 1. ----||||               ||||---- : DEL  , pos < sapos && firstclip < 0 && secondclip > 0, or all <> opposite
                         // 2. ||||----               ----|||| : DUP  , pos < sapos && firstclip > 0 && secondclip < 0, or all <> opposite
-                        
                         // 3. ----||||               ----|||| : INV when strands are opposite, currently unavailable
                         // 4. ||||----               ||||---- : INV when strands are opposite, currently unavailable
 
-                        /*
-                        if (sp.pos > sp.sapos)
-                        {
-                            int pos = sp.pos;
-                            sp.pos = sp.sapos;
-                            sp.sapos = pos;
-                            int clip = sp.firstclip;
-                            sp.firstclip = sp.secondclip;
-                            sp.secondclip = clip;
-                            
-                        }*/
                         
                         int break1 = sp.pos;
-                        int break2 = sp.sa_pos;
-                        
+                        int break2 = sp.sa_pos-1; // Don't know why, but break2 is always 1 bp off. possible BWA bug.
+ 
                         /*
-                        if (sp.firstclip < 0)
-                        {
-                            // TODO: 150 is hard coded
-                            break1 += 151 + sp.firstclip;
-                        }
-                        if (sp.secondclip < 0)
-                        {
-                            break2 += 151 + sp.secondclip;
-                            
-                        }*/
                         if (sp.lclip < sp.rclip)
                             break1 += sp.rlen+1;
+                        
                         if (sp.sa_lclip < sp.sa_rclip)
-                            break2 = sp.sa_pos + sp.sa_rlen+1;
+                            break2 = sp.sa_pos + sp.sa_rlen + 1;
+                          */
                         
                         // TODO: make split read arrays (+/- 100bp around sv start-end) a class
-                        
-                        if (break1 < break2)
+                        switch(curr_sv.svtype)
                         {
-                            if (sp.lclip < sp.rclip && sp.sa_lclip > sp.sa_rclip) // DEL, inward split (pos)----||||      ||||(sapos)----
-                            {
-                                // TODO: test this fits with the revised breakpoints
-                                break2 = break2 - 1;
-
-                                if (break1 >= curr_sv.pos - 100 && break1 < curr_sv.pos + 100 && break2 >= curr_sv.end-100 && break2 < curr_sv.end + 100)
+                            case DEL:
+                                if (break1 + sp.rlen + 1 <break2)
                                 {
-                                    rdstats[offset+sample_idx].n_split_inward ++;
-                                    rdstats[offset+sample_idx].sp_seq_in[break1 - curr_sv.pos + 100] ++;
-                                    rdstats[offset+sample_idx].sp_seq_in[break2 - curr_sv.end + 300] ++;
-                                    
-                                    // std::cout << "break1 < break2, DEL, break1 " << break1 << " break2 " << break2 << std::endl;
+                                    break1 += sp.rlen + 1;
+                                    if (break1 >= curr_sv.pos - 100 && break1 < curr_sv.pos + 100 && break2 >= curr_sv.end-100 && break2 < curr_sv.end + 100 && sp.rclip > 0 && sp.sa_lclip > 0 && (sp.pairstr == 0 || sp.pairstr==3))
+                                    {
+                                         // ----||||               ||||---- , same strands
+                                        rdstats[offset+sample_idx].n_split_inward ++;
+                                        rdstats[offset+sample_idx].sp_seq_in[break1 - curr_sv.pos + 100] ++;
+                                        rdstats[offset+sample_idx].sp_seq_in[break2 - curr_sv.end + 300] ++;
+                                        
+                                        // std::cout << "break1 < break2, DEL, break1 " << break1 << " break2 " << break2 << std::endl;
 
+                                        PairSplit new_split;
+                                        new_split.positions.first = break1;
+                                        new_split.positions.second = break2;
+                                        
+                                        // TODO: pairsplit.directions is now obsolete for split reads, because we check strands here
+                                        new_split.directions.first = true;
+                                        new_split.directions.second = false;
+                                        rdstats[offset+sample_idx].splits.push_back(new_split);
+                                    }
+                                }
+                                else if (break2 + sp.sa_rlen + 1 < break1)
+                                {
+                                    break2 += sp.sa_rlen + 1;
+                                    if (break2 >= curr_sv.pos - 100 && break2 < curr_sv.pos + 100 && break1 >= curr_sv.end-100 && break1 < curr_sv.end + 100 && sp.lclip > 0 && sp.sa_rclip > 0 && (sp.pairstr == 0 || sp.pairstr==3))
+                                    {
+                                        rdstats[offset+sample_idx].n_split_inward ++;
+                                        rdstats[offset+sample_idx].sp_seq_in[break2 - curr_sv.pos + 100] ++;
+                                        rdstats[offset+sample_idx].sp_seq_in[break1 - curr_sv.end + 300] ++;
+        
+                                        PairSplit new_split;
+                                        new_split.positions.first = break2;
+                                        new_split.positions.second = break1;
+                                        new_split.directions.first = true;
+                                        new_split.directions.second = false;
+                                        rdstats[offset+sample_idx].splits.push_back(new_split);
+                                    }
+                                }
+                                break;
+                            case DUP:
+                            case CNV:
+                                if (break1 < break2 + sp.sa_rlen + 1)
+                                {
+                                    break2 += sp.sa_rlen + 1;
+                                    if (break1 >= curr_sv.pos - 100 && break1 < curr_sv.pos + 100 && break2 >= curr_sv.end-100 && break2 < curr_sv.end + 100 && sp.lclip > 0 && sp.sa_rclip > 0 && (sp.pairstr == 0 || sp.pairstr==3))
+                                    {
+                                        rdstats[offset+sample_idx].n_split_outward ++;
+                                        rdstats[offset+sample_idx].sp_seq_out[break1 - curr_sv.pos + 100] ++;
+                                        rdstats[offset+sample_idx].sp_seq_out[break2 - curr_sv.end + 300] ++;
+                                        
+                                        PairSplit new_split;
+                                        new_split.positions.first = break1;
+                                        new_split.positions.second = break2;
+                                        new_split.directions.first = false;
+                                        new_split.directions.second = true;
+                                        rdstats[offset+sample_idx].splits.push_back(new_split);
+                                    }
+                                }
+                                else if (break2 < break1 + sp.rlen + 1)
+                                {
+                                    break1 += sp.rlen + 1;
+                                    if (break2 >= curr_sv.pos - 100 && break2 < curr_sv.pos + 100 && break1 >= curr_sv.end-100 && break1 < curr_sv.end + 100 && sp.rclip > 0 && sp.sa_lclip > 0 && (sp.pairstr == 0 || sp.pairstr==3))
+                                    {
+                                        rdstats[offset+sample_idx].n_split_outward ++;
+                                        rdstats[offset+sample_idx].sp_seq_out[break2 - curr_sv.pos + 100] ++; // note: this is obsolete now
+                                        rdstats[offset+sample_idx].sp_seq_out[break1 - curr_sv.end + 300] ++;
+                                        
+                                        // std::cout << "break2 < break1, DUP, break1 " << break1 << " break2 " << break2 << std::endl;
+
+                                        PairSplit new_split;
+                                        new_split.positions.first = break2;
+                                        new_split.positions.second = break1;
+                                        new_split.directions.first = false;
+                                        new_split.directions.second = true;
+                                        rdstats[offset+sample_idx].splits.push_back(new_split);
+                                    }
+                                }
+                                break;
+                            case INV:
+                                if (sp.pairstr == 2 || sp.pairstr == 1)
+                                {
+                                    if (sp.rclip > 0 && sp.sa_rclip > 0)
+                                    {
+                                        break1 = sp.pos + sp.rlen + 1;
+                                        break2 = sp.sa_pos + sp.sa_rlen;
+                                    }
+                                    else if (sp.lclip > 0 && sp.sa_lclip > 0)
+                                    {
+                                        break1 = sp.pos;
+                                        break2 = sp.sa_pos - 1;
+                                    }
+                                    
+                                    if (break1 > break2)
+                                    {
+                                        // swap
+                                        int tmp = break1;
+                                        break1 = break2;
+                                        break2 = tmp;
+                                    }
                                     PairSplit new_split;
                                     new_split.positions.first = break1;
                                     new_split.positions.second = break2;
                                     new_split.directions.first = true;
-                                    new_split.directions.second = false;
-                                    rdstats[offset+sample_idx].splits.push_back(new_split);
-                                }
-                            }
-                            else if (sp.lclip > sp.rclip && sp.sa_lclip < sp.sa_rclip) // DUP, outward split ||||(pos)----    ----(sapos)||||
-                            {
-                                break2 = break2 - 1;
-                                if (break1 >= curr_sv.pos - 100 && break1 < curr_sv.pos + 100 && break2 >= curr_sv.end-100 && break2 < curr_sv.end + 100)
-                                {
-                                    rdstats[offset+sample_idx].n_split_outward ++;
-                                    rdstats[offset+sample_idx].sp_seq_out[break1 - curr_sv.pos + 100] ++;
-                                    rdstats[offset+sample_idx].sp_seq_out[break2 - curr_sv.end + 300] ++;
-                                    
-                                    // std::cout << "break1 < break2, DUP, break1 " << break1 << " break2 " << break2 << std::endl;
-
-                                    
-                                    PairSplit new_split;
-                                    new_split.positions.first = break1;
-                                    new_split.positions.second = break2;
-                                    new_split.directions.first = false;
                                     new_split.directions.second = true;
                                     rdstats[offset+sample_idx].splits.push_back(new_split);
                                 }
-                            }
-                        }
-                        else // break1 >= break2
-                        {
-                            if (sp.lclip > sp.rclip && sp.sa_lclip < sp.sa_rclip) // DEL, inward split (sapos)----||||      ||||(pos)----
-                            {
-                                break2 = break2 -1 ;
-                                if (break2 >= curr_sv.pos - 100 && break2 < curr_sv.pos + 100 && break1 >= curr_sv.end-100 && break1 < curr_sv.end + 100)
-                                {
-                                    rdstats[offset+sample_idx].n_split_inward ++;
-                                    rdstats[offset+sample_idx].sp_seq_in[break2 - curr_sv.pos + 100] ++;
-                                    rdstats[offset+sample_idx].sp_seq_in[break1 - curr_sv.end + 300] ++;
-                                    
-                                   // std::cout << "break2 < break1, DEL, break1 " << break1 << " break2 " << break2 << std::endl;
-                                    
-                                    PairSplit new_split;
-                                    new_split.positions.first = break2;
-                                    new_split.positions.second = break1;
-                                    new_split.directions.first = true;
-                                    new_split.directions.second = false;
-                                    rdstats[offset+sample_idx].splits.push_back(new_split);
-                                }
-                            }
-                            else if (sp.lclip < sp.rclip && sp.sa_lclip > sp.sa_rclip) // DUP, outward split ||||(sapos)----    (pos)----||||
-                            {
-                                break2 = break2 - 1;
-                                if (break2 >= curr_sv.pos - 100 && break2 < curr_sv.pos + 100 && break1 >= curr_sv.end-100 && break1 < curr_sv.end + 100)
-                                {
-                                    rdstats[offset+sample_idx].n_split_outward ++;
-                                    rdstats[offset+sample_idx].sp_seq_out[break2 - curr_sv.pos + 100] ++;
-                                    rdstats[offset+sample_idx].sp_seq_out[break1 - curr_sv.end + 300] ++;
-                                    
-                                    // std::cout << "break2 < break1, DUP, break1 " << break1 << " break2 " << break2 << std::endl;
-
-                                    PairSplit new_split;
-                                    new_split.positions.first = break2;
-                                    new_split.positions.second = break1;
-                                    new_split.directions.first = false;
-                                    new_split.directions.second = true;
-                                    rdstats[offset+sample_idx].splits.push_back(new_split);
-                                }
-                            }
-                            
-                        }
+                                break;
+                            default:
+                                break;
+                        } // switch
                     }
                     
                     uint32_t n_lclip = 0;

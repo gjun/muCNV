@@ -38,6 +38,10 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs)
     fprintf(fp,"##INFO=<ID=DP2Overlap,Number=1,Type=Float,Description=\"Overlap between 2-D depth clusters\">\n");
 	fprintf(fp,"##INFO=<ID=SPLIT,Number=1,Type=String,Description=\"Breakpoints estimated by split reads\">\n");
     fprintf(fp,"##INFO=<ID=CLIP,Number=1,Type=String,Description=\"Breakpoints estimated by soft clips\">\n");
+    fprintf(fp,"##INFO=<ID=PRE_FAIL,Number=0,Type=String,Description=\"Pre-depth distribution is out of bound\">\n");
+    fprintf(fp,"##INFO=<ID=POST_FAIL,Number=0,Type=String,Description=\"Post-depth distribution is out of bound\">\n");
+    fprintf(fp,"##INFO=<ID=READPAIR,Number=0,Type=String,Description=\"Genotyped by reported breakpoints and read pairs\">\n");
+    fprintf(fp,"##INFO=<ID=CNT,Number=1,Type=String,Description=\"Clustering stats by split read or read pair counts\">\n");
 	fprintf(fp,"##INFO=<ID=PRE, Number=1,Type=String,Description=\"Read depth statistic before SV\">\n");
 	fprintf(fp,"##INFO=<ID=POST, Number=1,Type=String,Description=\"Read depth statistic after SV\">\n");
 	fprintf(fp,"##INFO=<ID=Biallelic,Number=0,Type=String,Description=\"Biallelic variant\">\n");
@@ -113,6 +117,15 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
     }
     fprintf(fp, ";PRE=(%.2f,%2f)", G.dp_pre_mean, G.dp_pre_std);
     fprintf(fp, ";POST=(%.2f,%2f)", G.dp_post_mean, G.dp_post_std);
+    if (G.cnt_flag)
+    {
+        fprintf(fp, ";CNT=(%.2f:%.2f:%.2f", G.gmix.Comps[0].Mean, G.gmix.Comps[0].Stdev, G.gmix.Comps[0].Alpha);
+        for(int j=1;j<G.gmix.n_comp;++j)
+        {
+            fprintf(fp,"::%.2f:%.2f:%.2f", G.gmix.Comps[j].Mean, G.gmix.Comps[j].Stdev, G.gmix.Comps[j].Alpha);
+        }
+        fprintf(fp, ");CNToverlap=%.2f", G.gmix.p_overlap);
+    }
     if (G.dp_flag)
 	{
         fprintf(fp, ";DP=(%.2f:%.2f:%.2f", G.gmix.Comps[0].Mean, G.gmix.Comps[0].Stdev, G.gmix.Comps[0].Alpha);
