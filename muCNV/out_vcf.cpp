@@ -23,7 +23,7 @@ void OutVcf::close()
 void OutVcf::write_header(std::vector<std::string> &sampleIDs)
 {
 	fprintf(fp,"##fileformat=VCFv4.1\n");
-	fprintf(fp,"##source=muCNV_pipeline_v0.9.2\n");
+	fprintf(fp,"##source=muCNV_pipeline_v0.9.6\n");
 	fprintf(fp,"##INFO=<ID=AC,Number=1,Type=Integer,Description=\"Number of alternative allele\">\n");
 	fprintf(fp,"##INFO=<ID=NS,Number=1,Type=Integer,Description=\"Number of Samples With Data\">\n");
 	fprintf(fp,"##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">\n");
@@ -42,6 +42,7 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs)
     fprintf(fp,"##INFO=<ID=POST_FAIL,Number=0,Type=String,Description=\"Post-depth distribution is out of bound\">\n");
     fprintf(fp,"##INFO=<ID=READPAIR,Number=0,Type=String,Description=\"Genotyped by reported breakpoints and read pairs\">\n");
     fprintf(fp,"##INFO=<ID=CNT,Number=1,Type=String,Description=\"Clustering stats by split read or read pair counts\">\n");
+    fprintf(fp,"##INFO=<ID=CNTOverlap,Number=1,Type=Float,Description=\"Overlap between 1-D depth clusters using split/readpair counts\">\n");
 	fprintf(fp,"##INFO=<ID=PRE, Number=1,Type=String,Description=\"Read depth statistic before SV\">\n");
 	fprintf(fp,"##INFO=<ID=POST, Number=1,Type=String,Description=\"Read depth statistic after SV\">\n");
 	fprintf(fp,"##INFO=<ID=Biallelic,Number=0,Type=String,Description=\"Biallelic variant\">\n");
@@ -124,7 +125,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
         {
             fprintf(fp,"::%.2f:%.2f:%.2f", G.gmix.Comps[j].Mean, G.gmix.Comps[j].Stdev, G.gmix.Comps[j].Alpha);
         }
-        fprintf(fp, ");CNToverlap=%.2f", G.gmix.p_overlap);
+        fprintf(fp, ");CNTOverlap=%.2f", G.gmix.p_overlap);
     }
     if (G.dp_flag)
 	{
@@ -133,7 +134,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 		{
 			fprintf(fp,"::%.2f:%.2f:%.2f", G.gmix.Comps[j].Mean, G.gmix.Comps[j].Stdev, G.gmix.Comps[j].Alpha);
 		}
-		fprintf(fp, ");DPoverlap=%.2f", G.gmix.p_overlap);
+		fprintf(fp, ");DPOverlap=%.2f", G.gmix.p_overlap);
 	}
     if (G.dp2_flag)
 	{
@@ -156,7 +157,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
         fprintf(fp, "%d,%d", (int)(D.vec_break_clusters[0].start_mean + 0.5), (int)(D.vec_break_clusters[0].end_mean+0.5));
         for(int j=1; j<D.vec_break_clusters.size(); ++j)
         {
-            fprintf(fp, ";%d,%d", (int)(D.vec_break_clusters[j].start_mean + 0.5), (int)(D.vec_break_clusters[j].end_mean+0.5));
+            fprintf(fp, ":%d,%d", (int)(D.vec_break_clusters[j].start_mean + 0.5), (int)(D.vec_break_clusters[j].end_mean+0.5));
         }
         fprintf(fp, ")");
     }
@@ -166,7 +167,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
         fprintf(fp, "%d,%d", (int)(D.vec_break_clusters[0].start_mean + 0.5), (int)(D.vec_break_clusters[0].end_mean+0.5));
         for(int j=1; j<D.vec_break_clusters.size(); ++j)
         {
-            fprintf(fp, ";%d,%d", (int)(D.vec_break_clusters[j].start_mean + 0.5), (int)(D.vec_break_clusters[j].end_mean+0.5));
+            fprintf(fp, ":%d,%d", (int)(D.vec_break_clusters[j].start_mean + 0.5), (int)(D.vec_break_clusters[j].end_mean+0.5));
         }
         fprintf(fp, ")");
     }
