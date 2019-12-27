@@ -281,14 +281,32 @@ int main_genotype(int argc, char** argv)
 						{
 							D.dps[0][j] /= (double)stats[j].avg_dp;
 							D.dps[1][j] /= (double)stats[j].avg_dp;
-                            D.dps[2][j] /= (double)stats[j].avg_dp;
-						//	D.dps[2][j] /= (double)stats[j].avg_dp * (D.dps[1][j] + D.dps[0][j]) * 0.5;
+                            if (D.dps[1][j] > 0.001 && D.dps[2][j] > 0.001)
+                            {
+                                D.dps[2][j] /= (double)stats[j].avg_dp * (D.dps[1][j] + D.dps[0][j]) * 0.5 ;
+                            }
+                            else
+                            {
+                                D.dps[2][j] /= (double)stats[j].avg_dp;
+                            }
 							if (D.multi_dp)
 							{
-								D.dps[3][j] /= (double)stats[j].avg_dp;
-								D.dps[4][j] /= (double)stats[j].avg_dp;
-						//		D.dps[3][j] /= (double)stats[j].avg_dp * D.dps[0][j];
-						//		D.dps[4][j] /= (double)stats[j].avg_dp * D.dps[1][j];
+                                if (D.dps[0][j] > 0.001)
+                                {
+                                    D.dps[3][j] /= (double)stats[j].avg_dp * D.dps[0][j];
+                                }
+                                else
+                                {
+                                    D.dps[3][j] /= (double)stats[j].avg_dp;
+                                }
+                                if (D.dps[1][j]>0.001)
+                                {
+                                    D.dps[4][j] /= (double)stats[j].avg_dp * D.dps[1][j];
+                                }
+                                else
+                                {
+                                    D.dps[4][j] /= (double)stats[j].avg_dp;
+                                }
 							}
 						}
 					}
