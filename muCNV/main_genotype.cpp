@@ -281,7 +281,7 @@ int main_genotype(int argc, char** argv)
 						{
 							D.dps[0][j] /= (double)stats[j].avg_dp;
 							D.dps[1][j] /= (double)stats[j].avg_dp;
-                            if (D.dps[1][j] > 0.001 && D.dps[2][j] > 0.001)
+                            if (D.dps[0][j] > 0.001 && D.dps[1][j] > 0.001)
                             {
                                 D.dps[2][j] /= (double)stats[j].avg_dp * (D.dps[1][j] + D.dps[0][j]) * 0.5 ;
                             }

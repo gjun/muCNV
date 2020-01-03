@@ -873,12 +873,16 @@ void DataReader::read_pair_split(sv& curr_sv, std::vector<ReadStat>& rdstats, Gc
                                         break1 = break2;
                                         break2 = tmp;
                                     }
-                                    PairSplit new_split;
-                                    new_split.positions.first = break1;
-                                    new_split.positions.second = break2;
-                                    new_split.directions.first = true;
-                                    new_split.directions.second = true;
-                                    rdstats[offset+sample_idx].splits.push_back(new_split);
+                                    
+                                    if (break1 >= curr_sv.pos - 100 && break2 < curr_sv.pos +100 && break2 >= curr_sv.end -100 && break2 < curr_sv.end + 100)
+                                    {
+                                        PairSplit new_split;
+                                        new_split.positions.first = break1;
+                                        new_split.positions.second = break2;
+                                        new_split.directions.first = true;
+                                        new_split.directions.second = true;
+                                        rdstats[offset+sample_idx].splits.push_back(new_split);
+                                    }
                                 }
                                 break;
                             default:
