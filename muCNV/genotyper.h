@@ -128,10 +128,10 @@ public:
     int find_peak(std::vector<int> &, int, int);
     bool find_consensus_rp(sv &, SvData &, int, int &, int &);
     
-    bool find_consensus_split(sv &, SvData &);
+    bool find_consensus_split(sv &, SvData &, SvGeno &);
     bool is_pairsplit_oriented(sv &, PairSplit &);
     
-    bool find_consensus_clip(sv &, SvData&);
+    bool find_consensus_clip(sv &, SvData&, SvGeno &);
     bool find_consensus_clip(sv &, SvData &, int, int &, int &);
     
     bool find_consensus_clip_inv(sv &, SvData &, int &, int &, int&, int&);

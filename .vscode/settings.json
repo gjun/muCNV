@@ -47,5 +47,6 @@
         "streambuf": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp"
-    }
+    },
+    "powermode.shakeIntensity": 3
 }

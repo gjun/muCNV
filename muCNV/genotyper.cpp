@@ -631,7 +631,7 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
     G.b_biallelic = true;
     
     D.clus_idx = -1;
-    if (find_consensus_split(S, D))
+    if (find_consensus_split(S, D, G))
     {
         G.split_flag = true;
         if (get_inv_cnts(S, D, G) && assign_inv_genotypes(S, D, G, stats))
@@ -640,7 +640,7 @@ void Genotyper::call_inversion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSt
         }
         G.split_flag = false;
     }
-    if (find_consensus_clip(S, D))
+    if (find_consensus_clip(S, D, G))
     {
         if (get_inv_cnts(S, D, G) && assign_inv_genotypes(S, D, G, stats))
         {
@@ -883,7 +883,7 @@ bool Genotyper::is_pairsplit_oriented(sv &S, PairSplit &split)
     return false;
 }
 
-bool Genotyper::find_consensus_split(sv &S, SvData &D)
+bool Genotyper::find_consensus_split(sv &S, SvData &D, SvGeno &G)
 {
     D.vec_break_clusters.clear();
 
@@ -1101,7 +1101,7 @@ bool Genotyper::find_consensus_rp(sv &S, SvData &D, int pairstr, int &start_peak
     return false;
 }
 
-bool Genotyper::find_consensus_clip(sv &S, SvData &D)
+bool Genotyper::find_consensus_clip(sv &S, SvData &D, SvGeno &G)
 {
     D.vec_break_clusters.clear();
 
@@ -1109,6 +1109,9 @@ bool Genotyper::find_consensus_clip(sv &S, SvData &D)
     {
         for(int i=0;i<n_sample; ++i)
         {
+            if (!G.sample_mask[i])
+                continue;
+                
             int max_lclip = 0;
             int max_l_idx = 0;
             int max_rclip = 0;
@@ -1905,7 +1908,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
     bool split_flag = false;
     
     // First, try split read - best evidence
-    if (find_consensus_split(S, D))
+    if (find_consensus_split(S, D, G))
     {
         if (get_del_cnts(S, D, G) && assign_del_genotypes(S, D, G, stats))
         {
@@ -1922,7 +1925,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
             fprintf(stderr, "SPLIT found: %f-%f, %d\n", D.vec_break_clusters[i].start_mean, D.vec_break_clusters[i].end_mean, D.vec_break_clusters[i].N);  */
     }
     
-    if (!split_flag && find_consensus_clip(S, D))
+    if (!split_flag && find_consensus_clip(S, D, G))
     {
         D.clus_idx = -1;
         G.clip_flag = true;
@@ -2381,7 +2384,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
 {
     bool split_flag = false;
     // First, try split read - best evidence
-    if (find_consensus_split(S, D))
+    if (find_consensus_split(S, D, G))
     {
         if (get_dup_cnts(S, D, G) && assign_dup_genotypes(S, D, G, stats))
         {
@@ -2402,7 +2405,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
     }
 
     D.clus_idx = -1;
-    if (!split_flag && find_consensus_clip(S, D))
+    if (!split_flag && find_consensus_clip(S, D, G))
     {
         G.clip_flag = true;
 

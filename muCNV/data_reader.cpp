@@ -989,7 +989,7 @@ void DataReader::read_var_depth(int var_i, std::vector<double> &var_dp)
 	// var_i : i-th var
 	uint64_t bytepos = 0;
 	int sample_idx = 0;
-	uint16_t D[1000];  // max number of sample per each pileup, TEMPORARY
+	uint16_t D[10000];  // max number of sample per each pileup, TEMPORARY
 
 	for(int i=0; i<n_pileup; ++i)
 	{
