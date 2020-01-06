@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <map>
+#include <set>
 
 // TCLAP headers
 #include "tclap/CmdLine.h"
@@ -128,16 +129,12 @@ int main_genotype(int argc, char** argv)
 
     std::vector<string> exclude_ids;
 
-    if (exclude_filename != "")
-    {
-        read_list(exclude_filename, exclude_ids);
-    }
     int n_sample = 0;
-    int n_exclude = exclude_ids.size();
     int n_active_sample = 0;
 
     int n_pileup = (int) pileup_names.size();
     int n_var = (int) vec_sv.size();
+
 	std::vector<int> n_vars (gc.num_chr+1, 0);
     
 	for(int i=0; i<(int)vec_sv.size(); ++i)
@@ -145,8 +142,8 @@ int main_genotype(int argc, char** argv)
 		n_vars[vec_sv[i].chrnum] ++;
 	}
 
-    int n_start = 0;
-    int n_end = n_var-1;
+    int start_var_idx = 0;
+    int end_var_idx = n_var-1;
     
 	if (chr>0)
 	{
@@ -167,7 +164,34 @@ int main_genotype(int argc, char** argv)
 	
     n_sample = reader.load(pileup_names, stats, gc, chr);
 
+    SvGeno G(n_sample);
+    SvData D(n_sample);
+    
+    int n_exclude = 0;
+    std::set<string> exclude_set;
+
+    if (exclude_filename != "")
+    {
+        read_list(exclude_filename, exclude_ids);
+
+        for(int k=0; k<exclude_ids.size())
+        {
+            exclude_set.insert(exclude_ids[k]);
+        }
+    }
+
     std::cerr << n_sample << " samples identified from pileup files" << std::endl;
+
+    for(int k=0; k<n_sample; ++k)
+    {
+         std::set<int>::iterator it = exclude_set.find(reader.sample_ids[i]);
+         if (it != exclude_set.end())
+         {
+             n_exclude ++;
+             G.sample_mask[k] = false;
+         }
+    }
+    std::cerr << n_exclude << " samples will be excluded from genotyping" << std::endl;
 
     // TEMPORARY!
 	/*
@@ -196,9 +220,9 @@ int main_genotype(int argc, char** argv)
     {
         std::string::size_type sz;   // alias of size_t
         
-        n_start = std::stoi(range, &sz);
-        n_end = std::stoi(range.substr(sz+1));
-        std::cerr << "Variants index from " << n_start << " to " << n_end << " will be genotyped" << std::endl;
+        start_var_idx = std::stoi(range, &sz);
+        end_var_idx = std::stoi(range.substr(sz+1));
+        std::cerr << "Variants index from " << start_var_idx << " to " << end_var_idx << " will be genotyped" << std::endl;
     }
     else if (region != "")
     {
@@ -239,15 +263,15 @@ int main_genotype(int argc, char** argv)
         }
 		if (range == "")
 		{
-			if (n_start == 0)
-				n_start += vec_offset;
-			if (n_end > vec_offset + n_vars[chr] - 1)
-				n_end = vec_offset + n_vars[chr] - 1;
+			if (start_var_idx == 0)
+				start_var_idx += vec_offset;
+			if (end_var_idx > vec_offset + n_vars[chr] - 1)
+				end_var_idx = vec_offset + n_vars[chr] - 1;
 		}
-        std::cerr << n_vars[chr] - 1 << " variants from " << n_start << ", ";
-        vec_sv[n_start].print(stderr);
-        std::cerr << " to " << n_end << ", ";
-        vec_sv[n_end].print(stderr);
+        std::cerr << n_vars[chr] - 1 << " variants from " << start_var_idx << ", ";
+        vec_sv[start_var_idx].print(stderr);
+        std::cerr << " to " << end_var_idx << ", ";
+        vec_sv[end_var_idx].print(stderr);
         std::cerr << " identified in the chromosome." << std::endl;
 	}
 
@@ -257,10 +281,7 @@ int main_genotype(int argc, char** argv)
     double min_GC = 0.2;
     double max_GC = 0.75;
 
-    SvGeno G(n_sample);
-    SvData D(n_sample);
-    
-    for(int i=n_start; i<=n_end; ++i)
+    for(int i=start_var_idx; i<=end_var_idx; ++i)
     {
         // GC content of the candidate variant region.
         double sv_gc = gc.get_gc_content(vec_sv[i].chrnum, vec_sv[i].pos, vec_sv[i].end);

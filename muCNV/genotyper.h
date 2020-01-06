@@ -66,7 +66,8 @@ public:
     std::vector<int> start_rps;
     std::vector<int> end_rps;
     
-    std::vector<bool> nonalt_mask;
+    std::vector<bool> nonref_mask;
+    std::vector<bool> sample_mask; // true: include sample in genotyping, false: exclude sample
 
     SvGeno (int);
     
@@ -150,6 +151,7 @@ public:
   //  void call_insertion(sv &, SvData &, SvGeno &);
     void select_model(GaussianMixture &, std::vector< std::vector<double> > &, std::vector<double> &, double);
     void select_model(GaussianMixture &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<bool> &, double);
+    void select_model(GaussianMixture2 &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<double>&, std::vector<bool> &, double);
     void select_model(GaussianMixture2 &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<double>&, double);
 };
 

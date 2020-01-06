@@ -130,7 +130,9 @@ SvGeno::SvGeno(int n)
     start_rps.resize(n_sample, 0);
     end_rps.resize(n_sample, 0);
     
-    nonalt_mask.resize(n_sample, false);
+    nonref_mask.resize(n_sample, false);
+    sample_mask.resize(n_sample, true);
+
     ns = 0;
     ac = 0;
 
@@ -162,7 +164,7 @@ void SvGeno::reset()
     std::fill(split_cnts.begin(), split_cnts.end(), 0);
     std::fill(rp_cnts.begin(), rp_cnts.end(), 0);
     
-    std::fill(nonalt_mask.begin(), nonalt_mask.end(), false);
+    std::fill(nonref_mask.begin(), nonref_mask.end(), false);
     
     std::fill(all_cnts.begin(), all_cnts.end(), 0);
 
@@ -275,6 +277,8 @@ void Genotyper::get_prepost_stat(SvData &D, SvGeno &G)
 
     for(int i=0; i<n_sample; ++i)
     {
+        if (!G.sample_mask[i]) continue;
+
         dp_pre_sum += D.dps[0][i];
         dp_post_sum += D.dps[1][i];
         dp_pre_sumsq += D.dps[0][i] * D.dps[0][i];
@@ -298,6 +302,8 @@ void Genotyper::get_prepost_stat(SvData &D, SvGeno &G)
 
     for(int i=0; i<G.n_sample; ++i)
     {
+        if (!G.sample_mask[i]) continue;
+
         double sum = 0;
         int cnt = 0;
         if (G.b_pre)
@@ -361,6 +367,25 @@ void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector
     return;
 }
 
+void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vector<double> > &means, std::vector<double> &x, std::vector<double> &y, std::vector<bool> &mask, double MAX_P_OVERLAP)
+{
+    double best_bic = DBL_MAX;
+
+    // number of models
+    for(int m=0; m<(int)means.size(); ++m)
+    {
+        std::vector<double> s (means[m].size(), 0.01);
+        GaussianMixture2 gmix2(means[m], s);
+        gmix2.EM2_select(x, y, mask); // fit mixture model
+        //if (gmix2.bic < best_bic )
+        if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP )
+        {
+            best_bic = gmix2.bic;
+            ret_gmix2 = gmix2; // assignment (copy operation)
+        }
+    }
+    return;
+}
 
 void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vector<double> > &means, std::vector<double> &x, std::vector<double> &y, double MAX_P_OVERLAP)
 {
@@ -426,7 +451,7 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         return false;
 
    std::vector<std::vector<double> > alt_means = { {all_mix.Comps[1].Mean}, {all_mix.Comps[1].Mean, all_mix.Comps[1].Mean * 2.0} };
-   select_model(G.gmix, alt_means, norm_cnts, G.nonalt_mask, 0.3);
+   select_model(G.gmix, alt_means, norm_cnts, G.nonref_mask, 0.3);
     //   G.gmix.print(stdout);
     
     G.ns = 0;
@@ -515,6 +540,11 @@ bool Genotyper::get_inv_cnts(sv &S, SvData &D, SvGeno &G)
     
     for(int i=0; i< n_sample; ++i)
     {
+        G.nonref_mask[i] = false;
+
+        if (!G.sample_mask[i])
+            continue;
+
         G.split_cnts[i] = 0;
         // Count the number of split reads
         for(auto &split : D.rdstats[i].splits)
@@ -573,7 +603,7 @@ bool Genotyper::get_inv_cnts(sv &S, SvData &D, SvGeno &G)
         if (G.rp_cnts[i] > 0 && G.all_cnts[i] > 3)
         {
             G.gt[i] = 1;
-            G.nonalt_mask[i] = true;
+            G.nonref_mask[i] = true;
             G.ac++;
             G.ns++;
             G.startclip_sum += G.start_clips[i];
@@ -859,6 +889,9 @@ bool Genotyper::find_consensus_split(sv &S, SvData &D)
 
     for(int i=0; i<n_sample; ++i)
     {
+        if (!G.sample_mask[i])
+            continue;
+
         std::vector<BreakCluster> vec_br;
         // std::cerr << "Sample " << i << " has " << D.rdstats[i].splits.size() << " splits\n";
 
@@ -1594,13 +1627,15 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
     {
         // if yes, then try to EM with masks, variants only
         std::vector<std::vector<double> > alt_means = { {0.5}, {0.5, 0.0} };
-        select_model(G.gmix, alt_means, D.dps[2], G.nonalt_mask, 0.3);
+        select_model(G.gmix, alt_means, D.dps[2], G.nonref_mask, 0.3);
         
         G.ns = 0;
         G.ac = 0;
         
         for(int i=0; i<n_sample; ++i)
         {
+            if (!G.sample_mask[i]) continue;
+
             double d0 = dp_mix.Comps[0].Mean - D.dps[2][i];
             double d1 = D.dps[2][i] - G.gmix.Comps[0].Mean;
             
@@ -1669,7 +1704,8 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         std::vector<double> norm_cnts (n_sample, 0);
         for(int i=0; i<n_sample; ++i)
         {
-            norm_cnts[i] = (G.split_cnts[i]  + G.rp_cnts[i]) / stats[i].avg_dp ;
+            if (G.sample_mask[i])
+                norm_cnts[i] = (G.split_cnts[i]  + G.rp_cnts[i]) / stats[i].avg_dp;
         }
         
         all_mix.estimate(norm_cnts, G.gt, 2);
@@ -1678,7 +1714,7 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         
         std::vector<std::vector<double> > alt_means = { {all_mix.Comps[1].Mean}, {all_mix.Comps[1].Mean, all_mix.Comps[1].Mean * 2.0} };
 
-        select_model(G.gmix, alt_means, norm_cnts, G.nonalt_mask, 0.3);
+        select_model(G.gmix, alt_means, norm_cnts, G.nonref_mask, 0.3);
         
         double err_bound = all_mix.Comps[0].Stdev;
         
@@ -1693,6 +1729,8 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         
         for(int i=0; i<n_sample; ++i)
         {
+            if (!G.sample_mask[i])
+                continue;
             double d0 = norm_cnts[i] - all_mix.Comps[0].Mean ;
             double d1 = G.gmix.Comps[0].Mean - norm_cnts[i];
             
@@ -1791,6 +1829,10 @@ bool Genotyper::get_del_cnts(sv &S, SvData &D, SvGeno &G)
     
     for(int i=0; i< n_sample; ++i)
     {
+        G.nonref_mask[i] = false;
+        if (!G.sample_mask[i])
+            continue;
+
         G.split_cnts[i] = 0;
         // Count the number of split reads
         for(auto &split : D.rdstats[i].splits)
@@ -1835,7 +1877,7 @@ bool Genotyper::get_del_cnts(sv &S, SvData &D, SvGeno &G)
         if (G.split_cnts[i] > 3 || (G.split_flag && G.split_cnts[i] > 0 && G.all_cnts[i] > 5) || (!G.split_flag && G.all_cnts[i] > 5))
         {
             G.gt[i] = 1;
-            G.nonalt_mask[i] = true;
+            G.nonref_mask[i] = true;
             G.ac++;
             G.ns++;
             G.startclip_sum += G.start_clips[i];
@@ -1922,7 +1964,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
     G.ac = 0;
     
     // Depth-based clustering genotyping
-    select_model(G.gmix, means, D.dps[best_dp_idx], G.MAX_P_OVERLAP);
+    select_model(G.gmix, means, D.dps[best_dp_idx], G.sample_mask, G.MAX_P_OVERLAP);
 
     // depth clustering
     if (G.gmix.n_comp > 1 && G.gmix.ordered() && G.gmix.Comps[0].Alpha > 0.5)
@@ -1932,6 +1974,8 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
         // assign dp-genotypes
         for(int i=0; i<n_sample; ++i)
         {
+            if (!G.sample_mask[i]) continue;
+
             if (var_depth[i] >= 0.7 && var_depth[i] < 0.8 )
             {
                 G.cn[i] = -1;
@@ -1964,7 +2008,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
     if (D.multi_dp) //dp2 has more than 2 vectors
     {
         // dp100 genotyping
-        select_model(G.gmix2, means, D.dps[dp2_idx], D.dps[dp2_idx+1], G.MAX_P_OVERLAP);
+        select_model(G.gmix2, means, D.dps[dp2_idx], D.dps[dp2_idx+1], G.sample_mask, G.MAX_P_OVERLAP);
 
         // 2-d genotyping
         if (G.gmix2.n_comp>1 && G.gmix2.ordered())
@@ -1974,6 +2018,8 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
 
             for(int i=0; i<n_sample; ++i)
             {
+                if (!G.sample_mask[i]) continue;
+
                 int cn = G.gmix2.assign_copynumber(D.dps[dp2_idx][i], D.dps[dp2_idx+1][i]);
                 if (cn == 2)
                 {
@@ -1996,8 +2042,8 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
 
     // If clustered, filter false positive variants
     for (int i=0;i<n_sample; ++i)
-    {
-          if (abs(D.dps[0][i] - G.dp_pre_mean) > 2.0*G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > 2.0* G.dp_post_std || (G.gt[i] > 0 && abs(var_depth[i] - D.dps[1][i]) < 2.0*G.dp_post_std) || (G.gt[i] > 0 && abs(var_depth[i] - D.dps[0][i]) < 2.0*G.dp_pre_std))
+    {        
+        if (abs(D.dps[0][i] - G.dp_pre_mean) > 2.0*G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > 2.0* G.dp_post_std || (G.gt[i] > 0 && abs(var_depth[i] - D.dps[1][i]) < 2.0*G.dp_post_std) || (G.gt[i] > 0 && abs(var_depth[i] - D.dps[0][i]) < 2.0*G.dp_pre_std))
         {
             G.cn[i] = -1;
             G.gt[i] = -1;
@@ -2010,6 +2056,8 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
 
     for(int i=0; i<n_sample; ++i)
     {
+        if (!G.sample_mask[i]) continue;
+
         if (G.gt[i] >=0)
         {
             G.ns += 1;
@@ -2066,13 +2114,15 @@ bool Genotyper::assign_dup_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
     {
         // if yes, then try to EM with masks, variants only
         std::vector<std::vector<double> > alt_means =  { {1.5}, {1.5, 2.0}, {1.5, 2.0, 2.5}, {1.5, 2.0, 2.5, 3.0}, {1.5, 2.0, 2.5, 3.0, 3.5}, {1.5, 2.0, 2.5, 3.0, 3.5, 4.0} };
-        select_model(G.gmix, alt_means, D.dps[2], G.nonalt_mask, 0.3);
+        select_model(G.gmix, alt_means, D.dps[2], G.nonref_mask, 0.3);
             
         G.ns = 0;
         G.ac = 0;
         
         for(int i=0; i<n_sample; ++i)
         {
+            if (!G.sample_mask[i]) continue;
+
             double d0 = D.dps[2][i] - dp_mix.Comps[0].Mean;
             double d1 = G.gmix.Comps[0].Mean - D.dps[2][i];
             
@@ -2131,14 +2181,15 @@ bool Genotyper::assign_dup_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         std::vector<double> norm_cnts (n_sample, 0);
         for(int i=0; i<n_sample; ++i)
         {
-            norm_cnts[i] = (G.split_cnts[i]  + G.rp_cnts[i]) / stats[i].avg_dp ;
+            if (G.sample_mask[i])
+               norm_cnts[i] = (G.split_cnts[i]  + G.rp_cnts[i]) / stats[i].avg_dp ;
         }
         
         all_mix.estimate(norm_cnts, G.gt, 2);
         
         std::vector<std::vector<double> > alt_means = { {all_mix.Comps[1].Mean}, {all_mix.Comps[1].Mean, all_mix.Comps[1].Mean * 2.0} };
 
-        select_model(G.gmix, alt_means, norm_cnts, G.nonalt_mask, 0.3);
+        select_model(G.gmix, alt_means, norm_cnts, G.nonref_mask, 0.3);
         
         double err_bound = all_mix.Comps[0].Stdev;
         
@@ -2153,6 +2204,8 @@ bool Genotyper::assign_dup_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         
         for(int i=0; i<n_sample; ++i)
         {
+            if (!G.sample_mask[i]) continue;
+
             double d0 = norm_cnts[i] - all_mix.Comps[0].Mean ;
             double d1 = G.gmix.Comps[0].Mean - norm_cnts[i];
             
@@ -2250,6 +2303,11 @@ bool Genotyper::get_dup_cnts(sv &S, SvData &D, SvGeno &G)
     
     for(int i=0; i< n_sample; ++i)
     {
+        G.nonref_mask[i] = false;
+
+        if (!G.sample_mask[i])
+            continue;
+
         G.split_cnts[i] = 0;
         // Count the number of split reads
         for(auto &split : D.rdstats[i].splits)
@@ -2298,7 +2356,7 @@ bool Genotyper::get_dup_cnts(sv &S, SvData &D, SvGeno &G)
         if (G.split_cnts[i] > 3 || (G.split_flag && G.split_cnts[i] > 0 && G.all_cnts[i] > 5) || (!G.split_flag && G.all_cnts[i] > 5))
         {
             G.gt[i] = 1;
-            G.nonalt_mask[i] = true;
+            G.nonref_mask[i] = true;
             G.ac++;
             G.ns++;
             G.startclip_sum += G.start_clips[i];
@@ -2390,7 +2448,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
 	double best_dp_idx = 2;
 	std::vector<double> &var_depth = D.dps[best_dp_idx];
 
-    select_model(G.gmix, means, D.dps[best_dp_idx], G.MAX_P_OVERLAP);
+    select_model(G.gmix, means, D.dps[best_dp_idx], G.sample_mask, G.MAX_P_OVERLAP);
 
     if (G.gmix.n_comp > 1 && G.gmix.r_ordered() )
     {
@@ -2399,6 +2457,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
 
         for(int i=0; i<(int)n_sample; ++i)
         {
+            if (!G.sample_mask[i]) continue;
             // TODO: arbitrary
             if (var_depth[i] > 0.7 && var_depth[i] < 1.25)
             {
@@ -2422,7 +2481,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
         // DP100 genotyping
         int dp2_idx = 3;
 
-        select_model(G.gmix2, means, D.dps[dp2_idx], D.dps[dp2_idx+1], G.MAX_P_OVERLAP);
+        select_model(G.gmix2, means, D.dps[dp2_idx], D.dps[dp2_idx+1], G.sample_mask, G.MAX_P_OVERLAP);
 
         // 2-D genotyping
         if (G.gmix2.n_comp>1 && G.gmix2.r_ordered() )
@@ -2430,6 +2489,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
             G.dp2_flag = true;
             for(int i=0; i<(int)n_sample; ++i)
             {
+                if (!G.sample_mask[i]) continue;
 //                dp2_cn[i] = G.gmix2.assign_copynumber(D.dps[dp2_idx][i], D.dps[dp2_idx+1][i]);
 
                 double dp1 = D.dps[dp2_idx][i];
@@ -2458,6 +2518,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
     {
         for(int i=0; i<n_sample; ++i)
         {
+            if (!G.sample_mask[i]) continue;
             if (dp_cn[i] <0 && dp2_cn[i]>=0)
                 G.cn[i] = dp2_cn[i];
             else if (dp_cn[i] >= 0 && dp2_cn[i] < 0)
@@ -2470,6 +2531,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
     {
         for(int i=0; i<n_sample; ++i)
         {
+            if (!G.sample_mask[i]) continue;
             G.cn[i] = dp_cn[i];
         }
     }
@@ -2477,6 +2539,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
     {
         for(int i=0; i<n_sample; ++i)
         {
+            if (!G.sample_mask[i]) continue;
             G.cn[i] = dp2_cn[i];
         }
     }
@@ -2495,6 +2558,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
     G.ac = 0;
     for(int i=0; i<n_sample; ++i)
     {
+        if (!G.sample_mask[i]) continue;
         if (G.cn[i] == 2)
         {
             G.gt[i] = 0; // 0/0

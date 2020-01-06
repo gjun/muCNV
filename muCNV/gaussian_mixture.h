@@ -64,6 +64,8 @@ public:
     
     //2-D without weights
     void EM2(std::vector<double>&, std::vector<double>&);
+    void EM2_select(std::vector<double>&, std::vector<double>&, std::vector<bool> &);
+
     // K-means
     void KM2(std::vector<double>&, std::vector<double>&, bool);
 
