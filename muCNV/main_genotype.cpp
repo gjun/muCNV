@@ -36,6 +36,7 @@ int main_genotype(int argc, char** argv)
     string gc_file;
     string sampID;
     string region;
+    string exclude_filename;
     string range;
 	double max_p;
 
@@ -59,6 +60,8 @@ int main_genotype(int argc, char** argv)
 
         TCLAP::ValueArg<double> argPoverlap("p","pmax","Maximum overlap between depth clusters",false,0.2,"number(0-1.0)");
 
+        TCLAP::ValueArg<string> argExclude("x", "exclude", "List of sample IDs to be excluded from genotyping", false, "", "string");
+
         TCLAP::SwitchArg switchFail("a", "all", "Report filter failed variants", cmd, false);
         TCLAP::SwitchArg switchNoHeader("l", "lessheader", "Do not print header in genoptyed VCF", cmd, false);
         
@@ -70,6 +73,7 @@ int main_genotype(int argc, char** argv)
 		cmd.add(argChr);
         cmd.add(argRegion);
         cmd.add(argRange);
+        cmd.add(argExclude);
 		cmd.add(argPoverlap);
         cmd.parse(argc, argv);
         
@@ -82,6 +86,7 @@ int main_genotype(int argc, char** argv)
         bNoHeader = switchNoHeader.getValue();
         bFail = switchFail.getValue();
 		chr = argChr.getValue();
+        exclude_filename = argExclude.getValue();
 		max_p = argPoverlap.getValue();
 
         region = argRegion.getValue();
@@ -120,7 +125,16 @@ int main_genotype(int argc, char** argv)
     
 
     read_list(index_file, pileup_names);
+
+    std::vector<string> exclude_ids;
+
+    if (exclude_filename != "")
+    {
+        read_list(exclude_filename, exclude_ids);
+    }
     int n_sample = 0;
+    int n_exclude = exclude_ids.size();
+    int n_active_sample = 0;
 
     int n_pileup = (int) pileup_names.size();
     int n_var = (int) vec_sv.size();
