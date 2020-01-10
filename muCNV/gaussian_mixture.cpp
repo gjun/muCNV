@@ -1167,14 +1167,15 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 		std::vector<double> sum_pr (n_comp,0);
 
 		double pr[n_comp][n_sample];
-		bool b_include[n_sample] = {false};
+		bool b_include[n_sample];
 
 		// E step
 		for(int j=0; j<n_sample; ++j)
 		{
+			b_include[j] = false;
 			if (!mask[j])
 				continue;
-
+			
 			b_include[j] = true;
 
 			double sum_p = 0;

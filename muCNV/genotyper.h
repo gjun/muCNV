@@ -140,6 +140,8 @@ public:
     bool get_dup_cnts(sv &, SvData &, SvGeno &);
     bool get_inv_cnts(sv &, SvData &, SvGeno &);
 
+    void print_genodata(sv &, SvData &, SvGeno &);
+
     void call( sv&,  SvData&, SvGeno &, std::vector<SampleStat> &);
     void call_deletion( sv &,  SvData &, SvGeno &, std::vector<SampleStat> &);
     void call_cnv( sv &,  SvData &, SvGeno &, std::vector<SampleStat> &);
