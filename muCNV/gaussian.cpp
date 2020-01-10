@@ -190,6 +190,41 @@ void Gaussian2::estimate(std::vector<double> &x, std::vector<double> &y)
 	update();
 }
 
+
+void Gaussian2::estimate_select(std::vector<double> &x, std::vector<double> &y, std::vector<bool> &mask)
+{
+	int n = 0;
+	double sum_x=0;
+	double sum_y=0;
+	double sum_xx=0;
+	double sum_yy=0;
+	double sum_xy=0;
+	
+	for(int i=0;i< x.size();++i)
+	{
+		if (mask[i])
+		{
+			sum_x+=x[i];
+			sum_y+=y[i];
+			sum_xx+=x[i]*x[i];
+			sum_xy+=x[i]*y[i];
+			sum_yy+=y[i]*y[i];
+			n++;
+		}
+	}
+	
+	if (n>0)
+	{
+		Mean[0] = sum_x/(double)n;
+		Mean[1] = sum_y/(double)n;
+		Cov[0] = sum_xx/(double)n - (Mean[0]*Mean[0]);
+		Cov[1] = sum_xy/(double)n - (Mean[0]*Mean[1]);
+		Cov[2] = Cov[1];
+		Cov[3] = sum_yy/(double)n - (Mean[1]*Mean[1]);
+	}
+	update();
+}
+
 double Gaussian2::pdf(const double& x, const double& y)
 {
 	double val;

@@ -174,7 +174,7 @@ int main_genotype(int argc, char** argv)
     {
         read_list(exclude_filename, exclude_ids);
 
-        for(int k=0; k<exclude_ids.size())
+        for(int k=0; k<(int)exclude_ids.size(); ++k)
         {
             exclude_set.insert(exclude_ids[k]);
         }
@@ -184,7 +184,7 @@ int main_genotype(int argc, char** argv)
 
     for(int k=0; k<n_sample; ++k)
     {
-         std::set<int>::iterator it = exclude_set.find(reader.sample_ids[i]);
+         std::set<string>::iterator it = exclude_set.find(reader.sample_ids[k]);
          if (it != exclude_set.end())
          {
              n_exclude ++;
@@ -192,6 +192,7 @@ int main_genotype(int argc, char** argv)
          }
     }
     std::cerr << n_exclude << " samples will be excluded from genotyping" << std::endl;
+    G.n_effect = G.n_sample - n_exclude;
 
     // TEMPORARY!
 	/*
@@ -250,7 +251,7 @@ int main_genotype(int argc, char** argv)
 	out_vcf.open(out_filename);
 	if (!bNoHeader)
 	{
-		out_vcf.write_header(reader.sample_ids);
+		out_vcf.write_header(reader.sample_ids, G.sample_mask);
 	}
     
 	int vec_offset = 0;

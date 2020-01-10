@@ -20,7 +20,7 @@ void OutVcf::close()
 	fclose(fp);
 }
 
-void OutVcf::write_header(std::vector<std::string> &sampleIDs)
+void OutVcf::write_header(std::vector<std::string> &sampleIDs, std::vector<bool> &mask)
 {
 	fprintf(fp,"##fileformat=VCFv4.1\n");
 	fprintf(fp,"##source=muCNV_pipeline_v0.9.6\n");
@@ -60,7 +60,8 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs)
 	fprintf(fp,"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");
 	for(unsigned j=0; j<sampleIDs.size();++j)
 	{
-		fprintf(fp,"\t%s",sampleIDs[j].c_str());
+		if (mask[j])
+			fprintf(fp,"\t%s",sampleIDs[j].c_str());
 	}
 	fprintf(fp,"\n");
 	fflush(fp);
@@ -177,6 +178,9 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
     
     for (int i=0; i<(int)G.gt.size(); ++i)
     {
+		if (!G.sample_mask[i])
+			continue;
+			
         switch(G.gt[i])
         {
             case 0:

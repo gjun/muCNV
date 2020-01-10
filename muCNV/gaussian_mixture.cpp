@@ -97,10 +97,10 @@ void GaussianMixture::print(FILE *fp)
 void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
 {
     int n_sample = (int) x.size();
+	
     int n_iter = 15;
     
     int p_count = 1;
-    int n_mask = 0;
 
     double p_val[n_comp];
     
@@ -108,7 +108,7 @@ void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
     {
         Comps[0].estimate_select(x, mask);
         Comps[0].Alpha = 1;
-        updateAICBIC(x, mask);
+        updateAICBIC_select(x, mask);
         p_overlap = 0;
 //        print(stdout);
 
@@ -164,6 +164,10 @@ void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
                     }
                 }
             }
+			else
+			{
+				b_include[j] = false;
+			}
         }
         
         double sumsum = 0;
@@ -181,6 +185,8 @@ void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
                 Comps[m].Mean = sum[m]/sum_pr[m];
         }
         
+		int n_effect = 0;
+
         for(int j=0; j<n_sample; ++j)
         {
             if (mask[j] && b_include[j])
@@ -207,6 +213,7 @@ void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
     }
     
     double llk = 0;
+	int n_mask = 0;
     for(int j=0; j<n_sample; ++j)
     {
         if (mask[j])
@@ -575,7 +582,7 @@ bool GaussianMixture::r_ordered()
 }
 
 
-void GaussianMixture::updateAICBIC(std::vector<double>& x, std::vector<bool>& mask)
+void GaussianMixture::updateAICBIC_select(std::vector<double>& x, std::vector<bool>& mask)
 {
     int n_sample = (int)x.size();
 
@@ -644,6 +651,47 @@ double GaussianMixture::BIC(std::vector<double>& x)
 
 	return ret;
 }
+
+double GaussianMixture::BIC_select(std::vector<double>& x, std::vector<bool> &mask)
+{
+	int n_sample = 0;
+
+	double ret = 0;
+	double llk = 0;
+
+	for(int j=0; j<x.size(); ++j)
+	{
+		if (mask[j])
+		{
+			double l = 0;
+			for(int m=0; m<n_comp; ++m)
+			{
+				if (m==zeroidx)
+				{
+					l += 2.0 * Comps[m].Alpha * normpdf(x[j], Comps[m]);
+				}
+				else
+				{
+					l += Comps[m].Alpha * normpdf(x[j], Comps[m]);
+				}
+			}
+			if (l>0)
+			{
+				llk += log(l);
+			}
+			n_sample++;
+		}
+	}
+
+    // Half-normal distribution has only one parameter
+	if (n_sample>0)
+	{
+		ret = -2.0 * llk +  (2*n_comp-1.0)*log(n_sample);
+	}
+
+	return ret;
+}
+
 
 double GaussianMixture::AIC(std::vector<double>& x)
 {
@@ -986,6 +1034,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 				}
 			}
 		}
+		double sumsum = 0;
 		// Add pseudo-count values
 		for(int m=0; m<n_comp; ++m)
 		{
@@ -995,6 +1044,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
                 sum_y[m] += p_val[m][1] * p_count;
                 sum_pr[m] += p_count;
             }
+			sumsum += sum_pr[m];
 		}
 
 		// M step
@@ -1044,7 +1094,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
             }
             Comps[m].update();
 
-            Comps[m].Alpha = sum_pr[m] / (n_sample + n_comp*p_count);
+            Comps[m].Alpha = sum_pr[m] / sumsum;
 		}
 		//print();
 	}
@@ -1117,7 +1167,7 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 		std::vector<double> sum_pr (n_comp,0);
 
 		double pr[n_comp][n_sample];
-		bool b_include[n_sample];
+		bool b_include[n_sample] = {false};
 
 		// E step
 		for(int j=0; j<n_sample; ++j)
@@ -1149,6 +1199,7 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 				}
 			}
 		}
+		double sumsum = 0;
 		// Add pseudo-count values
 		for(int m=0; m<n_comp; ++m)
 		{
@@ -1158,6 +1209,7 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
                 sum_y[m] += p_val[m][1] * p_count;
                 sum_pr[m] += p_count;
             }
+			sumsum += sum_pr[m];
 		}
 
 		// M step
@@ -1207,11 +1259,12 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
             }
             Comps[m].update();
 
-            Comps[m].Alpha = sum_pr[m] / (n_sample + n_comp*p_count);
+            Comps[m].Alpha = sum_pr[m] / (sumsum);
 		}
 		//print();
 	}
 	double llk = 0;
+	int n_mask = 0;
 	for(int j=0; j<n_sample; ++j)
 	{
 		if (!mask[j])
@@ -1225,9 +1278,13 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 		{
 			llk += log(l);
 		}
+		n_mask ++;
 	}
 
-	bic = -2.0 * llk + (5*n_comp-1.0)*log(n_sample);
+	if (n_mask>0)
+	{
+		bic = -2.0 * llk + (5*n_comp-1.0)*log((double)n_mask);
+	}
 	p_overlap = BayesError();
 	//	std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
 }
@@ -1353,6 +1410,39 @@ double GaussianMixture2::BIC(std::vector<double>& x, std::vector<double>& y)
 	}
 
 	ret = -2.0 * llk +  (5 * n_comp - 1.0) *log(n_sample);
+
+	return ret;
+}
+
+
+double GaussianMixture2::BIC_select(std::vector<double>& x, std::vector<double>& y, std::vector<bool> &mask)
+{
+	int n_sample = 0;
+
+	double ret = 0;
+	double llk = 0;
+
+	for(int j=0; j<x.size(); ++j)
+	{
+		if (mask[j])
+		{ 
+			double l = 0;
+			for(int m=0; m<n_comp; ++m)
+			{
+				l += Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
+			}
+			if (l>0)
+			{
+				llk += log(l);
+			}
+			n_sample ++;
+		}
+	}
+
+	if (n_sample > 0)
+	{
+		ret = -2.0 * llk +  (5 * n_comp - 1.0) *log(n_sample);
+	}
 
 	return ret;
 }

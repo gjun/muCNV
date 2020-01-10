@@ -37,7 +37,9 @@ public:
     bool ordered();
     bool r_ordered();
     double BIC(std::vector<double>& );
-    void updateAICBIC(std::vector<double>&, std::vector<bool> &);
+    double BIC_select(std::vector<double>&, std::vector<bool>&);
+
+    void updateAICBIC_select(std::vector<double>&, std::vector<bool> &);
     double AIC(std::vector<double>& );
 
     double BayesError();
@@ -73,6 +75,8 @@ public:
     bool ordered();
     bool r_ordered();
     double BIC(std::vector<double>& , std::vector<double>& );
+    double BIC_select(std::vector<double>& , std::vector<double>&, std::vector<bool> &);
+
     double BayesError();
 	void print(FILE *);
 

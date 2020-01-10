@@ -44,6 +44,8 @@ public:
     double pdf(const double&, const double&);
     void set(const double &, const double &, const double &, const double &, const double &, const double &);
     void estimate(std::vector<double> &, std::vector<double> &);
+    void estimate_select(std::vector<double> &, std::vector<double> &, std::vector<bool> &);
+
     double logpdf(const double&, const double&);
     void update(); // update precision matrix
     

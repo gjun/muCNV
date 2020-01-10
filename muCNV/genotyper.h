@@ -39,6 +39,7 @@ public:
     std::string info;
     
     int n_sample;
+    int n_effect;
     
     int ac;
     int ns;
@@ -126,15 +127,15 @@ public:
     void check_biallelic(SvGeno &);
     void get_prepost_stat(SvData &, SvGeno &);
     int find_peak(std::vector<int> &, int, int);
-    bool find_consensus_rp(sv &, SvData &, int, int &, int &);
+    bool find_consensus_rp(sv &, SvData &, SvGeno &, int, int &, int &);
     
     bool find_consensus_split(sv &, SvData &, SvGeno &);
     bool is_pairsplit_oriented(sv &, PairSplit &);
     
     bool find_consensus_clip(sv &, SvData&, SvGeno &);
-    bool find_consensus_clip(sv &, SvData &, int, int &, int &);
+    bool find_consensus_clip(sv &, SvData &, SvGeno &, int, int &, int &);
     
-    bool find_consensus_clip_inv(sv &, SvData &, int &, int &, int&, int&);
+    bool find_consensus_clip_inv(sv &, SvData &, SvGeno &, int &, int &, int&, int&);
     bool get_del_cnts(sv &, SvData &, SvGeno &);
     bool get_dup_cnts(sv &, SvData &, SvGeno &);
     bool get_inv_cnts(sv &, SvData &, SvGeno &);

@@ -113,6 +113,7 @@ void BreakCluster::merge(BreakCluster& br)
 SvGeno::SvGeno(int n)
 {
     n_sample = n;
+    n_effect = n_sample;
     
     MAX_P_OVERLAP = 1.0;
 
@@ -409,7 +410,7 @@ void Genotyper::select_model(GaussianMixture2 &ret_gmix2, std::vector< std::vect
 
 void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats)
 {
-    n_sample = D.n_sample;
+    n_sample = G.n_sample;
 
     get_prepost_stat(D, G);
 
@@ -438,7 +439,8 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
     std::vector<double> norm_cnts (n_sample, 0);
     for(int i=0; i<n_sample; ++i)
     {
-        norm_cnts[i] = (G.split_cnts[i] + G.rp_cnts[i]) / stats[i].avg_dp ;
+        if (G.sample_mask[i])
+            norm_cnts[i] = (G.split_cnts[i] + G.rp_cnts[i]) / stats[i].avg_dp;
     }
     
     all_mix.estimate(norm_cnts, G.gt, 2);
@@ -459,6 +461,9 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
     
     for(int i=0; i<n_sample; ++i)
     {
+        if (!G.sample_mask[i])
+            continue;
+
         double d0 = norm_cnts[i] - all_mix.Comps[0].Mean ;
         double d1 = G.gmix.Comps[0].Mean - norm_cnts[i];
         
@@ -500,7 +505,7 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%d\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], G.rp_cnts[i] / stats[i].avg_dp, G.start_clips[i] / stats[i].avg_dp, G.end_clips[i] / stats[i].avg_dp , G.gt[i]);
     }
   */
-    double callrate = (double)G.ns / n_sample;
+    double callrate = (double)G.ns / G.n_effect;;
 
     if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
     {
@@ -987,7 +992,7 @@ bool Genotyper::find_consensus_split(sv &S, SvData &D, SvGeno &G)
     return false;
 }
 
-bool Genotyper::find_consensus_rp(sv &S, SvData &D, int pairstr, int &start_peak, int &end_peak)
+bool Genotyper::find_consensus_rp(sv &S, SvData &D, SvGeno &G, int pairstr, int &start_peak, int &end_peak)
 {
     std::vector<int> &seq = D.all_rps[pairstr];
     int N = (int) seq.size();
@@ -1033,6 +1038,9 @@ bool Genotyper::find_consensus_rp(sv &S, SvData &D, int pairstr, int &start_peak
         // From each sample
         for(int i=0; i<n_sample; ++i)
         {
+            if (!G.sample_mask[i])
+                continue;
+
             if (D.rdstats[i].n_rp[pairstr] > 4)
             {
                 // Supporting read pairs in pairstr in first 100
@@ -1170,6 +1178,8 @@ bool Genotyper::find_consensus_clip(sv &S, SvData &D, SvGeno &G)
     {
         for(int i=0;i<n_sample; ++i)
         {
+            if (!G.sample_mask[i])
+                continue;
             int max_lclip = 0;
             int max_l_idx = 0;
             int max_rclip = 0;
@@ -1228,6 +1238,8 @@ bool Genotyper::find_consensus_clip(sv &S, SvData &D, SvGeno &G)
     {
         for(int i=0;i<n_sample; ++i)
         {
+            if (!G.sample_mask[i])
+                continue;
             int max_lclip = 0;
             int max_l_idx = 0;
             int max_rclip = 0;
@@ -1362,7 +1374,7 @@ bool Genotyper::find_consensus_clip(sv &S, SvData &D, SvGeno &G)
     return false;
 }
 
-bool Genotyper::find_consensus_clip(sv &S, SvData &D, int pairstr, int &l_peak, int &r_peak)
+bool Genotyper::find_consensus_clip(sv &S, SvData &D, SvGeno &G, int pairstr, int &l_peak, int &r_peak)
 {
 	int N_buf = 100;
 	
@@ -1400,6 +1412,8 @@ bool Genotyper::find_consensus_clip(sv &S, SvData &D, int pairstr, int &l_peak, 
         // From each sample
         for(int i=0; i<n_sample; ++i)
         {
+            if (!G.sample_mask[i])
+                continue;
             int n_start = 0;
             int n_end = 0;
             
@@ -1466,7 +1480,7 @@ bool Genotyper::find_consensus_clip(sv &S, SvData &D, int pairstr, int &l_peak, 
 }
 
 
-bool Genotyper::find_consensus_clip_inv(sv &S, SvData &D, int &l_start, int &l_end, int &r_start, int &r_end)
+bool Genotyper::find_consensus_clip_inv(sv &S, SvData &D, SvGeno &G, int &l_start, int &l_end, int &r_start, int &r_end)
 {
 
 	int N_buf = 100;
@@ -1511,6 +1525,8 @@ bool Genotyper::find_consensus_clip_inv(sv &S, SvData &D, int &l_start, int &l_e
         // From each sample
         for(int i=0; i<n_sample; ++i)
         {
+            if (!G.sample_mask[i])
+                continue;
             if (D.rdstats[i].n_lclip_start + D.rdstats[i].n_rclip_start >= 3 && D.rdstats[i].n_rclip_end + D.rdstats[i].n_lclip_end >= 2)
             {
                 l_start = find_peak(D.rdstats[i].lclips, 100 - N_buf, 100 + N_buf); // lstart
@@ -1679,7 +1695,7 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
             }
         }
         
-        double callrate = (double)G.ns / n_sample;
+        double callrate = (double)G.ns / G.n_effect;
         
         if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
         {
@@ -1777,7 +1793,7 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
                 }
             }
         }
-        double callrate = (double)G.ns / n_sample;
+        double callrate = (double)G.ns / G.n_effect;
 
         if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
         {
@@ -2046,6 +2062,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
     // If clustered, filter false positive variants
     for (int i=0;i<n_sample; ++i)
     {        
+        if (!G.sample_mask[i]) continue;
         if (abs(D.dps[0][i] - G.dp_pre_mean) > 2.0*G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > 2.0* G.dp_post_std || (G.gt[i] > 0 && abs(var_depth[i] - D.dps[1][i]) < 2.0*G.dp_post_std) || (G.gt[i] > 0 && abs(var_depth[i] - D.dps[0][i]) < 2.0*G.dp_pre_std))
         {
             G.cn[i] = -1;
@@ -2081,7 +2098,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
         }
     }
 
-    double callrate = (double)G.ns / n_sample;
+    double callrate = (double)G.ns / G.n_effect;
 
     // Excessive heterozygosity (basically all-het case)
     if ( n_het > ((double)G.ns * 0.75) && n_hom < ((double)0.05 * G.ns) )
@@ -2169,7 +2186,7 @@ bool Genotyper::assign_dup_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         }
 
         fflush(stdout);
-        double callrate = (double)G.ns / n_sample;
+        double callrate = (double)G.ns / G.n_effect;
 
         if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
         {
@@ -2252,7 +2269,7 @@ bool Genotyper::assign_dup_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
                 }
             }
         }
-        double callrate = (double)G.ns / n_sample;
+        double callrate = (double)G.ns / G.n_effect;
 
         if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
         {
@@ -2549,6 +2566,8 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
     // If clustered, filter false positive variants
     for (int i=0;i<n_sample; ++i)
     {
+        if (!G.sample_mask[i]) continue;
+
         if (abs(D.dps[0][i] - G.dp_pre_mean) > 2.0*G.dp_pre_std || abs(D.dps[1][i] - G.dp_post_mean) > 2.0* G.dp_post_std || (G.cn[i] > 0 && abs(var_depth[i] - D.dps[1][i]) < 2.0*G.dp_post_std) || (G.cn[i] > 0 && abs(var_depth[i] - D.dps[0][i]) < 2.0*G.dp_pre_std))
         {
             G.cn[i] = -1;
@@ -2581,7 +2600,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
         }
     }
 
-    double callrate = (double)G.ns / n_sample;
+    double callrate = (double)G.ns / G.n_effect;
     
 	if ( (G.dp_flag || G.dp2_flag) && callrate>0.5 && G.ac > 0 && G.ac < G.ns*2)
     {
@@ -2601,23 +2620,24 @@ void Genotyper::check_biallelic(SvGeno &G)
     int min_cn = 2;
     for(int i=0; i<n_sample; ++i)
     {
-      if (G.cn[i] > max_cn)
-      {
-          max_cn = G.cn[i];
-      }
-      if (G.cn[i] >=0 && G.cn[i] < min_cn)
-      {
-          min_cn = G.cn[i];
-      }
+        if (!G.sample_mask[i]) continue;
+        if (G.cn[i] > max_cn)
+        {
+            max_cn = G.cn[i];
+        }
+        if (G.cn[i] >=0 && G.cn[i] < min_cn)
+        {
+            min_cn = G.cn[i];
+        }
     }
 
     if (min_cn >=2 && max_cn <= 4)
     {
-      G.b_biallelic = true;
+        G.b_biallelic = true;
     }
     else
     {
-      G.b_biallelic = false;
+        G.b_biallelic = false;
     }
 
 }
