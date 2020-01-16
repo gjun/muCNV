@@ -110,8 +110,6 @@ void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
         Comps[0].Alpha = 1;
         updateAICBIC_select(x, mask);
         p_overlap = 0;
-//        print(stdout);
-
         return;
     }
     for(int i=0; i<n_comp; ++i)
@@ -164,7 +162,7 @@ void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
                     }
                 }
             }
-			else
+			else // mask[j]
 			{
 				b_include[j] = false;
 			}
@@ -209,7 +207,7 @@ void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
             Comps[m].Stdev = sqrt(sum_err[m] / sum_pr[m]) ;
             Comps[m].Alpha = sum_pr[m] / sumsum;
         }
-        //  print();
+        //print(stderr);
     }
     
     double llk = 0;
@@ -239,7 +237,6 @@ void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
 
     p_overlap = BayesError();
     
-    
     //std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
 }
 void GaussianMixture::EM(std::vector<double>& x)
@@ -247,7 +244,7 @@ void GaussianMixture::EM(std::vector<double>& x)
 	int n_sample = (int) x.size();
 	int n_iter = 15;
 
-	int p_count = 2;
+	int p_count = 1;
 
 	double p_val[n_comp];
 
@@ -255,7 +252,7 @@ void GaussianMixture::EM(std::vector<double>& x)
 	{
 		Comps[0].estimate(x);
 		Comps[0].Alpha = 1;
-		bic = BIC(x);
+		updateAICBIC(x);
 		p_overlap = 0;
 		return;
 	}
@@ -335,7 +332,7 @@ void GaussianMixture::EM(std::vector<double>& x)
             Comps[m].Stdev = sqrt(sum_err[m] / sum_pr[m]) ;
             Comps[m].Alpha = sum_pr[m] / sumsum;
 		}
-      //  print();
+        //print(stderr);
 	}
 
 	double llk = 0;
@@ -356,6 +353,7 @@ void GaussianMixture::EM(std::vector<double>& x)
 	}
 
 	bic = -2.0 * llk +  (2*n_comp - 1 ) *log(n_sample);
+	aic = -2.0 * llk + 4.0*n_comp;
 	p_overlap = BayesError();
 
 	//std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
@@ -581,6 +579,40 @@ bool GaussianMixture::r_ordered()
 	return true;
 }
 
+
+void GaussianMixture::updateAICBIC(std::vector<double>& x)
+{
+    int n_sample = (int)x.size();
+
+    double ret = 0;
+    double llk = 0;
+    
+    for(int j=0; j<n_sample; ++j)
+    {
+       
+            double l = 0;
+            for(int m=0; m<n_comp; ++m)
+            {
+                if (m==zeroidx)
+                {
+                    l += 2.0 * Comps[m].Alpha * normpdf(x[j], Comps[m]);
+                }
+                else
+                {
+                    l += Comps[m].Alpha * normpdf(x[j], Comps[m]);
+                }
+            }
+            if (l>0)
+            {
+                llk += log(l);
+            }
+    
+    }
+    // Half-normal distribution has only one parameter
+    bic = -2.0 * llk +  (2*n_comp-1.0)*log(n_sample);
+    aic = -2.0 * llk + 4.0 * n_comp;
+
+}
 
 void GaussianMixture::updateAICBIC_select(std::vector<double>& x, std::vector<bool>& mask)
 {

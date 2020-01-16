@@ -39,6 +39,7 @@ public:
     double BIC(std::vector<double>& );
     double BIC_select(std::vector<double>&, std::vector<bool>&);
 
+    void updateAICBIC(std::vector<double>&);
     void updateAICBIC_select(std::vector<double>&, std::vector<bool> &);
     double AIC(std::vector<double>& );
 

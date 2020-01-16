@@ -337,6 +337,7 @@ void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector
         GaussianMixture gmix(means[m], s);
 
         gmix.EM(x); // fit mixture model
+        // gmix.print(stderr);
         if (gmix.bic < best_bic && gmix.p_overlap < MAX_P_OVERLAP)
         {
             best_bic = gmix.bic;
@@ -356,7 +357,7 @@ void Genotyper::select_model(GaussianMixture &ret_gmix, std::vector< std::vector
         std::vector<double> s (means[m].size(), 0.1);
         GaussianMixture gmix(means[m], s);
         gmix.EM_select(x, mask); // fit mixture model
-    //        gmix.print();
+        // gmix.print(stderr);
 
        // if (gmix.bic < best_bic)
         if (gmix.bic < best_bic && gmix.p_overlap < MAX_P_OVERLAP)
@@ -1946,7 +1947,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
     {
         if (get_del_cnts(S, D, G) && assign_del_genotypes(S, D, G, stats))
         {
-            print_genodata(S, D, G);
+            // print_genodata(S, D, G);
 
             G.split_flag = true;
             return;
@@ -2007,7 +2008,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
     
     // Depth-based clustering genotyping
     select_model(G.gmix, means, D.dps[best_dp_idx], G.sample_mask, G.MAX_P_OVERLAP);
-
+    // select_model(G.gmix, means, D.dps[best_dp_idx], G.MAX_P_OVERLAP);
     // depth clustering
     if (G.gmix.n_comp > 1 && G.gmix.ordered() && G.gmix.Comps[0].Alpha > 0.5)
     {
