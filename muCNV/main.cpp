@@ -24,6 +24,7 @@
 
 // Main functions
 int main_pileup(int, char**);
+int main_varpileup(int, char**);
 int main_merge_pileup(int, char**);
 int main_genotype(int, char**);
 int main_print_pileup(int, char**);
