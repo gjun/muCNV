@@ -77,18 +77,21 @@ Gaussian::Gaussian()
 {
 	Mean=0;
 	Stdev=1;
+	N = 0;
 }
 
 void Gaussian::set(const double &m, const double &s)
 {
 	Mean = m;
 	Stdev = s;
+	N = 1;
 }
 
 void Gaussian::estimate(std::vector<double> &x)
 {
 	Mean = mean(x);
 	Stdev = stdev(x, Mean);
+	N = (int) x.size();
 }
 
 void Gaussian::estimate_select(std::vector<double> &x, std::vector<bool> &mask)
@@ -106,8 +109,12 @@ void Gaussian::estimate_select(std::vector<double> &x, std::vector<bool> &mask)
             cnt ++;
         }
     }
-    Mean = sum / cnt;
-    Stdev = sqrt (sumsq/cnt - (Mean*Mean));
+	if (cnt>0)
+	{
+    	Mean = sum / cnt;
+    	Stdev = sqrt (sumsq/cnt - (Mean*Mean));
+		N = (int) cnt;
+	}
 }
 
 double Gaussian::pdf(const double& x)
@@ -132,6 +139,7 @@ Gaussian2::Gaussian2()
 	Cov[1]=0;
 	Cov[2]=0;
 	Cov[3]=1;
+	N = 0;
 	
 	update();
 }
@@ -144,6 +152,7 @@ void Gaussian2::set(const double &m0, const double & m1, const double & c0, cons
 	Cov[1] = c1;
 	Cov[2] = c2;
 	Cov[3] = c3;
+	N = 1;
 	
 	update();
 }
@@ -165,14 +174,14 @@ void Gaussian2::update()
 
 void Gaussian2::estimate(std::vector<double> &x, std::vector<double> &y)
 {
-	int n = (int)x.size();
+	N = (int)x.size();
 	double sum_x=0;
 	double sum_y=0;
 	double sum_xx=0;
 	double sum_yy=0;
 	double sum_xy=0;
 	
-	for(int i=0;i<n;++i)
+	for(int i=0;i<N;++i)
 	{
 		sum_x+=x[i];
 		sum_y+=y[i];
@@ -181,12 +190,12 @@ void Gaussian2::estimate(std::vector<double> &x, std::vector<double> &y)
 		sum_yy+=y[i]*y[i];
 	}
 	
-	Mean[0] = sum_x/(double)n;
-	Mean[1] = sum_y/(double)n;
-	Cov[0] = sum_xx/(double)n - (Mean[0]*Mean[0]);
-	Cov[1] = sum_xy/(double)n - (Mean[0]*Mean[1]);
+	Mean[0] = sum_x/(double)N;
+	Mean[1] = sum_y/(double)N;
+	Cov[0] = sum_xx/(double)N - (Mean[0]*Mean[0]);
+	Cov[1] = sum_xy/(double)N - (Mean[0]*Mean[1]);
 	Cov[2] = Cov[1];
-	Cov[3] = sum_yy/(double)n - (Mean[1]*Mean[1]);
+	Cov[3] = sum_yy/(double)N - (Mean[1]*Mean[1]);
 	update();
 }
 
@@ -221,6 +230,7 @@ void Gaussian2::estimate_select(std::vector<double> &x, std::vector<double> &y, 
 		Cov[1] = sum_xy/(double)n - (Mean[0]*Mean[1]);
 		Cov[2] = Cov[1];
 		Cov[3] = sum_yy/(double)n - (Mean[1]*Mean[1]);
+		N = n;
 	}
 	update();
 }

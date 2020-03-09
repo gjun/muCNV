@@ -33,6 +33,7 @@ public:
     void KM(std::vector<double>&, bool);
 
 	void print(FILE *);
+    std::string print_str();
     
     bool ordered();
     bool r_ordered();
@@ -54,38 +55,6 @@ public:
     GaussianMixture& operator = ( const GaussianMixture& gmix);
 
     int assign_copynumber(double);
-};
-
-class GaussianMixture2
-{
-public:
-    std::vector<Gaussian2> Comps;
-    int n_comp;
-    double bic;
-    double p_overlap;
-	int zeroidx;
-    
-    //2-D without weights
-    void EM2(std::vector<double>&, std::vector<double>&);
-    void EM2_select(std::vector<double>&, std::vector<double>&, std::vector<bool> &);
-
-    // K-means
-    void KM2(std::vector<double>&, std::vector<double>&, bool);
-
-    int assign_copynumber(double, double);
-    bool ordered();
-    bool r_ordered();
-    double BIC(std::vector<double>& , std::vector<double>& );
-    double BIC_select(std::vector<double>& , std::vector<double>&, std::vector<bool> &);
-
-    double BayesError();
-	void print(FILE *);
-
-    GaussianMixture2 () {bic = DBL_MAX; p_overlap = 1.0; n_comp = 0; zeroidx = -1;};
-    GaussianMixture2 (const GaussianMixture2 &);
-    GaussianMixture2 (std::vector<double> &, std::vector<double> &);
-    GaussianMixture2& operator = ( const GaussianMixture2& gmix);
-    
 };
 
 #endif /* gaussian_mixture_h */

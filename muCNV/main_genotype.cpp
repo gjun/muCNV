@@ -290,83 +290,88 @@ int main_genotype(int argc, char** argv)
         // chr X and Y calling not supported yet
         if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]) && sv_gc > min_GC && sv_gc < max_GC  && (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV || vec_sv[i].svtype==INV))
         {
-
-            if (vec_sv[i].svtype != INV || vec_sv[i].len > 100)
+            Genotyper gtyper;
+            G.reset();
+            D.reset();
+            
+            G.MAX_P_OVERLAP = max_p;
+            if (vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
             {
-                Genotyper gtyper;
-                G.reset();
-                D.reset();
-                
-                G.MAX_P_OVERLAP = max_p;
-                if (vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
+                G.MAX_P_OVERLAP *= 1.5;
+            }
+            
+            reader.read_var_depth(i - vec_offset, D.dps[2]); // TODO: make read_var_depth check whether first argument is in range
+            
+            // TODO: This is arbitrary threshold to filter out centromere region, add more systematic way to filter out problematic regions, by checking within-sample variance of regions
+            if (average(D.dps[2]) < 150)
+            {
+                reader.read_pair_split(vec_sv[i], D.rdstats, gc, D.all_rps, D.all_lclips, D.all_rclips);
+                if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
                 {
-                    G.MAX_P_OVERLAP *= 1.5;
-                }
-                
-                reader.read_var_depth(i - vec_offset, D.dps[2]); // TODO: make read_var_depth check whether first argument is in range
-                
-                // TODO: This is arbitrary threshold to filter out centromere region, add more systematic way to filter out problematic regions, by checking within-sample variance of regions
-                if (average(D.dps[2]) < 150)
-                {
-                    reader.read_pair_split(vec_sv[i], D.rdstats, gc, D.all_rps, D.all_lclips, D.all_rclips);
-                    if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
+                    // var_depth gets GC-correction here
+                    D.multi_dp = reader.read_depth100(vec_sv[i], D.dps, gc);
+                    for(int j=0; j<n_sample; ++j)
                     {
-                        // var_depth gets GC-correction here
-                        D.multi_dp = reader.read_depth100(vec_sv[i], D.dps, gc);
-						for(int j=0; j<n_sample; ++j)
-						{
-							D.dps[0][j] /= (double)stats[j].avg_dp;
-							D.dps[1][j] /= (double)stats[j].avg_dp;
-                            if (D.dps[0][j] > 0.001 && D.dps[1][j] > 0.001)
+                        D.dps[0][j] /= (double)stats[j].avg_dp;
+                        D.dps[1][j] /= (double)stats[j].avg_dp;
+                        if (D.dps[0][j] > 0.001 && D.dps[1][j] > 0.001)
+                        {
+                            D.dps[2][j] /= (double)stats[j].avg_dp * (D.dps[1][j] + D.dps[0][j]) * 0.5 ;
+                        }
+                        else
+                        {
+                            D.dps[2][j] /= (double)stats[j].avg_dp;
+                        }
+                        if (D.multi_dp)
+                        {
+                            if (D.dps[0][j] > 0.001)
                             {
-                                D.dps[2][j] /= (double)stats[j].avg_dp * (D.dps[1][j] + D.dps[0][j]) * 0.5 ;
+                                D.dps[3][j] /= (double)stats[j].avg_dp * D.dps[0][j];
                             }
                             else
                             {
-                                D.dps[2][j] /= (double)stats[j].avg_dp;
+                                D.dps[3][j] /= (double)stats[j].avg_dp;
                             }
-							if (D.multi_dp)
-							{
-                                if (D.dps[0][j] > 0.001)
-                                {
-                                    D.dps[3][j] /= (double)stats[j].avg_dp * D.dps[0][j];
-                                }
-                                else
-                                {
-                                    D.dps[3][j] /= (double)stats[j].avg_dp;
-                                }
-                                if (D.dps[1][j]>0.001)
-                                {
-                                    D.dps[4][j] /= (double)stats[j].avg_dp * D.dps[1][j];
-                                }
-                                else
-                                {
-                                    D.dps[4][j] /= (double)stats[j].avg_dp;
-                                }
-							}
-						}
-					}
-
-                    gtyper.call(vec_sv[i], D, G, stats);
-
-                    G.info = "VarID=" + std::to_string(i);
-
-                    if (bFail || G.b_pass)
+                            if (D.dps[1][j]>0.001)
+                            {
+                                D.dps[4][j] /= (double)stats[j].avg_dp * D.dps[1][j];
+                            }
+                            else
+                            {
+                                D.dps[4][j] /= (double)stats[j].avg_dp;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    for(int j=0; j<n_sample; ++j)
                     {
-                        out_vcf.write_sv(vec_sv[i], D, G);
+                        D.dps[0][j] = 1.0;
+                        D.dps[1][j] = 1.0;
+                        D.dps[2][j] /= (double)stats[j].avg_dp;                    
+                    }
+                }
+                
+                gtyper.call(vec_sv[i], D, G, stats);
 
-                        if (vec_sv[i].svtype == DEL)
-                        {
-                            del_count ++;
-                        }
-                        else if (vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV )
-                        {
-                            dup_count ++;
-                        }
-                        else if (vec_sv[i].svtype == INV)
-                        {
-                            inv_count ++;
-                        }
+                G.info = "VarID=" + std::to_string(i);
+
+                if (bFail || G.b_pass)
+                {
+                    out_vcf.write_sv(vec_sv[i], D, G);
+
+                    if (vec_sv[i].svtype == DEL)
+                    {
+                        del_count ++;
+                    }
+                    else if (vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV )
+                    {
+                        dup_count ++;
+                    }
+                    else if (vec_sv[i].svtype == INV)
+                    {
+                        inv_count ++;
                     }
                 }
             }

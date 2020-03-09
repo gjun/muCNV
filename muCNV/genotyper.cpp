@@ -220,7 +220,6 @@ SvData::SvData(int n)
     
     clus_idx = -1;
     
-    // ??
     for(int j=0;j<5;++j)
     {
         dps[j].resize(n_sample, 0);
@@ -255,6 +254,32 @@ void SvData::reset()
     std::fill(prepost_dp.begin(), prepost_dp.end(), 1);
     vec_break_clusters.clear();
 }
+
+std::string SvStat::get_summary_stat(SvGeno &G, SvData &D)
+{
+    std::string outstr = "";
+    depth_stat.estimate(D.dps[2], G.gt, 3);
+    outstr += depth_stat.print_str();
+
+    split_stat.estimate(G.split_cnts, G.gt, 3);
+    outstr += ";SPSTAT=" + split_stat.print_str();
+
+    rp_stat.estimate(G.rp_cnts, G.gt, 3);    
+    outstr += ";RPSTAT=" + rp_stat.print_str();
+
+    lclip_stat.estimate(G.start_clips, G.gt, 3);
+    outstr += ";LCSTAT=" + lclip_stat.print_str();
+
+    rclip_stat.estimate(G.end_clips, G.gt, 3);
+    outstr += ";RCSTAT=" + rclip_stat.print_str();
+
+    depth_cnt_stat.estimate(D.dps[2], G.all_cnts, G.gt, 3);
+    outstr += ";DPCNTSTAT=" + depth_cnt_stat.print_str();
+
+    return outstr;
+    
+};
+
 
 void copyComps(std::vector<Gaussian> &C, std::vector<Gaussian> &C0)
 {
@@ -421,14 +446,21 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
     if (S.svtype == DEL)
 	{
        call_deletion(S, D, G, stats);
+        // HWE: chisq = G.ns *  (( 4*n_AA*n_aa - n_Aa^2) / ((2*n_AA + n_Aa) * (2*n_aa + n_Aa)) )^2 
+
     }
     else if (S.svtype == DUP || S.svtype == CNV)
     {
        call_cnv(S, D, G, stats);
+       // How to check HWE for CNVs?
+       // Should we try to identify CN alleles by taking GCD of CNs 
+       // Fraction_biallelic ? (Most samples are biallelic except for a few?)
     }
     else if (S.svtype == INV)
     {
         call_inversion(S, D, G, stats);
+         // HWE: chisq = G.ns *  (( 4*n_AA - n_Aa^2) / ((2*n_AA + n_Aa) * (2n_aa + n_Aa)) )^2 
+
     }
 }
 
@@ -470,7 +502,8 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         
         G.gt[i] = -1;
         
-        if (d0>0 &&  G.all_cnts[i]>0 && d1 < d0 * ((G.split_cnts[i] + G.rp_cnts[i] + G.all_cnts[i] - 1) / 2.0))
+        //if (d0>0 &&  G.all_cnts[i]>0 && d1 < d0 * ((G.split_cnts[i] + G.rp_cnts[i] + G.all_cnts[i] - 1) / 2.0))
+        if (d0>0 &&  G.all_cnts[i]>0 && d1 < d0 && (G.split_cnts[i] + G.rp_cnts[i] > 1))
         {
             if (G.gmix.Comps.size()>1  && (G.gmix.Comps[1].Mean - norm_cnts[i] < (norm_cnts[i] - G.gmix.Comps[0].Mean) * 0.5))
             {
@@ -2063,21 +2096,29 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
             {
                 if (!G.sample_mask[i]) continue;
 
-                int cn = G.gmix2.assign_copynumber(D.dps[dp2_idx][i], D.dps[dp2_idx+1][i]);
-                if (cn == 2)
+                if (var_depth[i] >= 0.7 && var_depth[i] < 0.8 )
                 {
-                    G.cn[i] = 2;
-                    G.gt[i] = 0; // 0/0
+                    G.cn[i] = -1;
+                    G.gt[i] = -1;
                 }
-                else if (cn == 1)
+                else
                 {
-                    G.cn[i] = 1;
-                    G.gt[i] = 1; // 0/1
-                }
-                else if (cn == 0)
-                {
-                    G.cn[i] = 0;
-                    G.gt[i] = 2; // 1/1
+                    int cn = G.gmix2.assign_copynumber(D.dps[dp2_idx][i], D.dps[dp2_idx+1][i]);
+                    if (cn == 2)
+                    {
+                        G.cn[i] = 2;
+                        G.gt[i] = 0; // 0/0
+                    }
+                    else if (cn == 1)
+                    {
+                        G.cn[i] = 1;
+                        G.gt[i] = 1; // 0/1
+                    }
+                    else if (cn == 0)
+                    {
+                        G.cn[i] = 0;
+                        G.gt[i] = 2; // 1/1
+                    }
                 }
             }
         }
@@ -2294,6 +2335,7 @@ bool Genotyper::assign_dup_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
             }
         }
         double callrate = (double)G.ns / G.n_effect;
+
 
         if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
         {

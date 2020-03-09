@@ -13,6 +13,7 @@
 #include "gaussian.h"
 #include "data_reader.h"
 #include "gaussian_mixture.h"
+#include "gaussian_mixture2.h"
 #include "pileup.h"
 #include <math.h>
 
@@ -118,6 +119,22 @@ public:
 
     SvData (int);
 };
+
+
+class SvStat
+{
+public:
+    GaussianMixture depth_stat;
+    GaussianMixture split_stat;
+    GaussianMixture rp_stat;
+    GaussianMixture lclip_stat;
+    GaussianMixture rclip_stat;
+
+    GaussianMixture2 depth_cnt_stat;
+
+    std::string get_summary_stat(SvGeno&, SvData&);
+};
+
 
 class Genotyper
 {
