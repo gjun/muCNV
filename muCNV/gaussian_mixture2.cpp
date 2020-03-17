@@ -89,12 +89,12 @@ void GaussianMixture2::estimate(std::vector<double> &x, std::vector<double> &y, 
 
     n_comp = n;
     int n_sample = (int)x.size();
-    if (n_sample != y.size())
+    if (n_sample != (int)y.size())
     {
         std::cerr<< "Error, GaussianMixture2 has different size of X and Y" << std::endl;
         exit(1);
     }        
-    if (n_sample != z.size())
+    if (n_sample != (int)z.size())
     {
         std::cerr<< "Error, GaussianMixture2 has different size of data and label" << std::endl;
         exit(1);
@@ -460,9 +460,12 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 	int n_iter = 15;
 
 	// pseudo-counts
-	double p_count = 0.1;
+	double p_count = 0.2;
 
 	double p_val[n_comp][2];
+
+    std::cerr << "Starting clustering...with " << n_comp << " components" << std::endl;
+    print(stderr);
 
 	if (n_comp == 1)
 	{
@@ -471,6 +474,8 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 		
 		bic = BIC_select(x, y, mask);
 		p_overlap = 0;
+        print(stderr);
+	    std::cerr << "BIC: " << bic << ", P_OVERLAP: N/A" << std::endl;
 		return;
 	}
 
@@ -515,11 +520,11 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 			for(int m=0;m<n_comp;++m)
 			{
 				pr[m][j] = Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
-                pr[m][j] *= 4.0;
+ //               pr[m][j] *= 4.0;
 
 				sum_p += pr[m][j];
 			}
-			if (sum_p < 1e-10) b_include[j] = false;
+//			if (sum_p < 1e-10) b_include[j] = false;
 
 			if (b_include[j]) // if the value is an outlier, exclude it from calculations
 			{
@@ -595,7 +600,7 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 
             Comps[m].Alpha = sum_pr[m] / (sumsum);
 		}
-		//print();
+		print(stderr);
 	}
 	double llk = 0;
 	int n_mask = 0;
@@ -620,7 +625,7 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 		bic = -2.0 * llk + (5*n_comp-1.0)*log((double)n_mask);
 	}
 	p_overlap = BayesError();
-	//	std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
+	std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
 }
 
 bool GaussianMixture2::ordered()
@@ -756,7 +761,7 @@ double GaussianMixture2::BIC_select(std::vector<double>& x, std::vector<double>&
 	double ret = 0;
 	double llk = 0;
 
-	for(int j=0; j<x.size(); ++j)
+	for(int j=0; j<(int)x.size(); ++j)
 	{
 		if (mask[j])
 		{ 

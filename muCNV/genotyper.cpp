@@ -464,6 +464,7 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
 
 	// if (!G.b_pre || !G.b_post)
 	//	return;
+    S.print(stderr);
 
     if (S.svtype == DEL)
 	{
@@ -1680,6 +1681,8 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
     double cnt_max = -1;
     double cnt_mean = 0;
 
+    fprintf(stderr, "assigning DEL genotypes\n");
+
     for(int i=0; i<n_sample; ++i)
     {
         if (G.sample_mask[i])
@@ -1705,9 +1708,17 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         cnt_mean = tmp_sum / tmp_cnt;
     }
 
-    std::vector< std::vector<double> > vec_cntmeans = { {0}, {0, cnt_mean}, {0, cnt_mean, cnt_max}};
-    std::vector< std::vector<double> > vec_dpmeans = { {1.0}, {1.0, 0.5}, {1.0, 0.5, 0}};
+
+    fprintf(stderr, "cnt_mean %f, cnt_max %f \n", cnt_mean, cnt_max);
+
+    std::vector< std::vector<double> > vec_cntmeans = { {0}, {0, cnt_mean}};
+    std::vector< std::vector<double> > vec_dpmeans = { {1.0}, {1.0, 0.5}};
     
+    if (cnt_max>=0)
+    {
+        vec_cntmeans.push_back({0, cnt_mean, cnt_max});
+        vec_dpmeans.push_back({1.0, 0.5, 0});
+    }
     G.dp_flag = false;
     
     select_model(dpcnt_mix, vec_dpmeans, vec_cntmeans, D.dps[2], norm_cnts, G.sample_mask, 0.5); 
@@ -2095,6 +2106,7 @@ void Genotyper::print_genodata(sv &S, SvData &D, SvGeno &G)
         printf("%d\t%d\t%d\t%d\t%d\t%f\t%f\t%f\t%d\n", (int)G.split_cnts[i], (int)G.rp_cnts[i], (int)G.start_clips[i], (int)G.end_clips[i], (int)G.all_cnts[i], D.dps[0][i], D.dps[1][i], D.dps[2][i], G.gt[i]);
     }
 }
+
 void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats)
 {
     G.b_biallelic = true;
@@ -2120,10 +2132,9 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
         /*
         for(int i=0; i<(int)D.vec_break_clusters.size(); ++i)
             fprintf(stderr, "SPLIT found: %f-%f, %d\n", D.vec_break_clusters[i].start_mean, D.vec_break_clusters[i].end_mean, D.vec_break_clusters[i].N);  
-        */
+            */
     }
     
-
     if (!split_flag && find_consensus_clip(S, D, G))
     {
         D.clus_idx = -1;
