@@ -52,6 +52,8 @@ public:
     GaussianMixture () { bic = DBL_MAX; aic = DBL_MAX; p_overlap = 1.0; zeroidx = -1; n_comp = 0;};
     GaussianMixture (const GaussianMixture &);
     GaussianMixture (std::vector<double> &, std::vector<double> &);
+    GaussianMixture (std::vector<double> &, std::vector<double>&, std::vector<double> &);
+
     GaussianMixture& operator = ( const GaussianMixture& gmix);
 
     int assign_copynumber(double);

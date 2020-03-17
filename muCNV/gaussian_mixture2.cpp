@@ -32,6 +32,30 @@ GaussianMixture2::GaussianMixture2(std::vector<double> &m, std::vector<double> &
 	}
 }
 
+GaussianMixture2::GaussianMixture2(std::vector<double> &m1, std::vector<double> &m2, std::vector<double> &s)
+{
+	if (m1.size() != s.size() || m1.size() != m2.size())
+	{
+		std::cerr << "Error, mean and std. dev vector sizes are different" << std::endl;
+		exit(1);
+	}
+	n_comp = (int) m1.size();
+
+	Comps.resize(n_comp);
+	for(int i=0; i< n_comp; ++i)
+	{
+		Comps[i].Mean[0] = m1[i];
+		Comps[i].Mean[1] = m2[i];
+
+		Comps[i].Cov[0] = s[i];
+		Comps[i].Cov[3] = s[i];
+
+		Comps[i].Alpha = 1.0/n_comp;
+		if (Comps[i].Mean[0] + Comps[i].Mean[1] < 0.1)
+			zeroidx = i;
+	}
+}
+
 GaussianMixture2& GaussianMixture2::operator = (const GaussianMixture2& gmix)
 {
 	n_comp = (int) gmix.n_comp;
@@ -680,15 +704,15 @@ int GaussianMixture2::assign_copynumber(double x, double y)
 		}
 	}
     
-	ret = round(Comps[ret].Mean[0] + Comps[ret].Mean[1]); // TODO: what if only one of the dimensions cluster correctly? (0, 0.5, 1) + (1, 1, 1) = (1 1.5 2) 
+	// ret = round(Comps[ret].Mean[0] + Comps[ret].Mean[1]); // TODO: what if only one of the dimensions cluster correctly? (0, 0.5, 1) + (1, 1, 1) = (1 1.5 2) 
 
-	int up = ceil(x+y);
-	int down = floor(x+y);
+	// int up = ceil(x+y);
+	// int down = floor(x+y);
 
-	if (ret != up && ret != down)
-	{
-		return -1;
-	}
+	// if (ret != up && ret != down)
+	// {
+	// 	return -1;
+	// }
 
 	if (max_R > 0.1)
 	{

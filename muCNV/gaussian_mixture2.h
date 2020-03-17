@@ -43,6 +43,7 @@ public:
     GaussianMixture2 () {bic = DBL_MAX; p_overlap = 1.0; n_comp = 0; zeroidx = -1;};
     GaussianMixture2 (const GaussianMixture2 &);
     GaussianMixture2 (std::vector<double> &, std::vector<double> &);
+    GaussianMixture2 (std::vector<double> &, std::vector<double> &, std::vector<double> &);
     GaussianMixture2& operator = ( const GaussianMixture2& gmix);
     
 };
