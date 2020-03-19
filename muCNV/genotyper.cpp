@@ -466,8 +466,8 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
 	//	return;
 #ifdef DDEBUG
     S.print(stderr);
-    DDMSG("\n");
 #endif
+    DDMSG("");
     if (S.svtype == DEL)
 	{
        call_deletion(S, D, G, stats);
@@ -1735,27 +1735,33 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
             G.gt[i] = -1;
             if (!G.sample_mask[i]) continue;
 
-            int cn = G.gmix2.assign_copynumber(D.dps[2][i], norm_cnts[i]);
+            int cn = dpcnt_mix.assign_copynumber(D.dps[2][i], norm_cnts[i]);
 
             if (cn == 2)
             {
                 G.cn[i] = 2;
                 G.gt[i] = 0; // 0/0
+                G.ns ++;
             }
             else if (cn == 1)
             {
                 G.cn[i] = 1;
                 G.gt[i] = 1; // 0/1
+                G.ac ++;
+                G.ns ++;
             }
             else if (cn == 0)
             {
                 G.cn[i] = 0;
                 G.gt[i] = 2; // 1/1
+                G.ns ++;
+                G.ac += 2;
             }
         
         }
 
         double callrate = (double)G.ns / G.n_effect;
+        DDPRINT("NS %d, AC %d, Call rate %f\n", G.ns, G.ac, callrate);
         
         if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
         {
@@ -1767,6 +1773,7 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
             G.gmix.Comps[G.gmix.n_comp-1].Stdev = dpcnt_mix.Comps[0].Cov[0];
             G.gmix.Comps[G.gmix.n_comp-1].Alpha = dpcnt_mix.Comps[0].Alpha;
             G.b_pass = true;
+            DDMSG("DPCNT clustering successful");
             return true;
         }
         else
@@ -2131,10 +2138,10 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
         }
         split_flag = true;
         
-        /*
+#ifdef DDEBUG
         for(int i=0; i<(int)D.vec_break_clusters.size(); ++i)
             fprintf(stderr, "SPLIT found: %f-%f, %d\n", D.vec_break_clusters[i].start_mean, D.vec_break_clusters[i].end_mean, D.vec_break_clusters[i].N);  
-            */
+#endif
     }
     
     if (!split_flag && find_consensus_clip(S, D, G))
