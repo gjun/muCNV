@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <vector>
 #include "gaussian.h"
+#include "debug.h"
 
 class GaussianMixture2
 {

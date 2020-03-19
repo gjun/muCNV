@@ -464,8 +464,10 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
 
 	// if (!G.b_pre || !G.b_post)
 	//	return;
+#ifdef DDEBUG
     S.print(stderr);
-
+    DDMSG("\n");
+#endif
     if (S.svtype == DEL)
 	{
        call_deletion(S, D, G, stats);
@@ -1681,8 +1683,8 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
     double cnt_max = -1;
     double cnt_mean = 0;
 
-    fprintf(stderr, "assigning DEL genotypes\n");
-
+    DDMSG("assigning DEL genotypes");
+        
     for(int i=0; i<n_sample; ++i)
     {
         if (G.sample_mask[i])
@@ -1709,7 +1711,7 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
     }
 
 
-    fprintf(stderr, "cnt_mean %f, cnt_max %f \n", cnt_mean, cnt_max);
+    DDPRINT("cnt_mean %f, cnt_max %f \n", cnt_mean, cnt_max);
 
     std::vector< std::vector<double> > vec_cntmeans = { {0}, {0, cnt_mean}};
     std::vector< std::vector<double> > vec_dpmeans = { {1.0}, {1.0, 0.5}};

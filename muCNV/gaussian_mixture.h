@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <vector>
 #include "gaussian.h"
+#include "debug.h"
 
 // Todo: make GaussianMixture and GaussianMixture2 to be inherited from a generic mixture of Gaussians class
 

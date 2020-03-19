@@ -464,8 +464,11 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 
 	double p_val[n_comp][2];
 
-    std::cerr << "Starting clustering...with " << n_comp << " components" << std::endl;
-    print(stderr);
+    DDPRINT("Starting clustering with %d components\n",  n_comp );
+
+#ifdef DDEBUG
+	print(stderr);
+#endif
 
 	if (n_comp == 1)
 	{
@@ -474,8 +477,10 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 		
 		bic = BIC_select(x, y, mask);
 		p_overlap = 0;
+#ifdef DDEBUG
         print(stderr);
-	    std::cerr << "BIC: " << bic << ", P_OVERLAP: N/A" << std::endl;
+#endif
+	    DDMSG("BIC: " << bic << ", P_OVERLAP: N/A");
 		return;
 	}
 
@@ -600,7 +605,9 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 
             Comps[m].Alpha = sum_pr[m] / (sumsum);
 		}
+#ifdef DDEBUG
 		print(stderr);
+#endif
 	}
 	double llk = 0;
 	int n_mask = 0;
