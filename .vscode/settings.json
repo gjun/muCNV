@@ -48,5 +48,6 @@
         "cinttypes": "cpp",
         "typeinfo": "cpp"
     },
-    "powermode.shakeIntensity": 3
+    "powermode.shakeIntensity": 3,
+    "C_Cpp.errorSquiggles": "Disabled"
 }

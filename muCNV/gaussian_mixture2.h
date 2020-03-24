@@ -32,6 +32,8 @@ public:
     void KM2(std::vector<double>&, std::vector<double>&, bool);
 
     int assign_copynumber(double, double);
+    int assign_dpcnt_copynumber(double, double);
+
     bool ordered();
     bool r_ordered();
     double BIC(std::vector<double>& , std::vector<double>& );

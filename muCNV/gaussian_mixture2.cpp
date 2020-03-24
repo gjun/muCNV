@@ -734,6 +734,54 @@ int GaussianMixture2::assign_copynumber(double x, double y)
 	return ret;
 }
 
+int GaussianMixture2::assign_dpcnt_copynumber(double x, double y)
+{
+	double p[n_comp];
+	double max_P = -1;
+	double max_R = -1;
+	int ret = -1;
+
+	for(int i=0;i<n_comp; ++i)
+	{
+		p[i] = Comps[i].pdf(x, y);
+
+		if (p[i] > max_P)
+		{
+			max_P = p[i];
+			ret = i;
+		}
+	}
+
+	for(int i=0;i<n_comp; ++i)
+	{
+		if (ret != i)
+		{
+			double R = p[i] / max_P;
+			if (R>max_R)
+			{
+				max_R = R;
+			}
+		}
+	}
+    
+	// ret = round(Comps[ret].Mean[0] + Comps[ret].Mean[1]); // TODO: what if only one of the dimensions cluster correctly? (0, 0.5, 1) + (1, 1, 1) = (1 1.5 2) 
+
+	// int up = ceil(x+y);
+	// int down = floor(x+y);
+
+	// if (ret != up && ret != down)
+	// {
+	// 	return -1;
+	// }
+
+	if (max_R > 0.1)
+	{
+		return -1;
+	}
+
+	return ret;
+}
+
 
 double GaussianMixture2::BIC(std::vector<double>& x, std::vector<double>& y)
 {

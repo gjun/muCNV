@@ -1710,7 +1710,6 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         cnt_mean = tmp_sum / tmp_cnt;
     }
 
-
     DDPRINT("cnt_mean %f, cnt_max %f \n", cnt_mean, cnt_max);
 
     std::vector< std::vector<double> > vec_cntmeans = { {0}, {0, cnt_mean}};
@@ -1735,7 +1734,7 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
             G.gt[i] = -1;
             if (!G.sample_mask[i]) continue;
 
-            int cn = dpcnt_mix.assign_copynumber(D.dps[2][i], norm_cnts[i]);
+            int cn = dpcnt_mix.assign_dpcnt_copynumber(D.dps[2][i], norm_cnts[i]);
 
             if (cn == 2)
             {
