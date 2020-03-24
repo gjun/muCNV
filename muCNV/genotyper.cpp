@@ -1728,7 +1728,7 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         G.ns = 0;
         G.ac = 0;
         
-        DDPRINT("%d components\n", dpcnt_mix.n_comp;)
+        DDPRINT("%d components\n", dpcnt_mix.n_comp);
         for(int i=0; i<n_sample; ++i)
         {
             G.cn[i] = -1;
