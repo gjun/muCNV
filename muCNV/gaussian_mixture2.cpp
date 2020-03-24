@@ -770,7 +770,14 @@ int GaussianMixture2::assign_dpcnt_copynumber(double x, double y)
 		ret = 2 - ret;
 		if (round(x*2.0) != ret)
 		{
-			ret = -1;
+			if (x>1.0 && ret == 0 && y<0.05)
+			{
+				ret = 2;
+			}
+			else
+			{
+				ret = -1;
+			}
 		}
 	}
 
