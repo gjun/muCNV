@@ -764,6 +764,16 @@ int GaussianMixture2::assign_dpcnt_copynumber(double x, double y)
 		}
 	}
     
+	
+	if (ret >= 0 && ret < (int)Comps.size())
+	{
+		ret = 2 - ret;
+		if (round(x*2.0) != ret)
+		{
+			ret = -1;
+		}
+	}
+
 	// ret = round(Comps[ret].Mean[0] + Comps[ret].Mean[1]); // TODO: what if only one of the dimensions cluster correctly? (0, 0.5, 1) + (1, 1, 1) = (1 1.5 2) 
 
 	// int up = ceil(x+y);
