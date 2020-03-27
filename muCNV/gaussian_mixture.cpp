@@ -254,13 +254,14 @@ void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
             n_mask++;
         }
     }
-    bic = -2.0 * llk +  (2*n_comp - 1 ) *log(n_mask);
-    aic = -2.0 * llk + 4.0*n_comp;
+	// number of free parameters = K*D + (K-1) + K*D*(D+1)/2 
+    bic = -llk + 0.5 * (3.0*n_comp - 1 ) * log(n_mask);
+    aic = -llk + 3.0*n_comp - 1.0;
   //  printf("llk: %f, bic : %f, aic: %f\n", llk, bic, aic);
 
     p_overlap = BayesError();
     
-    //std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
+	DDMSG("AIC: " << aic << ", BIC: " << bic << ", P_OVERLAP: " << p_overlap);
 }
 void GaussianMixture::EM(std::vector<double>& x)
 {
@@ -375,8 +376,8 @@ void GaussianMixture::EM(std::vector<double>& x)
 		}
 	}
 
-	bic = -2.0 * llk +  (2*n_comp - 1 ) *log(n_sample);
-	aic = -2.0 * llk + 4.0*n_comp;
+	bic = -llk + 0.5 * (3.0*n_comp - 1 ) *log(n_sample);
+	aic = -llk + 3.0 * n_comp - 1;
 	p_overlap = BayesError();
 
 	//std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
@@ -398,7 +399,8 @@ void GaussianMixture::KM(std::vector<double>& x, bool b_mahalanobis)
 	{
 		Comps[0].estimate(x);
 		Comps[0].Alpha = 1;
-		bic = BIC(x);
+		updateAICBIC(x);
+
 		p_overlap = 0;
 		return;
 	}
@@ -506,7 +508,8 @@ void GaussianMixture::KM(std::vector<double>& x, bool b_mahalanobis)
 		}
 	}
 
-	bic = -2.0 * llk + 2*n_comp*log(n_sample);
+	bic = -llk + 0.5*(3.0*n_comp-1.0)*log(n_sample);
+	aic = -llk + 3.0*n_comp - 1.0;
 	p_overlap = BayesError();
 	//    std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
 }
@@ -630,9 +633,9 @@ void GaussianMixture::updateAICBIC(std::vector<double>& x)
             }
     
     }
-    // Half-normal distribution has only one parameter
-    bic = -2.0 * llk +  (2*n_comp-1.0)*log(n_sample);
-    aic = -2.0 * llk + 4.0 * n_comp;
+
+    bic = -llk +  0.5*(3.0*n_comp-1.0)*log(n_sample);
+    aic = -llk + 3.0 * n_comp - 1.0;
 
 }
 
@@ -667,8 +670,8 @@ void GaussianMixture::updateAICBIC_select(std::vector<double>& x, std::vector<bo
         }
     }
     // Half-normal distribution has only one parameter
-    bic = -2.0 * llk +  (2*n_comp-1.0)*log(cnt);
-    aic = -2.0 * llk + 4.0 * n_comp;
+    bic = -llk +  0.5 * (3.0*n_comp-1.0)*log(cnt);
+    aic = -llk + 3.0 * n_comp - 1.0;
 
 }
 
@@ -700,7 +703,7 @@ double GaussianMixture::BIC(std::vector<double>& x)
 	}
 
     // Half-normal distribution has only one parameter
-	ret = -2.0 * llk +  (2*n_comp-1.0)*log(n_sample);
+	ret = -llk +  0.5 * (3.0 *n_comp-1.0)*log(n_sample);
 
 	return ret;
 }
@@ -739,7 +742,7 @@ double GaussianMixture::BIC_select(std::vector<double>& x, std::vector<bool> &ma
     // Half-normal distribution has only one parameter
 	if (n_sample>0)
 	{
-		ret = -2.0 * llk +  (2*n_comp-1.0)*log(n_sample);
+		ret = -llk + 0.5 * (3.0*n_comp-1.0)*log(n_sample);
 	}
 
 	return ret;
@@ -773,7 +776,7 @@ double GaussianMixture::AIC(std::vector<double>& x)
         }
     }
 
-    ret = -2.0 * llk + 4.0*n_comp;
+    ret = -llk + 6.0*n_comp-1.0;
 
     return ret;
 }

@@ -75,6 +75,7 @@ GaussianMixture2& GaussianMixture2::operator = (const GaussianMixture2& gmix)
 		Comps[i].Alpha = gmix.Comps[i].Alpha;
 	}
 	bic = gmix.bic;
+	aic = gmix.aic;
     
 	p_overlap = gmix.p_overlap;
 	zeroidx = gmix.zeroidx;
@@ -140,9 +141,9 @@ void GaussianMixture2::estimate_select(std::vector<double> &x, std::vector<doubl
 #ifdef DDEBUG
     print(stderr);
 #endif
-    bic = BIC(x, y);
+    updateAICBIC(x, y);
 	p_overlap = BayesError();
-	DDMSG("BIC: " << bic << ", P_OVERLAP: " << p_overlap );
+	DDMSG("AIC" << aic << ", BIC: " << bic << ", P_OVERLAP: " << p_overlap );
 }
 
 
@@ -200,7 +201,7 @@ void GaussianMixture2::estimate(std::vector<double> &x, std::vector<double> &y, 
     	}
     }
 
-    bic = BIC(x, y);
+    updateAICBIC(x, y);
 }
 
 
@@ -218,7 +219,7 @@ void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y, bool 
 	{
 		Comps[0].estimate(x, y);
 		Comps[0].Alpha = 1;
-		bic = BIC(x, y);
+		updateAICBIC(x, y);
 		p_overlap = 0;
 		return;
 	}
@@ -350,7 +351,8 @@ void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y, bool 
 		}
 	}
 
-	bic = -2.0 * llk + 5*n_comp*log(n_sample);
+	aic = -llk + 6.0 * n_comp - 1.0;
+	bic = -llk + 0.5*(6.0 * n_comp - 1.0)*log(n_sample);
 	p_overlap = BayesError();
 	//    std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
 }
@@ -372,7 +374,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 	{
 		Comps[0].estimate(x, y);
 		Comps[0].Alpha = 1;
-		bic = BIC(x, y);
+		updateAICBIC(x, y);
 		p_overlap = 0;
 		return;
 	}
@@ -509,9 +511,9 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 		}
 	}
 
-	bic = -2.0 * llk + (5*n_comp-1.0)*log(n_sample);
+	aic = -llk + 6.0 * n_comp - 1.0;
+	bic = -llk + 0.5 * (6.0*n_comp-1.0)*log(n_sample);
 	p_overlap = BayesError();
-	//	std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
 }
 
 
@@ -537,12 +539,12 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 		Comps[0].estimate_select(x, y, mask);
 		Comps[0].Alpha = 1;
 		
-		bic = BIC_select(x, y, mask);
+		updateAICBIC_select(x, y, mask);
 		p_overlap = 0;
 #ifdef DDEBUG
         print(stderr);
 #endif
-	    DDMSG("BIC: " << bic << ", P_OVERLAP: N/A");
+	    DDMSG("AIC:" << aic << ", BIC: " << bic << ", P_OVERLAP: N/A");
 		return;
 	}
 
@@ -687,10 +689,11 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 
 	if (n_mask>0)
 	{
-		bic = -2.0 * llk + (5*n_comp-1.0)*log((double)n_mask);
+		aic = -llk + 6.0 * n_comp - 1.0;
+		bic = -llk + 0.5 * (6.0*n_comp-1.0)*log((double)n_mask);
 	}
 	p_overlap = BayesError();
-	DDMSG("BIC: " << bic << ", P_OVERLAP: " << p_overlap);
+	DDMSG("AIC: " << aic << ", BIC: " << bic << ", P_OVERLAP: " << p_overlap);
 }
 
 bool GaussianMixture2::ordered()
@@ -858,11 +861,10 @@ int GaussianMixture2::assign_dpcnt_copynumber(double x, double y)
 }
 
 
-double GaussianMixture2::BIC(std::vector<double>& x, std::vector<double>& y)
+void GaussianMixture2::updateAICBIC(std::vector<double>& x, std::vector<double>& y)
 {
 	int n_sample = (int)x.size();
 
-	double ret = 0;
 	double llk = 0;
 
 	for(int j=0; j<n_sample; ++j)
@@ -878,17 +880,14 @@ double GaussianMixture2::BIC(std::vector<double>& x, std::vector<double>& y)
 		}
 	}
 
-	ret = -2.0 * llk +  (5 * n_comp - 1.0) *log(n_sample);
-
-	return ret;
+	aic = -llk + 6.0 * n_comp - 1.0; 
+	bic = -llk + 0.5*(6.0 * n_comp - 1.0) * log(n_sample);
 }
 
-
-double GaussianMixture2::BIC_select(std::vector<double>& x, std::vector<double>& y, std::vector<bool> &mask)
+void GaussianMixture2::updateAICBIC_select(std::vector<double>& x, std::vector<double>& y, std::vector<bool> &mask)
 {
 	int n_sample = 0;
 
-	double ret = 0;
 	double llk = 0;
 
 	for(int j=0; j<(int)x.size(); ++j)
@@ -910,10 +909,9 @@ double GaussianMixture2::BIC_select(std::vector<double>& x, std::vector<double>&
 
 	if (n_sample > 0)
 	{
-		ret = -2.0 * llk +  (5 * n_comp - 1.0) *log(n_sample);
+		aic = -llk + 6.0 * n_comp - 1.0;
+		bic = -llk + 0.5*(6.0 * n_comp - 1.0) *log(n_sample);
 	}
-
-	return ret;
 }
 
 double GaussianMixture2::BayesError()
@@ -978,6 +976,7 @@ std::string GaussianMixture2::print_str()
 	{			
 		str << std::fixed << std::setprecision(4) << Comps[i].Mean[0] << "," << Comps[i].Mean[1] << ":" << Comps[i].Cov[0] << ":" << Comps[i].Cov[1]  << ":" << Comps[i].Cov[2] << ":" << Comps[i].Alpha;
 	}
+	str << std::fixed << std::setprecision(2) << "|AIC=" << aic;
 	str << std::fixed << std::setprecision(2) << "|BIC=" << bic;
 	str << std::fixed << std::setprecision(4) << "|OVERLAP=" << p_overlap; 
 	return str.str();

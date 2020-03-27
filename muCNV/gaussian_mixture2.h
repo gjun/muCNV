@@ -19,6 +19,7 @@ public:
     std::vector<Gaussian2> Comps;
     int n_comp;
     double bic;
+    double aic;
     double p_overlap;
 	int zeroidx;
     
@@ -37,8 +38,8 @@ public:
 
     bool ordered();
     bool r_ordered();
-    double BIC(std::vector<double>& , std::vector<double>& );
-    double BIC_select(std::vector<double>& , std::vector<double>&, std::vector<bool> &);
+    void updateAICBIC(std::vector<double>& , std::vector<double>& );
+    void updateAICBIC_select(std::vector<double>& , std::vector<double>&, std::vector<bool> &);
 
     double BayesError();
 	void print(FILE *);
