@@ -83,6 +83,70 @@ GaussianMixture2& GaussianMixture2::operator = (const GaussianMixture2& gmix)
 }
 
 
+void GaussianMixture2::estimate_select(std::vector<double> &x, std::vector<double> &y, std::vector<int> &z, std::vector<bool> &mask, int n)
+{
+    int n_active_sample = 0;
+    n_comp = n;
+    Comps.resize(n_comp);
+
+    int n_sample = (int)x.size();
+    if (n_sample != (int)y.size())
+    {
+        std::cerr<< "Error, GaussianMixture2 has different size of X and Y" << std::endl;
+        exit(1);
+    }        
+    if (n_sample != (int)z.size())
+    {
+        std::cerr<< "Error, GaussianMixture2 has different size of data and label" << std::endl;
+        exit(1);
+    }
+
+	std::vector<double> sum_x (n_comp, 0);
+   	std::vector<double> sum_y (n_comp, 0);
+	std::vector<double> sum_xx (n_comp, 0);
+	std::vector<double> sum_xy (n_comp, 0);
+	std::vector<double> sum_yy (n_comp, 0);
+    std::vector<int> cnt(n_comp, 0);
+	
+	for(int i=0; i<n_sample; ++i)
+	{
+		if (z[i] >=0 && z[i] < n_comp && mask[i])
+		{
+			sum_x[z[i]] +=x[i];
+			sum_y[z[i]] +=y[i];
+			sum_xx[z[i]] +=x[i]*x[i];
+			sum_xy[z[i]] +=x[i]*y[i];
+			sum_yy[z[i]] +=y[i]*y[i];
+			cnt[z[i]]++;
+            n_active_sample++;
+		}
+	}
+	
+    for(int i=0; i<n_comp; ++i)
+	{
+        if (cnt[i]>0)
+	    {
+            Comps[i].Mean[0] = sum_x[i]/(double)cnt[i];
+            Comps[i].Mean[1] = sum_y[i]/(double)cnt[i];
+            Comps[i].Cov[0] = sum_xx[i]/(double)cnt[i] - (Comps[i].Mean[0]*Comps[i].Mean[0]);
+            Comps[i].Cov[1] = sum_xy[i]/(double)cnt[i] - (Comps[i].Mean[0]*Comps[i].Mean[1]);
+            Comps[i].Cov[2] = Comps[i].Cov[1];
+            Comps[i].Cov[3] = sum_yy[i]/(double)cnt[i] - (Comps[i].Mean[1]*Comps[i].Mean[1]);
+            Comps[i].N = cnt[i];
+            Comps[i].Alpha = (double)cnt[i] / n_active_sample;
+            Comps[i].update();
+    	}
+    }
+#ifdef DDEBUG
+    print(stderr);
+#endif
+    bic = BIC(x, y);
+	p_overlap = BayesError();
+	DDMSG("BIC: " << bic << ", P_OVERLAP: " << p_overlap );
+}
+
+
+
 void GaussianMixture2::estimate(std::vector<double> &x, std::vector<double> &y, std::vector<int> &z, int n)
 {
     // TODO: clean current components?
@@ -454,8 +518,6 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 // 2-D EM for general without weights
 void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y, std::vector<bool> &mask)
 {
-	// Let's not consider half-normal distribution -- for now
-
 	int n_sample = (int) x.size();
 	int n_iter = 15;
 
@@ -495,9 +557,6 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 		}
 	}
 
-	// pseudo-means
-	//    double p_val[3] = {1.0, 0.5, 0};
-
 	for(int i=0; i<n_iter; ++i)
 	{
 		std::vector<double> sum_x (n_comp,0);
@@ -525,11 +584,10 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 			for(int m=0;m<n_comp;++m)
 			{
 				pr[m][j] = Comps[m].Alpha * Comps[m].pdf(x[j], y[j]);
- //               pr[m][j] *= 4.0;
 
 				sum_p += pr[m][j];
 			}
-//			if (sum_p < 1e-10) b_include[j] = false;
+			if (sum_p < 1e-5) b_include[j] = false;
 
 			if (b_include[j]) // if the value is an outlier, exclude it from calculations
 			{
@@ -632,7 +690,7 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 		bic = -2.0 * llk + (5*n_comp-1.0)*log((double)n_mask);
 	}
 	p_overlap = BayesError();
-	std::cerr << "BIC: " << bic << ", P_OVERLAP: " << p_overlap << std::endl;
+	DDMSG("BIC: " << bic << ", P_OVERLAP: " << p_overlap);
 }
 
 bool GaussianMixture2::ordered()

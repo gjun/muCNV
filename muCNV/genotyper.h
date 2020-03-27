@@ -124,13 +124,13 @@ public:
 class SvStat
 {
 public:
-    GaussianMixture depth_stat;
-    GaussianMixture split_stat;
-    GaussianMixture rp_stat;
-    GaussianMixture lclip_stat;
-    GaussianMixture rclip_stat;
+    GaussianMixture depth_mix;
+    GaussianMixture split_mix;
+    GaussianMixture rp_mix;
+    GaussianMixture lclip_mix;
+    GaussianMixture rclip_mix;
 
-    GaussianMixture2 depth_cnt_stat;
+    GaussianMixture2 dpcnt_mix;
 
     std::string get_summary_stat(SvGeno&, SvData&);
 };
@@ -140,6 +140,8 @@ class Genotyper
 {
 public:
     int n_sample;
+
+    SvStat genostat; 
 
     void check_biallelic(SvGeno &);
     void get_prepost_stat(SvData &, SvGeno &);
@@ -169,12 +171,12 @@ public:
     bool assign_inv_genotypes(sv &, SvData &, SvGeno &, std::vector<SampleStat> &);
 
   //  void call_insertion(sv &, SvData &, SvGeno &);
-    void select_model(GaussianMixture &, std::vector< std::vector<double> > &, std::vector<double> &, double);
-    void select_model(GaussianMixture &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<bool> &, double);
-    void select_model(GaussianMixture2 &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<double>&, std::vector<bool> &, double);
-    void select_model(GaussianMixture2 &, std::vector< std::vector<double> > &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<double>&, std::vector<bool> &, double);
+    void select_model_1d(GaussianMixture &, std::vector< std::vector<double> > &, std::vector<double> &, double);
+    void select_model_mask_1d(GaussianMixture &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<bool> &, double);
+    void select_model_mask_2d(GaussianMixture2 &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<double>&, std::vector<bool> &, double);
+    void select_model_dpcnt_mask(GaussianMixture2 &, std::vector< std::vector<double> > &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<double>&, std::vector<bool> &, double);
 
-    void select_model(GaussianMixture2 &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<double>&, double);
+    void select_model_2d(GaussianMixture2 &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<double>&, double);
 };
 
 #endif /* genotyper_h */

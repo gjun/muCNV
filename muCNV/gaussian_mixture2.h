@@ -27,6 +27,7 @@ public:
     void EM2_select(std::vector<double>&, std::vector<double>&, std::vector<bool> &);
 
     void estimate(std::vector<double> &, std::vector<double> &, std::vector<int> &, int);
+    void estimate_select(std::vector<double> &, std::vector<double> &, std::vector<int> &, std::vector<bool> &, int);
 
     // K-means
     void KM2(std::vector<double>&, std::vector<double>&, bool);
