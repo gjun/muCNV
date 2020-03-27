@@ -357,7 +357,7 @@ void Genotyper::get_prepost_stat(SvData &D, SvGeno &G)
 
 void Genotyper::select_model_1d(GaussianMixture &ret_gmix, std::vector< std::vector<double> > &means, std::vector<double> &x, double MAX_P_OVERLAP)
 {
-    double best_bic = DBL_MAX;
+    double best_aic = DBL_MAX;
 
     // number of models
     for(int m=0; m<(int)means.size(); ++m)
@@ -367,9 +367,9 @@ void Genotyper::select_model_1d(GaussianMixture &ret_gmix, std::vector< std::vec
 
         gmix.EM(x); // fit mixture model
         // gmix.print(stderr);
-        if (gmix.bic < best_bic && gmix.p_overlap < MAX_P_OVERLAP)
+        if (gmix.aic < best_aic && gmix.p_overlap < MAX_P_OVERLAP)
         {
-            best_bic = gmix.bic;
+            best_aic = gmix.aic;
             ret_gmix = gmix; // assignment
         }
     }
@@ -378,7 +378,7 @@ void Genotyper::select_model_1d(GaussianMixture &ret_gmix, std::vector< std::vec
 
 void Genotyper::select_model_mask_1d(GaussianMixture &ret_gmix, std::vector< std::vector<double> > &means, std::vector<double> &x, std::vector<bool> &mask, double MAX_P_OVERLAP)
 {
-    double best_bic = DBL_MAX;
+    double best_aic = DBL_MAX;
 
     // number of models
     for(int m=0; m<(int)means.size(); ++m)
@@ -388,10 +388,9 @@ void Genotyper::select_model_mask_1d(GaussianMixture &ret_gmix, std::vector< std
         gmix.EM_select(x, mask); // fit mixture model
         // gmix.print(stderr);
 
-       // if (gmix.bic < best_bic)
-        if (gmix.bic < best_bic && gmix.p_overlap < MAX_P_OVERLAP)
+        if (gmix.aic < best_aic && gmix.p_overlap < MAX_P_OVERLAP)
         {
-            best_bic = gmix.bic;
+            best_aic = gmix.aic;
             ret_gmix = gmix; // assignment
         }
     }
@@ -400,7 +399,7 @@ void Genotyper::select_model_mask_1d(GaussianMixture &ret_gmix, std::vector< std
 
 void Genotyper::select_model_mask_2d(GaussianMixture2 &ret_gmix2, std::vector< std::vector<double> > &means, std::vector<double> &x, std::vector<double> &y, std::vector<bool> &mask, double MAX_P_OVERLAP)
 {
-    double best_bic = DBL_MAX;
+    double best_aic = DBL_MAX;
 
     // number of models
     for(int m=0; m<(int)means.size(); ++m)
@@ -408,10 +407,10 @@ void Genotyper::select_model_mask_2d(GaussianMixture2 &ret_gmix2, std::vector< s
         std::vector<double> s (means[m].size(), 0.1);
         GaussianMixture2 gmix2(means[m], s);
         gmix2.EM2_select(x, y, mask); // fit mixture model
-        //if (gmix2.bic < best_bic )
-        if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP )
+        
+        if (gmix2.aic < best_aic && gmix2.p_overlap < MAX_P_OVERLAP )
         {
-            best_bic = gmix2.bic;
+            best_aic = gmix2.aic;
             ret_gmix2 = gmix2; // assignment (copy operation)
         }
     }
@@ -420,7 +419,7 @@ void Genotyper::select_model_mask_2d(GaussianMixture2 &ret_gmix2, std::vector< s
 
 void Genotyper::select_model_2d(GaussianMixture2 &ret_gmix2, std::vector< std::vector<double> > &means, std::vector<double> &x, std::vector<double> &y, double MAX_P_OVERLAP)
 {
-    double best_bic = DBL_MAX;
+    double best_aic = DBL_MAX;
 
     // number of models
     for(int m=0; m<(int)means.size(); ++m)
@@ -428,10 +427,10 @@ void Genotyper::select_model_2d(GaussianMixture2 &ret_gmix2, std::vector< std::v
         std::vector<double> s (means[m].size(), 0.1);
         GaussianMixture2 gmix2(means[m], s);
         gmix2.EM2(x, y); // fit mixture model
-        //if (gmix2.bic < best_bic )
-        if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP )
+        
+        if (gmix2.aic < best_aic && gmix2.p_overlap < MAX_P_OVERLAP )
         {
-            best_bic = gmix2.bic;
+            best_aic = gmix2.aic;
             ret_gmix2 = gmix2; // assignment (copy operation)
         }
     }
@@ -442,7 +441,7 @@ void Genotyper::select_model_dpcnt_mask(GaussianMixture2 &ret_gmix2, std::vector
             std::vector< std::vector<double> > &m2, std::vector<double> &x, std::vector<double> &y, 
             std::vector<bool> &mask, double MAX_P_OVERLAP)
 {
-    double best_bic = DBL_MAX;
+    double best_aic = DBL_MAX;
 
     // number of models
     for(int m=0; m<(int)m1.size(); ++m)
@@ -450,10 +449,10 @@ void Genotyper::select_model_dpcnt_mask(GaussianMixture2 &ret_gmix2, std::vector
         std::vector<double> s (m1[m].size(), 0.1);
         GaussianMixture2 gmix2(m1[m], m2[m], s);
         gmix2.EM2_select(x, y, mask); // fit mixture model
-        //if (gmix2.bic < best_bic )
-        if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP )
+        
+        if (gmix2.aic < best_aic && gmix2.p_overlap < MAX_P_OVERLAP )
         {
-            best_bic = gmix2.bic;
+            best_aic = gmix2.aic;
             ret_gmix2 = gmix2; // assignment (copy operation)
         }
     }
@@ -1740,7 +1739,7 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
 
     DDMSG("DPCNT model with 2 component2");
     tmp_mix.estimate_select(D.dps[2], norm_cnts, lbl, G.sample_mask, 2);
-    if (tmp_mix.bic < genostat.dpcnt_mix.bic && tmp_mix.p_overlap < G.MAX_P_OVERLAP)
+    if (tmp_mix.aic < genostat.dpcnt_mix.aic && tmp_mix.p_overlap < G.MAX_P_OVERLAP)
     {
         genostat.dpcnt_mix = tmp_mix;
     }
@@ -1752,13 +1751,11 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         DDMSG("DPCNT model with 3 components");
         tmp_mix.estimate_select(D.dps[2], norm_cnts, lbl, G.sample_mask, 3);
 
-        if (tmp_mix.bic < genostat.dpcnt_mix.bic && tmp_mix.p_overlap < G.MAX_P_OVERLAP)
+        if (tmp_mix.aic < genostat.dpcnt_mix.aic && tmp_mix.p_overlap < G.MAX_P_OVERLAP)
         {
             genostat.dpcnt_mix = tmp_mix;
         }
     }
-    // Check BIC, P_Overlap! 
-
     G.dp_flag = false;
     
 //    select_model_dpcnt_mask(genostat.dpcnt_mix, vec_dpmeans, vec_cntmeans, D.dps[2], norm_cnts, G.sample_mask, 0.5); 
@@ -2725,7 +2722,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
     // use pre_post filtering for depth-only
     if (!G.b_pre || !G.b_post) return;
     
-    // Fit Gaussian mixture models with 1, 2, and 3 components, compare BIC
+    // Fit Gaussian mixture models with 1, 2, and 3 components, compare AIC
     std::vector< std::vector<double> > means = { {1.0}, {1.0, 1.5}, {1.0, 1.5, 2.0}, {1.0, 1.5, 2.0, 2.5}, {1.0, 1.5, 2.0, 2.5, 3.0}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5}, {1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0} };
 
     std::vector<int> dp_cn (n_sample, -1);
