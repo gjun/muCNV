@@ -129,7 +129,10 @@ void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
         Comps[0].estimate_select(x, mask);
         Comps[0].Alpha = 1;
         updateAICBIC_select(x, mask);
-        p_overlap = 0;
+        p_overlap = 0;	
+#ifdef DDEBUG
+        print(stderr);
+#endif
         return;
     }
     for(int i=0; i<n_comp; ++i)
@@ -203,8 +206,6 @@ void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
                 Comps[m].Mean = sum[m]/sum_pr[m];
         }
         
-		int n_effect = 0;
-
         for(int j=0; j<n_sample; ++j)
         {
             if (mask[j] && b_include[j])
@@ -227,7 +228,9 @@ void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
             Comps[m].Stdev = sqrt(sum_err[m] / sum_pr[m]) ;
             Comps[m].Alpha = sum_pr[m] / sumsum;
         }
-        //print(stderr);
+#ifdef DDEBUG
+        print(stderr);
+#endif
     }
     
     double llk = 0;
@@ -604,7 +607,6 @@ void GaussianMixture::updateAICBIC(std::vector<double>& x)
 {
     int n_sample = (int)x.size();
 
-    double ret = 0;
     double llk = 0;
     
     for(int j=0; j<n_sample; ++j)
@@ -638,7 +640,6 @@ void GaussianMixture::updateAICBIC_select(std::vector<double>& x, std::vector<bo
 {
     int n_sample = (int)x.size();
 
-    double ret = 0;
     double llk = 0;
     int cnt = 0;
     
