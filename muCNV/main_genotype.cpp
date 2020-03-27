@@ -130,7 +130,7 @@ int main_genotype(int argc, char** argv)
     std::vector<string> exclude_ids;
 
     int n_sample = 0;
-    int n_active_sample = 0;
+    // int n_active_sample = 0;
 
     int n_pileup = (int) pileup_names.size();
     int n_var = (int) vec_sv.size();
@@ -308,10 +308,11 @@ int main_genotype(int argc, char** argv)
                 reader.read_pair_split(vec_sv[i], D.rdstats, gc, D.all_rps, D.all_lclips, D.all_rclips);
                 if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
                 {
-                    // var_depth gets GC-correction here
                     D.multi_dp = reader.read_depth100(vec_sv[i], D.dps, gc);
+                    
                     for(int j=0; j<n_sample; ++j)
                     {
+                        D.raw_dp[j] = D.dps[2][j];
                         D.dps[0][j] /= (double)stats[j].avg_dp;
                         D.dps[1][j] /= (double)stats[j].avg_dp;
                         if (D.dps[0][j] > 0.001 && D.dps[1][j] > 0.001)

@@ -119,7 +119,7 @@ SvGeno::SvGeno(int n)
 
     gt.resize(n_sample, -1);
     cn.resize(n_sample, -1);
-    
+
     start_clips.resize(n_sample, 0);
     end_clips.resize(n_sample, 0);
     
@@ -143,6 +143,7 @@ SvGeno::SvGeno(int n)
     cnt_flag = false;
     dp_flag = false;
     dp2_flag = false;
+    dpcnt_flag = false;
     pd_flag = false;
     readpair_flag = false;
     clip_flag = false;
@@ -163,8 +164,7 @@ void SvGeno::reset()
     std::fill(cn.begin(), cn.end(), -1);
     
     std::fill(split_cnts.begin(), split_cnts.end(), 0);
-    std::fill(rp_cnts.begin(), rp_cnts.end(), 0);
-    
+    std::fill(rp_cnts.begin(), rp_cnts.end(), 0);    
     std::fill(nonref_mask.begin(), nonref_mask.end(), false);
     
     std::fill(all_cnts.begin(), all_cnts.end(), 0);
@@ -182,6 +182,7 @@ void SvGeno::reset()
     cnt_flag = false;
     dp_flag = false;
     dp2_flag = false;
+    dpcnt_flag = false;
     pd_flag = false;
     readpair_flag = false;
     clip_flag = false;
@@ -201,8 +202,10 @@ SvData::SvData(int n)
     n_sample = n;
     rdstats.resize(n);
     prepost_dp.resize(n_sample, 1);
-    
+    raw_dp.resize(n_sample);
+
     dps.resize(5);
+    
     
     multi_dp = false;
     
@@ -252,6 +255,7 @@ void SvData::reset()
     clus_idx = -1;
     
     std::fill(prepost_dp.begin(), prepost_dp.end(), 1);
+    std::fill(raw_dp.begin(), raw_dp.end(), 0);
     vec_break_clusters.clear();
 }
 
@@ -1817,7 +1821,7 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         
         if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
         {
-            G.dp2_flag = true;
+            G.dpcnt_flag = true;
             G.cnt_flag = false;
 //            G.gmix.n_comp = G.gmix.n_comp + 1;
 //           G.gmix.Comps.resize(G.gmix.n_comp);

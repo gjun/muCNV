@@ -35,7 +35,9 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs, std::vector<bool>
 	fprintf(fp,"##INFO=<ID=DP,Number=1,Type=String,Description=\"1-D Depth clustering\">\n");
     fprintf(fp,"##INFO=<ID=DPOverlap,Number=1,Type=Float,Description=\"Overlap between 1-D depth clusters\">\n");
 	fprintf(fp,"##INFO=<ID=DP2,Number=1,Type=String,Description=\"2-D Depth clustering\">\n");
-    fprintf(fp,"##INFO=<ID=DP2Overlap,Number=1,Type=Float,Description=\"Overlap between 2-D depth clusters\">\n");
+	fprintf(fp,"##INFO=<ID=DP2Overlap,Number=1,Type=Float,Description=\"Overlap between 2-D depth clusters\">\n");
+	fprintf(fp,"##INFO=<ID=DPCNT,Number=1,Type=String,Description=\"2-D Depth and Read Count clustering\">\n");
+    fprintf(fp,"##INFO=<ID=DP2Overlap,Number=1,Type=Float,Description=\"Overlap between 2-D Depth-ReadCount clusters\">\n");
 	fprintf(fp,"##INFO=<ID=SPLIT,Number=1,Type=String,Description=\"Breakpoints estimated by split reads\">\n");
     fprintf(fp,"##INFO=<ID=CLIP,Number=1,Type=String,Description=\"Breakpoints estimated by soft clips\">\n");
     fprintf(fp,"##INFO=<ID=PRE_FAIL,Number=0,Type=String,Description=\"Pre-depth distribution is out of bound\">\n");
@@ -51,7 +53,8 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs, std::vector<bool>
 	fprintf(fp,"##ALT=<ID=INV,Description=\"Inversion\">\n");
 	fprintf(fp,"##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n");
 	fprintf(fp,"##FORMAT=<ID=CN,Number=1,Type=Integer,Description=\"Copy Number\">\n");
-	fprintf(fp,"##FORMAT=<ID=DP,Number=1,Type=Float,Description=\"Normalized depth\">\n");
+	fprintf(fp,"##FORMAT=<ID=DP,Number=1,Type=Float,Description=\"Raw depth\">\n");
+	fprintf(fp,"##FORMAT=<ID=ND,Number=1,Type=Float,Description=\"Normalized depth\">\n");
 	fprintf(fp,"##FORMAT=<ID=DD,Number=A,Type=Float,Description=\"Normalized depth in before, inside first, inside second, and after SV\">\n");
 	fprintf(fp,"##FORMAT=<ID=RP,Number=1,Type=Integer,Description=\"Number of supporting read pairs\">\n");
 	fprintf(fp,"##FORMAT=<ID=SP,Number=1,Type=Integer,Description=\"Number of supporting split reads\">\n");
@@ -130,21 +133,31 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
     }
     if (G.dp_flag)
 	{
-        fprintf(fp, ";DP=(%.2f:%.2f:%.2f", G.gmix.Comps[0].Mean, G.gmix.Comps[0].Stdev, G.gmix.Comps[0].Alpha);
+        fprintf(fp, ";DP=(%.3f:%.3f:%.3f", G.gmix.Comps[0].Mean, G.gmix.Comps[0].Stdev, G.gmix.Comps[0].Alpha);
 		for(int j=1;j<G.gmix.n_comp;++j)
 		{
-			fprintf(fp,"::%.2f:%.2f:%.2f", G.gmix.Comps[j].Mean, G.gmix.Comps[j].Stdev, G.gmix.Comps[j].Alpha);
+			fprintf(fp,"::%.3f:%.3f:%.3f", G.gmix.Comps[j].Mean, G.gmix.Comps[j].Stdev, G.gmix.Comps[j].Alpha);
 		}
-		fprintf(fp, ");DPOverlap=%.2f", G.gmix.p_overlap);
+		fprintf(fp, ");DPOverlap=%.3f", G.gmix.p_overlap);
 	}
     if (G.dp2_flag)
 	{
-        fprintf(fp, ";DP2=(%.2f,%.2f:%.2f,%.2f:%.2f", G.gmix2.Comps[0].Mean[0], G.gmix2.Comps[0].Mean[1], G.gmix2.Comps[0].Cov[0], G.gmix2.Comps[0].Cov[3], G.gmix2.Comps[0].Alpha);
+        fprintf(fp, ";DP2=(%.3f,%.3f:%.3f,%.3f,%.3f:%.3f", G.gmix2.Comps[0].Mean[0], G.gmix2.Comps[0].Mean[1], G.gmix2.Comps[0].Cov[0], G.gmix2.Comps[0].Cov[1], G.gmix2.Comps[0].Cov[3], G.gmix2.Comps[0].Alpha);
 		for(int j=1;j<G.gmix2.n_comp;++j)
 		{
-			fprintf(fp, "::%.2f,%.2f:%.2f,%.2f:%.2f", G.gmix2.Comps[j].Mean[0], G.gmix2.Comps[j].Mean[1], G.gmix2.Comps[j].Cov[0], G.gmix2.Comps[j].Cov[3], G.gmix2.Comps[j].Alpha);
+			fprintf(fp, "::%.3f,%.3f:%.3f,%.3f,%.3f:%.3f", G.gmix2.Comps[j].Mean[0], G.gmix2.Comps[j].Mean[1], G.gmix2.Comps[j].Cov[0], G.gmix2.Comps[j].Cov[1], G.gmix2.Comps[j].Cov[3], G.gmix2.Comps[j].Alpha);
 		}
-		fprintf(fp, "):DP2overlap=%2f", G.gmix2.p_overlap);
+		fprintf(fp, "):DP2overlap=%.3f", G.gmix2.p_overlap);
+	}
+
+    if (G.dpcnt_flag)
+	{
+        fprintf(fp, ";DPCNT=(%.3f,%.3f:%.3f,%.3f,%.3f:%.3f", G.gmix2.Comps[0].Mean[0], G.gmix2.Comps[0].Mean[1], G.gmix2.Comps[0].Cov[0], G.gmix2.Comps[0].Cov[1], G.gmix2.Comps[0].Cov[3], G.gmix2.Comps[0].Alpha);
+		for(int j=1;j<G.gmix2.n_comp;++j)
+		{
+			fprintf(fp, "::%.3f,%.3f:%.3f,%.3f,%.3f:%.3f", G.gmix2.Comps[j].Mean[0], G.gmix2.Comps[j].Mean[1], G.gmix2.Comps[j].Cov[0], G.gmix2.Comps[j].Cov[1], G.gmix2.Comps[j].Cov[3], G.gmix2.Comps[j].Alpha);
+		}
+		fprintf(fp, "):DPCNToverlap=%.3f", G.gmix2.p_overlap);
 	}
 
 	if (G.b_biallelic)
@@ -174,7 +187,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
     }
     
     
-    fprintf(fp, "\tGT:CN:DP:DD:SP:RP:SC:EC");
+    fprintf(fp, "\tGT:CN:ND:DP:DD:SP:RP:SC:EC");
     
     for (int i=0; i<(int)G.gt.size(); ++i)
     {
@@ -199,7 +212,8 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
         if (G.cn[i]<0)
             fprintf(fp, ":.");
         else
-            fprintf(fp, ":%d",G.cn[i]);
+            fprintf(fp, ":%d",G.cn[i]);			
+		fprintf(fp, ":%.2f",D.raw_dp[i]);
 		fprintf(fp, ":%.2f",D.dps[2][i]);
 
 		if (S.svtype == DEL || S.svtype == CNV || S.svtype == DUP )

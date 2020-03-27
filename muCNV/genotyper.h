@@ -27,6 +27,7 @@ public:
     bool dp_flag;
     bool dp2_flag;
     bool pd_flag;
+    bool dpcnt_flag;
     bool readpair_flag;
     bool split_flag;
     bool clip_flag;
@@ -100,6 +101,7 @@ class SvData
 public:
     int n_sample;
     std::vector<ReadStat> rdstats;
+    std::vector<double> raw_dp;
     std::vector< std::vector<double> > dps;
     std::vector<double> prepost_dp;
     
