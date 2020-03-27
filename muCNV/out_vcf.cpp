@@ -212,9 +212,11 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
         if (G.cn[i]<0)
             fprintf(fp, ":.");
         else
-            fprintf(fp, ":%d",G.cn[i]);			
-		fprintf(fp, ":%.2f",D.raw_dp[i]);
+            fprintf(fp, ":%d",G.cn[i]);	
+				
 		fprintf(fp, ":%.2f",D.dps[2][i]);
+		
+		fprintf(fp, ":%.2f",D.raw_dp[i]);
 
 		if (S.svtype == DEL || S.svtype == CNV || S.svtype == DUP )
 		{
