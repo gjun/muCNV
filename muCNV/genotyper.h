@@ -176,7 +176,7 @@ public:
     void select_model_1d(GaussianMixture &, std::vector< std::vector<double> > &, std::vector<double> &, double);
     void select_model_mask_1d(GaussianMixture &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<bool> &, double);
     void select_model_mask_2d(GaussianMixture2 &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<double>&, std::vector<bool> &, double);
-    void select_model_dpcnt_mask(GaussianMixture2 &, std::vector< std::vector<double> > &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<double>&, std::vector<bool> &, double);
+    void select_model_dpcnt_mask(GaussianMixture2 &, std::vector<double> &, std::vector<double> &, std::vector<int> &, int,std::vector<bool> &, double);
 
     void select_model_2d(GaussianMixture2 &, std::vector< std::vector<double> > &, std::vector<double> &, std::vector<double>&, double);
 };

@@ -437,23 +437,25 @@ void Genotyper::select_model_2d(GaussianMixture2 &ret_gmix2, std::vector< std::v
     return;
 }
 
-void Genotyper::select_model_dpcnt_mask(GaussianMixture2 &ret_gmix2, std::vector< std::vector<double> > &m1, 
-            std::vector< std::vector<double> > &m2, std::vector<double> &x, std::vector<double> &y, 
+void Genotyper::select_model_dpcnt_mask(GaussianMixture2 &ret_gmix2, std::vector<double> &dps, std::vector<double> &cnts, std::vector<int> &lbl, int max_n_comp,
             std::vector<bool> &mask, double MAX_P_OVERLAP)
 {
-    double best_bic = DBL_MAX;
+    std::vector<double> m = {1.0};
+    std::vector<double> s = {0.1};
+    GaussianMixture2 tmp_mix(m, s);
 
-    // number of models
-    for(int m=0; m<(int)m1.size(); ++m)
+    DDMSG("DPCNT model with 1 component");
+    tmp_mix.EM2_select(dps, cnts, mask);
+    ret_gmix2 = tmp_mix;
+
+    for(int n_comp=2; n_comp<=max_n_comp; ++n_comp)
     {
-        std::vector<double> s (m1[m].size(), 0.1);
-        GaussianMixture2 gmix2(m1[m], m2[m], s);
-        gmix2.EM2_select(x, y, mask); // fit mixture model
-        
-        if (gmix2.bic < best_bic && gmix2.p_overlap < MAX_P_OVERLAP )
+        DDPRINT("DPCNT model with %d components\n", n_comp);
+        tmp_mix.estimate_select(dps, cnts, lbl, mask, n_comp);
+    
+        if (tmp_mix.bic < ret_gmix2.bic && tmp_mix.p_overlap < MAX_P_OVERLAP)
         {
-            best_bic = gmix2.bic;
-            ret_gmix2 = gmix2; // assignment (copy operation)
+            ret_gmix2 = tmp_mix;
         }
     }
     return;
@@ -501,7 +503,7 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
     for(int i=0; i<n_sample; ++i)
     {
         if (G.sample_mask[i])
-            norm_cnts[i] = (G.split_cnts[i] + G.rp_cnts[i]) / stats[i].avg_dp;
+            norm_cnts[i] = G.all_cnts[i] / stats[i].avg_dp;
     }
     
     all_mix.estimate(norm_cnts, G.gt, 2);
@@ -572,6 +574,7 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
     if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
     {
         G.b_pass = true;
+        
         return true;
     }
     return false;
@@ -1682,18 +1685,14 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
     std::vector<double> norm_cnts (n_sample, 0);
     std::vector<int> lbl (n_sample, -1);
 
-    std::vector< std::vector<double> > vec_cntmeans = { {0}, {0, 0.2}};
-    std::vector< std::vector<double> > vec_dpmeans = { {1.0}, {1.0, 0.5}};
-    std::vector< std::vector<double> > vec_std = { {0.1}, {0.1, 0.1}};
-
     double tmp_sum = 0;
     double tmp_cnt = 0;
     double cnt_max = -1;
     double cnt_mean = 0;
 
-    GaussianMixture2 tmp_mix(vec_dpmeans[0], vec_cntmeans[0], vec_std[0]);
-
     DDMSG("assigning DEL genotypes");
+
+    int max_ncomp = 1;
 
     for(int i=0; i<n_sample; ++i)
     {
@@ -1724,41 +1723,22 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
     if (tmp_cnt > 0)
     {
         cnt_mean = tmp_sum / tmp_cnt;
+        max_ncomp = 2;
     }
     else
     {
         return false;
     }
 
+    if (cnt_max > 0 )
+    {
+        max_ncomp = 3;
+    }
+
     DDPRINT("cnt_mean %f, cnt_max %f \n", cnt_mean, cnt_max);
-    vec_cntmeans[1][2] = cnt_mean;
 
-    DDMSG("DPCNT model with 1 component");
-    tmp_mix.EM2_select(D.dps[2], norm_cnts, G.sample_mask);
-    genostat.dpcnt_mix = tmp_mix;
-
-    DDMSG("DPCNT model with 2 component2");
-    tmp_mix.estimate_select(D.dps[2], norm_cnts, lbl, G.sample_mask, 2);
-    if (tmp_mix.bic < genostat.dpcnt_mix.bic && tmp_mix.p_overlap < G.MAX_P_OVERLAP)
-    {
-        genostat.dpcnt_mix = tmp_mix;
-    }
-
-    if (cnt_max>=0)
-    {
-        //vec_cntmeans.push_back({0, cnt_mean, cnt_max});
-        //vec_dpmeans.push_back({1.0, 0.5, 0});
-        DDMSG("DPCNT model with 3 components");
-        tmp_mix.estimate_select(D.dps[2], norm_cnts, lbl, G.sample_mask, 3);
-
-        if (tmp_mix.bic < genostat.dpcnt_mix.bic && tmp_mix.p_overlap < G.MAX_P_OVERLAP)
-        {
-            genostat.dpcnt_mix = tmp_mix;
-        }
-    }
+    select_model_dpcnt_mask(genostat.dpcnt_mix, D.dps[2], norm_cnts, lbl, max_ncomp, G.sample_mask, G.MAX_P_OVERLAP);
     G.dp_flag = false;
-    
-//    select_model_dpcnt_mask(genostat.dpcnt_mix, vec_dpmeans, vec_cntmeans, D.dps[2], norm_cnts, G.sample_mask, 0.5); 
     
     if (genostat.dpcnt_mix.n_comp > 1)
     {     
@@ -1790,7 +1770,13 @@ bool Genotyper::assign_del_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
             }
             else
             {
-                if (D.dps[2][i] > 0.7 || norm_cnts[i] < 0.05)
+                if (cn == -1 && D.dps[2][i] > 0.85 && norm_cnts[i] < 0.05)
+                {
+                    G.cn[i] = 2;
+                    G.gt[i] = 0;
+                    G.ns ++;
+                }
+                else if (D.dps[2][i] > 0.7 || norm_cnts[i] < 0.05)
                 {
                     G.cn[i] = -1;
                     G.gt[i] = -1;
@@ -2382,171 +2368,145 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
 
 bool Genotyper::assign_dup_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats)
 {
-    GaussianMixture dp_mix, all_mix;
+  // GaussianMixture dp_mix, all_mix;
 
-    if (G.split_sum / G.ac < 1 && G.rp_sum / G.ac < 1 && ((G.startclip_sum/(G.endclip_sum+0.001) > 5) || (G.endclip_sum/(G.startclip_sum+0.001) > 5)))
-        return false;
+    std::vector<double> norm_cnts (n_sample, 0);
+    std::vector<int> lbl (n_sample, -1);
 
-    // Check whether the 'variant' depth is separated from 'non-variant' depth
-    dp_mix.estimate(D.dps[2], G.gt, 2);
-    
-    double err_bound = dp_mix.Comps[0].Stdev;
-    
-    // TODO: Arbitrary cutoffs
-    if (err_bound < 0.2) err_bound = 0.2;
-    
-    if (dp_mix.Comps[0].Mean>=0.8 && dp_mix.Comps[0].Mean <= 1.2 && dp_mix.Comps[1].Mean - err_bound >= dp_mix.Comps[0].Mean)
+    double tmp_sum = 0;
+    double tmp_cnt = 0;
+    double cnt_max = -1;
+    double cnt_mean = 0;
+
+    DDMSG("assigning DEL genotypes");
+
+    int max_ncomp = 1;
+
+    for(int i=0; i<n_sample; ++i)
     {
-        // if yes, then try to EM with masks, variants only
-        std::vector<std::vector<double> > alt_means =  { {1.5}, {1.5, 2.0}, {1.5, 2.0, 2.5}, {1.5, 2.0, 2.5, 3.0}, {1.5, 2.0, 2.5, 3.0, 3.5}, {1.5, 2.0, 2.5, 3.0, 3.5, 4.0} };
-        select_model_mask_1d(G.gmix, alt_means, D.dps[2], G.nonref_mask, 0.3);
-            
-        G.ns = 0;
-        G.ac = 0;
-        
-        for(int i=0; i<n_sample; ++i)
+        if (G.sample_mask[i])
         {
-            if (!G.sample_mask[i]) continue;
-
-            double d0 = D.dps[2][i] - dp_mix.Comps[0].Mean;
-            double d1 = G.gmix.Comps[0].Mean - D.dps[2][i];
-            
-            G.gt[i] = -1;
-            G.cn[i] = -1;
-            
-            if (d0>0 && G.all_cnts[i]>0 && d1 < d0 * ((G.split_cnts[i] + G.all_cnts[i] - 1) / 2.0))
+            norm_cnts[i] = G.all_cnts[i] / stats[i].avg_dp;
+            if (D.dps[2][i] >= 1.35 && norm_cnts[i] >= 0.1)
             {
-                if (G.gmix.Comps.size()>1 && D.dps[2][i] > G.gmix.Comps[1].Mean - G.gmix.Comps[1].Stdev)
+                tmp_sum += norm_cnts[i];
+                tmp_cnt += 1;
+                lbl[i] = 1;
+
+                if (D.dps[2][i] > 1.85)
                 {
-                    G.gt[i] = 2;
-                    G.cn[i] = (int)( D.dps[2][i] * 2.0 );
-                    G.ns++;
-                    G.ac += 2;
-                }
-                else
-                {
-                    G.gt[i] = 1;
-                    G.cn[i] = 1;
-                    G.ns++;
-                    G.ac++;
+                    if (norm_cnts[i] > cnt_max)
+                    {
+                        cnt_max = norm_cnts[i];
+                    }
+                    
+                    lbl[i] = round(D.dps[2][i]*2.0) - 2;
                 }
             }
-            else
+            else if (norm_cnts[i] < 0.05 && D.dps[2][i]<1.2 && D.dps[2][i] > 0.8)
             {
-                if (D.dps[2][i] > dp_mix.Comps[0].Mean + (err_bound / (G.all_cnts[i]+1.0) ) || G.split_cnts[i]>3 || (G.split_cnts[i]>0 && G.all_cnts[i]>5) || G.all_cnts[i] > 10)  // missing
-                {
-                    G.gt[i] = -1;
-                }
-                else if (d0 < d1)
-                {
-                    G.gt[i] = 0;
-                    G.cn[i] = 2;
-                    G.ns++;
-                }
-                else
-                {
-                    G.gt[i] = -1;
-                }
+                lbl[i] = 0;
             }
-        }
-
-        fflush(stdout);
-        double callrate = (double)G.ns / G.n_effect;
-
-        if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
-        {
-            G.b_pass = true;
-            check_biallelic(G);
-            return true;
+            if (lbl[i] > max_ncomp-1)
+            {
+                max_ncomp = lbl[i] + 1;
+            }
         }
     }
-    if (dp_mix.Comps[1].Mean - 0.1 > dp_mix.Comps[0].Mean)
+    if (tmp_cnt > 0)
     {
-        // genotype using read counts only, not using depth at all
-        std::vector<double> norm_cnts (n_sample, 0);
-        for(int i=0; i<n_sample; ++i)
-        {
-            if (G.sample_mask[i])
-               norm_cnts[i] = (G.split_cnts[i]  + G.rp_cnts[i]) / stats[i].avg_dp ;
-        }
-        
-        all_mix.estimate(norm_cnts, G.gt, 2);
-        
-        std::vector<std::vector<double> > alt_means = { {all_mix.Comps[1].Mean}, {all_mix.Comps[1].Mean, all_mix.Comps[1].Mean * 2.0} };
+        cnt_mean = tmp_sum / tmp_cnt;
+    }
+    else
+    {
+        return false;
+    }
 
-        select_model_mask_1d(G.gmix, alt_means, norm_cnts, G.nonref_mask, 0.3);
-        
-        double err_bound = all_mix.Comps[0].Stdev;
-        
-        if (err_bound < 0.1) err_bound = 0.1;
+    DDPRINT("cnt_mean %f, cnt_max %f \n", cnt_mean, cnt_max);
 
-        // TODO: Arbitrary cutoffs
-        if (all_mix.Comps[0].Mean>0.1 || all_mix.Comps[1].Mean - err_bound < all_mix.Comps[0].Mean || all_mix.p_overlap > 0.5)
-            return false;
-
+    select_model_dpcnt_mask(genostat.dpcnt_mix, D.dps[2], norm_cnts, lbl, max_ncomp, G.sample_mask, G.MAX_P_OVERLAP);
+    G.dp_flag = false;
+    
+    if (genostat.dpcnt_mix.n_comp > 1)
+    {     
         G.ns = 0;
         G.ac = 0;
         
+        DDPRINT("%d components\n", genostat.dpcnt_mix.n_comp);
         for(int i=0; i<n_sample; ++i)
         {
+            G.cn[i] = -1;
+            G.gt[i] = -1;
             if (!G.sample_mask[i]) continue;
 
-            double d0 = norm_cnts[i] - all_mix.Comps[0].Mean ;
-            double d1 = G.gmix.Comps[0].Mean - norm_cnts[i];
-            
-            G.gt[i] = -1;
-            G.cn[i] = -1;
-            // TODO: test genotypes
-            if (d0>0 &&  G.all_cnts[i]>0 && d1 < d0 * ((G.split_cnts[i] + G.rp_cnts[i] + G.all_cnts[i] - 1) / 2.0))
+            int cn = genostat.dpcnt_mix.assign_dpcnt_copynumber(D.dps[2][i], norm_cnts[i]);
+
+            if (cn == 2)
             {
-                if (G.gmix.Comps.size()>1  && ((G.gmix.Comps[1].Mean - norm_cnts[i] < (norm_cnts[i] - G.gmix.Comps[0].Mean) * 0.5) || D.dps[2][i] > 2.0))
+                if (D.dps[2][i] < 0.8 || D.dps[2][i] > 1.2 || norm_cnts[i] > 0.1)
                 {
-                    G.gt[i] = 2;
-                    G.cn[i] = (int)( D.dps[2][i] * 2.0 );
-                    G.ns++;
-                    G.ac += 2;
+                    G.cn[i] = -1;
+                    G.gt[i] = -1;
                 }
-                else // if there are few ambiguous samples, do not code alternative allele solely based on depth
+                else
                 {
-                    G.gt[i] = 1;
-                    G.cn[i] = 3;
-                    G.ns++;
-                    G.ac++;
+                    G.cn[i] = 2;
+                    G.gt[i] = 0; // 0/0
+                    G.ns ++;
                 }
             }
             else
             {
-                if (norm_cnts[i] > all_mix.Comps[0].Mean + (err_bound / (G.all_cnts[i]+1.0) ) )  // missing
-                {
-                    G.gt[i] = -1;
-                    G.cn[i] = -1;
-                }
-                else if (d0 < d1)
+                if (cn == -1 && D.dps[2][i] < 1.2 && D.dps[2][i] > 0.8 && norm_cnts[i] < 0.05)
                 {
                     G.cn[i] = 2;
                     G.gt[i] = 0;
-                    G.ns++;
+                    G.ns ++;
                 }
-                else
+                else if (D.dps[2][i] < 1.3 || norm_cnts[i] < 0.05)
                 {
                     G.cn[i] = -1;
                     G.gt[i] = -1;
                 }
+                else if (cn == 3)
+                {
+                    G.cn[i] = 3;
+                    G.gt[i] = 1; // 0/1
+                    G.ac ++;
+                    G.ns ++;
+                }
+                else if (cn > 3)
+                {
+                    G.cn[i] = cn;
+                    G.gt[i] = 2; // 1/1
+                    G.ns ++;
+                    G.ac += 2;
+                }
+                else if (cn >= 0 && cn < 2)
+                {
+                    G.cn[i] = cn;
+                    G.gt[i] = -1;
+                    G.ns ++;
+                }
             }
+        
         }
+
         double callrate = (double)G.ns / G.n_effect;
-
-
+        DDPRINT("NS %d, AC %d, Call rate %f\n", G.ns, G.ac, callrate);
+        
         if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
         {
-            G.dp_flag = false;
-            G.cnt_flag = true;
-            G.gmix.n_comp = G.gmix.n_comp + 1;
-            G.gmix.Comps.resize(G.gmix.n_comp);
-            G.gmix.Comps[G.gmix.n_comp-1].Mean = dp_mix.Comps[0].Mean;
-            G.gmix.Comps[G.gmix.n_comp-1].Stdev = dp_mix.Comps[0].Stdev;
-            G.gmix.Comps[G.gmix.n_comp-1].Alpha = dp_mix.Comps[0].Alpha;
+            G.dpcnt_flag = true;
+            G.cnt_flag = false;
+//            G.gmix.n_comp = G.gmix.n_comp + 1;
+//           G.gmix.Comps.resize(G.gmix.n_comp);
+//            G.gmix.Comps[G.gmix.n_comp-1].Mean = dpcnt_mix.Comps[0].Mean[0];
+//            G.gmix.Comps[G.gmix.n_comp-1].Stdev = dpcnt_mix.Comps[0].Cov[0];
+//           G.gmix.Comps[G.gmix.n_comp-1].Alpha = dpcnt_mix.Comps[0].Alpha;
+            G.gmix2 = genostat.dpcnt_mix;
             G.b_pass = true;
+            DDMSG("DPCNT clustering successful");
             return true;
         }
         else
@@ -2556,8 +2516,187 @@ bool Genotyper::assign_dup_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
             return false;
         }
     }
-    return false;
+    return false;    
 }
+
+// bool Genotyper::assign_dup_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats)
+// {
+//     GaussianMixture dp_mix, all_mix;
+
+//     if (G.split_sum / G.ac < 1 && G.rp_sum / G.ac < 1 && ((G.startclip_sum/(G.endclip_sum+0.001) > 5) || (G.endclip_sum/(G.startclip_sum+0.001) > 5)))
+//         return false;
+
+//     // Check whether the 'variant' depth is separated from 'non-variant' depth
+//     dp_mix.estimate(D.dps[2], G.gt, 2);
+    
+//     double err_bound = dp_mix.Comps[0].Stdev;
+    
+//     // TODO: Arbitrary cutoffs
+//     if (err_bound < 0.2) err_bound = 0.2;
+    
+//     if (dp_mix.Comps[0].Mean>=0.8 && dp_mix.Comps[0].Mean <= 1.2 && dp_mix.Comps[1].Mean - err_bound >= dp_mix.Comps[0].Mean)
+//     {
+//         // if yes, then try to EM with masks, variants only
+//         std::vector<std::vector<double> > alt_means =  { {1.5}, {1.5, 2.0}, {1.5, 2.0, 2.5}, {1.5, 2.0, 2.5, 3.0}, {1.5, 2.0, 2.5, 3.0, 3.5}, {1.5, 2.0, 2.5, 3.0, 3.5, 4.0} };
+//         select_model_mask_1d(G.gmix, alt_means, D.dps[2], G.nonref_mask, 0.3);
+            
+//         G.ns = 0;
+//         G.ac = 0;
+        
+//         for(int i=0; i<n_sample; ++i)
+//         {
+//             if (!G.sample_mask[i]) continue;
+
+//             double d0 = D.dps[2][i] - dp_mix.Comps[0].Mean;
+//             double d1 = G.gmix.Comps[0].Mean - D.dps[2][i];
+            
+//             G.gt[i] = -1;
+//             G.cn[i] = -1;
+            
+//             if (d0>0 && G.all_cnts[i]>0 && d1 < d0 * ((G.split_cnts[i] + G.all_cnts[i] - 1) / 2.0))
+//             {
+//                 if (G.gmix.Comps.size()>1 && D.dps[2][i] > G.gmix.Comps[1].Mean - G.gmix.Comps[1].Stdev)
+//                 {
+//                     G.gt[i] = 2;
+//                     G.cn[i] = (int)( D.dps[2][i] * 2.0 );
+//                     G.ns++;
+//                     G.ac += 2;
+//                 }
+//                 else
+//                 {
+//                     G.gt[i] = 1;
+//                     G.cn[i] = 1;
+//                     G.ns++;
+//                     G.ac++;
+//                 }
+//             }
+//             else
+//             {
+//                 if (D.dps[2][i] > dp_mix.Comps[0].Mean + (err_bound / (G.all_cnts[i]+1.0) ) || G.split_cnts[i]>3 || (G.split_cnts[i]>0 && G.all_cnts[i]>5) || G.all_cnts[i] > 10)  // missing
+//                 {
+//                     G.gt[i] = -1;
+//                 }
+//                 else if (d0 < d1)
+//                 {
+//                     G.gt[i] = 0;
+//                     G.cn[i] = 2;
+//                     G.ns++;
+//                 }
+//                 else
+//                 {
+//                     G.gt[i] = -1;
+//                 }
+//             }
+//         }
+
+//         fflush(stdout);
+//         double callrate = (double)G.ns / G.n_effect;
+
+//         if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
+//         {
+//             G.b_pass = true;
+//             check_biallelic(G);
+//             return true;
+//         }
+//     }
+//     if (dp_mix.Comps[1].Mean - 0.1 > dp_mix.Comps[0].Mean)
+//     {
+//         // genotype using read counts only, not using depth at all
+//         std::vector<double> norm_cnts (n_sample, 0);
+//         for(int i=0; i<n_sample; ++i)
+//         {
+//             if (G.sample_mask[i])
+//                norm_cnts[i] = (G.split_cnts[i]  + G.rp_cnts[i]) / stats[i].avg_dp ;
+//         }
+        
+//         all_mix.estimate(norm_cnts, G.gt, 2);
+        
+//         std::vector<std::vector<double> > alt_means = { {all_mix.Comps[1].Mean}, {all_mix.Comps[1].Mean, all_mix.Comps[1].Mean * 2.0} };
+
+//         select_model_mask_1d(G.gmix, alt_means, norm_cnts, G.nonref_mask, 0.3);
+        
+//         double err_bound = all_mix.Comps[0].Stdev;
+        
+//         if (err_bound < 0.1) err_bound = 0.1;
+
+//         // TODO: Arbitrary cutoffs
+//         if (all_mix.Comps[0].Mean>0.1 || all_mix.Comps[1].Mean - err_bound < all_mix.Comps[0].Mean || all_mix.p_overlap > 0.5)
+//             return false;
+
+//         G.ns = 0;
+//         G.ac = 0;
+        
+//         for(int i=0; i<n_sample; ++i)
+//         {
+//             if (!G.sample_mask[i]) continue;
+
+//             double d0 = norm_cnts[i] - all_mix.Comps[0].Mean ;
+//             double d1 = G.gmix.Comps[0].Mean - norm_cnts[i];
+            
+//             G.gt[i] = -1;
+//             G.cn[i] = -1;
+//             // TODO: test genotypes
+//             if (d0>0 &&  G.all_cnts[i]>0 && d1 < d0 * ((G.split_cnts[i] + G.rp_cnts[i] + G.all_cnts[i] - 1) / 2.0))
+//             {
+//                 if (G.gmix.Comps.size()>1  && ((G.gmix.Comps[1].Mean - norm_cnts[i] < (norm_cnts[i] - G.gmix.Comps[0].Mean) * 0.5) || D.dps[2][i] > 2.0))
+//                 {
+//                     G.gt[i] = 2;
+//                     G.cn[i] = (int)( D.dps[2][i] * 2.0 );
+//                     G.ns++;
+//                     G.ac += 2;
+//                 }
+//                 else // if there are few ambiguous samples, do not code alternative allele solely based on depth
+//                 {
+//                     G.gt[i] = 1;
+//                     G.cn[i] = 3;
+//                     G.ns++;
+//                     G.ac++;
+//                 }
+//             }
+//             else
+//             {
+//                 if (norm_cnts[i] > all_mix.Comps[0].Mean + (err_bound / (G.all_cnts[i]+1.0) ) )  // missing
+//                 {
+//                     G.gt[i] = -1;
+//                     G.cn[i] = -1;
+//                 }
+//                 else if (d0 < d1)
+//                 {
+//                     G.cn[i] = 2;
+//                     G.gt[i] = 0;
+//                     G.ns++;
+//                 }
+//                 else
+//                 {
+//                     G.cn[i] = -1;
+//                     G.gt[i] = -1;
+//                 }
+//             }
+//         }
+//         double callrate = (double)G.ns / G.n_effect;
+
+
+//         if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
+//         {
+//             G.dp_flag = false;
+//             G.cnt_flag = true;
+//             G.gmix.n_comp = G.gmix.n_comp + 1;
+//             G.gmix.Comps.resize(G.gmix.n_comp);
+//             G.gmix.Comps[G.gmix.n_comp-1].Mean = dp_mix.Comps[0].Mean;
+//             G.gmix.Comps[G.gmix.n_comp-1].Stdev = dp_mix.Comps[0].Stdev;
+//             G.gmix.Comps[G.gmix.n_comp-1].Alpha = dp_mix.Comps[0].Alpha;
+//             G.b_pass = true;
+//             return true;
+//         }
+//         else
+//         {
+//             G.dp_flag = false;
+//             G.cnt_flag = false;
+//             return false;
+//         }
+//     }
+//     return false;
+// }
         
 bool Genotyper::get_dup_cnts(sv &S, SvData &D, SvGeno &G)
 {

@@ -21,6 +21,7 @@ GaussianMixture::GaussianMixture(std::vector<double> &m, std::vector<double> &s)
 		exit(1);
 	}
 	n_comp = (int) m.size();
+	zeroidx = -1;
 
 	Comps.resize(n_comp);
 	for(int i=0; i< n_comp; ++i)
@@ -29,7 +30,9 @@ GaussianMixture::GaussianMixture(std::vector<double> &m, std::vector<double> &s)
 		Comps[i].Stdev = s[i];
 		Comps[i].Alpha = 1.0/n_comp;
 		if (m[i] < 0.01)
+		{
 			zeroidx = i;
+		}
 	}
 }
 
@@ -93,7 +96,6 @@ void GaussianMixture::estimate(std::vector<double> &x, std::vector<int> &y, int 
 
 void GaussianMixture::print(FILE *fp)
 {
-    fprintf(fp, "%d comps, AIC: %f, BIC: %f, P_overlap %f\n", n_comp, aic, bic, p_overlap);
     for(int i=0; i<n_comp; ++i)
 	{
         fprintf(fp, "Comp %d (%f, %f), %f \n", i, Comps[i].Mean, Comps[i].Stdev, Comps[i].Alpha);
@@ -133,6 +135,8 @@ void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
 #ifdef DDEBUG
         print(stderr);
 #endif
+	    DDPRINT("%d comps, AIC: %f, BIC: %f, P_overlap %f\n", n_comp, aic, bic, p_overlap);
+
         return;
     }
     for(int i=0; i<n_comp; ++i)

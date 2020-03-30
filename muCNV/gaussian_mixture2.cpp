@@ -16,6 +16,7 @@ GaussianMixture2::GaussianMixture2(std::vector<double> &m, std::vector<double> &
 		exit(1);
 	}
 	n_comp = (int) m.size();
+	zeroidx = -1;
 
 	Comps.resize(n_comp);
 	for(int i=0; i< n_comp; ++i)
@@ -40,6 +41,7 @@ GaussianMixture2::GaussianMixture2(std::vector<double> &m1, std::vector<double> 
 		exit(1);
 	}
 	n_comp = (int) m1.size();
+	zeroidx = -1;
 
 	Comps.resize(n_comp);
 	for(int i=0; i< n_comp; ++i)
@@ -367,8 +369,8 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 
 	// pseudo-counts
 	double p_count= 0.1;
-
 	double p_val[n_comp][2];
+	zeroidx = -1;
 
 	if (n_comp == 1)
 	{
@@ -525,6 +527,7 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 
 	// pseudo-counts
 	double p_count = 0.2;
+	zeroidx = -1;
 
 	double p_val[n_comp][2];
 
@@ -821,42 +824,24 @@ int GaussianMixture2::assign_dpcnt_copynumber(double x, double y)
 			if (R>max_R)
 			{
 				max_R = R;
+				if (max_R > 0.1)
+				{
+					return -1;	
+				}
 			}
 		}
 	}
     
-	
-	if (ret >= 0 && ret < (int)Comps.size())
-	{
-		ret = 2 - ret;
-		if (round(x*2.0) != ret)
-		{
-			if (x>1.0 && ret == 2 && y<0.05)
-			{
-				ret = 2;
-			}
-			else
-			{
-				ret = -1;
-			}
-		}
-	}
+	ret = round(Comps[ret].Mean[0] * 2.0);
 
-	// ret = round(Comps[ret].Mean[0] + Comps[ret].Mean[1]); // TODO: what if only one of the dimensions cluster correctly? (0, 0.5, 1) + (1, 1, 1) = (1 1.5 2) 
+	int up = ceil(x*2.0);
+	int down = floor(x*2.0);
 
-	// int up = ceil(x+y);
-	// int down = floor(x+y);
-
-	// if (ret != up && ret != down)
-	// {
-	// 	return -1;
-	// }
-
-	if (max_R > 0.1)
+	if (ret != up && ret != down)
 	{
 		return -1;
 	}
-
+	
 	return ret;
 }
 
