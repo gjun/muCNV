@@ -30,8 +30,6 @@ int main_pileup(int argc, char** argv)
     std::string gc_file;
     std::string sample_id;
 
-    int n_sample = 0;
-
     std::vector<std::string> vcfs;
     
     try

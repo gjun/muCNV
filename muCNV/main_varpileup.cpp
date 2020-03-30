@@ -28,9 +28,6 @@ int main_varpileup(int argc, char** argv)
     std::string out_dir;
     std::string gc_file;
     std::string sample_id;
-
-    int n_sample = 0;
-
     std::vector<std::string> vcfs;
     
     try

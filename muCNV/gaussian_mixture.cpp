@@ -719,7 +719,7 @@ double GaussianMixture::BIC_select(std::vector<double>& x, std::vector<bool> &ma
 	double ret = 0;
 	double llk = 0;
 
-	for(int j=0; j<x.size(); ++j)
+	for(int j=0; j<(int)x.size(); ++j)
 	{
 		if (mask[j])
 		{

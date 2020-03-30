@@ -209,7 +209,7 @@ void Gaussian2::estimate_select(std::vector<double> &x, std::vector<double> &y, 
 	double sum_yy=0;
 	double sum_xy=0;
 	
-	for(int i=0;i< x.size();++i)
+	for(int i=0;i< (int)x.size();++i)
 	{
 		if (mask[i])
 		{

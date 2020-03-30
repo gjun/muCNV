@@ -55,7 +55,7 @@ void get_cigar_clippos(std::string &cigar_str, splitread &sp)
                 // left clip
                 sp.sa_lclip = cigar_val;
             }
-            else if (j == cigar_str.length() - 1 && cigar_str[j] == 'S')
+            else if (j == (int) cigar_str.length() - 1 && cigar_str[j] == 'S')
             {
                 // right clip
                 sp.sa_rclip = cigar_val;
@@ -656,7 +656,7 @@ void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<brea
 int BamCram::flag_softclips(std::vector<sclip> &vec_clip)
 {
 	int cnt = 0;
-    for(int i=0; i<vec_clip.size(); ++i)
+    for(int i=0; i<(int)vec_clip.size(); ++i)
     {
         if (vec_clip[i].b_end)
         {
@@ -677,7 +677,7 @@ int BamCram::flag_softclips(std::vector<sclip> &vec_clip)
             }
             if (vec_clip[i].b_drop == true)
             {
-                for(int j=i+1; vec_clip[i].b_drop && j<vec_clip.size() && vec_clip[j].pos<= vec_clip[i].pos + 10 && vec_clip[j].chrnum == vec_clip[i].chrnum ; ++j)
+                for(int j=i+1; vec_clip[i].b_drop && j<(int)vec_clip.size() && vec_clip[j].pos<= vec_clip[i].pos + 10 && vec_clip[j].chrnum == vec_clip[i].chrnum ; ++j)
                 {
                     if (vec_clip[i].b_end == false)
 					{

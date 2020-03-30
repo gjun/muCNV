@@ -169,7 +169,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
     {
         fprintf(fp, ";SPLIT=(");
         fprintf(fp, "%d,%d", (int)(D.vec_break_clusters[0].start_mean + 0.5), (int)(D.vec_break_clusters[0].end_mean+0.5));
-        for(int j=1; j<D.vec_break_clusters.size(); ++j)
+        for(int j=1; j<(int)D.vec_break_clusters.size(); ++j)
         {
             fprintf(fp, ":%d,%d", (int)(D.vec_break_clusters[j].start_mean + 0.5), (int)(D.vec_break_clusters[j].end_mean+0.5));
         }
@@ -179,7 +179,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
     {
         fprintf(fp, ";CLIP=(");
         fprintf(fp, "%d,%d", (int)(D.vec_break_clusters[0].start_mean + 0.5), (int)(D.vec_break_clusters[0].end_mean+0.5));
-        for(int j=1; j<D.vec_break_clusters.size(); ++j)
+        for(int j=1; j<(int)D.vec_break_clusters.size(); ++j)
         {
             fprintf(fp, ":%d,%d", (int)(D.vec_break_clusters[j].start_mean + 0.5), (int)(D.vec_break_clusters[j].end_mean+0.5));
         }
