@@ -65,7 +65,6 @@ int main_pileup(int argc, char** argv)
     }
     
     // Generate summary stats from BAM/CRAM
-    n_sample = 1;
     std::cerr << "Processing individual BAM/CRAM file to genearte pileup information" << std::endl;
     
     GcContent gc;

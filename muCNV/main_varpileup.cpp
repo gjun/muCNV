@@ -63,7 +63,6 @@ int main_varpileup(int argc, char** argv)
     }
     
     // Generate summary stats from BAM/CRAM
-    n_sample = 1;
     std::cerr << "Processing individual BAM/CRAM file to genearte pileup information" << std::endl;
     
     GcContent gc;
