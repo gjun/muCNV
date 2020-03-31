@@ -533,15 +533,15 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         G.gt[i] = -1;
         
         //if (d0>0 &&  G.all_cnts[i]>0 && d1 < d0 * ((G.split_cnts[i] + G.rp_cnts[i] + G.all_cnts[i] - 1) / 2.0))
-        if (d0>0 &&  G.all_cnts[i]>0 && d1 < d0 && (G.split_cnts[i] + G.rp_cnts[i] > 1))
+        if (d0>0 &&  G.all_cnts[i]>=5 && d1 < d0 && (G.split_cnts[i] + G.rp_cnts[i] > 1))
         {
-            if (G.gmix.Comps.size()>1  && (G.gmix.Comps[1].Mean - norm_cnts[i] < (norm_cnts[i] - G.gmix.Comps[0].Mean) * 0.5))
+            if (G.gmix.n_comp > 1  && (G.gmix.Comps[1].Mean - norm_cnts[i] < (norm_cnts[i] - G.gmix.Comps[0].Mean) * 0.5))
             {
                 G.gt[i] = 2;
                 G.ns++;
                 G.ac += 2;
             }
-            else // if there are few ambiguous samples, do not code alternative allele solely based on depth
+            else
             {
                 G.gt[i] = 1;
                 G.ns++;
