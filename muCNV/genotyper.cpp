@@ -2238,30 +2238,28 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
         {
             if (!G.sample_mask[i]) continue;
 
-            if (var_depth[i] >= 0.7 && var_depth[i] < 0.8 )
+            int cn = G.gmix.assign_copynumber(var_depth[i]);
+            
+            if (cn == 2)
+            {
+                G.cn[i] = 2;
+                G.gt[i] = 0; // 0/0
+            }
+            else if (var_depth[i] > 0.65)
             {
                 G.cn[i] = -1;
                 G.gt[i] = -1;
             }
-            else
+            else if (cn == 1)
             {
-                int cn = G.gmix.assign_copynumber(var_depth[i]);
-                
-                if (cn == 2)
-                {
-                    G.cn[i] = 2;
-                    G.gt[i] = 0; // 0/0
-                }
-                else if (cn == 1)
-                {
-                    G.cn[i] = 1;
-                    G.gt[i] = 1; // 0/1
-                }
-                else if (cn == 0)
-                {
-                    G.cn[i] = 0;
-                    G.gt[i] = 2; // 1/1
-                }
+            
+                G.cn[i] = 1;
+                G.gt[i] = 1; // 0/1
+            }
+            else if (cn == 0)
+            {
+                G.cn[i] = 0;
+                G.gt[i] = 2; // 1/1
             }
         }
     }
@@ -2282,30 +2280,28 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
             {
                 if (!G.sample_mask[i]) continue;
 
-                if (var_depth[i] >= 0.7 && var_depth[i] < 0.8 )
+                int cn = G.gmix2.assign_copynumber(D.dps[dp2_idx][i], D.dps[dp2_idx+1][i]);
+                if (cn == 2)
+                {
+                    G.cn[i] = 2;
+                    G.gt[i] = 0; // 0/0
+                }
+                else if (var_depth[i] > 0.65)
                 {
                     G.cn[i] = -1;
                     G.gt[i] = -1;
                 }
-                else
+                else if (cn == 1)
                 {
-                    int cn = G.gmix2.assign_copynumber(D.dps[dp2_idx][i], D.dps[dp2_idx+1][i]);
-                    if (cn == 2)
-                    {
-                        G.cn[i] = 2;
-                        G.gt[i] = 0; // 0/0
-                    }
-                    else if (cn == 1)
-                    {
-                        G.cn[i] = 1;
-                        G.gt[i] = 1; // 0/1
-                    }
-                    else if (cn == 0)
-                    {
-                        G.cn[i] = 0;
-                        G.gt[i] = 2; // 1/1
-                    }
+                    G.cn[i] = 1;
+                    G.gt[i] = 1; // 0/1
                 }
+                else if (cn == 0)
+                {
+                    G.cn[i] = 0;
+                    G.gt[i] = 2; // 1/1
+                }
+                
             }
         }
     }
@@ -2378,7 +2374,7 @@ bool Genotyper::assign_dup_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
     double cnt_max = -1;
     double cnt_mean = 0;
 
-    DDMSG("assigning DEL genotypes");
+    DDMSG("assigning DUP genotypes");
 
     int max_ncomp = 1;
 
@@ -2506,6 +2502,7 @@ bool Genotyper::assign_dup_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
 //           G.gmix.Comps[G.gmix.n_comp-1].Alpha = dpcnt_mix.Comps[0].Alpha;
             G.gmix2 = genostat.dpcnt_mix;
             G.b_pass = true;
+            check_biallelic(G);
             DDMSG("DPCNT clustering successful");
             return true;
         }

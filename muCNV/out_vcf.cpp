@@ -31,7 +31,7 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs, std::vector<bool>
 	fprintf(fp,"##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the variant described in this record\">\n");
 	fprintf(fp,"##INFO=<ID=SVLEN,Number=1,Type=Integer,Description=\"Length of the structural variant\">\n");
 	fprintf(fp,"##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">\n");
-    fprintf(fp,"##INFO=<ID=VarID,Number=1,Type=Float,Description=\"Variant ID\">\n");
+ //   fprintf(fp,"##INFO=<ID=VarID,Number=1,Type=Float,Description=\"Variant ID\">\n");
 	fprintf(fp,"##INFO=<ID=DP,Number=1,Type=String,Description=\"1-D Depth clustering\">\n");
     fprintf(fp,"##INFO=<ID=DPOverlap,Number=1,Type=Float,Description=\"Overlap between 1-D depth clusters\">\n");
 	fprintf(fp,"##INFO=<ID=DP2,Number=1,Type=String,Description=\"2-D Depth clustering\">\n");

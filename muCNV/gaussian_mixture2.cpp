@@ -214,7 +214,7 @@ void GaussianMixture2::KM2(std::vector<double>& x, std::vector<double> &y, bool 
 	int n_iter = 15;
 
 	// pseudo-counts
-	int p_count= 5;
+	int p_count= 1;
 	double p_val[n_comp][2];
 
 	if (n_comp == 1)
@@ -368,7 +368,7 @@ void GaussianMixture2::EM2(std::vector<double>& x, std::vector<double> &y)
 	int n_iter = 15;
 
 	// pseudo-counts
-	double p_count= 0.1;
+	double p_count= 1;
 	double p_val[n_comp][2];
 	zeroidx = -1;
 
@@ -526,7 +526,7 @@ void GaussianMixture2::EM2_select(std::vector<double>& x, std::vector<double> &y
 	int n_iter = 15;
 
 	// pseudo-counts
-	double p_count = 0.2;
+	double p_count = 1;
 	zeroidx = -1;
 
 	double p_val[n_comp][2];
