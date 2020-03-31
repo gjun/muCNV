@@ -574,6 +574,12 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
     if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
     {
         G.b_pass = true;
+        G.cnt_flag = true;
+        G.gmix.n_comp = G.gmix.n_comp + 1;
+        G.gmix.Comps.resize(G.gmix.n_comp);
+        G.gmix.Comps[G.gmix.n_comp-1].Mean = all_mix.Comps[0].Mean;
+        G.gmix.Comps[G.gmix.n_comp-1].Stdev = all_mix.Comps[0].Stdev;
+        G.gmix.Comps[G.gmix.n_comp-1].Alpha = all_mix.Comps[0].Alpha;
         
         return true;
     }
@@ -2871,7 +2877,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
 	std::vector<double> &var_depth = D.dps[best_dp_idx];
 
     select_model_mask_1d(G.gmix, means, D.dps[best_dp_idx], G.sample_mask, G.MAX_P_OVERLAP);
-
+    
     if (G.gmix.n_comp > 1 && G.gmix.r_ordered() )
     {
         // success
