@@ -119,7 +119,7 @@ void Gaussian::estimate_select(std::vector<double> &x, std::vector<bool> &mask)
 
 double Gaussian::pdf(const double& x)
 {
-	double s = (Stdev < 0.001) ? 0.001 : Stdev;
+	double s = (Stdev < 0.0001) ? 0.0001 : Stdev;
 	double z = (x-Mean)/s;
 	double val =  (invsqrt2pi * exp(-0.5*z*z) / s);
 	if (std::isnan(val))
@@ -262,8 +262,9 @@ double Gaussian2::logpdf(const double& x, const double& y)
 
 double normpdf(double x, Gaussian& C)
 {
-	double z = (x-C.Mean)/C.Stdev;
-	double val =  (invsqrt2pi * exp(-0.5*z*z) /C.Stdev);
+	double s = (C.Stdev < 0.0001) ? 0.0001 : C.Stdev;
+	double z = (x-C.Mean)/s;
+	double val =  (invsqrt2pi * exp(-0.5*z*z) / s);
 	if (std::isnan(val))
 	{
 		return 0;
@@ -277,10 +278,11 @@ double normpdf(double x, Gaussian& C)
 
 double lognormpdf(double x, Gaussian& C)
 {
-	double z = (x-C.Mean)/C.Stdev;
+	double s = (C.Stdev < 0.0001) ? 0.0001 : C.Stdev;
+	double z = (x-C.Mean)/s;
 	if (C.Stdev>0)
 	{
-		return (-0.9189385332 -0.5*z*z - log(C.Stdev));
+		return (-0.9189385332 -0.5*z*z - log(s));
 	}
 	else
 	{
