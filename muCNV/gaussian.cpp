@@ -119,8 +119,9 @@ void Gaussian::estimate_select(std::vector<double> &x, std::vector<bool> &mask)
 
 double Gaussian::pdf(const double& x)
 {
-	double z = (x-Mean)/Stdev;
-	double val =  (invsqrt2pi * exp(-0.5*z*z) /Stdev);
+	double s = (Stdev < 0.001) ? 0.001 : Stdev;
+	double z = (x-Mean)/s;
+	double val =  (invsqrt2pi * exp(-0.5*z*z) / s);
 	if (std::isnan(val))
 	{
 		return 0;
