@@ -568,6 +568,44 @@ int GaussianMixture::assign_copynumber(double x)
 }
 
 
+int GaussianMixture::assign_cluster(double x)
+{
+	double p[n_comp];
+	double max_P = -1;
+	double max_R = -1;
+	int ret = -1;
+
+	for(int i=0;i<n_comp; ++i)
+	{
+		// Major allele might domiate Alpha when sample size is large
+		//        p[i] = C[i].Alpha * C[i].pdf(x);
+		p[i] = Comps[i].pdf(x);
+
+		if (p[i] > max_P)
+		{
+			max_P = p[i];
+			ret = i;
+		}
+	}
+	for(int i=0;i<n_comp; ++i)
+	{
+		if (ret != i)
+		{
+			double R = p[i] / max_P;
+			if (R>max_R)
+			{
+				max_R = R;
+			}
+		}
+	}
+
+	if (max_R > 0.1)
+	{
+		return -1;
+	}
+	return ret;
+}
+
 bool GaussianMixture::ordered()
 {
 	// For deletions, Means should be descending order with at least 0.3 difference

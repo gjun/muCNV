@@ -58,6 +58,8 @@ public:
     GaussianMixture& operator = ( const GaussianMixture& gmix);
 
     int assign_copynumber(double);
+    int assign_cluster(double);
+
 };
 
 #endif /* gaussian_mixture_h */
