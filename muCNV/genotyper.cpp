@@ -538,7 +538,7 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
     double MAX_P_OVERLAP = 0.3; // NOTE: ARBITRARY
 
     tmp_mix.estimate(norm_cnts, G.gt, 2);
-    if (tmp_mix.bic < best_bic && tmp_mix.p_overlap < MAX_P_OVERLAP)
+    if (tmp_mix.bic < best_bic && tmp_mix.p_overlap < MAX_P_OVERLAP && tmp_mix.Comps[0].Mean > 0.15)
     {
         G.gmix = tmp_mix;
         best_bic = tmp_mix.bic;
@@ -2410,7 +2410,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
                 G.cn[i] = 2;
                 G.gt[i] = 0; // 0/0
             }
-            else if (var_depth[i] > 0.65)
+            else if (var_depth[i] > 0.6)
             {
                 G.cn[i] = -1;
                 G.gt[i] = -1;
@@ -2451,7 +2451,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
                     G.cn[i] = 2;
                     G.gt[i] = 0; // 0/0
                 }
-                else if (var_depth[i] > 0.65)
+                else if (var_depth[i] > 0.6)
                 {
                     G.cn[i] = -1;
                     G.gt[i] = -1;

@@ -122,7 +122,7 @@ void GaussianMixture::EM_select(std::vector<double>& x, std::vector<bool>& mask)
 	
     int n_iter = 15;
     
-    double p_count = 1;
+    double p_count = 0.2;
 
     double p_val[n_comp];
     
@@ -272,7 +272,7 @@ void GaussianMixture::EM(std::vector<double>& x)
 	int n_sample = (int) x.size();
 	int n_iter = 15;
 
-	double p_count = 1;
+	double p_count = 0.2;
 
 	double p_val[n_comp];
 
@@ -395,7 +395,7 @@ void GaussianMixture::KM(std::vector<double>& x, bool b_mahalanobis)
 	int n_iter = 15;
 
 	// pseudo-counts
-	int p_count= 1;
+	double p_count= 0.2;
 	double p_val[n_comp];
 
 
