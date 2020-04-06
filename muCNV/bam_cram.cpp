@@ -362,6 +362,26 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
     return ret;
 }
 
+static int read_bam_basic(void *data, bam1_t *b) // read level filters better go here to avoid pileup
+{
+    aux_t *aux = (aux_t *)data; // data in fact is a pointer to an auxiliary structure
+    int ret;
+
+    while (1)
+    {
+        ret = aux->iter ? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->hdr, b);
+
+        //DDPRINT("%s\ttid:%d\tpos:%d\tmtid:%d\tmtpos:%d\tqual:%d\n",bam_get_qname(b), b->core.tid, b->core.pos, b->core.mtid, b->core.mpos, b->core.qual);
+        if (ret < 0)
+            break;
+        if (b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP))
+            continue;
+        if ((int)b->core.qual < aux->min_mapQ)
+            continue;
+        break;
+    }
+    return ret;
+}
 
 void BamCram::initialize_sequential(std::string &bname, GcContent &gc)
 {
@@ -399,11 +419,154 @@ void BamCram::initialize_sequential(std::string &bname, GcContent &gc)
     }
 }
 
+
+void BamCram::initialize_idx(std::string &bname)
+{
+    
+    data = (aux_t**)calloc(1, sizeof(aux_t*));
+    data[0] = (aux_t*)calloc(1, sizeof(aux_t));
+    data[0]->fp = hts_open(bname.c_str(), "r");
+        
+    data[0]->min_mapQ = 1;
+    data[0]->min_len = 0;
+    data[0]->hdr = sam_hdr_read(data[0]->fp);;
+    
+    if (data[0]->hdr == NULL)
+    {
+        std::cerr << "Cannot open CRAM/BAM header" << std::endl;
+        exit(1);
+    }
+    
+    hts_idx_t* tmp_idx = sam_index_load(data[0]->fp, bname.c_str());
+    if (tmp_idx == NULL)
+    {
+        std::cerr << "Cannot open CRAM/BAM index" << std::endl;
+        exit(1);
+    }
+    idx = tmp_idx;
+    
+}
+
+
+void BamCram::read_vardepth(GcContent& gc, std::vector<breakpoint> &vec_bp, std::vector<sv> &vec_sv, int chrnum, int startpos, int endpos)
+{
+    // vec_bp should have been sorted beforehand
+    int tid = -1, pos = -1;
+    char reg[256];
+
+    if (vec_bp[0].bptype > 0)
+    {
+        std::cerr << "Error: Merged interval's earliest position is SV-end, not SV-start." << std::endl;
+        for(int i=0;i<20;++i)
+        {
+            std::cerr << vec_bp[i].chrnum << "\t" << vec_bp[i].pos << "\t" << vec_bp[i].bptype << std::endl;
+        }
+    }
+    
+    //DDPRINT("vec_bp[0]: %d:%d\n", vec_bp[0].chrnum, vec_bp[0].pos);
+    size_t nxt = 0;
+    std::vector<int> dp_list;    
+    std::vector<double> dp_sum; // One interval (start-end) will add one entry on these
+    std::vector<int> dp_cnt;
+    
+    if (chrnum >= 1 && chrnum <=22)
+    {
+        sprintf(reg, "chr%d:%d-%d", chrnum, startpos, endpos);
+    }
+    else if (chrnum == 23)
+    {
+        sprintf(reg, "chrX:%d-%d", startpos, endpos);
+    }
+    else if (chrnum == 24)
+    {
+        sprintf(reg, "chrY:%d-%d", startpos, endpos);
+    }
+
+	data[0]->iter = sam_itr_querys(idx, data[0]->hdr, reg);
+	if (data[0]->iter == NULL)
+	{
+		std::cerr << reg << std::endl;
+		std::cerr << "Can't parse region " << reg << std::endl;
+		exit(1);
+	}
+
+    int* n_plp = (int *) calloc(1, sizeof(int));;
+    const bam_pileup1_t **plp = (const bam_pileup1_t **) calloc(1, sizeof(bam_pileup1_t*));
+
+    bam_mplp_t mplp = bam_mplp_init(1, read_bam_basic, (void**) data);
+	bam_mplp_set_maxcnt(mplp, 64000);
+    
+	std::cerr << "processing chr "<< chrnum << std::endl;
+    
+    while(bam_mplp_auto(mplp, &tid, &pos, n_plp, plp)>0 && tid < gc.num_chr)
+    {
+        breakpoint curr_bp;
+        
+        curr_bp.chrnum = tid+1;
+        curr_bp.pos = pos;
+        //DDPRINT("curr_bp %d:%d\n", curr_bp.chrnum, curr_bp.pos);
+        while (nxt<vec_bp.size() && vec_bp[nxt] <= curr_bp)
+        {
+            if (vec_bp[nxt].bptype == 0)
+            {
+            	dp_list.push_back(vec_bp[nxt].idx);
+                //DDPRINT("Pushing %d:%d\n", vec_bp[nxt].chrnum, vec_bp[nxt].pos); 
+            }
+            else
+            {                
+                std::vector<int>::iterator dp_it = find(dp_list.begin(), dp_list.end(), vec_bp[nxt].idx) ;
+				if (dp_it == dp_list.end())
+				{
+                    // Error: idx to be removed is not in dp_list
+					int idx_nxt = vec_bp[nxt].idx;
+					std::cerr << "Error, idx " << vec_bp[nxt].idx << " bptype " << vec_bp[nxt].bptype << " bp pos " << vec_bp[nxt].pos << ", sv " << vec_sv[idx_nxt].chrnum << ":" << vec_sv[idx_nxt].pos << "-" << vec_sv[idx_nxt].end << std::endl;
+					std::cerr << " dp_list [";
+					for(int ii=0;ii<(int)dp_list.size();++ii)
+						std::cerr << dp_list[ii] << " " ;
+					std::cerr << "]" << std::endl;
+
+
+					exit(1);
+				}
+				else
+                {
+					*dp_it=dp_list.back();
+					dp_list.pop_back();
+                    //DDPRINT("Popping %d:%d\n", vec_bp[nxt].chrnum, vec_bp[nxt].pos); 
+				}
+            }
+
+            nxt++;
+        }
+        
+        int m=0;
+        for(int j=0;j<n_plp[0];++j)
+        {
+            const bam_pileup1_t *p = plp[0]+j;
+            if (p->is_del || p->is_refskip )
+                ++m;
+        }
+        int dpval = n_plp[0]-m;
+        
+		for(size_t ii=0; ii<dp_list.size(); ++ii)
+		{
+
+			vec_sv[dp_list[ii]].dp_sum += dpval;
+			vec_sv[dp_list[ii]].n_dp += 1;
+		}
+    }
+    
+    sam_itr_destroy(data[0]->iter);
+    free(plp); free(n_plp);
+    bam_mplp_destroy(mplp);
+}
+
+
 void BamCram::read_depth_sequential(Pileup& pup, GcContent& gc, std::vector<breakpoint> &vec_bp, std::vector<sv> &vec_sv)
 {
     // vec_bp should have been sorted beforehand
     int tid = -1, pos = -1;
-    
+
     if (vec_bp[0].bptype > 0)
     {
         std::cerr << "Error: Merged interval's earliest position is SV-end, not SV-start." << std::endl;
@@ -715,46 +878,8 @@ void BamCram::postprocess_depth(std::vector<sv> &vec_sv)
         }
     }
 }
-/*
 
-void BamCram::initialize(std::string &bname)
-{
-    
-    data = (aux_t**)calloc(1, sizeof(aux_t*));
-    data[0] = (aux_t*)calloc(1, sizeof(aux_t));
-    data[0]->fp = hts_open(bname.c_str(), "r");
-    
-    int rf = SAM_FLAG |  SAM_MAPQ | SAM_QUAL| SAM_POS | SAM_SEQ | SAM_CIGAR| SAM_TLEN | SAM_RNEXT | SAM_PNEXT;
-    if (hts_set_opt(data[0]->fp, CRAM_OPT_REQUIRED_FIELDS, rf))
-    {
-        std::cerr << "Failed to set CRAM_OPT_REQUIRED_FIELDS value" << std::endl;
-        exit(1);
-    }
-    if (hts_set_opt(data[0]->fp, CRAM_OPT_DECODE_MD, 0))
-    {
-        fprintf(stderr, "Failed to set CRAM_OPT_DECODE_MD value\n");
-        exit(1);
-    }
-    
-    data[0]->min_mapQ = 1;
-    data[0]->min_len = 0;
-    data[0]->hdr = sam_hdr_read(data[0]->fp);;
-    
-    if (data[0]->hdr == NULL)
-    {
-        std::cerr << "Cannot open CRAM/BAM header" << std::endl;
-        exit(1);
-    }
-    
-    hts_idx_t* tmp_idx = sam_index_load(data[0]->fp, bname.c_str());
-    if (tmp_idx == NULL)
-    {
-        std::cerr << "Cannot open CRAM/BAM index" << std::endl;
-        exit(1);
-    }
-    idx = tmp_idx;
-}
-*/
+
 /*
  static readpart which_readpart(const bam1_t *b)
  {
@@ -768,33 +893,7 @@ void BamCram::initialize(std::string &bname)
  }
  */
 
-// This function reads a BAM alignment from one BAM file.
-/*
- static int read_bam_basic(void *data, bam1_t *b) // read level filters better go here to avoid pileup
- {
- aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
- int ret;
- 
- while (1)
- {
- ret = aux->iter ? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->hdr, b);
- 
- if ( ret<0 ) break;
- if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
- if ( (int)b->core.qual < aux->min_mapQ ) continue;
- // Nov 29, 2017, commented out
- //if ( aux->min_len && bam_cigar2qlen(b->core.n_cigar, bam_get_cigar(b)) < aux->min_len ) continue;
- //        std::cerr << bam_get_qname(b) << "/" << which_readpart(b) << " insert size : " << b->core.isize << std::endl;
- if (IS_PROPERLYPAIRED(b) && (b->core.qual > 20) && (b->core.tid == b->core.mtid) && b->core.mpos>0 )
- {
- if (b->core.isize < 10000 && b->core.isize>-10000)
- (*(aux->isz_list))[0].push_back(abs(b->core.isize));
- }
- break;
- }
- return ret;
- }
- */
+
 /*
  // This function reads a BAM alignment from one BAM file.
  static int read_bam(void *data, bam1_t *b) // read level filters better go here to avoid pileup

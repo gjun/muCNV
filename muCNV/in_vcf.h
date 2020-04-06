@@ -52,6 +52,6 @@ void readIndex(std::string, std::vector<std::string>&, std::vector<std::string>&
 void readDepth(std::vector<std::string>&, std::vector<sv>&, std::vector< std::vector<double> >&, std::vector<double>&);
 
 void write_interval(std::string &, std::vector<sv> &);
-
+void write_svs_into_vcf(std::string &, std::vector<sv> &);
 
 #endif /* in_vcf_h */

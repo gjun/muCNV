@@ -538,6 +538,47 @@ void write_interval(std::string &intFileName, std::vector<sv> &vec_sv)
     }
     intFile.close();
 }
+
+void write_svs_into_vcf(std::string &vcfFileName, std::vector<sv> &vec_sv)
+{
+    FILE *fp = fopen(vcfFileName.c_str(), "w");
+
+    int n_var = (int)vec_sv.size();
+	fprintf(fp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
+	
+    for(int i=0;i<(int)vec_sv.size();++i)
+    {
+		sv& S = vec_sv[i];
+
+		const char *svtype = svTypeName(S.svtype).c_str();
+		
+		// TODO: convert hard-coded chr-names using real chr names from BAM/CRAM header - this should be stored in GC content file
+		// current code works only with GRCh38
+		if (S.chrnum < 23)
+		{
+			fprintf(fp, "chr%d",  S.chrnum);
+		}
+		else if (S.chrnum == 23)
+		{
+			fprintf(fp, "chrX");
+		}
+		else if (S.chrnum == 24)
+		{
+			fprintf(fp, "chrY");
+		}
+		else if (S.chrnum == 25)
+		{
+			fprintf(fp, "chrM");
+		}
+
+		fprintf(fp, "\t%d\t%s_%d:%d-%d\t.\t<%s>\t.\t", S.pos, svtype, S.chrnum, S.pos, S.end, svtype);
+		fprintf(fp, "PASS\t");
+
+		fprintf(fp, "SVTYPE=%s;END=%d;SVLEN=%d\n",  svtype, S.end, S.len);
+    }
+    fclose(fp);
+}
+
 void read_svs_from_intfile(std::string &intFileName, std::vector<breakpoint> &vec_bp, std::vector<sv> &vec_sv)
 {
     std::ifstream intFile(intFileName.c_str(), std::ios::in | std::ios::binary);

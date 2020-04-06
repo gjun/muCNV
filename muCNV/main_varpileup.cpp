@@ -29,6 +29,9 @@ int main_varpileup(int argc, char** argv)
     std::string gc_file;
     std::string sample_id;
     std::vector<std::string> vcfs;
+    int chr;
+    int startpos;
+    int endpos;
     
     try
     {
@@ -36,6 +39,7 @@ int main_varpileup(int argc, char** argv)
         
         TCLAP::ValueArg<std::string> argBam("b","bam","Input BAM/CRAM file name",true,"","string");
         TCLAP::ValueArg<std::string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
+        TCLAP::ValueArg<int> argChr("c","chr","Chromosome number (1-24) if pileup contains only a single chromosome",false,0,"integer (1-24)");
         TCLAP::ValueArg<std::string> argInterval("V","interVal", "Binary interval file containing candidate SVs", false, "", "string");
         TCLAP::ValueArg<std::string> argSampleID("s","sample","Sample ID, also used for output filenames (.pileup, .var, .idx)",true,"","string");
         TCLAP::ValueArg<std::string> argOutDir("o","outdir","Output directory, current directory if omitted",false,".","string");
@@ -43,6 +47,7 @@ int main_varpileup(int argc, char** argv)
         
         cmd.add(argBam);
         cmd.add(argVcf);
+        cmd.add(argChr);
         cmd.add(argInterval);
         cmd.add(argGcfile);
         cmd.add(argSampleID);
@@ -55,6 +60,7 @@ int main_varpileup(int argc, char** argv)
         out_dir = argOutDir.getValue();
         interval_file = argInterval.getValue();
         gc_file = argGcfile.getValue();
+        chr = argChr.getValue();
     }
     catch (TCLAP::ArgException &e)
     {
@@ -63,7 +69,7 @@ int main_varpileup(int argc, char** argv)
     }
     
     // Generate summary stats from BAM/CRAM
-    std::cerr << "Processing individual BAM/CRAM file to genearte pileup information" << std::endl;
+    std::cerr << "Processing individual BAM/CRAM file to genearte var pileup on a region" << std::endl;
     
     GcContent gc;
     gc.initialize(gc_file);
@@ -97,183 +103,25 @@ int main_varpileup(int argc, char** argv)
     if (out_dir.back() != '/')
         out_dir += '/';
     
-
-    std::string pileup_name = out_dir + sample_id + ".pileup";
-    std::string varfile_name = out_dir + sample_id + ".var";
-    std::string idxfile_name = out_dir + sample_id + ".idx";
     
-    std::cerr << "Writing to " << pileup_name << std::endl;
-    // Initialize Pileup
-    Pileup pup;
-    pup.open(pileup_name, std::ios::out | std::ios::binary);
-    std::cerr << "Pileup file initialized" << std::endl;
+    std::string varfile_name = out_dir + sample_id + ".var";
+    if (chr > 0)
+        varfile_name = out_dir + sample_id + ".chr20.var";
+
+
+    std::cerr << "Writing to " << varfile_name << std::endl;
 
     //Initialize BAM/CRAM
     BamCram b;
-    b.initialize_sequential(bam_file, gc);
+    b.initialize_idx(bam_file);
     std::cerr << "BAM/CRAM file initialized" << std::endl;
     // Read BAM/CRAM
-    b.read_depth_sequential(pup, gc, vec_bp, vec_sv);
+    startpos = 1;
+    endpos = gc.chr_size[chr];
+    b.read_vardepth(gc, vec_bp, vec_sv, chr, startpos, endpos);
     b.postprocess_depth(vec_sv);
 
-    // Write Pileup
-    size_t curr_pos = 0;
-
-    BaseFile idx_file;
-    idx_file.open(idxfile_name, std::ios::out | std::ios::binary);
-    
-    curr_pos += pup.write_int32(1);
-    curr_pos += pup.write_sample_id(sample_id);
-    curr_pos += pup.write_sample_stat(b.stat);
-    curr_pos += pup.write_gc_factor(b.gc_factor, gc.num_bin);
-    
-    idx_file.write_uint64(curr_pos);
-
-    // Write DP100
-    for(int i=1; i<=gc.num_chr; ++i)
-    {
-        curr_pos += pup.write_depth(b.depth_interval[i], gc.n_interval[i]);
-    }
-    
-    int sp_idx = 0;
-    int rp_idx = 0;
-    int lclip_idx = 0;
-    int rclip_idx = 0;
-    
-    int prev_sp = 0;
-    int prev_rp = 0;
-    int prev_lclip = 0;
-    int prev_rclip = 0;
-    
-    int cnt_rp = 0;
-    int cnt_sp = 0;
-    int cnt_lclip = 0;
-    int cnt_rclip = 0;
-    
-    for(int i=1;i<=gc.num_chr; ++i)
-    {
-        int N = ceil((double)gc.chr_size[i] / 10000.0) ;
-        
-        for(int j=1;j<=N;++j)
-        {
-            // TODO: Write chr:pos at the beginning of each interval, both in the pileup and index file?
-            // 5 byte * 3G / 10K = 1.5 MB, negligible increase in file size
-            
-            idx_file.write_uint64(curr_pos); // where each 10,000-bp interval starts;
-            // RP
-            while(rp_idx < (int)b.vec_rp.size() && b.vec_rp[rp_idx].chrnum == i && b.vec_rp[rp_idx].selfpos <= j*10000)
-            {
-                rp_idx ++;
-            }
-            uint32_t  n_rp = 0;
-            if (rp_idx - prev_rp < 0)
-            {
-                std::cerr << "Wrong read pair index while writing... " << std::endl;
-                exit(1);
-            }
-            else
-            {
-                n_rp = (uint32_t) rp_idx - prev_rp;
-            }
-            curr_pos += pup.write_uint32(n_rp);
-            
-            for(int k=prev_rp; k<rp_idx; ++k)
-            {
-                curr_pos += pup.write_readpair(b.vec_rp[k]);
-                cnt_rp ++;
-            }
-            prev_rp = rp_idx;
-            
-            // SP
-            while(sp_idx < (int)b.vec_sp.size() && b.vec_sp[sp_idx].chrnum == i && b.vec_sp[sp_idx].pos <= j*10000)
-            {
-                sp_idx ++;
-            }
-            uint32_t n_sp = 0;
-            if (sp_idx - prev_sp < 0)
-            {
-                std::cerr << "Wrong split read index while writing... " << std::endl;
-                exit(1);
-            }
-            else
-            {
-                n_sp = (uint32_t) sp_idx - prev_sp;
-            }
-            curr_pos += pup.write_uint32(n_sp);
-            
-            for(int k=prev_sp; k<sp_idx; ++k)
-            {
-                curr_pos += pup.write_splitread(b.vec_sp[k]);
-                cnt_sp ++;
-            }
-            prev_sp = sp_idx;
-            
-            //TODO: Templatize these...
-            
-            // L-Clip
-            uint32_t n_lclip = 0;
-            uint32_t n_ldrop = 0;
-            while(lclip_idx < (int)b.vec_lclip.size() && b.vec_lclip[lclip_idx].chrnum == i && b.vec_lclip[lclip_idx].pos <= j*10000)
-            {
-                if (b.vec_lclip[lclip_idx].b_drop == true)
-                    n_ldrop++;
-                lclip_idx ++;
-            }
-            if (lclip_idx - prev_lclip - n_ldrop < 0)
-            {
-                std::cerr << "Wrong lclip index while writing... " << std::endl;
-                exit(1);
-            }
-            else
-            {
-                n_lclip = (uint32_t) lclip_idx - prev_lclip - n_ldrop;
-            }
-            curr_pos += pup.write_uint32(n_lclip);
-            for(int k=prev_lclip; k<lclip_idx; ++k)
-            {
-                if (b.vec_lclip[k].b_drop == false)
-                {
-                    curr_pos += pup.write_softclip(b.vec_lclip[k]);
-                    cnt_lclip ++;
-                }
-            }
-            prev_lclip = lclip_idx;
-            
-            // R-Clip
-            uint32_t n_rclip = 0;
-            uint32_t n_rdrop = 0;
-            while(rclip_idx < (int)b.vec_rclip.size() && b.vec_rclip[rclip_idx].chrnum == i && b.vec_rclip[rclip_idx].pos <= j*10000)
-            {
-                if (b.vec_rclip[rclip_idx].b_drop == true)
-                    n_rdrop++;
-                rclip_idx ++;
-            }
-            if (rclip_idx - prev_rclip - n_rdrop < 0)
-            {
-                std::cerr << "Wrong rclip index while writing... " << std::endl;
-                exit(1);
-            }
-            else
-            {
-                n_rclip = (uint32_t) rclip_idx - prev_rclip - n_rdrop;
-            }
-            curr_pos += pup.write_uint32(n_rclip);
-            for(int k=prev_rclip; k<rclip_idx; ++k)
-            {
-                if (b.vec_rclip[k].b_drop == false)
-                {
-                    curr_pos += pup.write_softclip(b.vec_rclip[k]);
-                    cnt_rclip ++;
-                }
-            }
-            prev_rclip = rclip_idx;
-            
-        }
-        // fprintf(stderr, "\rChr %d, Index %d, cnt_rp %d, cnt_sp %d\n", i, (int)curr_pos, cnt_rp, cnt_sp);
-    }
-    pup.close();
-    idx_file.close();
-    
+    // Write Pileup 
     Pileup var_file;
     var_file.open(varfile_name, std::ios::out | std::ios::binary);
     
@@ -288,6 +136,7 @@ int main_varpileup(int argc, char** argv)
     for(int i=0;i<(int)vec_sv.size();++i)
     {
         var_file.write_depth(&(vec_sv[i].dp), 1);
+        //printf("%d\t%d-%d\t%2f\n", vec_sv[i].chrnum, vec_sv[i].pos, vec_sv[i].end, (double)vec_sv[i].dp/32.0);
     }
     var_file.close();
     

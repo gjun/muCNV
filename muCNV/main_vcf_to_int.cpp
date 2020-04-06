@@ -18,6 +18,7 @@ int main_vcf_to_int(int argc, char** argv)
     std::string vcf_file;
     std::string interval_file;
     bool bPrint;
+    bool bReverse;
     std::vector<sv> vec_sv;
     std::vector<breakpoint> vec_bp;
     
@@ -28,6 +29,8 @@ int main_vcf_to_int(int argc, char** argv)
         TCLAP::ValueArg<std::string> argVcf("v","vcf","VCF file containing candidate SVs",true,"","string");
         TCLAP::ValueArg<std::string> argInterval("i","interVal", "Binary interval file containing candidate SVs", false, "", "string");
         TCLAP::SwitchArg switchPrint("p","print", "Print out SV variants", cmd, false);
+        TCLAP::SwitchArg switchReverse("r","reverse", "Generate VCF from interval", cmd, false);
+
 
         cmd.add(argVcf);
         cmd.add(argInterval);
@@ -37,6 +40,7 @@ int main_vcf_to_int(int argc, char** argv)
         vcf_file = argVcf.getValue();
         interval_file = argInterval.getValue();
         bPrint = switchPrint.getValue();
+        bReverse = switchReverse.getValue();
     }
     catch (TCLAP::ArgException &e)
     {
@@ -44,20 +48,28 @@ int main_vcf_to_int(int argc, char** argv)
         abort();
     }
     // TODO: error checking
-    read_svs_from_vcf(vcf_file, vec_bp, vec_sv);
-    if (interval_file != "")
+    if (!bReverse)
     {
-        write_interval(interval_file, vec_sv);
-    }
-    if (bPrint)
-    {
-        for(int i=0; i<(int)vec_sv.size(); ++i)
+        read_svs_from_vcf(vcf_file, vec_bp, vec_sv);
+        if (interval_file != "")
         {
-			printf("%d\t", i);
-            vec_sv[i].print(stdout);
-            printf("\n");
+            write_interval(interval_file, vec_sv);
         }
+        if (bPrint)
+        {
+            for(int i=0; i<(int)vec_sv.size(); ++i)
+            {
+                printf("%d\t", i);
+                vec_sv[i].print(stdout);
+                printf("\n");
+            }
 
+        }
+    }
+    else
+    {
+        read_svs_from_intfile(interval_file, vec_bp, vec_sv);
+        write_svs_into_vcf(vcf_file, vec_sv);
     }
     return 0;
 }

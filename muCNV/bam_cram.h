@@ -56,12 +56,14 @@ public:
     //    void read_depth(std::vector<sv> &, std::vector<string> &);
     
     void read_depth_sequential(Pileup &, GcContent&, std::vector<breakpoint> &, std::vector<sv> &);
-    
+    void read_vardepth(GcContent&, std::vector<breakpoint> &, std::vector<sv> &, int, int, int);
+
     int flag_softclips(std::vector<sclip> &);
     //    void process_readpair(sv &, std::vector<int> &, string &);
     //    void get_avg_depth();
     
    // void initialize(string &);
+    void initialize_idx(std::string &);
     void initialize_sequential(std::string &, GcContent&);
     void postprocess_depth(std::vector<sv> &);
     
