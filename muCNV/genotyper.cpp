@@ -563,7 +563,7 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         cnt_max = tmp_sum / tmp_cnt;
 
         tmp_mix.estimate(norm_cnts, G.gt, 3);
-        if (tmp_mix.bic < best_bic && tmp_mix.p_overlap < MAX_P_OVERLAP )
+        if (tmp_mix.bic < best_bic && tmp_mix.p_overlap < MAX_P_OVERLAP && tmp_mix.Comps[1].Mean > 0.15)
         {
             G.gmix = tmp_mix;
             best_bic = tmp_mix.bic;
