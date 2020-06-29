@@ -76,13 +76,20 @@ int Pileup::write_splitread(splitread& sp)
     int ret = 0;
     
     fs.write(reinterpret_cast<char*>(&(sp.pos)), sizeof(int32_t));
-    fs.write(reinterpret_cast<char*>(&(sp.sapos)), sizeof(int32_t));
+    fs.write(reinterpret_cast<char*>(&(sp.sa_pos)), sizeof(int32_t));
     
-    fs.write(reinterpret_cast<char*>(&(sp.firstclip)), sizeof(int16_t));
-    fs.write(reinterpret_cast<char*>(&(sp.secondclip)), sizeof(int16_t));
+    fs.write(reinterpret_cast<char*>(&(sp.rlen)), sizeof(uint8_t));
+    fs.write(reinterpret_cast<char*>(&(sp.sa_rlen)), sizeof(uint8_t));
+    
+    fs.write(reinterpret_cast<char*>(&(sp.rclip)), sizeof(uint8_t));
+    fs.write(reinterpret_cast<char*>(&(sp.lclip)), sizeof(uint8_t));
+    
+    fs.write(reinterpret_cast<char*>(&(sp.sa_rclip)), sizeof(uint8_t));
+    fs.write(reinterpret_cast<char*>(&(sp.sa_lclip)), sizeof(uint8_t));
+    
+    fs.write(reinterpret_cast<char*>(&(sp.pairstr)), sizeof(int8_t));
 
-    ret += sizeof(int32_t) + sizeof(int32_t) + sizeof(int16_t) + sizeof(int16_t);
-
+    ret += sizeof(int32_t) + sizeof(int32_t) + (sizeof(uint8_t)*7);
     return ret;
 }
 
@@ -144,11 +151,21 @@ int Pileup::read_splitread(splitread& sp)
     int ret = 0;
 
     fs.read(reinterpret_cast<char*>(&(sp.pos)), sizeof(int32_t));
-    fs.read(reinterpret_cast<char*>(&(sp.sapos)), sizeof(int32_t));
-    fs.read(reinterpret_cast<char*>(&(sp.firstclip)), sizeof(int16_t));
-    fs.read(reinterpret_cast<char*>(&(sp.secondclip)), sizeof(int16_t));
+    fs.read(reinterpret_cast<char*>(&(sp.sa_pos)), sizeof(int32_t));
 
-    ret += sizeof(int32_t) + sizeof(int32_t) + sizeof(int16_t) + sizeof(int16_t);
+    fs.read(reinterpret_cast<char*>(&(sp.rlen)), sizeof(uint8_t));
+    fs.read(reinterpret_cast<char*>(&(sp.sa_rlen)), sizeof(uint8_t));
+    
+    fs.read(reinterpret_cast<char*>(&(sp.rclip)), sizeof(uint8_t));
+    fs.read(reinterpret_cast<char*>(&(sp.lclip)), sizeof(uint8_t));
+    
+    fs.read(reinterpret_cast<char*>(&(sp.sa_rclip)), sizeof(uint8_t));
+    fs.read(reinterpret_cast<char*>(&(sp.sa_lclip)), sizeof(uint8_t));
+    
+    fs.read(reinterpret_cast<char*>(&(sp.pairstr)), sizeof(uint8_t));
+
+
+    ret += sizeof(int32_t) + sizeof(int32_t) + 7*sizeof(uint8_t);
     
     return ret;
 }

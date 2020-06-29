@@ -48,9 +48,21 @@ class splitread
 public:
     int8_t chrnum;
     int32_t pos;
-    int32_t sapos;
-    int16_t firstclip; // soft clip position (+: left-side, -: right-side) in primary alignment
-    int16_t secondclip; // soft clip position (+: left-side, -: right-side) in secondary alignment
+    int32_t sa_pos;
+
+    uint8_t rlen;
+    uint8_t sa_rlen;
+    
+    uint8_t lclip;
+    uint8_t rclip;
+    
+    uint8_t sa_lclip;
+    uint8_t sa_rclip;
+    
+    uint8_t pairstr;
+    
+    // int16_t firstclip; // soft clip position (+: left-side, -: right-side) in primary alignment
+    // int16_t secondclip; // soft clip position (+: left-side, -: right-side) in secondary alignment
 };
 
 class SampleStat

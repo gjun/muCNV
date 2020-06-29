@@ -24,7 +24,9 @@
 
 // Main functions
 int main_pileup(int, char**);
+int main_varpileup(int, char**);
 int main_merge_pileup(int, char**);
+int main_merge_var(int, char**);
 int main_genotype(int, char**);
 int main_print_pileup(int, char**);
 int main_vcf_to_int(int, char**);
@@ -35,8 +37,8 @@ int main(int argc, char** argv)
 {
     int ret = 0; // exit code
     
-	std::cerr << "muCNV 0.9.5, large-scale multi-sample SV genotyper" << std::endl;
-	std::cerr << "(c) 2019 Goo Jun" << std::endl << std::endl;
+	std::cerr << "muCNV 0.9.7 (TOPMed freeze 8 version), large-scale multi-sample SV genotyper" << std::endl;
+	std::cerr << "(c) 2020 Goo Jun" << std::endl << std::endl;
 	std::cerr.setf(std::ios::showpoint);
     
     srand((unsigned int)time(NULL));
@@ -54,10 +56,15 @@ int main(int argc, char** argv)
     if (strcmp(argv[1], "pileup") == 0)
         ret = main_pileup(argc-1, argv+1);
     
+    else if (strcmp(argv[1], "varpileup") == 0)
+        ret = main_varpileup(argc-1, argv+1);
     // muCNV merge
     //      merge single-sample pileups into multi-sample mpileups
     else if (strcmp(argv[1], "merge") == 0)
         ret = main_merge_pileup(argc-1, argv+1);
+
+    else if (strcmp(argv[1], "mergevar") == 0)
+        ret = main_merge_var(argc-1, argv+1);
 
     // muCNV genotype
     //      variant call (uses: read multiple mpileup or pileup, call variants, weights(?), VCF out)

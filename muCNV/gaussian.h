@@ -25,6 +25,7 @@ public:
     double Mean;
     double Stdev;
     double Alpha;
+    int N;
     double pdf(const double &);
     void set(const double &, const double &);
     void estimate(std::vector<double> &);
@@ -41,9 +42,12 @@ public:
     double Prc[4]; // precision (inverse of covariance)
     double Det; // determinant
     double Alpha;
+    int N;
     double pdf(const double&, const double&);
     void set(const double &, const double &, const double &, const double &, const double &, const double &);
     void estimate(std::vector<double> &, std::vector<double> &);
+    void estimate_select(std::vector<double> &, std::vector<double> &, std::vector<bool> &);
+
     double logpdf(const double&, const double&);
     void update(); // update precision matrix
     

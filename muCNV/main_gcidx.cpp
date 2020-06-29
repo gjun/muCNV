@@ -226,7 +226,7 @@ int main_gcidx(int argc, char** argv)
         //        for(size_t pos=1; pos<F.chrlen(chr); pos+=200)
         std::vector<double> gc_array_raw (n_interval[i], 0);
         
-        for(int j=0, pos=1; j<n_interval[i]; ++j, pos+=interval_dist)
+        for(int j=0, pos=1; j<(int)n_interval[i]; ++j, pos+=interval_dist)
         {
             std::string S;
             F.read(interval_dist, S);
@@ -239,7 +239,7 @@ int main_gcidx(int argc, char** argv)
 		std::cerr << "Chr " << i << " has " << nn_cnt << "intervals with NNs" << std::endl;
 		
         
-        for(int j=2; j<n_interval[i]-2; ++j)
+        for(int j=2; j<(int)n_interval[i]-2; ++j)
         {
             gc_array[j] =0;
             double sum_gc = 0;

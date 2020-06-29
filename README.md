@@ -2,8 +2,8 @@
 
 Multi-sample SV genotyper for large-scale WGS data
 
-Version 0.9.5
-Last edited: Nov. 27, 2019, (c) Goo Jun
+Version 0.9.7 (TOPMed Freeze 8 SV version)
+Last edited: June 28, 2019, (c) Goo Jun
 
 muCNV uses multiple steps for multi-sample SV genotyping, to handle large number of samples and to enable efficient parallelization:
 0. Generate binary interval file from input VCF 
@@ -22,18 +22,17 @@ $ mucnv [command] --help
 ```    
 List of commands:
 ```
+vcf2int
 pileup
 merge
 genotype
-print
-vcf2int
 gcidx
-filter
 ```    
 
-## Generating variant list from input VCF
+##   Generating variant list from input VCF
 ```
 $ muCNV vcf2int -v <VCF> -i <interval file> -p
+
 -i, --interval
   Name of the interval file to be created
 
@@ -47,23 +46,24 @@ $ muCNV vcf2int -v <VCF> -i <interval file> -p
 ```
 $ muCNV pileup -s <sample ID> -v <VCF> -f <GRCh file> -b <BAM/CRAM file> -o <output prefix>
 
--o, --outdir
-  Output directory. Default is current (.) directory
-  
--s,  --sample
-  Sample ID for output filename base
+   -o <string>,  --outdir <string>
+     Output directory, current directory if omitted
 
--f <string>,  --gcFile <string> 
-  File containing GC content information
+   -s <string>,  --sample <string>
+     (required)  Sample ID, also used for output filenames (.pileup, .var,
+     .idx)
 
--V <string>,  --interVal <string>
-  Binary interval file containing candidate SVs
+   -f <string>,  --gcFile <string>
+     File containing GC content information (default: GRCh38.gc)
 
--v <string>,  --vcf <string>
-  VCF file containing candidate SVs
+   -V <string>,  --interVal <string>
+     Binary interval file containing candidate SVs
 
--b <string>,  --bam <string>
-  (required)  Input BAM/CRAM file name
+   -v <string>,  --vcf <string>
+     VCF file containing candidate SVs
+
+   -b <string>,  --bam <string>
+     (required)  Input BAM/CRAM file name
 ```
 
  - GC content file for human reference genome build 38 is provided in resources/GRCh38.v3.gc
@@ -73,52 +73,58 @@ $ muCNV pileup -s <sample ID> -v <VCF> -f <GRCh file> -b <BAM/CRAM file> -o <out
 ```
 $ muCNV merge -I [input.list] -o [output_name] -f GRCh38.gc
 
--o <string>,  --output <string> 
-  (required)  Output base filename for merged pileup
+   -V <string>,  --interVal <string>
+     (required)  Binary interval file containing candidate SVs
 
--i <string>,  --index <string>
-  (required)  Text file containing list of pileup samples
+   -o <string>,  --output <string>
+     (required)  Output base filename for merged pileup
 
--f <string>,  --gcFile <string>
-  File containing GC content information
+   -i <string>,  --index <string>
+     (required)  Text file containing list of pileup samples
 
--V <string>,  --interVal <string>
-  Binary interval file containing candidate SVs
+   -f <string>,  --gcFile <string>
+     (required)  File containing GC content information
 ```
 
 ## Genotype
 ```
 $ muCNV genotype [-i <string>] [-f <string>] [-V <string>] [-v <string>] [-o <string>] [-l] [-n <integer-integer>] 
 
--r <chr:startpos-endpos>,  --region <chr:startpos-endpos>
-  Genotype specific genomic region
+   -p <number(0-1.0)>,  --pmax <number(0-1.0)>
+     Maximum overlap between depth clusters
 
--n <integer-integer>,  --numbers <integer-integer>
-  variants in range (from-to) only
+   -x <string>,  --exclude <string>
+     List of sample IDs to be excluded from genotyping
 
--i <string>,  --index <string>
-   List file containing list of intermediate pileups. Required.
+   -n <integer-integer>,  --numbers <integer-integer>
+     variants in range (from-to) only from the binary SV index file
 
--f <string>,  --gcFile <string>
-  File containing GC content information. Required.
+   -r <chr:startpos-endpos>,  --region <chr:startpos-endpos>
+     Genotype specific genomic region
 
--V <string>,  --interVal <string>
-  Binary interval file containing candidate SVs
-   
--v <string>,  --vcf <string>
-  VCF file containing candidate SVs
+   -c <integer (1-24)>,  --chr <integer (1-24)>
+     Chromosome number (1-24) if pileup contains only a single chromosome (default for merged)
 
--p <number>, --pmax <number>
-  Maximum overlap between depth cluster PDFs
+   -i <string>,  --index <string>
+     Text file containing list of pileups (required)
 
--r <chr:startpos-endpos>,  --region <chr:startpos-endpos>
-  Genotype specific genomic region
+   -f <string>,  --gcFile <string>
+     File containing GC content information
 
--o <string>,  --out <string>
-  Output filename
+   -V <string>,  --interVal <string>
+     Binary interval file containing candidate SVs
 
--l,  --lessheader
-  Do not print header in genoptyed VCF
+   -v <string>,  --vcf <string>
+     VCF file containing candidate SVs
+
+   -o <string>,  --out <string>
+     Output filename
+
+   -l,  --lessheader
+     Do not print header in genoptyed VCF
+
+   -a,  --all
+     Include all variants that failed genotyping in the output VCF
 ```    
  - GC content file for human reference genome build 38 is provided in resources/GRCh38.v3.gc
  - Either VCF file (-v) or binary interval file (-V) is required

@@ -54,7 +54,7 @@ double average(std::vector<double> &L)
     if (L.size() == 0) return 0;
     double sum = 0;
 
-    for(int i=0; i< L.size(); ++i)
+    for(int i=0; i< (int)L.size(); ++i)
     {
         sum += L[i];
     }
