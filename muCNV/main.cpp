@@ -37,8 +37,8 @@ int main(int argc, char** argv)
 {
     int ret = 0; // exit code
     
-	std::cerr << "muCNV 0.9.6 (topmed freeze 8 version), large-scale multi-sample SV genotyper" << std::endl;
-	std::cerr << "(c) 2019 Goo Jun" << std::endl << std::endl;
+	std::cerr << "muCNV 0.9.7 (TOPMed freeze 8 version), large-scale multi-sample SV genotyper" << std::endl;
+	std::cerr << "(c) 2020 Goo Jun" << std::endl << std::endl;
 	std::cerr.setf(std::ios::showpoint);
     
     srand((unsigned int)time(NULL));
