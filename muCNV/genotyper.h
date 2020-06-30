@@ -20,6 +20,9 @@
 class SvGeno
 {
 public:
+    int gts[4] = {0, 0, 0, 0};
+    double chisq;
+    
     bool b_biallelic;
     bool b_pass;
 

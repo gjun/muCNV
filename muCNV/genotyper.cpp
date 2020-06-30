@@ -117,6 +117,10 @@ SvGeno::SvGeno(int n)
     
     MAX_P_OVERLAP = 1.0;
 
+
+    for(int i=0;i<4; ++i) gts[i] = 0;
+    chisq = 0;
+
     gt.resize(n_sample, -1);
     cn.resize(n_sample, -1);
 
@@ -176,7 +180,9 @@ void SvGeno::reset()
     
     ns = 0;
     ac = 0;
-
+    for(int i=0;i<4; ++i) gts[i] = 0;
+    chisq = 0;
+    
     b_biallelic = false;
     b_pass = false;
     cnt_flag = false;
@@ -491,6 +497,34 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
         call_inversion(S, D, G, stats);
          // HWE: chisq = G.ns *  (( 4*n_AA - n_Aa^2) / ((2*n_AA + n_Aa) * (2n_aa + n_Aa)) )^2 
 
+    }
+
+    int exps[4] = {0, 0, 0, 0};
+
+    for(int i=0; i<n_sample; ++i)
+    {
+        if (G.sample_mask[i])
+        {
+            G.gts[G.gt[i]+1] ++;
+        }
+    }
+
+    double p = (G.gts[1]*2.0 + G.gts[2])/(2.0 * G.ns);
+    double q = (G.gts[2] + G.gts[3] * 2.0)/(2.0 * G.ns);
+    exps[1] = p*p*G.ns;
+    exps[2] = 2*p*q*G.ns;
+    exps[3] = q*q*G.ns;
+    G.chisq = 0;
+    for(int i=1; i<4; ++i)
+    {
+        if (exps[i]>0)
+        {
+            G.chisq += (exps[i] - G.gts[i])*(exps[i] - G.gts[i]) / exps[i];
+        }
+    } 
+    if (G.b_biallelic && G.gts[1] > 0.5*G.ns && G.chisq > 23.92823) // chi-sq for p=1e-6
+    {
+        G.b_pass = false;
     }
 }
 

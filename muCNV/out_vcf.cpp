@@ -20,10 +20,16 @@ void OutVcf::close()
 	fclose(fp);
 }
 
-void OutVcf::write_header(std::vector<std::string> &sampleIDs, std::vector<bool> &mask)
+void OutVcf::write_header(std::vector<std::string> &sampleIDs, std::vector<bool> &mask, GcContent &gc)
 {
 	fprintf(fp,"##fileformat=VCFv4.1\n");
 	fprintf(fp,"##source=muCNV_pipeline_v0.9.6\n");
+	for(int i=1; i<=22; ++i)
+	{
+		fprintf(fp, "##contig=<ID=chr%d,length=%d>\n", i, gc.chr_size[i]);
+	}
+	fprintf(fp,"##contig=<ID=chrX,length=%d>\n", gc.chr_size[23]);
+	fprintf(fp,"##contig=<ID=chrY,length=%d>\n", gc.chr_size[24]);
 	fprintf(fp,"##INFO=<ID=AC,Number=1,Type=Integer,Description=\"Number of alternative allele\">\n");
 	fprintf(fp,"##INFO=<ID=NS,Number=1,Type=Integer,Description=\"Number of Samples With Data\">\n");
 	fprintf(fp,"##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">\n");
@@ -48,6 +54,13 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs, std::vector<bool>
 	fprintf(fp,"##INFO=<ID=PRE, Number=1,Type=String,Description=\"Read depth statistic before SV\">\n");
 	fprintf(fp,"##INFO=<ID=POST, Number=1,Type=String,Description=\"Read depth statistic after SV\">\n");
 	fprintf(fp,"##INFO=<ID=Biallelic,Number=0,Type=String,Description=\"Biallelic variant\">\n");
+	fprintf(fp,"##INFO=<ID=Biallelic,Number=0,Type=String,Description=\"Biallelic variant\">\n");
+	fprintf(fp,"##INFO=<ID=N_MISS,Number=1,Type=Integer,Descrption=\"Number of missing genotypes\">\n");
+	fprintf(fp,"##INFO=<ID=N_HOMREF,Number=1,Type=Integer,Descrption=\"Number of REF/REF genotypes\">\n");
+	fprintf(fp,"##INFO=<ID=N_HET,Number=1,Type=Integer,Descrption=\"Number of REF/ALT genotypes\">\n");
+	fprintf(fp,"##INFO=<ID=N_HOMALT,Number=1,Type=Integer,Descrption=\"Number of ALT/ALT genotypes\">\n");
+	fprintf(fp,"##INFO=<ID=HWECHISQ,Number=1,Type=Float,Descrption=\"Chi-square value of HWE\">\n");
+
 	fprintf(fp,"##ALT=<ID=DEL,Description=\"Deletion\">\n");
 	fprintf(fp,"##ALT=<ID=DUP,Description=\"Duplication\">\n");
 	fprintf(fp,"##ALT=<ID=INV,Description=\"Inversion\">\n");
@@ -112,10 +125,12 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 	{
         af = (double)G.ac/(2.0*G.ns);
 	}
-    
+	if (S.svtype == DEL)
+		S.len = -S.len;	
 	fprintf(fp, "SVTYPE=%s;END=%d;SVLEN=%d;AC=%d;NS=%d;CALLRATE=%.2f;AF=%f",  svtype, S.end, S.len, G.ac, G.ns, G.ns / (float)G.n_effect, af);
+	fprintf(fp, "N_MISS=%d;N_HOMREF=%d;N_HET=%d;N_HOMALT=%d;HWECHISQ=%.2f", G.gts[0], G.gts[1], G.gts[2], G.gts[3], G.chisq);
 	fprintf(fp, ";%s", G.info.c_str());
-
+	
     if (G.pd_flag)
     {
         fprintf(fp, ";PD");
@@ -124,12 +139,12 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
     fprintf(fp, ";POST=(%.2f,%2f)", G.dp_post_mean, G.dp_post_std);
     if (G.cnt_flag)
     {
-        fprintf(fp, ";CNT=(%.2f:%.2f:%.2f", G.gmix.Comps[0].Mean, G.gmix.Comps[0].Stdev, G.gmix.Comps[0].Alpha);
+        fprintf(fp, ";CNT=(%.3f:%.3f:%.3f", G.gmix.Comps[0].Mean, G.gmix.Comps[0].Stdev, G.gmix.Comps[0].Alpha);
         for(int j=1;j<G.gmix.n_comp;++j)
         {
-            fprintf(fp,"::%.2f:%.2f:%.2f", G.gmix.Comps[j].Mean, G.gmix.Comps[j].Stdev, G.gmix.Comps[j].Alpha);
+            fprintf(fp,"::%.3f:%.3f:%.3f", G.gmix.Comps[j].Mean, G.gmix.Comps[j].Stdev, G.gmix.Comps[j].Alpha);
         }
-        fprintf(fp, ");CNTOverlap=%.2f", G.gmix.p_overlap);
+        fprintf(fp, ");CNTOverlap=%.3f", G.gmix.p_overlap);
     }
     if (G.dp_flag)
 	{

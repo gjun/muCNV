@@ -23,7 +23,7 @@ public:
     void open(std::string&);
     void close();
     void print(std::string &);
-    void write_header(std::vector<std::string>&, std::vector<bool>&);
+    void write_header(std::vector<std::string>&, std::vector<bool>&, GcContent &);
 
 	void write_sv(sv &, SvData &, SvGeno &);
 };
