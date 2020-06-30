@@ -128,7 +128,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 	if (S.svtype == DEL)
 		S.len = -S.len;	
 	fprintf(fp, "SVTYPE=%s;END=%d;SVLEN=%d;AC=%d;NS=%d;CALLRATE=%.2f;AF=%f",  svtype, S.end, S.len, G.ac, G.ns, G.ns / (float)G.n_effect, af);
-	fprintf(fp, "N_MISS=%d;N_HOMREF=%d;N_HET=%d;N_HOMALT=%d;HWECHISQ=%.2f", G.gts[0], G.gts[1], G.gts[2], G.gts[3], G.chisq);
+	fprintf(fp, ";N_MISS=%d;N_HOMREF=%d;N_HET=%d;N_HOMALT=%d;HWECHISQ=%.2f", G.gts[0], G.gts[1], G.gts[2], G.gts[3], G.chisq);
 	fprintf(fp, ";%s", G.info.c_str());
 	
     if (G.pd_flag)
