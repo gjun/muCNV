@@ -499,7 +499,7 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
 
     }
 
-    int exps[4] = {0, 0, 0, 0};
+    double exps[4] = {0, 0, 0, 0};
 
     for(int i=0; i<n_sample; ++i)
     {
