@@ -221,7 +221,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
                 fprintf(fp, "\t1/1");
                 break;
             default:
-                fprintf(fp, "\t.");
+                fprintf(fp, "\t./.");
                 break;
         }
         if (G.cn[i]<0)

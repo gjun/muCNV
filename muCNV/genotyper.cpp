@@ -612,7 +612,8 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
     {     
         G.ns = 0;
         G.ac = 0;
-        
+        int rpsp = 0;
+
         DDPRINT("%d components\n", genostat.dpcnt_mix.n_comp);
         for(int i=0; i<n_sample; ++i)
         {
@@ -654,12 +655,15 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
                     G.gt[i] = 1; // 0/1
                     G.ac ++;
                     G.ns ++;
+                    rpsp += G.rp_cnts[i] + G.split_cnts[i];
                 }
                 else if (gt == 2)
                 { 
                     G.gt[i] = 2; // 1/1
                     G.ns ++;
                     G.ac += 2;
+                    rpsp += G.rp_cnts[i] + G.split_cnts[i];
+
                 }
             }
         
@@ -668,7 +672,7 @@ bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
         double callrate = (double)G.ns / G.n_effect;
         DDPRINT("NS %d, AC %d, Call rate %f\n", G.ns, G.ac, callrate);
         
-        if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2) // if successful, return genotypes
+        if (callrate>0.5 && G.ac > 0 && G.ac < G.ns*2 && rpsp/G.ac > 0.5 ) // if successful, return genotypes
         { 
             G.cnt_flag = true; 
             G.b_pass = true;
