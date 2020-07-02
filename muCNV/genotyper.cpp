@@ -482,21 +482,14 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
     if (S.svtype == DEL)
 	{
        call_deletion(S, D, G, stats);
-        // HWE: chisq = G.ns *  (( 4*n_AA*n_aa - n_Aa^2) / ((2*n_AA + n_Aa) * (2*n_aa + n_Aa)) )^2 
-
     }
     else if (S.svtype == DUP || S.svtype == CNV)
     {
        call_cnv(S, D, G, stats);
-       // How to check HWE for CNVs?
-       // Should we try to identify CN alleles by taking GCD of CNs 
-       // Fraction_biallelic ? (Most samples are biallelic except for a few?)
     }
     else if (S.svtype == INV)
     {
         call_inversion(S, D, G, stats);
-         // HWE: chisq = G.ns *  (( 4*n_AA - n_Aa^2) / ((2*n_AA + n_Aa) * (2n_aa + n_Aa)) )^2 
-
     }
 
     double exps[4] = {0, 0, 0, 0};
@@ -515,6 +508,7 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
     exps[2] = 2*p*q*G.ns;
     exps[3] = q*q*G.ns;
     G.chisq = 0;
+    double af = G.ac / (2.0*G.ns);
     for(int i=1; i<4; ++i)
     {
         if (exps[i]>0)
@@ -522,7 +516,9 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
             G.chisq += (exps[i] - G.gts[i])*(exps[i] - G.gts[i]) / exps[i];
         }
     } 
-    if (G.b_biallelic && G.gts[1] > 0.5*G.ns && G.chisq > 23.92823) // chi-sq for p=1e-6
+    // Filtering based on HWE
+    if (G.b_biallelic && (G.chisq > 23.92823 || (af >= 0.05 && G.chisq >15.13671))) // chi-sq for p=1e-6, p=1e-4
+    //if (G.b_biallelic && ((af >= 0.05 && G.chisq > 23.92823) || G.chisq > 32.84125))  // chi-sq for p=1e-6, p=1e-8
     {
         G.b_pass = false;
     }
@@ -871,7 +867,7 @@ bool Genotyper::get_inv_cnts(sv &S, SvData &D, SvGeno &G)
         G.all_cnts[i] = G.split_cnts[i] + G.rp_cnts[i] + (G.start_clips[i] + G.end_clips[i])/2.0;
         
         // TODO: cut-off values are arbitrary
-        if (G.rp_cnts[i] > 0 && G.all_cnts[i] > 3)
+        if (G.split_cnts[i] + G.rp_cnts[i] >= 3)
         {
             G.gt[i] = 1;
             G.nonref_mask[i] = true;
@@ -2316,7 +2312,7 @@ bool Genotyper::get_del_cnts(sv &S, SvData &D, SvGeno &G)
         G.all_cnts[i] = G.split_cnts[i] + G.rp_cnts[i] + (G.start_clips[i] + G.end_clips[i])/2.0;
         
         // TODO: cut-off values are arbitrary
-        if (G.split_cnts[i] >= 3 || G.split_cnts[i]+G.rp_cnts[i] >= 5 || (G.split_cnts[i]+G.rp_cnts[i] > 0 && G.all_cnts[i] >= 5))
+        if (G.split_cnts[i] >= 3 || G.split_cnts[i]+G.rp_cnts[i] >= 5 || (G.start_clips[i] >0 && G.end_clips[i] > 0 && G.all_cnts[i] >= 5 ))
         {
             G.gt[i] = 1;
             G.nonref_mask[i] = true;
@@ -2417,7 +2413,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
     }
 
     // use pre_post filtering for depth-only
-    if (!G.b_pre || !G.b_post) return;
+//    if (!G.b_pre || !G.b_post) return;
     
     // If nothing works, use Depth-only clustering with stringent cutoff
     std::vector< std::vector<double> > means = { {1.0}, {1.0, 0.5}, {1.0, 0.5, 0.0}};
@@ -2642,7 +2638,7 @@ bool Genotyper::assign_dup_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
 
             if (cn == 2)
             {
-                if (D.dps[2][i] < 0.8 || D.dps[2][i] > 1.2 || norm_cnts[i] > 0.1)
+                if (D.dps[2][i] < 0.8 || D.dps[2][i] > 1.25 || norm_cnts[i] > 0.1)
                 {
                     G.cn[i] = -1;
                     G.gt[i] = -1;
@@ -2658,6 +2654,7 @@ bool Genotyper::assign_dup_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<Sa
             {
                 if (cn == -1 && D.dps[2][i] < 1.2 && D.dps[2][i] > 0.8 && norm_cnts[i] < 0.05)
                 {
+                    // maybe not many these...
                     G.cn[i] = 2;
                     G.gt[i] = 0;
                     G.ns ++;
@@ -2979,7 +2976,8 @@ bool Genotyper::get_dup_cnts(sv &S, SvData &D, SvGeno &G)
         G.all_cnts[i] = G.split_cnts[i] + G.rp_cnts[i] + (G.start_clips[i] + G.end_clips[i])/2.0;
         
         // TODO: cut-off values are arbitrary
-        if (G.split_cnts[i] > 3 || (G.split_flag && G.split_cnts[i] > 0 && G.all_cnts[i] > 5) || (!G.split_flag && G.all_cnts[i] > 5))
+
+        if (G.split_cnts[i] >= 3 || G.split_cnts[i]+G.rp_cnts[i] >= 5 || (G.start_clips[i] >0 && G.end_clips[i] > 0 && G.all_cnts[i] >= 5 ))
         {
             G.gt[i] = 1;
             G.nonref_mask[i] = true;
@@ -3005,13 +3003,18 @@ bool Genotyper::get_dup_cnts(sv &S, SvData &D, SvGeno &G)
 
 void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &stats)
 {
-    bool split_flag = false;
+    G.split_flag = false;
+    G.clip_flag = false;
+    G.readpair_flag = false;
+    G.dp_flag = false;
+    G.dp2_flag = false;
+
     // First, try split read - best evidence
     if (find_consensus_split(S, D, G))
     {
-        if (get_dup_cnts(S, D, G) && assign_dup_genotypes(S, D, G, stats))
+        G.split_flag = true;
+        if (get_dup_cnts(S, D, G) &&  assign_dup_genotypes(S, D, G, stats))
         {
-            G.split_flag = true;
             /*
             for(int i=0; i<n_sample;++i)
             {
@@ -3020,15 +3023,10 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
             }*/
             return;
         }
-        else
-        {
-            G.split_flag = false;
-        }
-        split_flag = true;
     }
 
     D.clus_idx = -1;
-    if (!split_flag && find_consensus_clip(S, D, G))
+    if (find_consensus_clip(S, D, G))
     {
         G.clip_flag = true;
 
@@ -3039,8 +3037,8 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
     }
     
     // If no breakpoints identified by split reads nor by soft clips, just use the SV breakpoints as given
-    if (!split_flag && !G.clip_flag)
-    {
+  //  if (!G.split_flag && !G.clip_flag)
+   // {
         D.vec_break_clusters.clear();
         D.clus_idx = -1;
         BreakCluster br;
@@ -3058,8 +3056,8 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
             }*/
             return;
         }
-    }
-    // use pre_post filtering for depth-only
+    //}
+    // use pre_post filtering for depth-only  TEMPORARY
     if (!G.b_pre || !G.b_post) return;
     
     // Fit Gaussian mixture models with 1, 2, and 3 components, compare BIc
@@ -3085,21 +3083,31 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
         {
             if (!G.sample_mask[i]) continue;
             // TODO: arbitrary
-            if (var_depth[i] > 0.7 && var_depth[i] < 1.25)
+
+            dp_cn[i] = G.gmix.assign_copynumber(var_depth[i]);
+            // TEMPORARY, Jul1, 2020
+            /*
+            if (dp_cn[i] == 2 && var_depth[i] < 0.75 || var_depth[i] > 1.25)
+            {
+                dp_cn[i] = -1;
+            }
+            else if (dp_cn[i] > 2 && var_depth[i] <= 1.25)
+            {
+                dp_cn[i] = -1;
+            }
+            if (var_depth[i] > 0.7 && var_depth[i] < 1.3)
             {
                 dp_cn[i] = 2;
-                dp_ns++;
             }
-            else if (var_depth[i] > 1.4 &&  var_depth[i] < 1.9)
+            else if (var_depth[i] > 1.35 &&  var_depth[i] < 1.85)
             {
                 dp_cn[i] = 3;
-                dp_ns ++;
             }
-            else if (var_depth[i] >= 1.9)
+            else if (var_depth[i] >= 1.85)
             {
                 dp_cn[i] = round(var_depth[i] * 2.0);
-                dp_ns++;
             }
+            */
         }
     }
     if (D.multi_dp)
@@ -3116,8 +3124,9 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
             for(int i=0; i<(int)n_sample; ++i)
             {
                 if (!G.sample_mask[i]) continue;
-//                dp2_cn[i] = G.gmix2.assign_copynumber(D.dps[dp2_idx][i], D.dps[dp2_idx+1][i]);
-
+                dp2_cn[i] = G.gmix2.assign_copynumber(D.dps[dp2_idx][i], D.dps[dp2_idx+1][i]);
+                   
+                /*
                 double dp1 = D.dps[dp2_idx][i];
                 double dp2 = D.dps[dp2_idx+1][i];
                 
@@ -3136,6 +3145,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
                     dp2_cn[i] = round(var_depth[i] * 2.0);
                     dp2_ns++;
                 }
+                */
             }
         }
     }
@@ -3170,6 +3180,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
         }
     }
     // If clustered, filter false positive variants
+    /*
     for (int i=0;i<n_sample; ++i)
     {
         if (!G.sample_mask[i]) continue;
@@ -3179,6 +3190,7 @@ void Genotyper::call_cnv(sv &S, SvData& D, SvGeno &G, std::vector<SampleStat> &s
             G.cn[i] = -1;
         }
     }
+    */
 
     check_biallelic(G);
   
