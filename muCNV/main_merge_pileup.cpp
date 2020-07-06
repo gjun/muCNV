@@ -96,7 +96,9 @@ int main_merge_pileup(int argc, char** argv)
     std::string filename;
     
 	// Currently this 'merging' supports only merging from single-sample pilieups
-	// TODO: merge merged pileups
+	// It does not support merging already merged pileups
+
+	// Currently merged pileups are automatically separaged by chromosomes
 
 	for(int chr=1; chr<=gc.num_chr; ++chr)
 	{

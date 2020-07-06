@@ -246,12 +246,11 @@ int main_genotype(int argc, char** argv)
         }
     }
 
-
 	OutVcf out_vcf;
 	out_vcf.open(out_filename);
 	if (!bNoHeader)
 	{
-		out_vcf.write_header(reader.sample_ids, G.sample_mask);
+		out_vcf.write_header(reader.sample_ids, G.sample_mask, gc);
 	}
     
 	int vec_offset = 0;
