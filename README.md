@@ -59,10 +59,10 @@ $ muCNV vcf2int -v candidate_sv.vcf -i candidate_sv.interavls
 Assuming muCNV source directory is at /home/user1/muCNV and pileup files are being created under $(pwd)/pileup
 ```
 $ mkdir pileup
-$ muCNV pileup -s sample1 -V candiate_sv.intervals -f /home/user1/muCNV/resources/GRCh38.v3.gc -o pileup/sample1
-$ muCNV pileup -s sample2 -V candiate_sv.intervals -f /home/user1/muCNV/resources/GRCh38.v3.gc -o pileup/sample2
+$ muCNV pileup -s sample1 -V candiate_sv.intervals -f /home/user1/muCNV/resource/GRCh38.v3.gc -o pileup/sample1
+$ muCNV pileup -s sample2 -V candiate_sv.intervals -f /home/user1/muCNV/resource/GRCh38.v3.gc -o pileup/sample2
 ...
-$ muCNV pileup -s sample10 -V candiate_sv.intervals -f /home/user1/muCNV/resources/GRCh38.v3.gc -o pileup/sample10
+$ muCNV pileup -s sample10 -V candiate_sv.intervals -f /home/user1/muCNV/resource/GRCh38.v3.gc -o pileup/sample10
 ```
 You can simplify/parallelize pileup step by using GNU Parallel or GNU Make.
 
@@ -77,7 +77,7 @@ pileup/sample10
 ```
 Then run genotyping step to create the output file, genotyped.vcf:
 ```
-$ muCNV genotype -V candidate_sv.intervals -i pileup.list -o genotyped.vcf -f /home/user1/muCNV/resources/GRCh38.v3.gc
+$ muCNV genotype -V candidate_sv.intervals -i pileup.list -o genotyped.vcf -f /home/user1/muCNV/resource/GRCh38.v3.gc
 ```
 
 # Commands in more details
