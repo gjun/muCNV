@@ -6,6 +6,7 @@ Version 0.9.9
 Last edited: July 1, 2020, (c) Goo Jun
 
 muCNV uses multiple steps for multi-sample SV genotyping, to handle large number of samples and to enable efficient parallelization:
+
 0. Generate binary interval file from input VCF 
 1. Generate *pileups* from CRAM/BAM files using candidate list of SVs
 2. Merge individual pileups to generate 'merged' pileups
