@@ -15,21 +15,72 @@ muCNV uses multiple steps for multi-sample SV genotyping, to handle large number
 * By default, merging will create pileups separated by chromosomes. 
 * When genotyping merged pileups, do not add 'chr' postfixes in your 'list' file
 
+## Installation
+Required: g++ compiler environment and HTSlib (https://github.com/samtools/htslib).
+If HTSlib is not installed system-wide, please manually add -I(HTSlib include directory) and -L(HISlib library directory) to Makefile. 
+```
+$ make
+```
+
+To test, 
+```
+$ bin/muCNV  
+```
+You can copy muCNV binary to one of your $PATH locations (e.g. /usr/local/bin).
+
 ## Basis usage:
 ```
 $ mucnv [command] [options]
 $ mucnv [command] --help
 ```    
-List of commands:
-```
-vcf2int
-pileup
-merge
-genotype
-gcidx
-```    
 
-##   Generating variant list from input VCF
+# Use-case Example
+1. Input files 
+- GRCh38 CRAM files 
+```
+sample1.cram 
+sample2.cram
+sample3.cram
+...
+sample10.cram
+```
+- VCF file containing candidate SV variants
+```
+candidate_sv.vcf
+```
+
+2. Generate 'interval' file from VCF
+```
+$ muCNV vcf2int -v candidate_sv.vcf -i candidate_sv.interavls 
+```
+
+3. Generate pileup from each CRAM file
+Assuming muCNV source directory is at /home/user1/muCNV and pileup files are being created under $(pwd)/pileup
+```
+$ mkdir pileup
+$ muCNV pileup -s sample1 -V candiate_sv.intervals -f /home/user1/muCNV/resources/GRCh38.v3.gc -o pileup/sample1
+$ muCNV pileup -s sample2 -V candiate_sv.intervals -f /home/user1/muCNV/resources/GRCh38.v3.gc -o pileup/sample2
+...
+$ muCNV pileup -s sample10 -V candiate_sv.intervals -f /home/user1/muCNV/resources/GRCh38.v3.gc -o pileup/sample10
+```
+You can simplify/parallelize pileup step by using GNU Parallel or GNU Make.
+
+4. Genotype candidate SVs from pileup data
+Make a text file containing the base names of each pileup file, say, pileup.list
+```
+$ cat pileup.list
+pileup/sample1
+pileup/sample2
+...
+pileup/sample10
+```
+Then run genotyping step to create the output file, genotyped.vcf:
+```
+$ muCNV genotype -V candidate_sv.intervals -i pileup.list -o genotyped.vcf -f /home/user1/muCNV/resources/GRCh38.v3.gc
+```
+
+# Commands in more details
+## Generating variant list from input VCF
 ```
 $ muCNV vcf2int -v <VCF> -i <interval file> -p
 
@@ -44,7 +95,7 @@ $ muCNV vcf2int -v <VCF> -i <interval file> -p
 ```
 ## Pileup
 ```
-$ muCNV pileup -s <sample ID> -v <VCF> -f <GRCh file> -b <BAM/CRAM file> -o <output prefix>
+$ muCNV pileup -s <sample ID> -v <VCF> -V <Interval> -f <GRCh file> -b <BAM/CRAM file> -o <output prefix>
 
    -o <string>,  --outdir <string>
      Output directory, current directory if omitted
