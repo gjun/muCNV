@@ -715,11 +715,6 @@ bool GaussianMixture2::ordered()
         }
 	}
 
-
-    if (Comps[1].Alpha > 0.5 && (n_comp < 3 || Comps[2].Alpha < 0.01))
-    {
-        return false;
-    }
 	return true;
 }
 
@@ -780,15 +775,16 @@ int GaussianMixture2::assign_copynumber(double x, double y)
 		}
 	}
     
-	// ret = round(Comps[ret].Mean[0] + Comps[ret].Mean[1]); // TODO: what if only one of the dimensions cluster correctly? (0, 0.5, 1) + (1, 1, 1) = (1 1.5 2) 
+	ret = round(Comps[ret].Mean[0] + Comps[ret].Mean[1]); 
+    // TODO: what if only one of the dimensions cluster correctly? (0, 0.5, 1) + (1, 1, 1) = (1 1.5 2) 
 
-	// int up = ceil(x+y);
-	// int down = floor(x+y);
+	int up = ceil(x+y);
+	int down = floor(x+y);
 
-	// if (ret != up && ret != down)
-	// {
-	// 	return -1;
-	// }
+	if (ret != up && ret != down)
+	{
+		return -1;
+    }
 
 	if (max_R > 0.1)
 	{
@@ -824,7 +820,7 @@ int GaussianMixture2::assign_dpcnt_copynumber(double x, double y)
 			if (R>max_R)
 			{
 				max_R = R;
-				if (max_R > 0.1)
+				if (max_R > 0.2)
 				{
 					return -1;	
 				}

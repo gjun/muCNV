@@ -622,10 +622,6 @@ bool GaussianMixture::ordered()
 			return false;
 	}
 
-    if (Comps[1].Alpha > 0.5 && (n_comp < 3 || Comps[2].Alpha < 0.01))
-    {
-        return false;
-    }
 	return true;
 }
 
@@ -642,7 +638,6 @@ bool GaussianMixture::r_ordered()
 		if (Comps[i+1].Mean - Comps[i].Mean < 0.3)
 			return false;
 	}
-
 
 	return true;
 }
