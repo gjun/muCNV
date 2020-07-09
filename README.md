@@ -2,8 +2,8 @@
 
 Multi-sample SV genotyper for large-scale WGS data
 
-Version 0.9.9
-Last edited: July 1, 2020, (c) Goo Jun
+Version 1.0.0
+Last edited: July 9, 2020, (c) Goo Jun
 
 muCNV uses multiple steps for multi-sample SV genotyping, to handle large number of samples and to enable efficient parallelization:
 

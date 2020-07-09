@@ -37,7 +37,7 @@ int main(int argc, char** argv)
 {
     int ret = 0; // exit code
     
-	std::cerr << "muCNV 0.9.9, large-scale multi-sample SV genotyper" << std::endl;
+	std::cerr << "muCNV 1.0.0, large-scale multi-sample SV genotyper" << std::endl;
 	std::cerr << "(c) 2020 Goo Jun" << std::endl << std::endl;
 	std::cerr.setf(std::ios::showpoint);
     
