@@ -303,9 +303,14 @@ int main_genotype(int argc, char** argv)
 
     for(int i=start_var_idx; i<=end_var_idx; ++i)
     {
-        std::string qstr = std::to_string(vec_sv[i].chrnum) + "\t" + std::to_string(vec_sv[i].pos) + "\t" + std::to_string(vec_sv[i].end) + "\t" + svTypeName(vec_sv[i].svtype);
-        if (genolist_map.find(qstr) == genolist_map.end() )
-            continue;
+        if (genolist_filename != "")
+        {
+            std::string qstr = std::to_string(vec_sv[i].chrnum) + "\t" + std::to_string(vec_sv[i].pos) + "\t" + std::to_string(vec_sv[i].end) + "\t" + svTypeName(vec_sv[i].svtype);
+            if (genolist_map.find(qstr) == genolist_map.end() )
+                continue;
+            else
+                bFail = true;
+        }
 
         // GC content of the candidate variant region.
         double sv_gc = gc.get_gc_content(vec_sv[i].chrnum, vec_sv[i].pos, vec_sv[i].end);
