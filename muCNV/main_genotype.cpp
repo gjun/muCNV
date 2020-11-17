@@ -343,7 +343,9 @@ int main_genotype(int argc, char** argv)
                         D.raw_dp[j] = D.dps[2][j];
                         D.dps[0][j] /= (double)stats[j].avg_dp;
                         D.dps[1][j] /= (double)stats[j].avg_dp;
-                        if (D.dps[0][j] > 0.001 && D.dps[1][j] > 0.001)
+            
+                        // if (D.dps[0][j] > 0.001 && D.dps[1][j] > 0.001)
+                        if (false)
                         {
                             D.dps[2][j] /= (double)stats[j].avg_dp * (D.dps[1][j] + D.dps[0][j]) * 0.5 ;
                         }
@@ -353,7 +355,9 @@ int main_genotype(int argc, char** argv)
                         }
                         if (D.multi_dp)
                         {
-                            if (D.dps[0][j] > 0.001)
+                            
+                            //if (D.dps[0][j] > 0.001)
+                            if (false)
                             {
                                 D.dps[3][j] /= (double)stats[j].avg_dp * D.dps[0][j];
                             }
@@ -361,7 +365,8 @@ int main_genotype(int argc, char** argv)
                             {
                                 D.dps[3][j] /= (double)stats[j].avg_dp;
                             }
-                            if (D.dps[1][j]>0.001)
+                            // if (D.dps[1][j]>0.001)
+                            if (false)
                             {
                                 D.dps[4][j] /= (double)stats[j].avg_dp * D.dps[1][j];
                             }
