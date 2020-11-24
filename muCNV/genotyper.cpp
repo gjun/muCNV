@@ -517,11 +517,13 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
         }
     } 
     // Filtering based on HWE
+    /*
     if (G.b_biallelic && (G.chisq > 23.92823 || (af >= 0.05 && G.chisq >15.13671))) // chi-sq for p=1e-6, p=1e-4
     //if (G.b_biallelic && ((af >= 0.05 && G.chisq > 23.92823) || G.chisq > 32.84125))  // chi-sq for p=1e-6, p=1e-8
     {
         G.b_pass = false;
     }
+    */
 }
 
 bool Genotyper::assign_inv_genotypes(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats)
@@ -2391,9 +2393,11 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
         {
             return;
         }
-        /*
+ 
+#ifdef DDEBUG
         for(int i=0; i<(int)D.vec_break_clusters.size(); ++i)
-            fprintf(stderr, "CLIP found: %f-%f, %d\n", D.vec_break_clusters[i].start_mean, D.vec_break_clusters[i].end_mean, D.vec_break_clusters[i].N); */
+            fprintf(stderr, "CLIP found: %f-%f, %d\n", D.vec_break_clusters[i].start_mean, D.vec_break_clusters[i].end_mean, D.vec_break_clusters[i].N);
+#endif
     }
     
     if (!split_flag && !G.clip_flag)
@@ -2410,6 +2414,11 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
             G.readpair_flag = true;
             return;
         }
+#ifdef DDEBUG
+        for(int i=0; i<(int)D.vec_break_clusters.size(); ++i)
+            fprintf(stderr, "ORIGINAL BP: %f-%f, %d\n", D.vec_break_clusters[i].start_mean, D.vec_break_clusters[i].end_mean, D.vec_break_clusters[i].N);
+#endif
+
     }
 
     // use pre_post filtering for depth-only
@@ -2434,6 +2443,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
     if (G.gmix.n_comp > 1 && G.gmix.ordered())
     {
         G.dp_flag = true;
+        DDPRINT("1-D Gaussian depth clustered: %d \n", G.gmix.n_comp);
         // success
         // assign dp-genotypes
         for(int i=0; i<n_sample; ++i)
@@ -2468,6 +2478,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
         }
     }
 
+/*
     std::vector< std::vector<double> > means2 = {{0}, {0, 0.5}};
     if (!G.dp_flag)
     {
@@ -2476,6 +2487,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
         if (G.gmix.n_comp > 1 && G.gmix.Comps[0].Mean < 0.1 && G.gmix.Comps[1].Mean > 0.35)
         {
             G.dp_flag = true;
+            DDPRINT("1-D Gaussian REVERSE depth clustered: %d \n", G.gmix.n_comp);
             // success
             // assign dp-genotypes
             for(int i=0; i<n_sample; ++i)
@@ -2485,6 +2497,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
             }
         }
     }
+    */
      
     int dp2_idx = 3;
     if (D.multi_dp) //dp2 has more than 2 vectors
@@ -2497,6 +2510,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
         {
             G.dp2_flag = true;
             //assign dp2 genotypes
+            DDPRINT("2-D Gaussian depth clustered: %d \n", G.gmix2.n_comp);
 
             for(int i=0; i<n_sample; ++i)
             {
@@ -2529,6 +2543,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
             }
         }
     }
+    /*
     if (D.multi_dp && !G.dp2_flag)
     {
         // dp100 genotyping
@@ -2540,6 +2555,8 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
             G.dp2_flag = true;
             //assign dp2 genotypes
 
+            DDPRINT("2-D Gaussian REVERSE depth clustered: %d \n", G.gmix.n_comp);
+
             for(int i=0; i<n_sample; ++i)
             {
                 if (!G.sample_mask[i]) continue;
@@ -2549,6 +2566,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
             }
         }
     }
+    */
 
     if (G.dp_flag && G.dp2_flag)
     {
@@ -2635,7 +2653,7 @@ void Genotyper::call_deletion(sv &S, SvData &D, SvGeno &G, std::vector<SampleSta
 
     double callrate = (double)G.ns / G.n_effect;
 
-    // Excessive heterozygosity (basically all-het case) commented out now, due to HWE filter
+    // Excessive heterozygos5ity (basically all-het case) commented out now, due to HWE filter
     /*
     if ( n_het > ((double)G.ns * 0.75) && n_hom < ((double)0.05 * G.ns) )
     {
