@@ -85,7 +85,7 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs, std::vector<bool>
 }
 
 
-void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
+void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G, std::vector<int> &sexes)
 {
 	const char *svtype = svTypeName(S.svtype).c_str();
     
@@ -208,22 +208,74 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
     {
 		if (!G.sample_mask[i])
 			continue;
-			
-        switch(G.gt[i])
-        {
-            case 0:
-                fprintf(fp, "\t0/0");
-                break;
-            case 1:
-                fprintf(fp, "\t0/1");
-                break;
-            case 2:
-                fprintf(fp, "\t1/1");
-                break;
-            default:
-                fprintf(fp, "\t./.");
-                break;
-        }
+
+		
+		if (S.chrnum < 23)
+		{	
+			switch(G.gt[i])
+			{
+				case 0:
+					fprintf(fp, "\t0/0");
+					break;
+				case 1:
+					fprintf(fp, "\t0/1");
+					break;
+				case 2:
+					fprintf(fp, "\t1/1");
+					break;
+				default:
+					fprintf(fp, "\t./.");
+					break;
+			}
+		}
+		else if (S.chrnum == 23)
+		{
+			if (sexes[i] == 1)
+			{
+				if (G.cn[i] > 1) 
+				{
+					G.cn[i] -= 1;
+				}
+				switch(G.gt[i])
+				{
+					case 0:
+						fprintf(fp, "\t0");
+						break;
+					case 1:
+						fprintf(fp, "\t1");
+						break;
+					case 2:
+						fprintf(fp, "\t1");
+						break;
+					default:
+						fprintf(fp, "\t.");
+						break;
+				}
+			}
+			else if (sexes[i] == 2)
+			{
+				switch(G.gt[i])
+				{
+					case 0:
+						fprintf(fp, "\t0/0");
+						break;
+					case 1:
+						fprintf(fp, "\t0/1");
+						break;
+					case 2:
+						fprintf(fp, "\t1/1");
+						break;
+					default:
+						fprintf(fp, "\t./.");
+						break;
+				}
+			}
+			else
+			{
+				fprintf(fp, "\t./.");
+			}
+		}
+
         if (G.cn[i]<0)
             fprintf(fp, ":.");
         else

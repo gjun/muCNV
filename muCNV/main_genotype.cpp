@@ -37,6 +37,7 @@ int main_genotype(int argc, char** argv)
     string bam_file;
     string sChr;
     string gc_file;
+    string ped_filename;
     string sampID;
     string region;
     string exclude_filename;
@@ -56,6 +57,8 @@ int main_genotype(int argc, char** argv)
         TCLAP::ValueArg<string> argRange("n","numbers", "variants in range (from-to) only", false, "", "integer-integer");
 
         TCLAP::ValueArg<string> argIndex("i","index","List file containing list of intermediate pileups. Required with genotype option",false,"","string");
+        TCLAP::ValueArg<string> argPed("d","ped","Filename with sample info in standard five-column PED format - required for sex chromosomes",false,"","string");
+
         TCLAP::ValueArg<string> argGcfile("f","gcFile","File containing GC content information",false, "GRCh38.gc", "string");
 
         TCLAP::ValueArg<string> argRegion("r", "region", "Genotype specific genomic region", false, "", "chr:startpos-endpos" );
@@ -80,6 +83,7 @@ int main_genotype(int argc, char** argv)
         cmd.add(argExclude);
 		cmd.add(argPoverlap);
         cmd.add(argGenoList);
+        cmd.add(argPed);
         cmd.parse(argc, argv);
         
         range = argRange.getValue();
@@ -88,6 +92,7 @@ int main_genotype(int argc, char** argv)
         vcf_file = argVcf.getValue();
         interval_file = argInterval.getValue();
         gc_file = argGcfile.getValue();
+        ped_filename = argPed.getValue();
         bNoHeader = switchNoHeader.getValue();
         bFail = switchFail.getValue();
 		chr = argChr.getValue();
@@ -127,7 +132,6 @@ int main_genotype(int argc, char** argv)
     else
         std::cerr << "Error, VCF or Interval file is required." << std::endl;
     
-
     if (genolist_filename != "")
     {
         std::ifstream lfile(genolist_filename.c_str(), std::ios::in);
@@ -202,8 +206,41 @@ int main_genotype(int argc, char** argv)
 
     std::cerr << n_sample << " samples identified from pileup files" << std::endl;
 
+    std::unordered_map<string, int> sexmap;
+    if (ped_filename != "")
+    {
+        std::string fid, id, pat, mat, sex;
+
+        std::ifstream pfile(ped_filename.c_str(), std::ios::in);
+        pfile >> fid;
+        pfile >> id;
+        pfile >> mat;
+        pfile >> sex;
+        if (sex == "1")
+        {
+            sexmap[id] = 1;
+        }
+        else if (sex == "2")
+        {
+            sexmap[id] = 2;
+        }
+        else
+        {
+            sexmap[id] = 0;
+        }
+    }
+
+
+    std::vector<int> sexes;
+    sexes.assign(n_sample, 0);
+
     for(int k=0; k<n_sample; ++k)
     {
+         if (sexmap.find(reader.sample_ids[k]) != sexmap.end())
+         {
+             sexes[k] = sexmap[reader.sample_ids[k]];
+         }
+         
          std::set<string>::iterator it = exclude_set.find(reader.sample_ids[k]);
          if (it != exclude_set.end())
          {
@@ -315,8 +352,8 @@ int main_genotype(int argc, char** argv)
         // GC content of the candidate variant region.
         double sv_gc = gc.get_gc_content(vec_sv[i].chrnum, vec_sv[i].pos, vec_sv[i].end);
 
-        // chr X and Y calling not supported yet
-        if (((chr== 0 && vec_sv[i].chrnum < 23) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]) && sv_gc > min_GC && sv_gc < max_GC  && (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV || vec_sv[i].svtype==INV))
+        // chrY is not supported yet
+        if (((chr== 0 && vec_sv[i].chrnum < 24) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]) && sv_gc > min_GC && sv_gc < max_GC  && (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV || vec_sv[i].svtype==INV))
         {
             Genotyper gtyper;
             G.reset();
@@ -353,6 +390,12 @@ int main_genotype(int argc, char** argv)
                         {
                             D.dps[2][j] /= (double)stats[j].avg_dp;
                         }
+                        if (vec_sv[i].chrnum == 23 && sexes[j] == 1)
+                        {
+                            D.dps[0][j] += 0.5;
+                            D.dps[1][j] += 0.5;
+                            D.dps[2][j] += 0.5;
+                        }
                         if (D.multi_dp)
                         {
                             
@@ -374,6 +417,11 @@ int main_genotype(int argc, char** argv)
                             {
                                 D.dps[4][j] /= (double)stats[j].avg_dp;
                             }
+                            if (vec_sv[i].chrnum == 23 && sexes[j] == 1)
+                            {
+                                D.dps[3][j] += 0.5;
+                                D.dps[4][j] += 0.5;
+                            }
                         }
                     }
                 }
@@ -384,6 +432,12 @@ int main_genotype(int argc, char** argv)
                         D.dps[0][j] = 1.0;
                         D.dps[1][j] = 1.0;
                         D.dps[2][j] /= (double)stats[j].avg_dp;                    
+                        if (vec_sv[i].chrnum == 23 && sexes[j] == 1)
+                        {
+                            D.dps[0][j] += 0.5;
+                            D.dps[1][j] += 0.5;
+                            D.dps[2][j] += 0.5;
+                        }
                     }
                 }
                 
@@ -393,7 +447,7 @@ int main_genotype(int argc, char** argv)
 
                 if (bFail || G.b_pass)
                 {
-                    out_vcf.write_sv(vec_sv[i], D, G);
+                    out_vcf.write_sv(vec_sv[i], D, G, sexes);
 
                     if (vec_sv[i].svtype == DEL)
                     {

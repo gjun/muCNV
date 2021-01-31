@@ -25,7 +25,7 @@ public:
     void print(std::string &);
     void write_header(std::vector<std::string>&, std::vector<bool>&, GcContent &);
 
-	void write_sv(sv &, SvData &, SvGeno &);
+	void write_sv(sv &, SvData &, SvGeno &, std::vector<int> &);
 };
 
 
