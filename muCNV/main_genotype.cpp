@@ -205,6 +205,9 @@ int main_genotype(int argc, char** argv)
     }
 
     std::cerr << n_sample << " samples identified from pileup files" << std::endl;
+    int n_male = 0;
+    int n_female = 0;
+    int n_unknown = 0;
 
     std::unordered_map<string, int> sexmap;
     if (ped_filename != "")
@@ -214,6 +217,7 @@ int main_genotype(int argc, char** argv)
         std::ifstream pfile(ped_filename.c_str(), std::ios::in);
         pfile >> fid;
         pfile >> id;
+        pfile >> pat;
         pfile >> mat;
         pfile >> sex;
         if (sex == "1")
@@ -240,6 +244,19 @@ int main_genotype(int argc, char** argv)
          {
              sexes[k] = sexmap[reader.sample_ids[k]];
          }
+         if (sexes[k] == 1)
+         {
+             n_male ++;
+         }
+         else if (sexes[k] == 2)
+         {
+             n_female ++;
+         }
+         else
+         {
+             n_unknown++;
+         }
+         
          
          std::set<string>::iterator it = exclude_set.find(reader.sample_ids[k]);
          if (it != exclude_set.end())
@@ -248,6 +265,8 @@ int main_genotype(int argc, char** argv)
              G.sample_mask[k] = false;
          }
     }
+    std::cerr << n_male << " males, " << n_female << " females, " << n_unknown << " unknowns" << std::endl;
+
     std::cerr << n_exclude << " samples will be excluded from genotyping" << std::endl;
     G.n_effect = G.n_sample - n_exclude;
 
