@@ -29,10 +29,12 @@ GaussianMixture::GaussianMixture(std::vector<double> &m, std::vector<double> &s)
 		Comps[i].Mean = m[i];
 		Comps[i].Stdev = s[i];
 		Comps[i].Alpha = 1.0/n_comp;
+        /*
 		if (m[i] < 0.01)
 		{
 			zeroidx = i;
 		}
+        */
 	}
 }
 
@@ -613,12 +615,12 @@ bool GaussianMixture::ordered()
 
 	if (Comps[0].Mean < 0.8 || Comps[0].Mean > 1.2 )
 		return false;
-	if (Comps[1].Mean < 0.4 || Comps[1].Mean > 0.6)
+	if (Comps[1].Mean < 0.4 || Comps[1].Mean > 0.65 )
 		return false;
 
 	for(int i=0; i<n_comp-1; ++i)
 	{
-		if (Comps[i].Mean - Comps[i+1].Mean < 0.35)
+		if (Comps[i].Mean - Comps[i+1].Mean < 0.3)
 			return false;
 	}
 

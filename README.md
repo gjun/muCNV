@@ -36,8 +36,15 @@ $ mucnv [command] --help
 ```    
 
 # Use-case Example
+0. Process reference file for GC-content indexing
+Fasta file should also have .fai file in the same path. (If not, run samtools faidx)
+Pre-generated files for GRCh37 and GRCh38 exist under resource/ directory.
+```
+$ muCNV gcidx -f [path_to_fasta] -o [output_gcidx_filename]
+```
+
 1. Input files 
-- GRCh38 CRAM files 
+- BAM or CRAM files 
 ```
 sample1.cram 
 sample2.cram

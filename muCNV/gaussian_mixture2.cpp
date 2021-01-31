@@ -28,8 +28,10 @@ GaussianMixture2::GaussianMixture2(std::vector<double> &m, std::vector<double> &
 		Comps[i].Cov[3] = s[i];
 
 		Comps[i].Alpha = 1.0/n_comp;
+        /*
 		if (Comps[i].Mean[0] + Comps[i].Mean[1] < 0.1)
 			zeroidx = i;
+            */
 	}
 }
 

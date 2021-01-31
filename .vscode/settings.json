@@ -46,7 +46,8 @@
         "stdexcept": "cpp",
         "streambuf": "cpp",
         "cinttypes": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "functional": "cpp"
     },
     "powermode.shakeIntensity": 3,
     "C_Cpp.errorSquiggles": "Disabled"

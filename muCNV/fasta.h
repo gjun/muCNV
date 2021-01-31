@@ -28,11 +28,12 @@ class fasta
 private:
     std::ifstream fastaFile;
     std::map<std::string, fastaChr> faidx;
-    std::vector<std::string> chrs;
     unsigned curr_column;
     unsigned columnwidth;
     unsigned columnbytes;
 public:
+    std::vector<std::string> chrs;
+
     int load(const char*, const char*);;
     int seek(std::string, size_t);
     size_t chrlen(std::string) ;
@@ -72,20 +73,25 @@ int fasta::load(const char *fastaFileName, const char *faidxFileName)
         std::string chr;
         fastaChr T;
         
-        faidxFile >> chr;
-        faidxFile >> T.length;
-        faidxFile >> T.startpos;
-        faidxFile >> T.basesPerLine;
-        faidxFile >> T.bytesPerLine;
-        faidx[chr] = T;
-        chrs.push_back(chr);
+        faidxFile >> chr; 
+        if (chr != "")
+        {
+            faidxFile >> T.length;
+            faidxFile >> T.startpos;
+            faidxFile >> T.basesPerLine;
+            faidxFile >> T.bytesPerLine;
+            faidx[chr] = T;
+            chrs.push_back(chr);
+        }
+
     }
     faidxFile.close();
     
     curr_column = 0;
     columnwidth = 0;
     columnbytes = 0;
-    
+    std::cout << "Read index of " << chrs.size() << " contigs/chromosomes" << std::endl;
+
     // Load FASTA
     fastaFile.open(fastaFileName, std::ifstream::in);
     if (!fastaFile.is_open())
@@ -168,10 +174,10 @@ int fasta::read(int64_t len, std::string &contig)
 void fasta::printIndex()
 {
     // Just for sanity check
-    for(int i=1;i<23;++i)
+    for(int i=0;i<(int)chrs.size();++i)
     {
-        std::string chr = "chr" + std::to_string(i);;
-        std::cout << chr << "\t" << faidx[chr].length << "\t" << faidx[chr].startpos << "\t" << faidx[chr].basesPerLine << "\t" << faidx[chr].bytesPerLine << "\n";
+        //std::string chr = "chr" + std::to_string(i);;
+        std::cout << chrs[i] << "\t" << faidx[chrs[i]].length << "\t" << faidx[chrs[i]].startpos << "\t" << faidx[chrs[i]].basesPerLine << "\t" << faidx[chrs[i]].bytesPerLine << "\n";
     }
 }
 

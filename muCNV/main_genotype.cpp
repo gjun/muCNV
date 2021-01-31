@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <map>
+#include <unordered_map>
 #include <set>
 
 // TCLAP headers
@@ -32,6 +33,7 @@ int main_genotype(int argc, char** argv)
     string supp_file;
     string supp_id_file;
     string out_filename;
+    string genolist_filename;
     string bam_file;
     string sChr;
     string gc_file;
@@ -62,6 +64,7 @@ int main_genotype(int argc, char** argv)
         TCLAP::ValueArg<double> argPoverlap("p","pmax","Maximum overlap between depth clusters",false,0.2,"number(0-1.0)");
 
         TCLAP::ValueArg<string> argExclude("x", "exclude", "List of sample IDs to be excluded from genotyping", false, "", "string");
+        TCLAP::ValueArg<string> argGenoList("L", "genoList", "List of force-genotype variant list (all other variants will be skipped)", false, "", "string");
 
         TCLAP::SwitchArg switchFail("a", "all", "Report filter failed variants", cmd, false);
         TCLAP::SwitchArg switchNoHeader("l", "lessheader", "Do not print header in genoptyed VCF", cmd, false);
@@ -76,6 +79,7 @@ int main_genotype(int argc, char** argv)
         cmd.add(argRange);
         cmd.add(argExclude);
 		cmd.add(argPoverlap);
+        cmd.add(argGenoList);
         cmd.parse(argc, argv);
         
         range = argRange.getValue();
@@ -88,6 +92,7 @@ int main_genotype(int argc, char** argv)
         bFail = switchFail.getValue();
 		chr = argChr.getValue();
         exclude_filename = argExclude.getValue();
+        genolist_filename = argGenoList.getValue();
 		max_p = argPoverlap.getValue();
 
         region = argRegion.getValue();
@@ -113,6 +118,7 @@ int main_genotype(int argc, char** argv)
 
     std::vector<breakpoint> vec_bp;
     std::vector<sv> vec_sv;
+    std::unordered_map<std::string, bool> genolist_map;
     
     if (vcf_file != "")
         read_svs_from_vcf(vcf_file, vec_bp, vec_sv);
@@ -121,6 +127,20 @@ int main_genotype(int argc, char** argv)
     else
         std::cerr << "Error, VCF or Interval file is required." << std::endl;
     
+
+    if (genolist_filename != "")
+    {
+        std::ifstream lfile(genolist_filename.c_str(), std::ios::in);
+        while(lfile.good())
+        {
+            std::string ln;
+            std::getline(lfile, ln);
+
+            genolist_map[ln] = true;
+        }
+        lfile.close();    
+    }
+
     //vec_bp is not necessary for genotyping, but let's keep it for simplicity now
 	std::cerr << vec_sv.size() << " SVs loaded from input file" << std::endl;
     
@@ -283,6 +303,15 @@ int main_genotype(int argc, char** argv)
 
     for(int i=start_var_idx; i<=end_var_idx; ++i)
     {
+        if (genolist_filename != "")
+        {
+            std::string qstr = std::to_string(vec_sv[i].chrnum) + "\t" + std::to_string(vec_sv[i].pos) + "\t" + std::to_string(vec_sv[i].end) + "\t" + svTypeName(vec_sv[i].svtype);
+            if (genolist_map.find(qstr) == genolist_map.end() )
+                continue;
+            else
+                bFail = true;
+        }
+
         // GC content of the candidate variant region.
         double sv_gc = gc.get_gc_content(vec_sv[i].chrnum, vec_sv[i].pos, vec_sv[i].end);
 
@@ -314,7 +343,9 @@ int main_genotype(int argc, char** argv)
                         D.raw_dp[j] = D.dps[2][j];
                         D.dps[0][j] /= (double)stats[j].avg_dp;
                         D.dps[1][j] /= (double)stats[j].avg_dp;
-                        if (D.dps[0][j] > 0.001 && D.dps[1][j] > 0.001)
+            
+                        // if (D.dps[0][j] > 0.001 && D.dps[1][j] > 0.001)
+                        if (false)
                         {
                             D.dps[2][j] /= (double)stats[j].avg_dp * (D.dps[1][j] + D.dps[0][j]) * 0.5 ;
                         }
@@ -324,7 +355,9 @@ int main_genotype(int argc, char** argv)
                         }
                         if (D.multi_dp)
                         {
-                            if (D.dps[0][j] > 0.001)
+                            
+                            //if (D.dps[0][j] > 0.001)
+                            if (false)
                             {
                                 D.dps[3][j] /= (double)stats[j].avg_dp * D.dps[0][j];
                             }
@@ -332,7 +365,8 @@ int main_genotype(int argc, char** argv)
                             {
                                 D.dps[3][j] /= (double)stats[j].avg_dp;
                             }
-                            if (D.dps[1][j]>0.001)
+                            // if (D.dps[1][j]>0.001)
+                            if (false)
                             {
                                 D.dps[4][j] /= (double)stats[j].avg_dp * D.dps[1][j];
                             }

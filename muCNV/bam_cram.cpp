@@ -17,7 +17,7 @@
 
 #define IS_PROPERLYPAIRED(bam) (((bam)->core.flag&(BAM_FPAIRED|BAM_FPROPER_PAIR)) == (BAM_FPAIRED|BAM_FPROPER_PAIR) && !((bam)->core.flag&BAM_FUNMAP))
 
-typedef enum { READ_UNKNOWN = 0, READ_1 = 1, READ_2 = 2 } readpart;
+// typedef enum { READ_UNKNOWN = 0, READ_1 = 1, READ_2 = 2 } readpart;
 
 void get_cigar_clippos(std::string &cigar_str, splitread &sp)
 {
