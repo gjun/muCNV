@@ -104,7 +104,7 @@ int main_gcidx(int argc, char** argv)
     fai_file= fasta_file + ".fai";
     
     F.load(fasta_file.c_str(), fai_file.c_str());
-    //    F.printIndex();
+    F.printIndex();
     
     std::ofstream outFile(GC_file.c_str(), std::ios::out | std::ios::binary);
     if (!outFile.is_open())
@@ -125,10 +125,12 @@ int main_gcidx(int argc, char** argv)
     n_interval[0] = 0;
     
     outFile.write(reinterpret_cast <char*> (&n_chr), sizeof(uint8_t));
-    for(int i=1;i<=n_chr;++i)
+    for(int i=0;i<n_chr;++i)
     {
+        uint32_t L=0;
+
+/*
         std::ostringstream sStr;
-        uint32_t L = 0;
         sStr << "chr" << i;
         if (i<23)
         {
@@ -143,10 +145,11 @@ int main_gcidx(int argc, char** argv)
         {
             std::string s = "chrY";
             L = (uint32_t)F.chrlen(s);
-        }
+        }*/
+        L = F.chrlen(F.chrs[i]);
         outFile.write(reinterpret_cast <char*> (&L), sizeof(uint32_t));
-        n_interval[i] = ceil(((double)L+1.0) / (double)interval_dist); // Number of intervals in a chromosome
-        outFile.write(reinterpret_cast <char*> (&n_interval[i]), sizeof(uint32_t));
+        n_interval[i+1] = ceil(((double)L+1.0) / (double)interval_dist); // Number of intervals in a chromosome
+        outFile.write(reinterpret_cast <char*> (&n_interval[i+1]), sizeof(uint32_t));
     }
 
     // size of GC bins
@@ -209,24 +212,27 @@ int main_gcidx(int argc, char** argv)
     
     // 8 byte per each chr len ? or 4 byte ?
     // TODO: Fix this hard-coded chromosome structure
-    for(int i=1;i<25;++i)
+    for(int i=0;i<24;++i)
     {
+        /*
         std::string chr = "chr" + std::to_string(i);
+        
         if (i==23)
             chr = "chrX";
         else if (i==24)
             chr = "chrY";
+        */
 		int nn_cnt = 0;
         
-        F.seek(chr, 1);
-        uint8_t* gc_array = (uint8_t *) calloc(n_interval[i], sizeof(uint8_t));
+        F.seek(F.chrs[i], 1);
+        uint8_t* gc_array = (uint8_t *) calloc(n_interval[i+1], sizeof(uint8_t));
         
         std::cerr << "Current position: " << outFile.tellp() << std::endl;
         
         //        for(size_t pos=1; pos<F.chrlen(chr); pos+=200)
-        std::vector<double> gc_array_raw (n_interval[i], 0);
+        std::vector<double> gc_array_raw (n_interval[i+1], 0);
         
-        for(int j=0, pos=1; j<(int)n_interval[i]; ++j, pos+=interval_dist)
+        for(int j=0, pos=1; j<(int)n_interval[i+1]; ++j, pos+=interval_dist)
         {
             std::string S;
             F.read(interval_dist, S);
@@ -236,10 +242,10 @@ int main_gcidx(int argc, char** argv)
 			// if (gc_array_raw[j] < 0) std::cerr << "GC -1 chr " << i << " pos " << pos << " str " << S << std::endl;
 			if (gc_array_raw[j] < 0) nn_cnt ++;
         }
-		std::cerr << "Chr " << i << " has " << nn_cnt << "intervals with NNs" << std::endl;
+		std::cerr << "Chr " << i << " has " << nn_cnt << " intervals with NNs" << std::endl;
 		
         
-        for(int j=2; j<(int)n_interval[i]-2; ++j)
+        for(int j=2; j<(int)n_interval[i+1]-2; ++j)
         {
             gc_array[j] =0;
             double sum_gc = 0;
@@ -264,11 +270,11 @@ int main_gcidx(int argc, char** argv)
                 gc_dist[gc_array[j]]++;
         }
         gc_array[0] = gc_array[1] = gc_array[2];
-        gc_array[n_interval[i]-1] = gc_array[n_interval[i]-2] = gc_array[n_interval[i]-3];
+        gc_array[n_interval[i+1]-1] = gc_array[n_interval[i+1]-2] = gc_array[n_interval[i+1]-3];
         
-        outFile.write(reinterpret_cast <char*>(gc_array), sizeof(uint8_t) * n_interval[i]);
+        outFile.write(reinterpret_cast <char*>(gc_array), sizeof(uint8_t) * n_interval[i+1]);
         writemagic(outFile);
-        std::cerr << n_interval[i] << " written." << std::endl;
+        std::cerr << n_interval[i+1] << " written." << std::endl;
         
         free(gc_array);
     }
