@@ -212,25 +212,29 @@ int main_genotype(int argc, char** argv)
     std::unordered_map<string, int> sexmap;
     if (ped_filename != "")
     {
+        
         std::string fid, id, pat, mat, sex;
 
         std::ifstream pfile(ped_filename.c_str(), std::ios::in);
-        pfile >> fid;
-        pfile >> id;
-        pfile >> pat;
-        pfile >> mat;
-        pfile >> sex;
-        if (sex == "1")
-        {
-            sexmap[id] = 1;
-        }
-        else if (sex == "2")
-        {
-            sexmap[id] = 2;
-        }
-        else
-        {
-            sexmap[id] = 0;
+        while(pfile.good())
+        {        
+            pfile >> fid;
+            pfile >> id;
+            pfile >> pat;
+            pfile >> mat;
+            pfile >> sex;
+            if (sex == "1")
+            {
+                sexmap[id] = 1;
+            }
+            else if (sex == "2")
+            {
+                sexmap[id] = 2;
+            }
+            else
+            {
+                sexmap[id] = 0;
+            }
         }
     }
 
@@ -333,7 +337,7 @@ int main_genotype(int argc, char** argv)
     
 	if (chr > 0)
 	{
-        while(vec_sv[vec_offset].chrnum < chr)
+        while(vec_sv[vec_offset].chrnum != chr)
         {
             vec_offset++;
         }

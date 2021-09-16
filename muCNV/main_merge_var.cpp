@@ -22,9 +22,7 @@ int main_merge_var(int argc, char** argv)
     std::string index_file;
     std::string output_name;
 	std::string interval_file;
-    std::string gc_file;
-    int chr;
-    
+    std::string gc_file;    
     // Parsing command-line arguments
     try
     {
@@ -34,11 +32,11 @@ int main_merge_var(int argc, char** argv)
         TCLAP::ValueArg<std::string> argOut("o","output","Output base filename for merged pileup",true,"","string");
         TCLAP::ValueArg<std::string> argGcfile("f","gcFile","File containing GC content information",true, "GRCh38.gc", "string");
 		TCLAP::ValueArg<std::string> argInterval("V","interVal", "Binary interval file containing candidate SVs", true, "", "string");
-        TCLAP::ValueArg<int> argChr("c", "chr", "Sinelge chromosome", false, 0, "integer" );
+//        TCLAP::ValueArg<int> argChr("c", "chr", "Single chromosome", false, 0, "integer" );
         cmd.add(argGcfile);
         cmd.add(argIndex);
         cmd.add(argOut);
-        cmd.add(argChr);
+//        cmd.add(argChr);
 		cmd.add(argInterval);
     
         cmd.parse(argc, argv);
@@ -47,7 +45,7 @@ int main_merge_var(int argc, char** argv)
         output_name = argOut.getValue();
         gc_file = argGcfile.getValue();
 		interval_file = argInterval.getValue();
-        chr = argChr.getValue();
+//        chr = argChr.getValue();
     }
     catch (TCLAP::ArgException &e)
     {
@@ -65,16 +63,15 @@ int main_merge_var(int argc, char** argv)
     GcContent gc;
     gc.initialize(gc_file);
     std::cerr << "GC content initialized" << std::endl;
-	
+		
 	std::vector<Pileup> varfiles (n_sample);
-
+	
 	// TODO: change Pileup class to file-based class, create Varfile class, inherited from the same common file class
 	int n_var_total = 0;
 	
 	for(int i=0;i<n_sample; ++i)
 	{
-		std::string var_name = samples[i] + ".chr" + std::to_string(chr) + ".var";
-
+		std::string var_name = samples[i] + ".var";
 		varfiles[i].open(var_name, std::ios::in | std::ios::binary);
         if (!varfiles[i].good() )
         {
@@ -112,6 +109,7 @@ int main_merge_var(int argc, char** argv)
 
 	std::vector<int> n_vars(gc.num_chr+1, 0);
 	int sum_var = 0;
+    std::vector<int> vec_chr;
 	if (1)
 	{
 		// to release memory vec_sv, vec_bp after loading number of variants only
@@ -119,14 +117,23 @@ int main_merge_var(int argc, char** argv)
 		std::vector<breakpoint> vec_bp;
 		read_svs_from_intfile(interval_file, vec_bp, vec_sv);
 		std::cerr << vec_sv.size() << " SVs identified " << std::endl;
+        int prev_chr = -1;
 
 		for(int i=0; i<(int)vec_sv.size(); ++i)
 		{
 			n_vars[vec_sv[i].chrnum] ++;
+            if (vec_sv[i].chrnum != prev_chr)
+            {
+                vec_chr.push_back(vec_sv[i].chrnum);
+                prev_chr = vec_sv[i].chrnum;
+            }
 		}
-
-        std::cerr << "Number of variants in chr " << chr << " : " << n_vars[chr] << std::endl;
-        sum_var += n_vars[chr];
+        for(int i=0; i<(int)vec_chr.size(); ++i)
+        {
+            int chr = vec_chr[i];
+            std::cerr << "Number of variants in chr " << chr << " : " << n_vars[chr] << std::endl;
+            sum_var += n_vars[chr];
+        }
 	}
 	if (sum_var != n_var_total)
 	{
@@ -134,18 +141,20 @@ int main_merge_var(int argc, char** argv)
 		exit(1);
 	}
 
-	Pileup mvar;
-
-    std::string filename = output_name + ".chr" + std::to_string(chr) + ".var";
-    mvar.open(filename, std::ios::out | std::ios::binary);
-
-    if (!mvar.good() )
-    {
-        std::cerr << "Error: Cannot open " << filename << " to write" << std::endl;
-        exit(1);
-    }
-    mvar.write_int32(n_sample);
-    mvar.write_int32(n_vars[chr]);
+	std::vector<Pileup> mvars (gc.num_chr+1);
+	for(int i=0; i<(int)vec_chr.size(); ++i)	
+	{
+        int chr = vec_chr[i];
+		std::string filename = output_name + ".chr" + std::to_string(chr) + ".var";
+		mvars[chr].open(filename, std::ios::out | std::ios::binary);
+        if (!mvars[chr].good() )
+        {
+            std::cerr << "Error: Cannot open " << filename << " to write" << std::endl;
+            exit(1);
+        }
+		mvars[chr].write_int32(n_sample);
+		mvars[chr].write_int32(n_vars[chr]);
+	}
 	
 	for(int i=0; i<n_sample; ++i)
 	{
@@ -153,30 +162,38 @@ int main_merge_var(int argc, char** argv)
 		varfiles[i].read_sample_id(buf);
 		std::string sample_id(buf);
 
-		mvar.write_sample_id(sample_id);
+		for(int i=0; i<(int)vec_chr.size(); ++i)	
+		{
+            int chr = vec_chr[i];
+			mvars[chr].write_sample_id(sample_id);
+		}
 	}
 		
-    std::vector<uint16_t*> dp_var (n_sample, NULL);
-    
-    for(int i=0; i<n_sample; ++i)
-    {
-        dp_var[i] = (uint16_t *) calloc(n_vars[chr], sizeof(uint16_t));
-        varfiles[i].read_depth(dp_var[i], n_vars[chr]);
-    }
-    
-    for(int j=0; j<n_vars[chr]; ++j)
-    {
-        for(int i=0; i<n_sample; ++i)
-        {
-            mvar.write_depth(&(dp_var[i][j]), 1);
-        }
-    }
+	for(int i=0;i<(int)vec_chr.size();++i)
+	{
+        int chr = vec_chr[i];
+		std::vector<uint16_t*> dp_var (n_sample, NULL);
+		
+		for(int i=0; i<n_sample; ++i)
+		{
+			dp_var[i] = (uint16_t *) calloc(n_vars[chr], sizeof(uint16_t));
+			varfiles[i].read_depth(dp_var[i], n_vars[chr]);
+		}
+		
+		for(int j=0; j<n_vars[chr]; ++j)
+		{
+			for(int i=0; i<n_sample; ++i)
+			{
+				mvars[chr].write_depth(&(dp_var[i][j]), 1);
+			}
+		}
 
-    for(int i=0;i<n_sample;++i)
-    {
-        delete [] dp_var[i];
-    }
-    mvar.close();
+		for(int i=0;i<n_sample;++i)
+		{
+			delete [] dp_var[i];
+		}
+		mvars[chr].close();
+	}
 
 	for(int i=0; i<n_sample; ++i)
 	{
