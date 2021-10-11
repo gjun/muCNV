@@ -216,6 +216,38 @@ double RO(sv &x, sv &y)
     return (l/L);
 }
 
+
+double mod_RO(sv &x, sv &y)
+{
+    double l = 0;
+    double L = 0;
+    
+    if (y.pos > x.end)
+    {
+        return 0;
+    }
+    else if (x.pos > y.end)
+    {
+        return 0;
+    }
+    
+    bool bStart = (x.pos < y.pos);
+    bool bEnd = (x.end < y.end);
+    
+    x.get_len();
+    y.get_len();
+
+    l = (bEnd ? x.end : y.end) -  (bStart ? y.pos : x.pos);
+    L = (bEnd ? y.end : x.end) - (bStart ? x.pos : y.pos);
+    double ro = l/L;
+
+    if (l/x.len > ro)
+        ro = l/x.len;
+    if (l/y.len > ro)
+        ro = l/y.len;
+    return ro;
+}
+
 int find_overlap_sv(sv &S , std::vector<sv>& dels)
 {
     int idx = 0;

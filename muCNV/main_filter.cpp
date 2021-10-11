@@ -14,6 +14,151 @@
 #include "tclap/CmdLine.h"
 #include "tclap/Arg.h"
 
+double RO_THRESHOLD = 0.5;
+double GENO_THRESHOLD = 0.9;
+
+double concord(std::vector<int> &g1, std::vector<int> &g2)
+{
+    int N = 0;
+    int N_match = 0;
+
+    for(int i=0; i<g1.size(); ++i)
+    {
+        if (g1[i]>=0 && g2[i] >=0) // none of them is missing
+        {
+            if (g1[i]>0 && g2[i]>0)
+            {
+                N_match++;
+            }
+            if (g1[i]>0 || g2[i]>0)
+            {
+                N++;
+            }
+        }
+    }
+
+    return (double)N_match/(double)N;
+}
+
+void merge_overlaps(std::vector<sv> &all, std::vector<sv> &overlapping_svs, std::vector<std::vector <int> > &overlapping_genos)
+{
+    int N = overlapping_svs.size();
+    std::vector< std::vector<double> > pair_RO(N);
+    std::vector<sv> merged_candidates;
+
+    for(int j=0; j<N; j++)
+    {
+        pair_RO[j] = std::vector<double>(N);
+    }
+    int clusters[N];
+    // Merge based on RO within overlapping SV set
+    for(int j=0;j<N-1;++j)
+    {
+        pair_RO[j][j] = 0;
+        clusters[j] = j;
+        for(int k=j+1;k<N; ++k)
+        {
+            pair_RO[j][k] = pair_RO[k][j] = mod_RO(overlapping_svs[j], overlapping_svs[k]);
+        }
+    }
+    clusters[N-1] = N-1;
+    pair_RO[N-1][N-1] = 0;
+
+    for(int j=0; j<N-1;j++)
+    {
+        for(int k=j+1; k<N; k++)
+        {
+            if (pair_RO[j][k] >= RO_THRESHOLD && concord(overlapping_genos[j], overlapping_genos[k]) >= GENO_THRESHOLD)
+            {
+                clusters[k]=clusters[j];
+            }
+        }
+    }
+    for(int j=0;j<N-1;j++)
+    {
+        if (clusters[j] == j) // if not, it's already merged with a previous SV
+        {
+            merged_candidates.clear();
+            merged_candidates.push_back(overlapping_svs[j]);
+            for(int k=j+1;k<N;k++)
+            {
+                if (clusters[k] == j)
+                {
+                    merged_candidates.push_back(overlapping_svs[k]);
+                }
+            }
+            if (merged_candidates.size()>1)
+            {
+                sv best_sv;
+                pick_sv_from_merged(best_sv, merged_candidates);
+                all.push_back(best_sv);
+            }
+            else
+            {
+                all.push_back(merged_candidates[0]);
+            }
+        }
+    }
+}
+
+
+void run_merging(std::vector<sv> &all, invcf &vcf)
+{  
+    std::vector<sv> overlapping_svs;
+    std::vector<std::vector <int> > overlapping_genos;
+
+    sv curr_sv;    
+    std::vector<int> genos(vcf.n_sample); 
+    vcf.read_next(curr_sv, genos);
+
+    overlapping_svs.push_back(curr_sv);
+    overlapping_genos.push_back(genos);
+
+    int curr_end = curr_sv.end;
+    int curr_chr = curr_sv.chrnum;
+    
+    while(vcf.read_next(curr_sv, genos)==0)
+    {
+        if (curr_sv.chrnum == curr_chr && curr_sv.pos < curr_end)
+        {
+            overlapping_svs.push_back(curr_sv);
+            overlapping_genos.push_back(genos);
+
+            if (curr_sv.end > curr_end)
+            {
+                curr_end = curr_sv.end;
+            }
+        }
+        else
+        {
+            if (overlapping_svs.size()>1)
+            {
+                merge_overlaps(all, overlapping_svs, overlapping_genos);
+            }
+            else
+            {
+                all.push_back(overlapping_svs[0]);
+            }
+            overlapping_svs.clear();
+            overlapping_genos.clear();
+
+            curr_chr = curr_sv.chrnum;
+            curr_end = curr_sv.end;
+
+            overlapping_svs.push_back(curr_sv);
+            overlapping_genos.push_back(genos);
+        }
+    }
+    if (overlapping_svs.size()>1)
+    {
+        merge_overlaps(all, overlapping_svs, overlapping_genos);
+    }
+    else
+    {
+        all.push_back(overlapping_svs[0]);
+    }
+}
+
 int main_filter(int argc, char** argv)
 {
     std::string vcf_file;
@@ -22,10 +167,7 @@ int main_filter(int argc, char** argv)
     std::string supp_file;
     bool bMerge;
     bool bFilter;
-    
-    std::vector<std::string> sample_ids;
-    std::vector<std::string> vcfs;
-    std::vector<std::string> bam_names;
+
     
     // Parsing command-line arguments
     try
@@ -44,9 +186,6 @@ int main_filter(int argc, char** argv)
         cmd.add(argInterval);
         cmd.add(argSupp);
 
-        cmd.add(switchFilter);
-        cmd.add(switchMerge);
-        
         cmd.parse(argc, argv);
 
         out_filename = argOut.getValue();
@@ -62,19 +201,30 @@ int main_filter(int argc, char** argv)
         std::cerr << "Error: " << e.error() << " for arg " << e.argId() << std::endl;
         abort();
     }
-    
+        
+    std::vector<std::string> sample_ids;
+    std::vector<std::string> vcfs;
+    std::vector<std::string> bam_names;
+
     if (bMerge)
     {
-        double RO_THRESHOLD = 0.8;
-        
-        std::vector<sv> dels;
-        std::vector<sv> dups;
-        std::vector<sv> invs;
+        // std::vector<sv> dels;
+        // std::vector<sv> dups;
+        // std::vector<sv> invs;
         std::vector<sv> all;
         
-        vcfs.push_back(vcf_file);
         
-        read_intervals_from_vcf(sample_ids, vcfs, all);
+        // vcfs.push_back(vcf_file);        
+        // read_intervals_from_vcf(sample_ids, vcfs, all);
+        invcf myvcf;
+        int n_sample = myvcf.open(vcf_file);
+        std::cerr << "There are " << myvcf.n_sample << " samples." << std::endl;
+        /*
+        std::vector<int> genos(n_sample);
+        sv tmp_sv;
+        myvcf.read_next(tmp_sv, genos);
+        return 0;
+
         for(int i=0;i<(int)all.size();++i)
         {
             if (all[i].svtype == DEL)
@@ -93,86 +243,14 @@ int main_filter(int argc, char** argv)
         all.clear();
         
         std::sort(dels.begin(), dels.end());
-        
-        std::vector<sv> merged_candidates;
-        merged_candidates.push_back(dels[0]);
-        for(int i=1; i<(int)dels.size(); ++i)
-        {
-            if (RO(dels[i], merged_candidates.back() ) > RO_THRESHOLD)
-            {
-                merged_candidates.push_back(dels[i]);
-            }
-            else
-            {
-                sv best_sv;
-                pick_sv_from_merged(best_sv, merged_candidates);
-                all.push_back(best_sv);
-                
-                merged_candidates.clear();
-                merged_candidates.push_back(dels[i]);
-                
-            }
-        }
-        if (merged_candidates.size() > 0)
-        {
-            sv best_sv;
-            pick_sv_from_merged(best_sv, merged_candidates);
-            all.push_back(best_sv);
-        }
-        merged_candidates.clear();
-        
-        merged_candidates.push_back(dups[0]);
-        for(int i=1; i<(int)dups.size(); ++i)
-        {
-            if (RO(dups[i], merged_candidates.back() ) > RO_THRESHOLD)
-            {
-                merged_candidates.push_back(dups[i]);
-            }
-            else
-            {
-                sv best_sv;
-                pick_sv_from_merged(best_sv, merged_candidates);
-                all.push_back(best_sv);
-                
-                merged_candidates.clear();
-                merged_candidates.push_back(dups[i]);
-                
-            }
-        }
-        if (merged_candidates.size() > 0)
-        {
-            sv best_sv;
-            pick_sv_from_merged(best_sv, merged_candidates);
-            all.push_back(best_sv);
-        }
-        merged_candidates.clear();
-        
-        merged_candidates.push_back(invs[0]);
-        for(int i=1; i<(int)invs.size(); ++i)
-        {
-            if (RO(invs[i], merged_candidates.back() ) > RO_THRESHOLD)
-            {
-                merged_candidates.push_back(invs[i]);
-            }
-            else
-            {
-                sv best_sv;
-                pick_sv_from_merged(best_sv, merged_candidates);
-                all.push_back(best_sv);
-                
-                merged_candidates.clear();
-                merged_candidates.push_back(invs[i]);
-                
-            }
-        }
-        if (merged_candidates.size() > 0)
-        {
-            sv best_sv;
-            pick_sv_from_merged(best_sv, merged_candidates);
-            all.push_back(best_sv);
-        }
-        merged_candidates.clear();
-        
+        std::sort(dups.begin(), dups.end());
+        std::sort(invs.begin(), invs.end());
+
+        run_merging(all, dels, RO_THRESHOLD);
+        run_merging(all, dups, RO_THRESHOLD);
+        run_merging(all, invs, RO_THRESHOLD);
+        */
+        run_merging(all, myvcf);
         std::sort(all.begin(), all.end());
         
         // Write to output file
@@ -180,7 +258,7 @@ int main_filter(int argc, char** argv)
         fprintf(fp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
         for(int i=0; i<(int)all.size(); ++i)
         {
-            fprintf(fp, "%d\t%d\tSV%d\t.\t<%s>\t.\tPASS\tSUPP=%d;SVTYPE=%s;END=%d\n", all[i].chrnum, all[i].pos, i+1, svTypeName(all[i].svtype).c_str(), all[i].supp, svTypeName(all[i].svtype).c_str(), all[i].end);
+            fprintf(fp, "%d\t%d\t%s_%d:%d-%d\t.\t<%s>\t.\tPASS\tSUPP=%d;SVTYPE=%s;END=%d\n", all[i].chrnum, all[i].pos, svTypeName(all[i].svtype).c_str(), all[i].chrnum, all[i].pos, all[i].end, svTypeName(all[i].svtype).c_str(), all[i].supp, svTypeName(all[i].svtype).c_str(), all[i].end);
         }
         fclose(fp);
     }

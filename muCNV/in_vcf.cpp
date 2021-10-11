@@ -92,6 +92,100 @@ void read_index(std::string index_file, std::vector<std::string> &sample_ids, st
 	inFile.close();
 	
 }
+
+/*
+class invvcf
+{
+    public:
+        htsFile* vcf;
+        hts_itr_t* itr;
+        bcf_hdr_t *hdr;
+        int open(std::string, std::vector<string> &); 
+        int read_next(sv&, std::vector<int> &); // read next line
+};
+*/
+
+int invcf::open(std::string filename)
+{
+	// Open VCF file
+	vcf = bcf_open(filename.c_str(), "r");
+	if (vcf == NULL)
+	{
+		return -1;
+	}
+	hdr = bcf_hdr_read(vcf);
+	n_sample =  bcf_hdr_nsamples(hdr);
+	line = bcf_init();
+
+	return n_sample;
+}
+
+int invcf::read_next(sv &curr_sv, std::vector<int> &genos)
+{
+	if (bcf_read(vcf, hdr, line) == 0)
+	{
+		curr_sv.pos = line->pos + 1;
+		curr_sv.chrnum = line->rid + 1;
+		int ngt = 0;
+		//int ngt_arr = 0;
+
+		int nend = 0;
+		int ncallrate = 0;
+		int32_t* end = NULL;
+		float* callrate = NULL;
+		bcf_get_info_int32(hdr, line, "END", &end, &nend);
+		curr_sv.end = *end;
+
+		bcf_get_info_float(hdr, line, "CALLRATE", &callrate, &ncallrate);
+		curr_sv.supp = (int) ((*callrate)*100); 
+
+		char* svt = NULL;
+		int nsvt = 0;
+		bcf_get_info_string(hdr, line, "SVTYPE", &svt, &nsvt);
+		std::string svt_str(svt);
+		curr_sv.svtype = get_svtype(svt_str);
+		free(end);
+		free(callrate);
+		free(svt);
+		// std::cerr << "First record: chrom id " << curr_sv.chrnum << " pos " << curr_sv.pos << " end " << curr_sv.end << " type " << svt_str << " callrate " << curr_sv.supp << std::endl;
+
+		int *gt = NULL;
+		int ngt_arr = 0;
+		ngt = bcf_get_genotypes(hdr, line, &gt, &ngt_arr);
+ 		// std::cerr << ngt << " genotypes read " << "ngt_arr has " << ngt_arr << std::endl;
+		for(int i=0; i<ngt; i+=2)
+		{
+			if (gt[i]==0 && gt[i+1]==0)
+			{
+				genos[i/2] = -1;
+			}
+			else if(gt[i]==2 && gt[i+1]==2)
+			{
+				genos[i/2] = 0;
+			}
+			else if (gt[i]==2 && gt[i+1]==4)
+			{
+				genos[i/2] = 1;
+			}
+			else if (gt[i]==4 && gt[i+1]==4)
+			{
+				genos[i/2] = 2;
+			}
+			else
+			{
+				genos[i/2] = -1;
+			}
+		}
+		free(gt);
+		return 0;
+	}
+	else
+	{
+		//std::cerr << "failed" <<std::endl;
+		return -1;
+	}
+}
+
 /*
 int suppvcf::initialize(const char* filename, std::vector<std::string> &sample_ids, std::string &region)
 {
@@ -864,9 +958,9 @@ void read_intervals_from_vcf(std::vector<std::string> &sample_ids, std::vector<s
 								{
 									chr2num = atoi(infofields[1].c_str()); // TODO
 								}
-								else if (infofields[0] == "SUPP")
+								else if (infofields[0] == "CALLRATE")
 								{
-									new_interval.supp = atoi(infofields[1].c_str());
+									new_interval.supp = (int)atof(infofields[1].c_str())*100;
 								}
 							}
 								
@@ -883,7 +977,6 @@ void read_intervals_from_vcf(std::vector<std::string> &sample_ids, std::vector<s
 		
 	}
 } //read_intervals_from_vcf
-
 
 void readFam(std::string sFamFile, std::map<std::string, unsigned> &hIdSex)
 {

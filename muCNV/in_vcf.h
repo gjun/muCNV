@@ -16,7 +16,8 @@
 // #include <htslib/hts.h>
 // #include <htslib/tbx.h>
 // #include <htslib/kseq.h>
-
+#include "htslib/vcf.h"
+#include "htslib/vcfutils.h"
 #include "sv.h"
 
 
@@ -38,6 +39,18 @@ public:
 };
 
 */ // commented out tabix-based VCF access for now. Nov. 16. 2019
+
+class invcf
+{
+    public:
+        htsFile* vcf;
+        hts_itr_t* itr;
+        bcf_hdr_t *hdr;
+        bcf1_t *line;
+        int n_sample; 
+        int open(std::string); 
+        int read_next(sv&, std::vector<int> &); // read next line
+};
 
 void read_svs_from_vcf(std::string &, std::vector<breakpoint> &, std::vector<sv> &);
 void read_svs_from_intfile(std::string &, std::vector<breakpoint> &, std::vector<sv> &);

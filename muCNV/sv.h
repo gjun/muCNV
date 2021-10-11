@@ -62,6 +62,7 @@ public:
 
 
 double RO(sv &, sv &);
+double mod_RO(sv &, sv&);
 
 void pick_sv_from_merged(sv &, std::vector<sv> &);
 int find_overlap_sv(sv& , std::vector<sv>&);
