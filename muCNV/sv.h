@@ -27,6 +27,10 @@ public:
     int end;
     int len;
     int supp;
+    float pre;
+    float post;
+    bool multi_dp;
+    std::string filter;
     //    pair<int,int> ci_pos;
     //    pair<int,int> ci_end;
     void get_len()
@@ -64,7 +68,7 @@ public:
 double RO(sv &, sv &);
 double mod_RO(sv &, sv&);
 
-void pick_sv_from_merged(sv &, std::vector<sv> &);
+int pick_sv_from_merged(std::vector<sv> &);
 int find_overlap_sv(sv& , std::vector<sv>&);
 int find_start(std::vector<sv> &, int );
 

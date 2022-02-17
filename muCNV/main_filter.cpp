@@ -74,7 +74,7 @@ void merge_overlaps(std::vector<sv> &all, std::vector<sv> &overlapping_svs, std:
             }
         }
     }
-    for(int j=0;j<N-1;j++)
+    for(int j=0;j<N;j++)
     {
         if (clusters[j] == j) // if not, it's already merged with a previous SV
         {
@@ -89,16 +89,113 @@ void merge_overlaps(std::vector<sv> &all, std::vector<sv> &overlapping_svs, std:
             }
             if (merged_candidates.size()>1)
             {
-                sv best_sv;
-                pick_sv_from_merged(best_sv, merged_candidates);
-                all.push_back(best_sv);
+                int best_idx = pick_sv_from_merged(merged_candidates);
+                for(int k=0; k<merged_candidates.size(); ++k)
+                {
+                    if (k==best_idx)
+                    {
+                        merged_candidates[k].filter= "PASS";
+                    }
+                    else
+                    {
+                        merged_candidates[k].filter = "Collapsed";
+                    }
+                
+                    all.push_back(merged_candidates[k]);
+                }
+
             }
             else
             {
+                merged_candidates[0].filter = "PASS";
                 all.push_back(merged_candidates[0]);
             }
         }
     }
+}
+
+bool looks_good(sv &curr_sv, std::vector<int> &gt, std::vector< std::vector<double> > &dps, std::vector< std::vector<int> > &cnts)
+{
+    double sum_ref[4] = {0.0}, sum_het[4] = {0.0};
+    int n_ref = 0, n_het=0;
+//    double sumsq_ref[4], sumsq_het[4];
+
+    for(int i=0; i<dps.size(); ++i)
+    {
+        dps[i][1] *= dps[i][0];
+        dps[i][2] *= dps[i][3];
+
+        if (gt[i] == 0)
+        {
+            for(int j=0; j<4; ++j)
+            {
+                sum_ref[j] += dps[i][j];
+            }
+            n_ref ++;
+        }
+        else if (gt[i] > 0)
+        {
+            for(int j=0; j<4; ++j)
+            {
+                sum_het[j] += dps[i][j];
+            }
+            n_het ++;
+            
+        }
+    }
+    double mean_ref[4], mean_het[4];
+    for(int j=0; j<4; ++j)
+    {
+        if (n_ref > 0)
+        {
+            mean_ref[j] = sum_ref[j]/n_ref;
+        }
+        else
+        {
+            mean_ref[j] = 0;
+        }
+        if (n_het > 0)
+        {
+            mean_het[j] = sum_het[j]/n_het;
+        }
+        else
+        {
+            // std::cerr << " No allele n_ref " << n_ref << " n_het " << n_het << " ";
+            curr_sv.filter = "AC0";
+            return false; // No alleles, filter out
+        }
+    }
+    if (mean_het[0] >1.3 || mean_het[3] > 1.3 || mean_het[0] < 0.7 || mean_het[3] < 0.7)
+    {
+       // std::cerr << " Peripheral low " << mean_ref[0] << "," << mean_ref[3] << " " << mean_het[0] << "," << mean_het[3] << " ";
+        curr_sv.filter = "VarPrepostDepth";
+        return false;  // Peripheral depth too low
+    }
+    else if (mean_ref[0] <0.7|| mean_ref[0] >1.3 || mean_ref[3] < 0.7 || mean_ref[3]>1.3)
+    {
+        curr_sv.filter = "RefPrepostDepth";
+       // std::cerr << " Peripheral high " << mean_ref[0] << "," << mean_ref[3] << " " << mean_het[0] << "," << mean_het[3] << " ";
+        return false;
+    }
+    if (curr_sv.multi_dp)
+    {
+        if (abs(mean_ref[1]-mean_ref[2]) > 0.5 || abs(mean_het[1]-mean_het[2])> 0.5 ) 
+        {
+         //   std::cerr << " MultiDP fail " << mean_ref[1] << "," << mean_ref[2] << " " << mean_het[1] << "," << mean_het[2] << " ";
+            curr_sv.filter = "VarDepthDP2";
+            return false;
+        }
+        else if (mean_ref[1] < 0.7 || mean_ref[2]<0.7 || mean_ref[1]>1.3 || mean_ref[2]>1.3)
+        {
+            curr_sv.filter = "RefDepthDP2";
+          //  std::cerr << " Ref DP fail " << mean_ref[1] << "," << mean_ref[2] << " " << mean_het[1] << "," << mean_het[2] << " ";
+
+            return false;
+        }
+    }
+    
+
+    return true;
 }
 
 
@@ -109,44 +206,113 @@ void run_merging(std::vector<sv> &all, invcf &vcf)
 
     sv curr_sv;    
     std::vector<int> genos(vcf.n_sample); 
-    vcf.read_next(curr_sv, genos);
-
-    overlapping_svs.push_back(curr_sv);
-    overlapping_genos.push_back(genos);
-
-    int curr_end = curr_sv.end;
-    int curr_chr = curr_sv.chrnum;
-    
-    while(vcf.read_next(curr_sv, genos)==0)
+    std::vector<std::vector <double> > dps(vcf.n_sample);
+    std::vector<std::vector <int> > cnts(vcf.n_sample);
+    for(int i=0; i<vcf.n_sample; ++i)
     {
-        if (curr_sv.chrnum == curr_chr && curr_sv.pos < curr_end)
-        {
-            overlapping_svs.push_back(curr_sv);
-            overlapping_genos.push_back(genos);
+        dps[i] = std::vector<double>(4);
+        cnts[i] = std::vector<int>(4);
+    }
 
-            if (curr_sv.end > curr_end)
+    bool b_fail = true;
+    do
+    {
+        if (vcf.read_next(curr_sv) == 0)
+        {
+            if (curr_sv.svtype == DUP)
             {
-                curr_end = curr_sv.end;
+                if (curr_sv.pre > 0.8 && curr_sv.pre < 1.2 && curr_sv.post > 0.8 && curr_sv.post <1.2)
+                {
+                    vcf.read_geno(curr_sv, genos);
+                    vcf.read_dpcnt(curr_sv, dps, cnts);
+                    if (looks_good(curr_sv, genos, dps, cnts))
+                    {
+                        b_fail = false;  
+    //                    std::cerr <<  svTypeName(curr_sv.svtype) << " " << curr_sv.pos << "-" <<curr_sv.end << " supp " << curr_sv.supp << " multi_dp " << curr_sv.multi_dp;
+    //                  std::cerr << " Pre " << curr_sv.pre << " Post " << curr_sv.post << std::endl;
+                    }
+                    else
+                    {
+
+                        all.push_back(curr_sv);
+                    }
+                //    else
+                //   {
+    //                  std::cerr <<  "FAIL: " << svTypeName(curr_sv.svtype) << " " << curr_sv.pos << "-" <<curr_sv.end << " supp " << curr_sv.supp << " multi_dp " << curr_sv.multi_dp;
+    //                std::cerr << " Pre " << curr_sv.pre << " Post " << curr_sv.post << std::endl;
+            //     }
+                }
+                else
+                {
+                    curr_sv.filter = "PrepostDepth";
+                    all.push_back(curr_sv);
+                }
             }
         }
         else
         {
-            if (overlapping_svs.size()>1)
+            std::cerr << "Failed to read first valud SV" << std::endl;
+            exit(-1);
+        }
+    } while (b_fail);
+                    
+    overlapping_svs.push_back(curr_sv);
+    overlapping_genos.push_back(genos);
+    
+    int curr_end = curr_sv.end;
+    int curr_chr = curr_sv.chrnum;
+    
+    while(vcf.read_next(curr_sv)==0)
+    {
+        if (curr_sv.svtype == DUP)
+        {
+            if (curr_sv.pre > 0.8 && curr_sv.pre < 1.2 && curr_sv.post > 0.8 && curr_sv.post <1.2)
             {
-                merge_overlaps(all, overlapping_svs, overlapping_genos);
+                vcf.read_geno(curr_sv, genos); 
+                vcf.read_dpcnt(curr_sv, dps, cnts);
+                if (looks_good(curr_sv, genos, dps, cnts))
+                {
+                    if (curr_sv.chrnum == curr_chr && curr_sv.pos < curr_end)
+                    {
+                        overlapping_svs.push_back(curr_sv);
+                        overlapping_genos.push_back(genos);
+
+                        if (curr_sv.end > curr_end)
+                        {
+                            curr_end = curr_sv.end;
+                        }
+                    }
+                    else
+                    {
+                        if (overlapping_svs.size()>1)
+                        {
+                            merge_overlaps(all, overlapping_svs, overlapping_genos);
+                        }
+                        else
+                        {
+                            overlapping_svs[0].filter = "PASS";
+                            all.push_back(overlapping_svs[0]);
+                        }
+                        overlapping_svs.clear();
+                        overlapping_genos.clear();
+
+                        curr_chr = curr_sv.chrnum;
+                        curr_end = curr_sv.end;
+
+                        overlapping_svs.push_back(curr_sv);
+                        overlapping_genos.push_back(genos);
+                    }
+                }
+                else
+                {
+                    all.push_back(curr_sv);
+                }
             }
             else
             {
-                all.push_back(overlapping_svs[0]);
+                curr_sv.filter = "PrepostDepth";
+                all.push_back(curr_sv);
             }
-            overlapping_svs.clear();
-            overlapping_genos.clear();
-
-            curr_chr = curr_sv.chrnum;
-            curr_end = curr_sv.end;
-
-            overlapping_svs.push_back(curr_sv);
-            overlapping_genos.push_back(genos);
         }
     }
     if (overlapping_svs.size()>1)
@@ -155,6 +321,7 @@ void run_merging(std::vector<sv> &all, invcf &vcf)
     }
     else
     {
+        overlapping_svs[0].filter = "PASS";
         all.push_back(overlapping_svs[0]);
     }
 }
@@ -176,24 +343,24 @@ int main_filter(int argc, char** argv)
         
         TCLAP::ValueArg<std::string> argOut("o","out","Output filename",false,"muCNV.vcf","string");
         TCLAP::ValueArg<std::string> argVcf("v","vcf","VCF file containing candidate SVs",false,"","string");
-        TCLAP::ValueArg<std::string> argInterval("i","interval", "Binary interval file containing candidate SVs", false, "", "string");
-        TCLAP::ValueArg<std::string> argSupp("S","Support","Support VCF file containing suppporting info",false,"","string");
-        TCLAP::SwitchArg switchFilter("f", "filter", "Filter candidate discovery set using supporting VCF", cmd, false);
-        TCLAP::SwitchArg switchMerge("m", "merge", "Merge candidate discovery SVs based on RO", cmd, false);
+    //    TCLAP::ValueArg<std::string> argInterval("i","interval", "Binary interval file containing candidate SVs", false, "", "string");
+    //    TCLAP::ValueArg<std::string> argSupp("S","Support","Support VCF file containing suppporting info",false,"","string");
+    //    TCLAP::SwitchArg switchFilter("f", "filter", "Filter candidate discovery set using supporting VCF", cmd, false);
+        TCLAP::SwitchArg switchMerge("m", "merge", "Merge candidate discovery SVs based on RO and stats", cmd, false);
         
         cmd.add(argOut);
         cmd.add(argVcf);
-        cmd.add(argInterval);
-        cmd.add(argSupp);
+    //    cmd.add(argInterval);
+    //    cmd.add(argSupp);
 
         cmd.parse(argc, argv);
 
         out_filename = argOut.getValue();
         vcf_file = argVcf.getValue();
-        interval_file = argInterval.getValue();
-        supp_file = argSupp.getValue();
+    //    interval_file = argInterval.getValue();
+    //    supp_file = argSupp.getValue();
 
-        bFilter = switchFilter.getValue();
+    //    bFilter = switchFilter.getValue();
         bMerge = switchMerge.getValue();
     }
     catch (TCLAP::ArgException &e)
@@ -219,6 +386,7 @@ int main_filter(int argc, char** argv)
         invcf myvcf;
         int n_sample = myvcf.open(vcf_file);
         std::cerr << "There are " << myvcf.n_sample << " samples." << std::endl;
+
         /*
         std::vector<int> genos(n_sample);
         sv tmp_sv;
@@ -258,10 +426,11 @@ int main_filter(int argc, char** argv)
         fprintf(fp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
         for(int i=0; i<(int)all.size(); ++i)
         {
-            fprintf(fp, "%d\t%d\t%s_%d:%d-%d\t.\t<%s>\t.\tPASS\tSUPP=%d;SVTYPE=%s;END=%d\n", all[i].chrnum, all[i].pos, svTypeName(all[i].svtype).c_str(), all[i].chrnum, all[i].pos, all[i].end, svTypeName(all[i].svtype).c_str(), all[i].supp, svTypeName(all[i].svtype).c_str(), all[i].end);
+            fprintf(fp, "%d\t%d\t%s_%d:%d-%d\t.\t<%s>\t.\t%s\tSUPP=%d;SVTYPE=%s;END=%d\n", all[i].chrnum, all[i].pos, svTypeName(all[i].svtype).c_str(), all[i].chrnum, all[i].pos, all[i].end, svTypeName(all[i].svtype).c_str(), all[i].filter.c_str(), all[i].supp, svTypeName(all[i].svtype).c_str(), all[i].end);
         }
         fclose(fp);
     }
+    /*
     else if (bFilter)
     {
         std::vector<sv> dels;
@@ -342,6 +511,6 @@ int main_filter(int argc, char** argv)
         }
         fclose(fp);
         vfile.close();
-    }
+    }*/
     return 0;
 }

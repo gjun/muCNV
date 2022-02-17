@@ -120,14 +120,12 @@ int invcf::open(std::string filename)
 	return n_sample;
 }
 
-int invcf::read_next(sv &curr_sv, std::vector<int> &genos)
+int invcf::read_next(sv &curr_sv)
 {
 	if (bcf_read(vcf, hdr, line) == 0)
 	{
 		curr_sv.pos = line->pos + 1;
 		curr_sv.chrnum = line->rid + 1;
-		int ngt = 0;
-		//int ngt_arr = 0;
 
 		int nend = 0;
 		int ncallrate = 0;
@@ -139,6 +137,50 @@ int invcf::read_next(sv &curr_sv, std::vector<int> &genos)
 		bcf_get_info_float(hdr, line, "CALLRATE", &callrate, &ncallrate);
 		curr_sv.supp = (int) ((*callrate)*100); 
 
+		char *pre = NULL;
+		int npre = 0;
+		bcf_get_info_string(hdr, line, "PRE", &pre, &npre);
+		if (npre>0)
+		{
+			curr_sv.pre = atof(pre);
+			free(pre);
+		}
+		else
+		{
+			curr_sv.pre = 1;
+		}
+
+		char *post = NULL;
+		int npost = 0;
+		bcf_get_info_string(hdr, line, "POST", &post, &npost);
+		if (npost >0)
+		{
+			curr_sv.post = atof(post);
+			free(post);
+		}
+		else
+		{
+			curr_sv.post = 1;
+		}
+
+		char *split = NULL;
+		int nsplit = 0;
+		bcf_get_info_string(hdr, line, "SPLIT", &split, &nsplit);
+		if (nsplit>0)
+		curr_sv.supp += 100; // Prioritize variants with 'SPLIT' breakpoints
+    
+ 	    int idx_start = (curr_sv.pos / 100);
+    	int idx_end = (curr_sv.end / 100);
+		int n_dp = idx_end - idx_start -1; 
+		if (n_dp < 2)
+		{
+			curr_sv.multi_dp = false;
+		}
+		else
+		{
+			curr_sv.multi_dp = true;
+		}
+
 		char* svt = NULL;
 		int nsvt = 0;
 		bcf_get_info_string(hdr, line, "SVTYPE", &svt, &nsvt);
@@ -146,37 +188,115 @@ int invcf::read_next(sv &curr_sv, std::vector<int> &genos)
 		curr_sv.svtype = get_svtype(svt_str);
 		free(end);
 		free(callrate);
+		free(split);
 		free(svt);
 		// std::cerr << "First record: chrom id " << curr_sv.chrnum << " pos " << curr_sv.pos << " end " << curr_sv.end << " type " << svt_str << " callrate " << curr_sv.supp << std::endl;
+		return 0;
+	}
+	else
+	{
+		return -1;
+	}
+}
 
-		int *gt = NULL;
-		int ngt_arr = 0;
-		ngt = bcf_get_genotypes(hdr, line, &gt, &ngt_arr);
- 		// std::cerr << ngt << " genotypes read " << "ngt_arr has " << ngt_arr << std::endl;
-		for(int i=0; i<ngt; i+=2)
+int invcf::read_dpcnt(sv &curr_sv, std::vector<std::vector<double> > &dps, std::vector<std::vector<int> > &cnts)
+{
+	float *pdps = NULL;
+	int ndps = 0;
+	int ndps_arr = 0;
+	ndps = bcf_get_format_float(hdr, line, "DD", &pdps, &ndps_arr);
+	if (ndps < n_sample*4)
+	{
+		std::cerr << "DD read fail "<< std::endl;
+	}
+	for(int i=0; i<n_sample; i++)
+	{
+		for(int j=0; j<4; j++)
 		{
-			if (gt[i]==0 && gt[i+1]==0)
-			{
-				genos[i/2] = -1;
-			}
-			else if(gt[i]==2 && gt[i+1]==2)
-			{
-				genos[i/2] = 0;
-			}
-			else if (gt[i]==2 && gt[i+1]==4)
-			{
-				genos[i/2] = 1;
-			}
-			else if (gt[i]==4 && gt[i+1]==4)
-			{
-				genos[i/2] = 2;
-			}
-			else
-			{
-				genos[i/2] = -1;
-			}
+			dps[i][j] = pdps[i*4+j];
 		}
-		free(gt);
+	}
+	
+	free(pdps);
+
+	int ncnt = 0;
+	int ncnt_arr = 0;
+	int *sp = NULL;
+	ncnt = bcf_get_format_int32(hdr, line, "SP", &sp, &ncnt_arr);
+	if (ncnt < n_sample)
+	{
+		std::cerr << "SP read fail "<< std::endl;
+	}
+	int *rp = NULL;
+	ncnt = 0;
+	ncnt_arr = 0;
+	ncnt = bcf_get_format_int32(hdr, line, "RP", &rp, &ncnt_arr);
+	if (ncnt < n_sample)
+	{
+		std::cerr << "RP read fail "<< std::endl;
+	}
+	int *sc = NULL;
+	ncnt = 0;
+	ncnt_arr = 0;
+	ncnt = bcf_get_format_int32(hdr, line, "SC", &sc, &ncnt_arr);
+
+	int *ec = NULL;
+	ncnt = 0;
+	ncnt_arr = 0;
+	ncnt = bcf_get_format_int32(hdr, line, "EC", &ec, &ncnt_arr);
+
+	for(int i=0; i<n_sample; i++)
+	{
+		cnts[i][0] = sp[i];
+		cnts[i][1] = rp[i];
+		cnts[i][2] = sc[i];
+		cnts[i][3] = ec[i];
+	}
+	free(sp);
+	free(rp);
+	free(sc);
+	free(ec);
+	return 0;
+}
+
+int invcf::read_geno(sv &curr_sv, std::vector<int> &genos)
+{	
+	int *gt = NULL;
+	int ngt = 0;
+	int ngt_arr = 0;
+	ngt = bcf_get_genotypes(hdr, line, &gt, &ngt_arr);
+	if (ngt < n_sample*2)
+	{
+		std::cerr << "GT read fail "<< std::endl;
+	}
+	// std::cerr << ngt << " genotypes read " << "ngt_arr has " << ngt_arr << std::endl;
+	for(int i=0; i<ngt; i+=2)
+	{
+		if (gt[i]==0 && gt[i+1]==0)
+		{
+			genos[i/2] = -1;
+		}
+		else if(gt[i]==2 && gt[i+1]==2)
+		{
+			genos[i/2] = 0;
+		}
+		else if (gt[i]==2 && gt[i+1]==4)
+		{
+			genos[i/2] = 1;
+		}
+		else if (gt[i]==4 && gt[i+1]==4)
+		{
+			genos[i/2] = 2;
+		}
+		else
+		{
+			genos[i/2] = -1;
+		}
+	}
+	free(gt);
+
+	if (ngt == 2*n_sample)
+	{
 		return 0;
 	}
 	else

@@ -142,13 +142,12 @@ void sv::print(FILE *fp)
 }
 
 
-void pick_sv_from_merged(sv &picked, std::vector<sv> &merged)
+int pick_sv_from_merged(std::vector<sv> &merged)
 {
 
 	if (merged.size() == 1) // trivial case
 	{
-		picked = merged[0];
-		return;
+		return 0;
 	}
 	
 	int max_supp = 0;
@@ -186,7 +185,7 @@ void pick_sv_from_merged(sv &picked, std::vector<sv> &merged)
 			best_dist = D;
 		}
 	}
-	picked = max_svs[best_idx];
+	return best_idx;
 
 //	new_sv.ci_pos.first = pos[0] - new_sv.pos;
 //	new_sv.ci_pos.second = pos[pos.size()-1] - new_sv.pos;

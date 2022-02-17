@@ -49,7 +49,9 @@ class invcf
         bcf1_t *line;
         int n_sample; 
         int open(std::string); 
-        int read_next(sv&, std::vector<int> &); // read next line
+        int read_next(sv&); // read next line
+        int read_geno(sv&, std::vector<int> &);
+        int read_dpcnt(sv&, std::vector< std::vector<double> >&, std::vector< std::vector<int> >&);
 };
 
 void read_svs_from_vcf(std::string &, std::vector<breakpoint> &, std::vector<sv> &);
