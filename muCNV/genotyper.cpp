@@ -138,6 +138,8 @@ SvGeno::SvGeno(int n)
     nonref_mask.resize(n_sample, false);
     sample_mask.resize(n_sample, true);
 
+    sex.resize(n_sample, 0);
+    
     ns = 0;
     ac = 0;
 

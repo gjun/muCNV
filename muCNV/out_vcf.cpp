@@ -85,7 +85,7 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs, std::vector<bool>
 }
 
 
-void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G, std::vector<int> &sexes)
+void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 {
 	const char *svtype = svTypeName(S.svtype).c_str();
     
@@ -230,7 +230,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G, std::vector<int> &sexes)
 		}
 		else if (S.chrnum == 23)
 		{
-			if (sexes[i] == 1)
+			if (G.sex[i] == 1)
 			{
 				if (G.cn[i] > 1) 
 				{
@@ -252,7 +252,7 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G, std::vector<int> &sexes)
 						break;
 				}
 			}
-			else if (sexes[i] == 2)
+			else if (G.sex[i] == 2)
 			{
 				switch(G.gt[i])
 				{

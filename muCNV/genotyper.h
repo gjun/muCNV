@@ -75,6 +75,7 @@ public:
     std::vector<bool> nonref_mask;
     std::vector<bool> sample_mask; // true: include sample in genotyping, false: exclude sample
 
+    std::vector<int> sex;
     SvGeno (int);
     
     void reset();
