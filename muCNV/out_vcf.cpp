@@ -55,11 +55,11 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs, std::vector<bool>
 	fprintf(fp,"##INFO=<ID=POST, Number=1,Type=String,Description=\"Read depth statistic after SV\">\n");
 	fprintf(fp,"##INFO=<ID=Biallelic,Number=0,Type=String,Description=\"Biallelic variant\">\n");
 	fprintf(fp,"##INFO=<ID=Biallelic,Number=0,Type=String,Description=\"Biallelic variant\">\n");
-	fprintf(fp,"##INFO=<ID=N_MISS,Number=1,Type=Integer,Descrption=\"Number of missing genotypes\">\n");
-	fprintf(fp,"##INFO=<ID=N_HOMREF,Number=1,Type=Integer,Descrption=\"Number of REF/REF genotypes\">\n");
-	fprintf(fp,"##INFO=<ID=N_HET,Number=1,Type=Integer,Descrption=\"Number of REF/ALT genotypes\">\n");
-	fprintf(fp,"##INFO=<ID=N_HOMALT,Number=1,Type=Integer,Descrption=\"Number of ALT/ALT genotypes\">\n");
-	fprintf(fp,"##INFO=<ID=HWECHISQ,Number=1,Type=Float,Descrption=\"Chi-square value of HWE\">\n");
+	fprintf(fp,"##INFO=<ID=N_MISS,Number=1,Type=Integer,Description=\"Number of missing genotypes\">\n");
+	fprintf(fp,"##INFO=<ID=N_HOMREF,Number=1,Type=Integer,Description=\"Number of REF/REF genotypes\">\n");
+	fprintf(fp,"##INFO=<ID=N_HET,Number=1,Type=Integer,Description=\"Number of REF/ALT genotypes\">\n");
+	fprintf(fp,"##INFO=<ID=N_HOMALT,Number=1,Type=Integer,Description=\"Number of ALT/ALT genotypes\">\n");
+	fprintf(fp,"##INFO=<ID=HWECHISQ,Number=1,Type=Float,Description=\"Chi-square value of HWE\">\n");
 
 	fprintf(fp,"##ALT=<ID=DEL,Description=\"Deletion\">\n");
 	fprintf(fp,"##ALT=<ID=DUP,Description=\"Duplication\">\n");
