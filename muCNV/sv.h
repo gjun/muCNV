@@ -72,6 +72,8 @@ int pick_sv_from_merged(std::vector<sv> &);
 int find_overlap_sv(sv& , std::vector<sv>&);
 int find_start(std::vector<sv> &, int );
 
+bool in_PAR(sv &);
+
 bool in_centrome(sv &);
 bool in_centrome(int, int);
 

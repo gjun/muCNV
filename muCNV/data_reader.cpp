@@ -565,13 +565,13 @@ bool DataReader::read_depth100(sv& curr_sv, std::vector< std::vector<double> > &
 					dvec_dp[seg+3][m+sample_idx] = (double)dp_sum[m]/n_dp/32.0;
 
 			} // seg : 2
-
+/*
 			for(int k=0; k<n_samples[i]; ++k)
 			{
 				dvec_dp[2][k + sample_idx] = (double) gc_sum[k] / (n_dp * 2)/ 32.0;
 			}
 			sample_idx += n_samples[i];
-
+*/ // commented out Feb22, 2022
 			delete [] D;
 			delete [] D_filt;
 			

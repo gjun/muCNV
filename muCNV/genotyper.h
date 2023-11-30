@@ -21,6 +21,7 @@ class SvGeno
 {
 public:
     int gts[4] = {0, 0, 0, 0};
+    int m_gts[4] = {0, 0, 0, 0};
     double chisq;
     
     bool b_biallelic;
@@ -48,6 +49,7 @@ public:
     
     int ac;
     int ns;
+    double af;
 	// Average depth around SVs in samples with possible het/hom genotypes
 	double dp_pre_mean;
     double dp_pre_std;

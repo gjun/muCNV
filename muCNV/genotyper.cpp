@@ -119,6 +119,8 @@ SvGeno::SvGeno(int n)
 
 
     for(int i=0;i<4; ++i) gts[i] = 0;
+    for(int i=0;i<4; ++i) m_gts[i] = 0;
+
     chisq = 0;
 
     gt.resize(n_sample, -1);
@@ -142,6 +144,7 @@ SvGeno::SvGeno(int n)
     
     ns = 0;
     ac = 0;
+    af = 0;
 
     b_biallelic = false;
     b_pass = false;
@@ -182,7 +185,11 @@ void SvGeno::reset()
     
     ns = 0;
     ac = 0;
+    af = 0;
+
     for(int i=0;i<4; ++i) gts[i] = 0;
+    for(int i=0;i<4; ++i) m_gts[i] = 0;
+
     chisq = 0;
     
     b_biallelic = false;
@@ -495,29 +502,44 @@ void Genotyper::call(sv &S, SvData &D, SvGeno &G, std::vector<SampleStat> &stats
     }
 
     double exps[4] = {0, 0, 0, 0};
-
+    
     for(int i=0; i<n_sample; ++i)
     {
         if (G.sample_mask[i])
         {
-            G.gts[G.gt[i]+1] ++;
+            if (S.chrnum < 23 || G.sex[i] == 2)
+            {
+                G.gts[G.gt[i]+1] ++;
+            }
+            else if (S.chrnum == 23 && G.sex[i] == 1)
+            {
+                G.m_gts[G.gt[i]+1] ++;
+            }
         }
     }
 
-    double p = (G.gts[1]*2.0 + G.gts[2])/(2.0 * G.ns);
-    double q = (G.gts[2] + G.gts[3] * 2.0)/(2.0 * G.ns);
-    exps[1] = p*p*G.ns;
-    exps[2] = 2*p*q*G.ns;
-    exps[3] = q*q*G.ns;
-    G.chisq = 0;
-    double af = G.ac / (2.0*G.ns);
-    for(int i=1; i<4; ++i)
+    int n_s = G.gts[1] + G.gts[2] + G.gts[3];
+    if (n_s > 0)
     {
-        if (exps[i]>0)
+        double p = (G.gts[1]*2.0 + G.gts[2])/(2.0 * n_s);
+        double q = (G.gts[2] + G.gts[3] * 2.0)/(2.0 * n_s);
+        exps[1] = p*p*n_s;
+        exps[2] = 2*p*q*n_s;
+        exps[3] = q*q*n_s;
+        G.chisq = 0;
+
+        //double af = G.ac / (2.0*G.ns);
+        for(int i=1; i<4; ++i)
         {
-            G.chisq += (exps[i] - G.gts[i])*(exps[i] - G.gts[i]) / exps[i];
-        }
-    } 
+            if (exps[i]>0)
+            {
+                G.chisq += (exps[i] - G.gts[i])*(exps[i] - G.gts[i]) / exps[i];
+            }
+        } 
+    
+        if (S.svtype == INV && G.gts[2]/((double)G.gts[1]+G.gts[2]+G.gts[3]) >= 0.1 && G.gts[3] == 0) // filtering excessive HET based on females only
+            G.b_pass = false;
+    }
     // Filtering based on HWE
     /*
     if (G.b_biallelic && (G.chisq > 23.92823 || (af >= 0.05 && G.chisq >15.13671))) // chi-sq for p=1e-6, p=1e-4

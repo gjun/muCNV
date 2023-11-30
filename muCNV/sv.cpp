@@ -315,6 +315,35 @@ bool in_centrome(int chrnum, int pos)
         return false;
 }
 
+bool in_PAR(sv &S)
+{
+    /* PAR region
+    chromosome:GRCh38:Y:1 - 10000 is unique to Y but is a string of 10000 Ns
+    chromosome:GRCh38:Y:10001 - 2781479 is shared with X: 10001 - 2781479 (PAR1)
+    chromosome:GRCh38:Y:2781480 - 56887902 is unique to Y
+    chromosome:GRCh38:Y:56887903 - 57217415 is shared with X: 155701383 - 156030895 (PAR2)
+    chromosome:GRCh38:Y:57217416 - 57227415 is unique to Y
+    */
+
+    if (S.chrnum == 23 || S.chrnum == 24)
+    {
+        if (S.chrnum == 23)
+        {
+            if ((S.pos >= 10001 && S.pos <= 2781479) || (S.pos >= 155701383 && S.pos <= 156030895) || (S.end >= 10001 && S.end <= 2781479) || (S.end >= 155701383 && S.end <= 156030895))
+                return true;
+        }
+        else if (S.chrnum == 24)
+        {
+            if ((S.pos >= 10001 && S.pos <= 2781479) || (S.pos >= 56887903 && S.pos <= 57217415) || (S.end >= 10001 && S.end <= 2781479) || (S.end >= 56887903 && S.end <= 57217415))
+                return true;
+        }
+
+        return false;
+    }
+    else
+        return false;
+}
+
 bool in_centrome(sv &S)
 {
     // GRCh38 Centromere coordinates , hardcoded

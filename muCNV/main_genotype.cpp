@@ -26,7 +26,6 @@ int main_genotype(int argc, char** argv)
 {
     bool bNoHeader = false;
     bool bFail = false;
-    bool bMaleOnly = false;
     
     string index_file;
     string vcf_file;
@@ -73,7 +72,6 @@ int main_genotype(int argc, char** argv)
 
         TCLAP::SwitchArg switchFail("a", "all", "Report filter failed variants", cmd, false);
         TCLAP::SwitchArg switchNoHeader("l", "lessheader", "Do not print header in genoptyed VCF", cmd, false);
-        TCLAP::SwitchArg switchMale("m", "male", "run male-only (default: female only)", cmd, false);
         
         cmd.add(argOut);
         cmd.add(argVcf);
@@ -97,7 +95,6 @@ int main_genotype(int argc, char** argv)
         gc_file = argGcfile.getValue();
         ped_filename = argPed.getValue();
         bNoHeader = switchNoHeader.getValue();
-        bMaleOnly = switchMale.getValue();
         bFail = switchFail.getValue();
 		chr = argChr.getValue();
         exclude_filename = argExclude.getValue();
@@ -249,37 +246,27 @@ int main_genotype(int argc, char** argv)
          {
              G.sex[k] = sexmap[reader.sample_ids[k]];
          }
-         if (G.sex[k] == 1)
-         {
-             n_male ++;
-             if (chr == 23 && !bMaleOnly) 
-             {
-                 G.sample_mask[k] = false;
-             }
-         }
-         else if (G.sex[k] == 2)
-         {
-             n_female ++;
-             if (chr==23 && bMaleOnly)
-             {
-                 G.sample_mask[k] = false;
-             }
-         }
-         else
-         {
-             n_unknown++;
-             if (chr == 23)
-             {
-                 G.sample_mask[k] = false;
-             }
-         }
-         
          
          std::set<string>::iterator it = exclude_set.find(reader.sample_ids[k]);
          if (it != exclude_set.end())
          {
              n_exclude ++;
              G.sample_mask[k] = false;
+         }
+         else 
+         {
+             if (G.sex[k] == 1)
+            {
+                n_male ++;
+            }
+            else if (G.sex[k] == 2)
+            {
+                n_female ++;
+            }
+            else
+            {
+                n_unknown++;
+            }
          }
     }
     std::cerr << n_male << " males, " << n_female << " females, " << n_unknown << " unknowns" << std::endl;
@@ -389,7 +376,8 @@ int main_genotype(int argc, char** argv)
         double sv_gc = gc.get_gc_content(vec_sv[i].chrnum, vec_sv[i].pos, vec_sv[i].end);
 
         // chrY is not supported yet
-        if (((chr== 0 && vec_sv[i].chrnum < 24) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) && !in_centrome(vec_sv[i]) && sv_gc > min_GC && sv_gc < max_GC  && (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV || vec_sv[i].svtype==INV))
+        if (((chr== 0 && vec_sv[i].chrnum < 24) || (chr>0 && vec_sv[i].chrnum == chr)) && (r_chr == 0 || (vec_sv[i].chrnum == r_chr && vec_sv[i].pos >= r_start && vec_sv[i].pos < r_end)) 
+            && !in_centrome(vec_sv[i]) && !in_PAR(vec_sv[i]) && sv_gc > min_GC && sv_gc < max_GC  && (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV || vec_sv[i].svtype==INV))
         {
             Genotyper gtyper;
             G.reset();
@@ -407,62 +395,39 @@ int main_genotype(int argc, char** argv)
             if (average(D.dps[2]) < 150)
             {
                 reader.read_pair_split(vec_sv[i], D.rdstats, gc, D.all_rps, D.all_lclips, D.all_rclips);
-                if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
+                D.multi_dp = reader.read_depth100(vec_sv[i], D.dps, gc);
+
+                // if (vec_sv[i].svtype == DEL || vec_sv[i].svtype == DUP || vec_sv[i].svtype == CNV)
                 {
-                    D.multi_dp = reader.read_depth100(vec_sv[i], D.dps, gc);
                     
                     for(int j=0; j<n_sample; ++j)
                     {
                         D.raw_dp[j] = D.dps[2][j];
                         D.dps[0][j] /= (double)stats[j].avg_dp;
                         D.dps[1][j] /= (double)stats[j].avg_dp;
-            
-                        // if (D.dps[0][j] > 0.001 && D.dps[1][j] > 0.001)
-                        if (false)
-                        {
-                            D.dps[2][j] /= (double)stats[j].avg_dp * (D.dps[1][j] + D.dps[0][j]) * 0.5 ;
-                        }
-                        else
-                        {
-                            D.dps[2][j] /= (double)stats[j].avg_dp;
-                        }
-                        /*
-                        if (vec_sv[i].chrnum == 23 && sexes[j] == 1)
+                        D.dps[2][j] /= (double)stats[j].avg_dp;
+                        
+                        if (vec_sv[i].chrnum == 23 && G.sex[j] == 1)
                         {
                             D.dps[0][j] += 0.5;
                             D.dps[1][j] += 0.5;
                             D.dps[2][j] += 0.5;
-                        }*/
+                        }
                         if (D.multi_dp)
                         {
                             
-                            //if (D.dps[0][j] > 0.001)
-                            if (false)
-                            {
-                                D.dps[3][j] /= (double)stats[j].avg_dp * D.dps[0][j];
-                            }
-                            else
-                            {
-                                D.dps[3][j] /= (double)stats[j].avg_dp;
-                            }
-                            // if (D.dps[1][j]>0.001)
-                            if (false)
-                            {
-                                D.dps[4][j] /= (double)stats[j].avg_dp * D.dps[1][j];
-                            }
-                            else
-                            {
-                                D.dps[4][j] /= (double)stats[j].avg_dp;
-                            }
-                            /*
-                            if (vec_sv[i].chrnum == 23 && sexes[j] == 1)
+                            D.dps[3][j] /= (double)stats[j].avg_dp;
+                            D.dps[4][j] /= (double)stats[j].avg_dp;
+                            
+                            if (vec_sv[i].chrnum == 23 && G.sex[j] == 1)
                             {
                                 D.dps[3][j] += 0.5;
                                 D.dps[4][j] += 0.5;
-                            }*/
+                            }
                         }
                     }
                 }
+                /*
                 else
                 {
                     for(int j=0; j<n_sample; ++j)
@@ -470,23 +435,47 @@ int main_genotype(int argc, char** argv)
                         D.dps[0][j] = 1.0;
                         D.dps[1][j] = 1.0;
                         D.dps[2][j] /= (double)stats[j].avg_dp;            
-                        /*        
+                           
                         if (vec_sv[i].chrnum == 23 && sexes[j] == 1)
                         {
                             D.dps[0][j] += 0.5;
                             D.dps[1][j] += 0.5;
                             D.dps[2][j] += 0.5;
                         }
-                        */
+                        
                     }
                 }
-                
+                */
                 gtyper.call(vec_sv[i], D, G, stats);
 
                 //G.info = "VarID=" + std::to_string(i);
 
                 if (bFail || G.b_pass)
                 {
+                    if (vec_sv[i].chrnum == 23)
+                    {
+                        for(int j=0; j<n_sample; ++j)
+                        {
+                            if (G.sex[j] == 1)
+                            {
+                                if (G.cn[j] > 0)
+                                {
+                                    G.cn[j] -= 1;
+                                }
+                                if (G.gt[j] > 1)
+                                {
+                                    G.ac -= 1;
+                                }
+                                for(int k=0; k<5; ++k)
+                                    D.dps[k][j] -= 0.5;
+                            }
+                        }
+                        G.af = G.ac / (n_male + n_female*2.0);
+                    }
+                    else
+                    {
+                        G.af = G.ac / (G.ns * 2.0);
+                    }
                     out_vcf.write_sv(vec_sv[i], D, G);
 
                     if (vec_sv[i].svtype == DEL)

@@ -55,12 +55,14 @@ void OutVcf::write_header(std::vector<std::string> &sampleIDs, std::vector<bool>
 	fprintf(fp,"##INFO=<ID=POST, Number=1,Type=String,Description=\"Read depth statistic after SV\">\n");
 	fprintf(fp,"##INFO=<ID=Biallelic,Number=0,Type=String,Description=\"Biallelic variant\">\n");
 	fprintf(fp,"##INFO=<ID=Biallelic,Number=0,Type=String,Description=\"Biallelic variant\">\n");
-	fprintf(fp,"##INFO=<ID=N_MISS,Number=1,Type=Integer,Descrption=\"Number of missing genotypes\">\n");
-	fprintf(fp,"##INFO=<ID=N_HOMREF,Number=1,Type=Integer,Descrption=\"Number of REF/REF genotypes\">\n");
-	fprintf(fp,"##INFO=<ID=N_HET,Number=1,Type=Integer,Descrption=\"Number of REF/ALT genotypes\">\n");
-	fprintf(fp,"##INFO=<ID=N_HOMALT,Number=1,Type=Integer,Descrption=\"Number of ALT/ALT genotypes\">\n");
+	fprintf(fp,"##INFO=<ID=N_MISS,Number=1,Type=Integer,Descrption=\"Number of missing genotypes (in females for chrX)\">\n");
+	fprintf(fp,"##INFO=<ID=N_HOMREF,Number=1,Type=Integer,Descrption=\"Number of REF/REF genotypes (in females for chrX)\">\n");
+	fprintf(fp,"##INFO=<ID=N_HET,Number=1,Type=Integer,Descrption=\"Number of REF/ALT genotypes (in females for chrX)\">\n");
+	fprintf(fp,"##INFO=<ID=N_HOMALT,Number=1,Type=Integer,Descrption=\"Number of ALT/ALT genotypes (in females for chrX)\">\n");
+	fprintf(fp,"##INFO=<ID=N_MALE_MISS,Number=1,Type=Integer,Descrption=\"Number of missing genotypes in males for chrX\">\n");
+	fprintf(fp,"##INFO=<ID=N_MALE_REF,Number=1,Type=Integer,Descrption=\"Number of REF genotypes in males for chrX\">\n");
+	fprintf(fp,"##INFO=<ID=N_MALE_ALT,Number=1,Type=Integer,Descrption=\"Number of ALT genotypes in males for chrX\">\n");
 	fprintf(fp,"##INFO=<ID=HWECHISQ,Number=1,Type=Float,Descrption=\"Chi-square value of HWE\">\n");
-
 	fprintf(fp,"##ALT=<ID=DEL,Description=\"Deletion\">\n");
 	fprintf(fp,"##ALT=<ID=DUP,Description=\"Duplication\">\n");
 	fprintf(fp,"##ALT=<ID=INV,Description=\"Inversion\">\n");
@@ -120,17 +122,17 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
         fprintf(fp, "FAIL\t");
     }
 
-    double af = 0;
-    if (G.ns>0)
-	{
-        af = (double)G.ac/(2.0*G.ns);
-	}
 	if (S.svtype == DEL)
 		S.len = -S.len;	
-	fprintf(fp, "SVTYPE=%s;END=%d;SVLEN=%d;AC=%d;NS=%d;CALLRATE=%.2f;AF=%f",  svtype, S.end, S.len, G.ac, G.ns, G.ns / (float)G.n_effect, af);
-	fprintf(fp, ";N_MISS=%d;N_HOMREF=%d;N_HET=%d;N_HOMALT=%d;HWECHISQ=%.2f", G.gts[0], G.gts[1], G.gts[2], G.gts[3], G.chisq);
-	fprintf(fp, ";%s", G.info.c_str());
-	
+	fprintf(fp, "SVTYPE=%s;END=%d;SVLEN=%d;AC=%d;NS=%d;CALLRATE=%.2f;AF=%f",  svtype, S.end, S.len, G.ac, G.ns, G.ns / (float)G.n_effect, G.af);
+    fprintf(fp, ";N_MISS=%d;N_HOMREF=%d;N_HET=%d;N_HOMALT=%d;HWECHISQ=%.2f", G.gts[0], G.gts[1], G.gts[2], G.gts[3], G.chisq);
+    if (S.chrnum == 23)
+    {
+        fprintf(fp, ";N_MALE_MISS=%d;N_MALE_REF=%d;N_MALE_ALT=%d", G.m_gts[0], G.m_gts[1], G.m_gts[2]+G.m_gts[3]);
+    }
+
+    fprintf(fp, ";%s", G.info.c_str());
+    
     if (G.pd_flag)
     {
         fprintf(fp, ";PD");
@@ -232,10 +234,6 @@ void OutVcf::write_sv(sv &S, SvData &D, SvGeno &G)
 		{
 			if (G.sex[i] == 1)
 			{
-				if (G.cn[i] > 1) 
-				{
-					G.cn[i] -= 1;
-				}
 				switch(G.gt[i])
 				{
 					case 0:
